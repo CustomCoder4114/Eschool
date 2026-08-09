@@ -52,7 +52,7 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            
+
         }
 
         /* Header Styles - Very Small */
@@ -224,6 +224,26 @@
             font-weight: 600;
             font-size: 1.2rem;
             flex-shrink: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Real profile picture, when the account has one */
+        .user-avatar .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
+        }
+
+        /* Initials shown when there's no profile picture, or the image fails to load */
+        .user-avatar .avatar-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .user-avatar.online {
@@ -649,7 +669,7 @@
             <!-- Chat Main -->
             <div class="chat-main">
                 <div class="chat-header" id="chatHeader">
-                    <div class="user-avatar" id="chatAvatar">?</div>
+                    <div class="user-avatar" id="chatAvatar"><span class="avatar-fallback">?</span></div>
                     <div class="chat-header-info">
                         <h4 id="chatUserName">Select a friend</h4>
                         <span id="chatUserStatus">to start chatting</span>
@@ -698,6 +718,66 @@
         let conversations = [];
 
         let searchDebounceTimer = null;
+
+        // ---------------------------------------------------------------
+        // AVATAR RESOLUTION — show each account's real profile picture
+        // when one exists, falling back to an initials badge otherwise.
+        //
+        // `avatar_url` is listed first because that's the exact field the
+        // settings page writes: the "Upload New Photo" flow there
+        // (ENDPOINTS.uploadPhoto) saves the file server-side and returns
+        // `{ avatar_url }`, and the profile template itself renders
+        // `{% if avatar_url %}<img src="{{ avatar_url }}">{% endif %}`.
+        // So whatever photo a user set for themselves in Settings is what
+        // shows up for them here automatically, for every account, not
+        // just the person currently logged in. The rest of the list is
+        // just defensive in case some endpoints use a different key name.
+        // ---------------------------------------------------------------
+        const imageFields = ['avatar_url', 'profile_picture', 'photo', 'image', 'profile_pic', 'picture'];
+
+        function looksLikeImagePath(value) {
+            if (!value) return false;
+            const v = String(value).trim();
+            if (!v) return false;
+            // A real path/URL ("/static/...", "https://...") or a filename
+            // with an image extension counts as a picture; a bare initial
+            // like "JD" does not.
+            return /^(https?:)?\//.test(v) || /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(v);
+        }
+
+        // Returns { src, fallbackText } for a given user object.
+        function resolveAvatar(user) {
+            const name = (user && user.name && user.name.trim()) ? user.name.trim() : '';
+            const fallbackText = looksLikeImagePath(user && user.avatar)
+                ? (name ? name[0].toUpperCase() : '?')
+                : ((user && user.avatar && String(user.avatar).trim()) || (name ? name[0].toUpperCase() : '?'));
+
+            for (const field of imageFields) {
+                if (user && user[field] && String(user[field]).trim()) {
+                    return { src: user[field], fallbackText };
+                }
+            }
+            // Some backends already send `avatar` itself as an image path/URL
+            // rather than initials — use it if it looks like one.
+            if (user && looksLikeImagePath(user.avatar)) {
+                return { src: user.avatar, fallbackText };
+            }
+            return { src: null, fallbackText };
+        }
+
+        // Builds the inner HTML for a .user-avatar element: a real <img>
+        // when a profile picture is available, with a graceful fallback to
+        // initials if there's no picture or the image fails to load.
+        function avatarInnerHTML(user) {
+            const { src, fallbackText } = resolveAvatar(user);
+            const safeAlt = (user && user.name) ? user.name.replace(/"/g, '&quot;') : 'User';
+            if (src) {
+                return `<img class="avatar-img" src="${src}" alt="${safeAlt}" loading="lazy"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <span class="avatar-fallback" style="display:none;">${fallbackText}</span>`;
+            }
+            return `<span class="avatar-fallback">${fallbackText}</span>`;
+        }
 
         // Initialize chat
         document.addEventListener('DOMContentLoaded', async () => {
@@ -832,12 +912,11 @@
             // avoids a blank/undefined row in the list.
             if (!name) return '';
 
-            const avatar = user.avatar && String(user.avatar).trim() ? user.avatar : name[0].toUpperCase();
             const safeUser = JSON.stringify(user).replace(/'/g, '&#39;');
 
             return `
                 <div class="user-item ${currentUser === user.id ? 'active' : ''}" onclick='selectUser(${safeUser})' data-user-id="${user.id}">
-                    <div class="user-avatar ${user.online ? 'online' : ''}">${avatar}</div>
+                    <div class="user-avatar ${user.online ? 'online' : ''}">${avatarInnerHTML(user)}</div>
                     <div class="user-info">
                         <div class="user-name">${name}</div>
                         <div class="last-message">${lastMsg || (isInConversation ? 'No messages yet' : 'Click to start chatting')}</div>
@@ -855,8 +934,12 @@
             currentUser = user.id;
             currentUserObj = user;
 
-            // Update chat header
-            document.getElementById('chatAvatar').textContent = user.avatar;
+            // Update chat header — show the real profile picture when one
+            // exists, otherwise fall back to initials.
+            const chatAvatarEl = document.getElementById('chatAvatar');
+            chatAvatarEl.innerHTML = avatarInnerHTML(user);
+            chatAvatarEl.classList.toggle('online', !!user.online);
+
             document.getElementById('chatUserName').textContent = user.name;
             document.getElementById('chatUserStatus').textContent = user.online ? '🟢 Online' : `Last seen ${user.lastSeen || ''}`;
             document.getElementById('chatUserStatus').className = user.online ? 'online-status' : '';

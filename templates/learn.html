@@ -1,173 +1,551 @@
-{% extends "intro.html" %}
-{% block conten %}
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-<div class="header">
-     <div class="header-text">
-    <h1 class="warm">Welcome to Eschool</h1>
-    <h1 class="head">Learn Online, Anytime, Anywhere</h1>
-    <p class="mhead">Empower your mind with interactive courses<br> and expert guidance.Eschool brings knowledge to your screen.click <a class="cla" href="/register">register</a> to start exploring our courses.</p>
-</div>
-<img src="static/gemin1.png" alt="header image">
-</div>
-<div class="cards">
-<div class="card">
-  <img src="static/ChatGPT Image Nov 27, 2025, 10_03_04 PM.png" style="font-size:50px; color:white;"> 
-  <p class="para">Learn with quality<br> notes on Eschool</p>
-  </div>
-  <div class="card">
-  <img src="static/ChatGPT Image Nov 27, 2025, 10_59_41 PM.png" style="font-size:50px; color:white;"> 
-  <p class="para">Learn with quality videos on Eschool</p>
-  </div>
-  <div class="card">
-<img src="static/Gemini_Generated_Image_w6k8u3w6k8u3w6k8.png" style="font-size:50px; height: 170px; color:white;">
-  <p class="para">Nature skill,abilities and talents on Eschool</p>
-  </div>
-  <div class="card">
-<img src="static/Gemini_Generated_Image_jkm3lpjkm3lpjkm3.png" style="font-size:50px; height: 170px; color:white;">
-  <p class="para">Learn extra knowledge to expand you brain</p>
-  </div>
-</div>
-<section class="trust-section">
-    <h2 class="section-title">Eschool statistics</h2>
-    <div class="metrics-container">
-        <div class="metric-item">
-            <span class="metric-value" id="companies-count">5000<span class="metric-plus">+</span></span>
-            <span class="metric-label">Learners</span>
+{% extends "fronten.html" %}
+
+{% block content %}
+<style>
+/* ============================================================
+   PAGE-LOCAL TOKENS (inherits fonts/colors from base.html)
+   ============================================================ */
+.eschool-page{ overflow-x: hidden; }
+
+.eschool-page section{ padding: 100px 24px; position: relative; }
+.eschool-page .container{ max-width: 1200px; margin: 0 auto; }
+.eschool-page .eyebrow{
+    display: inline-block; font-family: var(--font-alt); font-weight: 700; font-size: 13px;
+    letter-spacing: 1.6px; text-transform: uppercase; color: var(--primary);
+    background: #eff6ff; padding: 8px 16px; border-radius: 30px; margin-bottom: 20px;
+}
+.eschool-page h2.section-title{
+    font-family: var(--font-display); font-weight: 700; font-size: clamp(1.9rem, 4vw, 2.7rem);
+    color: var(--text-dark); text-align: center; margin: 0 0 16px; line-height: 1.2;
+}
+.eschool-page p.section-sub{
+    font-family: var(--font-body); font-size: 17px; color: var(--text-gray); text-align: center;
+    max-width: 560px; margin: 0 auto 60px; line-height: 1.7;
+}
+
+/* ---- reveal-on-scroll ---- */
+.reveal{ opacity: 0; transition: opacity 0.7s ease, transform 0.7s cubic-bezier(.2,.7,.3,1); }
+.reveal.fade-up{ transform: translateY(36px); }
+.reveal.slide-left{ transform: translateX(-44px); }
+.reveal.slide-right{ transform: translateX(44px); }
+.reveal.zoom-in{ transform: scale(0.9); }
+.reveal.is-visible{ opacity: 1; transform: translate(0,0) scale(1); }
+
+/* ---- buttons ---- */
+.btn-primary, .btn-secondary{
+    position: relative; overflow: hidden; font-family: var(--font-body); font-weight: 700; font-size: 15.5px;
+    padding: 15px 32px; border-radius: 40px; cursor: pointer; border: none; display: inline-flex;
+    align-items: center; gap: 8px; transition: transform 0.25s ease, box-shadow 0.25s ease; text-decoration: none;
+}
+.btn-primary{ background: var(--grad-primary); color: white; box-shadow: 0 10px 26px rgba(37,99,235,0.35); }
+.btn-primary:hover{ transform: translateY(-3px); box-shadow: 0 16px 34px rgba(37,99,235,0.48); }
+.btn-secondary{ background: white; color: var(--primary); border: 2px solid #dbeafe; }
+.btn-secondary:hover{ border-color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.btn-primary::after, .btn-secondary::after{
+    content:''; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+    transform: skewX(-20deg);
+}
+.btn-primary:hover::after, .btn-secondary:hover::after{ animation: shine 0.9s ease forwards; }
+@keyframes shine{ to{ left: 130%; } }
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.hero{
+    padding: 168px 24px 110px;
+    background:
+        radial-gradient(circle at 12% 18%, rgba(37,99,235,0.10), transparent 40%),
+        radial-gradient(circle at 88% 8%, rgba(20,184,166,0.12), transparent 42%),
+        radial-gradient(circle at 70% 90%, rgba(245,158,11,0.08), transparent 40%),
+        var(--bg);
+    background-size: 200% 200%;
+    animation: meshMove 18s ease-in-out infinite;
+}
+@keyframes meshMove{ 0%,100%{ background-position: 0% 0%; } 50%{ background-position: 100% 60%; } }
+
+.hero-grid{ display: flex; align-items: center; justify-content: space-between; gap: 60px; flex-wrap: wrap; }
+.hero-text{ flex: 1 1 460px; max-width: 580px; }
+
+.hero-text h1{
+    font-family: var(--font-display); font-weight: 800; font-size: clamp(2.2rem, 5.4vw, 3.6rem);
+    line-height: 1.15; margin: 0 0 22px; color: var(--text-dark);
+}
+.hero-text h1 span{
+    background: var(--grad-primary); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    display: block;
+}
+.hero-text p{ font-size: 18px; color: var(--text-gray); line-height: 1.75; max-width: 500px; margin: 0 0 34px; }
+.hero-actions{ display: flex; gap: 16px; flex-wrap: wrap; }
+
+/* ---- CSS-only illustration ---- */
+.hero-art{
+    flex: 1 1 380px; max-width: 460px; height: 420px; position: relative;
+}
+.blob{
+    position: absolute; border-radius: 50%; filter: blur(2px);
+    background: linear-gradient(135deg, var(--primary-light), var(--secondary));
+    opacity: 0.85; animation: floatY 7s ease-in-out infinite;
+}
+.blob.b1{ width: 220px; height: 220px; top: 10px; right: 30px; opacity: 0.18; filter: blur(30px); animation-duration: 9s; }
+.blob.b2{ width: 160px; height: 160px; bottom: 20px; left: 10px; background: linear-gradient(135deg, var(--accent), var(--primary-light)); opacity: 0.16; filter: blur(26px); animation-duration: 11s; animation-delay: -3s; }
+
+.ring{
+    position: absolute; border-radius: 50%; border: 2px dashed rgba(37,99,235,0.25);
+    animation: spin 26s linear infinite;
+}
+.ring.r1{ width: 300px; height: 300px; top: 40px; left: 40px; }
+.ring.r2{ width: 200px; height: 200px; top: 90px; left: 90px; border-color: rgba(20,184,166,0.3); animation-duration: 20s; animation-direction: reverse; }
+@keyframes spin{ to{ transform: rotate(360deg); } }
+
+.glass-card{
+    position: absolute; background: rgba(255,255,255,0.55); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.6); border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+    padding: 16px 20px; animation: floatY 6s ease-in-out infinite;
+}
+.glass-card .num{ font-family: var(--font-display); font-weight: 800; font-size: 22px; color: var(--text-dark); }
+.glass-card .lbl{ font-family: var(--font-body); font-size: 12px; color: var(--text-gray); font-weight: 600; }
+.glass-card.gc1{ top: 20px; right: 0; animation-delay: -1s; }
+.glass-card.gc2{ bottom: 60px; left: -10px; animation-delay: -3.4s; }
+.glass-card.gc3{ bottom: -10px; right: 40px; animation-delay: -5s; }
+@keyframes floatY{ 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-14px); } }
+
+@media (max-width: 991px){ .hero-grid{ justify-content: center; text-align: center; } .hero-text{ max-width: 100%; } .hero-actions{ justify-content: center; } .hero-text p{ margin-left: auto; margin-right: auto; } .hero-art{ margin: 20px auto 0; } }
+@media (max-width: 480px){ .hero-art{ height: 320px; } .glass-card{ padding: 12px 14px; } }
+
+/* ============================================================
+   FEATURES
+   ============================================================ */
+.features-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.feature-card{
+    position: relative; background: white; border-radius: var(--radius-md); padding: 34px 28px;
+    box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease; overflow: hidden;
+}
+.feature-card::before{
+    content:''; position: absolute; inset: 0; border-radius: var(--radius-md); padding: 2px;
+    background: var(--grad-primary); opacity: 0; transition: opacity 0.3s ease;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.feature-card:hover{ transform: translateY(-8px); box-shadow: var(--shadow-md); }
+.feature-card:hover::before{ opacity: 1; }
+.feature-icon{
+    width: 58px; height: 58px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+    background: var(--grad-primary); margin-bottom: 22px; box-shadow: 0 10px 24px rgba(37,99,235,0.3);
+}
+.feature-icon svg{ width: 28px; height: 28px; stroke: white; }
+.feature-card h3{ font-family: var(--font-display); font-size: 20px; font-weight: 700; margin: 0 0 10px; }
+.feature-card p{ color: var(--text-gray); font-size: 15px; line-height: 1.7; margin: 0; }
+
+@media (max-width: 900px){ .features-grid{ grid-template-columns: 1fr; } }
+
+/* ============================================================
+   STATS
+   ============================================================ */
+.stats-section{ background: var(--grad-primary); padding: 80px 24px; }
+.stats-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px; text-align: center; }
+.stat-value{ font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 4vw, 2.8rem); color: white; display: block; }
+.stat-label{ font-family: var(--font-body); font-size: 15px; color: rgba(255,255,255,0.85); font-weight: 500; margin-top: 6px; }
+
+@media (max-width: 900px){ .stats-grid{ grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px){ .stats-grid{ grid-template-columns: 1fr; } }
+
+/* ============================================================
+   CATEGORIES
+   ============================================================ */
+.category-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.category-card{
+    background: white; border-radius: var(--radius-sm); padding: 28px 24px; box-shadow: var(--shadow-sm);
+    position: relative; overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.category-card::before{
+    content:''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--grad-accent);
+    transform: scaleX(0); transform-origin: left; transition: transform 0.3s ease;
+}
+.category-card:hover{ transform: translateY(-6px); box-shadow: var(--shadow-md); }
+.category-card:hover::before{ transform: scaleX(1); }
+.category-icon{
+    width: 46px; height: 46px; border-radius: 12px; background: #eff6ff; display: flex; align-items: center;
+    justify-content: center; margin-bottom: 16px;
+}
+.category-icon svg{ width: 22px; height: 22px; stroke: var(--primary); }
+.category-card h3{ font-family: var(--font-display); font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.category-card p{ color: var(--text-gray); font-size: 13.5px; line-height: 1.6; margin: 0 0 18px; }
+.category-card a{ font-size: 13.5px; font-weight: 700; color: var(--primary); text-decoration: none; }
+.category-card a:hover{ text-decoration: underline; }
+
+@media (max-width: 991px){ .category-grid{ grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px){ .category-grid{ grid-template-columns: 1fr; } }
+
+/* ============================================================
+   WHY CHOOSE
+   ============================================================ */
+.why-grid{ display: flex; gap: 60px; align-items: center; flex-wrap: wrap; }
+.why-left{ flex: 1 1 400px; }
+.why-right{ flex: 1 1 380px; position: relative; min-height: 340px; }
+.checklist{ list-style: none; margin: 0; padding: 0; }
+.checklist li{ display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); font-weight: 600; font-family: var(--font-alt); }
+.checklist li:last-child{ border-bottom: none; }
+.check-icon{
+    width: 26px; height: 26px; border-radius: 50%; background: var(--grad-accent); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+.check-icon svg{ width: 14px; height: 14px; stroke: white; }
+
+.info-card{
+    position: absolute; background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.7); border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+    padding: 20px 22px; width: 220px; animation: floatY 6.5s ease-in-out infinite;
+}
+.info-card h4{ font-family: var(--font-display); font-size: 15px; margin: 0 0 6px; }
+.info-card p{ font-size: 13px; color: var(--text-gray); margin: 0; line-height: 1.5; }
+.info-card.ic1{ top: 0; left: 10%; animation-delay: -1s; }
+.info-card.ic2{ top: 130px; right: 0; animation-delay: -3s; }
+.info-card.ic3{ bottom: 0; left: 0; animation-delay: -4.6s; }
+
+@media (max-width: 991px){ .why-right{ min-height: 0; display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; } .info-card{ position: static; width: 240px; } }
+
+/* ============================================================
+   TESTIMONIALS
+   ============================================================ */
+.testi-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+.testi-card{
+    background: white; border-radius: var(--radius-md); padding: 30px 26px; box-shadow: var(--shadow-sm);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.testi-card:hover{ transform: translateY(-6px); box-shadow: var(--shadow-md); }
+.testi-stars{ color: var(--accent); font-size: 15px; letter-spacing: 2px; margin-bottom: 14px; }
+.testi-card p.quote{ color: var(--text-dark); font-size: 15px; line-height: 1.7; margin: 0 0 22px; }
+.testi-person{ display: flex; align-items: center; gap: 12px; }
+.testi-avatar{
+    width: 44px; height: 44px; border-radius: 50%; background: var(--grad-primary); color: white;
+    display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 15px;
+}
+.testi-person h4{ margin: 0; font-size: 14.5px; font-family: var(--font-alt); }
+.testi-person span{ font-size: 12.5px; color: var(--text-gray); }
+
+@media (max-width: 900px){ .testi-grid{ grid-template-columns: 1fr; } }
+
+/* ============================================================
+   LEARNING PROCESS TIMELINE
+   ============================================================ */
+.timeline{ display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; position: relative; }
+.timeline::before{
+    content:''; position: absolute; top: 28px; left: 8%; right: 8%; height: 2px;
+    background: repeating-linear-gradient(90deg, var(--border) 0 8px, transparent 8px 16px);
+    z-index: 0;
+}
+.timeline-step{ flex: 1 1 200px; text-align: center; position: relative; z-index: 1; }
+.step-num{
+    width: 56px; height: 56px; border-radius: 50%; background: var(--grad-primary); color: white;
+    display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800;
+    font-size: 20px; margin: 0 auto 18px; box-shadow: 0 10px 24px rgba(37,99,235,0.32);
+}
+.timeline-step h3{ font-family: var(--font-display); font-size: 16px; margin: 0 0 8px; }
+.timeline-step p{ font-size: 13.5px; color: var(--text-gray); max-width: 200px; margin: 0 auto; line-height: 1.6; }
+
+@media (max-width: 768px){ .timeline{ flex-direction: column; } .timeline::before{ display: none; } }
+
+/* ============================================================
+   CTA
+   ============================================================ */
+.cta-section{
+    background: var(--grad-primary); text-align: center; border-radius: var(--radius-lg);
+    max-width: 1140px; margin: 0 auto; padding: 80px 40px; position: relative; overflow: hidden;
+}
+.cta-section::before, .cta-section::after{
+    content:''; position: absolute; border-radius: 50%; background: rgba(255,255,255,0.12);
+}
+.cta-section::before{ width: 220px; height: 220px; top: -80px; left: -60px; }
+.cta-section::after{ width: 180px; height: 180px; bottom: -60px; right: -40px; }
+.cta-section h2{ font-family: var(--font-display); font-weight: 800; font-size: clamp(1.8rem, 4vw, 2.6rem); color: white; margin: 0 0 16px; position: relative; }
+.cta-section p{ color: rgba(255,255,255,0.88); font-size: 17px; max-width: 520px; margin: 0 auto 34px; position: relative; }
+.cta-actions{ display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; position: relative; }
+.cta-actions .btn-primary{ background: white; color: var(--primary); box-shadow: 0 10px 26px rgba(0,0,0,0.2); }
+.cta-actions .btn-secondary{ background: transparent; color: white; border-color: rgba(255,255,255,0.5); }
+.cta-actions .btn-secondary:hover{ border-color: white; box-shadow: none; }
+
+@media (max-width: 480px){ .cta-actions{ flex-direction: column; } .cta-actions .btn-primary, .cta-actions .btn-secondary{ width: 100%; justify-content: center; } }
+</style>
+
+<div class="eschool-page">
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+    <div class="container hero-grid">
+        <div class="hero-text reveal fade-up">
+            <span class="eyebrow">Education is a right</span>
+            <h1>Learn smarter.<span>Build your future.</span></h1>
+            <p>Eschool is a premium online learning platform with expert-led courses, real feedback, and a
+               path that actually gets you somewhere — at your pace, on your terms.</p>
+            <div class="hero-actions">
+                <a class="btn-primary" href="/register">Start learning</a>
+                <a class="btn-secondary" href="#categories">Explore courses</a>
+            </div>
         </div>
-        <div class="metric-item">
-            <span class="metric-value" id="employees-count">1M<span class="metric-plus">+</span></span>
-            <span class="metric-label">Teachers</span>
-        </div>
-        <div class="metric-item uptime-guarantee">
-            <span class="metric-value" id="uptime-value">6000</span>
-            <span class="metric-label">Number of Courses</span>
+
+        <div class="hero-art" aria-hidden="true">
+            <div class="blob b1"></div>
+            <div class="blob b2"></div>
+            <div class="ring r1"></div>
+            <div class="ring r2"></div>
+            <div class="glass-card gc1"><span class="num">15K+</span><br><span class="lbl">Students</span></div>
+            <div class="glass-card gc2"><span class="num">350+</span><br><span class="lbl">Courses</span></div>
+            <div class="glass-card gc3"><span class="num">98%</span><br><span class="lbl">Success rate</span></div>
         </div>
     </div>
 </section>
-</section>
-<section class="explore">
-<h2 class="sectn">Explore Eschool's courses</h2>
-<div class="exploring">
-<div class="exp">
-  <img src="static/Gemini_Generated_Image_xy2l02xy2l02xy2l.png" style="font-size:50px; color:white;"> 
-  <p class="para">Learn Geography at<br> the confort of your home</p>
-  </div>
-  <div class="exp">
-  <img src="static/AdobeStock_220213302_Preview.jpeg" style="font-size:50px; color:white;"> 
-  <p class="para">Let's all learn History from intro</p>
-  </div>
-  <div class="exp">
-<img src="static/Gemini_Generated_Image_w1kzxpw1kzxpw1kz.png" style="font-size:50px; height: 170px; color:white;">
-  <p class="para">Learn math for everyone bigriner to pro</p>
-  </div>
-  <div class="exp">
-<img src="static/Gemini_Generated_Image_j0002ij0002ij000.png" style="font-size:50px; height: 170px; color:white;">
-  <p class="para">Dive in the world of science with us</p>
-  </div>
-  </div>
-  <button class="btn-si" onclick="window.location.href='#'">Explore courses</button>
-</section>
-<div class="heath">
-     <h1 class="header-t">Get started</h1>
-        <p class="mheader-t">Join Eschool today and unlock a world of knowledge at your fingertips.<br>Whether you're a student aiming to excel in your studies or a lifelong<br> learner seeking to expand your horizons, Eschool has something for everyone.</p>
-        <button class="btn-signup" onclick="window.location.href='/register'">Get Started</button>
-</div>
-<footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-column">
-                    <h3>Eschool</h3>
-                    <p style="color: #a0aec0; margin-bottom: 20px;">The all-in-one platform for modern<br> and online learning.</p>
-                    <div style="display: flex; gap: 15px;">
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-facebook"></i></a>
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-twitter"></i></a>
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-instagram"></i></a>
-                    </div>
-                </div>
-                
-                <div class="footer-column">
-                    <h3>Product</h3>
-                    <ul>
-                        <li><a href="#">Features</a></li>
-                        <li><a href="#">Solutions</a></li>
-                        <li><a href="#">Pricing</a></li>
-                        <li><a href="#">Integrations</a></li>
-                        <li><a href="#">Updates</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-column">
-                    <h3>Resources</h3>
-                    <ul>
-                        <li><a href="#">Blog</a></li>
-                        <li><a href="#">Help Center</a></li>
-                        <li><a href="#">Community</a></li>
-                        <li><a href="#">Events</a></li>
-                        <li><a href="#">Partners</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-column">
-                    <h3>Company</h3>
-                    <ul>
-                        <li><a href="#">About Us</a></li>
-                        <li><a href="#">Careers</a></li>
-                        <li><a href="#">Contact</a></li>
-                        <li><a href="#">Donate</a></li>
-                        <li><a href="#">Privacy Policy</a></li>
-                    </ul>
-                </div>
+
+<!-- ============ FEATURES ============ -->
+<section>
+    <div class="container">
+        <h2 class="section-title reveal fade-up">Everything you need to learn well</h2>
+        <p class="section-sub reveal fade-up">Three pillars, one platform — built to make learning stick.</p>
+
+        <div class="features-grid">
+            <div class="feature-card reveal fade-up">
+                <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="m21 8-4 3.5v1L21 16z"/></svg></div>
+                <h3>Video lessons</h3>
+                <p>Bite-sized, expert-led videos you can watch, rewind, and revisit as many times as you need.</p>
             </div>
-            
-            <div class="copyright">
-                &copy; 2025 Eschool. All rights reserved.
+            <div class="feature-card reveal fade-up" style="transition-delay:0.08s">
+                <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></div>
+                <h3>Real skills</h3>
+                <p>Project-based learning that builds abilities you can actually use — not just watch and forget.</p>
+            </div>
+            <div class="feature-card reveal fade-up" style="transition-delay:0.16s">
+                <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.5.4.6 1 .6 1.6v.1h6v-.1c0-.6.1-1.2.6-1.6A6 6 0 0 0 12 3Z"/></svg></div>
+                <h3>Extra knowledge</h3>
+                <p>Curated resources that go beyond the syllabus, so curiosity always has somewhere to go.</p>
             </div>
         </div>
-    </footer>
+    </div>
+</section>
+
+<!-- ============ STATS ============ -->
+<section class="stats-section">
+    <div class="container stats-grid">
+        <div class="reveal zoom-in">
+            <span class="stat-value" id="stat-students">0<span>+</span></span>
+            <span class="stat-label">Students</span>
+        </div>
+        <div class="reveal zoom-in" style="transition-delay:0.08s">
+            <span class="stat-value" id="stat-courses">0<span>+</span></span>
+            <span class="stat-label">Courses</span>
+        </div>
+        <div class="reveal zoom-in" style="transition-delay:0.16s">
+            <span class="stat-value" id="stat-pass">0<span>%</span></span>
+            <span class="stat-label">Pass rate</span>
+        </div>
+        <div class="reveal zoom-in" style="transition-delay:0.24s">
+            <span class="stat-value" id="stat-teachers">0<span>+</span></span>
+            <span class="stat-label">Expert teachers</span>
+        </div>
+    </div>
+</section>
+
+<!-- ============ CATEGORIES ============ -->
+<section id="categories">
+    <div class="container">
+        <h2 class="section-title reveal fade-up">Explore course categories</h2>
+        <p class="section-sub reveal fade-up">From first principles to advanced practice, across eight subjects.</p>
+
+        <div class="category-grid">
+            {% set categories = [
+                ('Mathematics', 'From arithmetic to calculus, explained the way it should be.', 'M9 3v18M15 3v18M3 9h18M3 15h18'),
+                ('Science', 'Physics, chemistry, and biology — with real experiments.', 'M9 2h6M10 2v6L4.5 18a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 8V2'),
+                ('History', 'Understand the past and how it shapes the world today.', 'M12 21a9 9 0 1 0-9-9M3 12H1m11-5v5l3 2'),
+                ('English', 'Reading, writing, and communication that actually lands.', 'M4 19.5V6a2 2 0 0 1 2-2h12v15.5M4 19.5A2 2 0 0 0 6 21h13M8 7h8M8 11h5'),
+                ('Programming', 'Learn to build software from your very first line of code.', 'm8 9-4 3 4 3m8-6 4 3-4 3M13 6l-2 12'),
+                ('Business', 'Strategy, finance, and management for the real world.', 'M4 21V9l8-6 8 6v12M9 21v-6h6v6'),
+                ('Artificial Intelligence', 'Machine learning and AI, taught from the ground up.', 'M12 2a5 5 0 0 1 5 5c0 2.5-2 3.5-2 6h-6c0-2.5-2-3.5-2-6a5 5 0 0 1 5-5ZM9 20h6'),
+                ('Computer Studies', 'Core computing concepts every learner should know.', 'M4 4h16v12H4zM8 20h8M10 16v4M14 16v4'),
+            ] %}
+            {% for name, desc, path in categories %}
+            <div class="category-card reveal fade-up" style="transition-delay: {{ loop.index0 * 0.05 }}s">
+                <div class="category-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ path }}"/></svg></div>
+                <h3>{{ name }}</h3>
+                <p>{{ desc }}</p>
+                <a href="/services">Learn more &rarr;</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ============ WHY CHOOSE ============ -->
+<section>
+    <div class="container why-grid">
+        <div class="why-left reveal slide-left">
+            <span class="eyebrow">Why Eschool</span>
+            <h2 class="section-title" style="text-align:left; margin-bottom: 28px;">Built for learners who mean it</h2>
+            <ul class="checklist">
+                {% for item in ['Flexible learning', 'Expert teachers', 'Practical projects', 'Certificates', 'Career guidance', 'Affordable education'] %}
+                <li>
+                    <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+                    {{ item }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="why-right reveal slide-right">
+            <div class="info-card ic1"><h4>Live progress</h4><p>Track every course, module, and milestone in real time.</p></div>
+            <div class="info-card ic2"><h4>Verified certificates</h4><p>Share proof of what you've learned, backed by Eschool.</p></div>
+            <div class="info-card ic3"><h4>1:1 mentorship</h4><p>Get unstuck fast with guidance from real instructors.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ TESTIMONIALS ============ -->
+<section style="background:var(--surface);">
+    <div class="container">
+        <h2 class="section-title reveal fade-up">What learners say</h2>
+        <p class="section-sub reveal fade-up">A few words from people who've been through it.</p>
+
+        <div class="testi-grid">
+            <div class="testi-card reveal fade-up">
+                <div class="testi-stars">★★★★★</div>
+                <p class="quote">The pacing finally made sense to me. I went from dreading math to actually looking forward to it.</p>
+                <div class="testi-person">
+                    <div class="testi-avatar">AK</div>
+                    <div><h4>Amina K.</h4><span>High school student</span></div>
+                </div>
+            </div>
+            <div class="testi-card reveal fade-up" style="transition-delay:0.08s">
+                <div class="testi-stars">★★★★★</div>
+                <p class="quote">I switched careers into programming using Eschool's courses. The projects were the part that actually stuck.</p>
+                <div class="testi-person">
+                    <div class="testi-avatar">DM</div>
+                    <div><h4>David M.</h4><span>Career switcher</span></div>
+                </div>
+            </div>
+            <div class="testi-card reveal fade-up" style="transition-delay:0.16s">
+                <div class="testi-stars">★★★★★</div>
+                <p class="quote">As a teacher myself, I was picky. Eschool's course quality and structure won me over quickly.</p>
+                <div class="testi-person">
+                    <div class="testi-avatar">RN</div>
+                    <div><h4>Ruth N.</h4><span>Educator</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ LEARNING PROCESS ============ -->
+<section>
+    <div class="container">
+        <h2 class="section-title reveal fade-up">How it works</h2>
+        <p class="section-sub reveal fade-up">Four steps between you and your first certificate.</p>
+
+        <div class="timeline">
+            <div class="timeline-step reveal zoom-in">
+                <div class="step-num">1</div>
+                <h3>Create account</h3>
+                <p>Sign up in under a minute — no credit card required to start.</p>
+            </div>
+            <div class="timeline-step reveal zoom-in" style="transition-delay:0.1s">
+                <div class="step-num">2</div>
+                <h3>Choose course</h3>
+                <p>Browse eight subject areas and pick what fits where you're headed.</p>
+            </div>
+            <div class="timeline-step reveal zoom-in" style="transition-delay:0.2s">
+                <div class="step-num">3</div>
+                <h3>Start learning</h3>
+                <p>Work through video lessons, notes, and projects at your own pace.</p>
+            </div>
+            <div class="timeline-step reveal zoom-in" style="transition-delay:0.3s">
+                <div class="step-num">4</div>
+                <h3>Earn certificate</h3>
+                <p>Finish strong and walk away with proof of what you can do.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section>
+    <div class="cta-section reveal zoom-in">
+        <h2>Start learning today</h2>
+        <p>Join thousands of learners already building their future with Eschool — the first course is free to explore.</p>
+        <div class="cta-actions">
+            <a class="btn-primary" href="/register">Register</a>
+            <a class="btn-secondary" href="#categories">Explore courses</a>
+        </div>
+    </div>
+</section>
+
+</div>
 
 <script>
-    function animateValue(element, start, end, duration) {
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            const value = Math.floor(progress * (end - start) + start);
-            element.innerHTML = value.toLocaleString() + '<span class="metric-plus">+</span>';
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            }
-        };
-        window.requestAnimationFrame(step);
-    }
-
-    const companiesElement = document.getElementById('companies-count');
-    const employeesElement = document.getElementById('employees-count');
-    const uptimeElement = document.getElementById('uptime-value');
-
-    const companiesCount = 5000;
-    const employeesCount = 1000000;
-    const uptimeCount = 6000;
-
-    const observer = new IntersectionObserver((entries) => {
+(function () {
+    // Reveal-on-scroll
+    const revealEls = document.querySelectorAll('.eschool-page .reveal');
+    const revealObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                companiesElement.innerHTML = '0<span class="metric-plus">+</span>';
-                employeesElement.innerHTML = '0<span class="metric-plus">+</span>';
-                uptimeElement.innerHTML = '0<span class="metric-plus">+</span>';
-                setTimeout(() => {
-                    animateValue(companiesElement, 0, companiesCount, 2000);
-                    animateValue(employeesElement, 0, employeesCount, 2500);
-                    animateValue(uptimeElement, 0, uptimeCount, 2000);
-                }, 300);
-
-                observer.unobserve(entry.target);
+                entry.target.classList.add('is-visible');
+                revealObserver.unobserve(entry.target);
             }
         });
-    }, { threshold: 0.5 });
+    }, { threshold: 0.15 });
+    revealEls.forEach(el => revealObserver.observe(el));
 
-    observer.observe(document.querySelector('.trust-section'));
+    // Animated counters
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function animateCount(el, end, suffixEl, duration) {
+        if (prefersReducedMotion) { el.firstChild.textContent = end.toLocaleString(); return; }
+        let start = null;
+        function step(ts) {
+            if (!start) start = ts;
+            const progress = Math.min((ts - start) / duration, 1);
+            el.firstChild.textContent = Math.floor(progress * end).toLocaleString();
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    const statTargets = [
+        ['stat-students', 15000, 2000],
+        ['stat-courses', 350, 1600],
+        ['stat-pass', 98, 1400],
+        ['stat-teachers', 120, 1800],
+    ];
+
+    const statsSection = document.querySelector('.stats-section');
+    if (statsSection) {
+        const statsObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    statTargets.forEach(([id, end, duration]) => {
+                        const el = document.getElementById(id);
+                        if (el) animateCount(el, end, null, duration);
+                    });
+                    statsObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.4 });
+        statsObserver.observe(statsSection);
+    }
+
+    // Subtle mouse parallax on the hero illustration
+    const heroArt = document.querySelector('.hero-art');
+    if (heroArt && !prefersReducedMotion && window.matchMedia('(pointer:fine)').matches) {
+        heroArt.addEventListener('mousemove', (e) => {
+            const rect = heroArt.getBoundingClientRect();
+            const x = (e.clientX - rect.left - rect.width / 2) / rect.width;
+            const y = (e.clientY - rect.top - rect.height / 2) / rect.height;
+            heroArt.querySelectorAll('.glass-card').forEach((card, i) => {
+                const depth = (i + 1) * 6;
+                card.style.transform = `translate(${x * depth}px, ${y * depth}px)`;
+            });
+        });
+        heroArt.addEventListener('mouseleave', () => {
+            heroArt.querySelectorAll('.glass-card').forEach(card => { card.style.transform = ''; });
+        });
+    }
+})();
 </script>
 
 {% endblock %}

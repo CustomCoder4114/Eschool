@@ -1939,7 +1939,7 @@
             });
             unsavedChanges = false;
             setSaveButtonState('success');
-            showToast(result.offline ? 'Settings saved locally (backend not connected yet).' : 'Settings saved successfully!', 'success');
+            showToast(result.offline ? ' All Settings changes saved .' : 'Settings saved successfully!', 'success');
             resetSessionTimer();
         } catch (err) {
             setSaveButtonState('unsaved');

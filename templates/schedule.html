@@ -499,36 +499,9 @@
             color: white;
         }
 
-        /* Filter Bar */
-        .filter-bar {
-            background: white;
-            padding: 20px;
-            border-radius: var(--border-radius);
-            margin-bottom: 30px;
-            box-shadow: var(--card-shadow);
-        }
-
-        .filter-group {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .select-control {
-            padding: 10px 16px;
-            border: 2px solid var(--gray-200);
-            border-radius: var(--border-radius-sm);
-            font-size: 0.95rem;
-            background: white;
-            cursor: pointer;
-            min-width: 180px;
-            transition: var(--transition);
-        }
-
-        .select-control:focus {
-            outline: none;
-            border-color: var(--primary-color);
+        .status-incomplete {
+            background: var(--danger-color);
+            color: white;
         }
 
         /* Empty State */
@@ -682,6 +655,71 @@
             color: white;
         }
 
+        /* Notification Toast */
+        .notification-toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: white;
+            padding: 20px 25px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10001;
+            max-width: 400px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .notification-toast.show {
+            transform: translateX(0);
+        }
+
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 3px;
+        }
+
+        .notification-message {
+            color: var(--gray-500);
+            font-size: 0.9rem;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: var(--gray-400);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 5px;
+            transition: var(--transition);
+        }
+
+        .notification-close:hover {
+            color: var(--dark-color);
+        }
+
         /* ===== RESPONSIVE BREAKPOINTS ===== */
         @media (max-width: 768px) {
             .container {
@@ -714,6 +752,14 @@
                 padding: 20px;
                 margin: 10px;
             }
+
+            .notification-toast {
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                max-width: none;
+                padding: 15px 20px;
+            }
         }
 
         @media (max-width: 576px) {
@@ -723,15 +769,6 @@
             
             .page-title {
                 font-size: 2rem;
-            }
-            
-            .filter-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .select-control {
-                width: 100%;
             }
             
             .schedule-main {
@@ -745,7 +782,7 @@
 
         /* Print Styles */
         @media print {
-            .btn, .action-btn, .schedule-actions, .modal-overlay {
+            .btn, .action-btn, .schedule-actions, .modal-overlay, .notification-toast {
                 display: none !important;
             }
             
@@ -774,36 +811,6 @@
                 <p class="page-subtitle">Manage your classes, assignments, and events in one place</p>
             </div>
         </header>
-
-        <!-- Filter Bar -->
-        <div class="filter-bar">
-            <div class="filter-group">
-                <select class="select-control" id="courseFilter">
-                    <option value="">All Courses</option>
-                    <option value="math101">Mathematics 101</option>
-                    <option value="physics201">Physics 201</option>
-                    <option value="cs301">Computer Science 301</option>
-                    <option value="english101">English Literature 101</option>
-                </select>
-                <select class="select-control" id="eventTypeFilter">
-                    <option value="">All Events</option>
-                    <option value="lecture">Lectures</option>
-                    <option value="lab">Labs</option>
-                    <option value="assignment">Assignments</option>
-                    <option value="exam">Exams</option>
-                    <option value="break">Breaks</option>
-                </select>
-                <select class="select-control" id="priorityFilter">
-                    <option value="">All Priorities</option>
-                    <option value="high">High Priority</option>
-                    <option value="medium">Medium Priority</option>
-                    <option value="low">Low Priority</option>
-                </select>
-                <button class="btn btn-outline" onclick="resetFilters()">
-                    <i class="fas fa-redo"></i> Reset Filters
-                </button>
-            </div>
-        </div>
 
         <!-- Schedule Container -->
         <div class="schedule-container">
@@ -971,6 +978,20 @@
         </div>
     </div>
 
+    <!-- ===== NOTIFICATION TOAST ===== -->
+    <div class="notification-toast" id="notificationToast">
+        <div class="notification-icon">
+            <i class="fas fa-bell"></i>
+        </div>
+        <div class="notification-content">
+            <div class="notification-title" id="notificationTitle">New Event Added</div>
+            <div class="notification-message" id="notificationMessage">Event has been scheduled successfully</div>
+        </div>
+        <button class="notification-close" onclick="closeNotification()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
     <script>
         // =========================
         // DATA & STATE
@@ -978,12 +999,17 @@
         let currentDate = new Date();
         let selectedDate = new Date();
         let nextEventId = 1;
+        let notificationTimeout = null;
         
         // ===== LOCAL STORAGE FUNCTIONS =====
         function getStorageKey() {
-            // Get user email from session - ensures each account has separate data
             const email = '{{ session.get('email', 'default_user') }}';
             return `scheduleData_${email}`;
+        }
+
+        function getNotificationsKey() {
+            const email = '{{ session.get('email', 'default_user') }}';
+            return `notifications_${email}`;
         }
 
         function loadScheduleData() {
@@ -992,7 +1018,6 @@
             if (stored) {
                 try {
                     const parsed = JSON.parse(stored);
-                    // Find the highest ID for new events
                     if (parsed.length > 0) {
                         const maxId = Math.max(...parsed.map(e => e.id));
                         nextEventId = maxId + 1;
@@ -1008,6 +1033,235 @@
         function saveScheduleData(events) {
             const key = getStorageKey();
             localStorage.setItem(key, JSON.stringify(events));
+        }
+
+        function loadNotifications() {
+            const key = getNotificationsKey();
+            const stored = localStorage.getItem(key);
+            if (stored) {
+                try {
+                    return JSON.parse(stored);
+                } catch (e) {
+                    console.warn('Failed to parse stored notifications');
+                }
+            }
+            return [];
+        }
+
+        function saveNotifications(notifications) {
+            const key = getNotificationsKey();
+            localStorage.setItem(key, JSON.stringify(notifications));
+        }
+
+        // ===== RECENT ACTIVITY (feeds the dashboard's Recent Activity card) =====
+        function getRecentActivityKey() {
+            const email = '{{ session.get('email', 'default_user') }}';
+            return `recentActivity_${email}`;
+        }
+
+        function loadRecentActivity() {
+            const key = getRecentActivityKey();
+            const stored = localStorage.getItem(key);
+            if (stored) {
+                try { return JSON.parse(stored); } catch (e) { console.warn('Failed to parse recent activity'); }
+            }
+            return [];
+        }
+
+        // type must be one of: event-added, event-completed, event-deleted,
+        // event-updated, event-incomplete (the dashboard knows how to render these)
+        function pushRecentActivity(type, courseName, extra) {
+            const key = getRecentActivityKey();
+            const activity = loadRecentActivity();
+            activity.unshift({
+                type: type,
+                courseName: courseName,
+                extra: extra || '',
+                timestamp: Date.now()
+            });
+            if (activity.length > 50) {
+                activity.length = 50;
+            }
+            localStorage.setItem(key, JSON.stringify(activity));
+        }
+
+        function addNotification(message, type = 'event') {
+            const notifications = loadNotifications();
+            const timestamp = new Date().toISOString();
+            notifications.unshift({
+                id: Date.now(),
+                message: message,
+                type: type,
+                timestamp: timestamp,
+                read: false
+            });
+            // Keep only last 50 notifications
+            if (notifications.length > 50) {
+                notifications.length = 50;
+            }
+            saveNotifications(notifications);
+            
+            // Also send to dashboard via sessionStorage for cross-tab communication
+            try {
+                sessionStorage.setItem('dashboard_notification', JSON.stringify({
+                    message: message,
+                    type: type,
+                    timestamp: timestamp,
+                    id: Date.now()
+                }));
+            } catch (e) {
+                // Ignore sessionStorage errors
+            }
+            
+            return notifications;
+        }
+
+        // ===== NOTIFICATION FUNCTIONS =====
+        function showNotification(title, message, type = 'info') {
+            const toast = document.getElementById('notificationToast');
+            const titleEl = document.getElementById('notificationTitle');
+            const messageEl = document.getElementById('notificationMessage');
+            const iconEl = document.querySelector('.notification-icon i');
+            
+            // Set content
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            
+            // Set icon and color based on type
+            const iconMap = {
+                'success': { icon: 'fa-check-circle', color: 'var(--success-color)' },
+                'warning': { icon: 'fa-exclamation-triangle', color: 'var(--warning-color)' },
+                'error': { icon: 'fa-times-circle', color: 'var(--danger-color)' },
+                'info': { icon: 'fa-bell', color: 'var(--primary-color)' }
+            };
+            const config = iconMap[type] || iconMap.info;
+            iconEl.className = `fas ${config.icon}`;
+            document.querySelector('.notification-icon').style.color = config.color;
+            document.querySelector('.notification-icon').style.background = config.color + '20';
+            toast.style.borderLeftColor = config.color;
+            
+            // Show toast
+            toast.classList.add('show');
+            
+            // Clear existing timeout
+            if (notificationTimeout) {
+                clearTimeout(notificationTimeout);
+            }
+            
+            // Auto-hide after 5 seconds
+            notificationTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 5000);
+        }
+
+        function closeNotification() {
+            const toast = document.getElementById('notificationToast');
+            toast.classList.remove('show');
+            if (notificationTimeout) {
+                clearTimeout(notificationTimeout);
+            }
+        }
+
+        // ===== NOTIFICATION TO DASHBOARD =====
+        // courseName should be the event's own title, so the dashboard's
+        // Recent Activity card can show "You scheduled 'Calculus Lecture'"
+        // rather than the whole formatted toast message.
+        function sendToDashboard(message, type = 'event', courseName = '', extra = '') {
+            // Add to local notifications
+            const notifications = addNotification(message, type);
+
+            // Record it in Recent Activity so it shows up on the dashboard
+            const activityTypeMap = {
+                'event': 'event-added',
+                'complete': 'event-completed',
+                'delete': 'event-deleted',
+                'update': 'event-updated',
+                'incomplete': 'event-incomplete'
+            };
+            pushRecentActivity(activityTypeMap[type] || 'event-added', courseName || message, extra);
+            
+            // Show toast notification
+            const eventTypes = {
+                'event': { title: '📅 New Event', type: 'info' },
+                'complete': { title: '✅ Task Completed', type: 'success' },
+                'delete': { title: '🗑️ Event Deleted', type: 'warning' },
+                'update': { title: '📝 Event Updated', type: 'info' },
+                'incomplete': { title: '⚠️ Event Incomplete', type: 'warning' }
+            };
+            const config = eventTypes[type] || eventTypes.event;
+            showNotification(config.title, message, config.type);
+            
+            // Trigger storage event for other tabs
+            try {
+                localStorage.setItem('notification_trigger', Date.now().toString());
+            } catch (e) {
+                // Ignore
+            }
+            
+            // Try to update dashboard if it's in the same window
+            updateDashboardActivity(message, type);
+        }
+
+        // ===== DASHBOARD UPDATE FUNCTION =====
+        function updateDashboardActivity(message, type = 'event') {
+            try {
+                // Check if dashboard exists in same window
+                const dashboardElement = document.getElementById('recentActivity');
+                if (dashboardElement) {
+                    // If dashboard is on the same page, update it directly
+                    const activityItem = document.createElement('div');
+                    activityItem.className = 'activity-item';
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    
+                    const typeColors = {
+                        'event': 'var(--primary-color)',
+                        'complete': 'var(--success-color)',
+                        'delete': 'var(--danger-color)',
+                        'update': 'var(--warning-color)',
+                        'incomplete': 'var(--danger-color)'
+                    };
+                    const color = typeColors[type] || 'var(--primary-color)';
+                    
+                    activityItem.innerHTML = `
+                        <div style="display:flex;align-items:center;gap:12px;padding:10px 15px;border-bottom:1px solid var(--gray-100);">
+                            <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+                            <div style="flex:1;">
+                                <div style="font-size:0.9rem;color:var(--dark-color);">${message}</div>
+                                <div style="font-size:0.75rem;color:var(--gray-400);">${timeStr}</div>
+                            </div>
+                            <div style="font-size:0.7rem;padding:2px 8px;border-radius:12px;background:${color}20;color:${color};">
+                                ${type.charAt(0).toUpperCase() + type.slice(1)}
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add at the top of the activity list
+                    const activityList = dashboardElement.querySelector('.activity-list') || dashboardElement;
+                    if (activityList.firstChild) {
+                        activityList.insertBefore(activityItem, activityList.firstChild);
+                    } else {
+                        activityList.appendChild(activityItem);
+                    }
+                    
+                    // Limit to last 10 activities
+                    const items = activityList.querySelectorAll('.activity-item');
+                    if (items.length > 10) {
+                        items[items.length - 1].remove();
+                    }
+                    
+                    // Update notification badge count if exists
+                    const badge = document.querySelector('.notification-badge');
+                    if (badge) {
+                        let count = parseInt(badge.textContent) || 0;
+                        count++;
+                        badge.textContent = count;
+                        badge.style.display = 'block';
+                    }
+                }
+            } catch (e) {
+                console.log('Dashboard not available in current view');
+            }
         }
 
         // ===== INITIALIZE SCHEDULE DATA =====
@@ -1027,7 +1281,54 @@
             initializeCalendar();
             loadSchedule();
             updateTodayEvents();
+            
+            // Check for pending notifications from other tabs
+            checkPendingNotifications();
+            
+            // Listen for storage events from other tabs
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'notification_trigger') {
+                    checkPendingNotifications();
+                }
+            });
+
+            // Re-check for past-due events once a minute in case the tab
+            // stays open across midnight (or a day boundary).
+            setInterval(() => {
+                updatePastEventStatuses();
+                loadSchedule();
+                updateTodayEvents();
+                renderCalendar();
+            }, 60000);
         });
+
+        function checkPendingNotifications() {
+            try {
+                const pending = sessionStorage.getItem('dashboard_notification');
+                if (pending) {
+                    const notification = JSON.parse(pending);
+                    // Only show if it's new (within last minute)
+                    const timeDiff = Date.now() - notification.id;
+                    if (timeDiff < 60000) {
+                        const typeMap = {
+                            'event': 'Event Scheduled',
+                            'complete': 'Task Completed',
+                            'delete': 'Event Deleted',
+                            'update': 'Event Updated',
+                            'incomplete': 'Event Incomplete'
+                        };
+                        showNotification(
+                            `📢 ${typeMap[notification.type] || 'Update'}`,
+                            notification.message,
+                            notification.type
+                        );
+                    }
+                    sessionStorage.removeItem('dashboard_notification');
+                }
+            } catch (e) {
+                // Ignore
+            }
+        }
 
         // =========================
         // CALENDAR FUNCTIONS
@@ -1116,38 +1417,57 @@
         // =========================
         // SCHEDULE FUNCTIONS
         // =========================
+
+        // Flips any event whose date is before today from "upcoming" (or any
+        // non-completed status) to "incomplete", and persists the change.
+        // Events marked "completed" are left alone.
+        function updatePastEventStatuses() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let changed = false;
+            const newlyIncomplete = [];
+            scheduleData.forEach(event => {
+                if (event.status === 'completed') return;
+
+                const eventDate = new Date(event.year, event.month, event.day);
+                eventDate.setHours(0, 0, 0, 0);
+
+                if (eventDate < today && event.status !== 'incomplete') {
+                    event.status = 'incomplete';
+                    changed = true;
+                    newlyIncomplete.push(event);
+                }
+            });
+
+            if (changed) {
+                saveScheduleData(scheduleData);
+                // Notify the dashboard's Recent Activity feed for each event
+                // that just crossed over into "incomplete".
+                newlyIncomplete.forEach(event => {
+                    sendToDashboard(`Missed: ${event.title}`, 'incomplete', event.title);
+                });
+            }
+        }
+
         function loadSchedule() {
-            // Reload data from localStorage (in case it was changed elsewhere)
             scheduleData = loadScheduleData();
+            updatePastEventStatuses();
             
-            const filteredEvents = getFilteredEvents();
+            const dayEvents = scheduleData.filter(event => 
+                event.day === selectedDate.getDate() && 
+                event.month === selectedDate.getMonth() && 
+                event.year === selectedDate.getFullYear()
+            );
             
             const emptyState = document.getElementById('emptyState');
-            if (filteredEvents.length === 0) {
+            if (dayEvents.length === 0) {
                 emptyState.style.display = 'block';
             } else {
                 emptyState.style.display = 'none';
             }
             
-            loadDailyView(filteredEvents);
-        }
-
-        function getFilteredEvents() {
-            const courseFilter = document.getElementById('courseFilter').value;
-            const typeFilter = document.getElementById('eventTypeFilter').value;
-            const priorityFilter = document.getElementById('priorityFilter').value;
-            
-            return scheduleData.filter(event => {
-                const dateMatch = event.day === selectedDate.getDate() && 
-                                 event.month === selectedDate.getMonth() && 
-                                 event.year === selectedDate.getFullYear();
-                
-                const courseMatch = !courseFilter || event.course === courseFilter;
-                const typeMatch = !typeFilter || event.type === typeFilter;
-                const priorityMatch = !priorityFilter || event.priority === priorityFilter;
-                
-                return dateMatch && courseMatch && typeMatch && priorityMatch;
-            });
+            loadDailyView(dayEvents);
         }
 
         function loadDailyView(events) {
@@ -1288,13 +1608,17 @@
             const event = scheduleData.find(e => e.id === eventId);
             if (event) {
                 event.status = 'completed';
-                // Update the event in the array
                 const index = scheduleData.indexOf(event);
                 scheduleData[index] = event;
                 saveScheduleData(scheduleData);
                 loadSchedule();
                 updateTodayEvents();
                 renderCalendar();
+                
+                // Send notification to dashboard
+                const message = `Completed: ${event.title}`;
+                sendToDashboard(message, 'complete', event.title);
+                
                 alert(`✅ Marked "${event.title}" as completed.`);
             }
         }
@@ -1304,12 +1628,18 @@
             if (event) {
                 if (confirm(`Are you sure you want to delete "${event.title}"? This action cannot be undone.`)) {
                     const index = scheduleData.indexOf(event);
+                    const eventTitle = event.title;
                     scheduleData.splice(index, 1);
                     saveScheduleData(scheduleData);
                     loadSchedule();
                     updateTodayEvents();
                     renderCalendar();
-                    alert(`🗑️ Deleted "${event.title}"`);
+                    
+                    // Send notification to dashboard
+                    const message = `Deleted: ${eventTitle}`;
+                    sendToDashboard(message, 'delete', eventTitle);
+                    
+                    alert(`🗑️ Deleted "${eventTitle}"`);
                 }
             }
         }
@@ -1410,6 +1740,11 @@
             loadSchedule();
             updateTodayEvents();
             renderCalendar();
+            
+            // Send notification to dashboard
+            const message = `Added: ${title} (${getCourseName(course) || 'No Course'})`;
+            sendToDashboard(message, 'event', title, `${dateStr} at ${timeStr}`);
+            
             alert(`✅ Event "${title}" added successfully! It has been saved permanently.`);
         }
 
@@ -1422,15 +1757,9 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeAddEventModal();
+                closeNotification();
             }
         });
-
-        function resetFilters() {
-            document.getElementById('courseFilter').value = '';
-            document.getElementById('eventTypeFilter').value = '';
-            document.getElementById('priorityFilter').value = '';
-            loadSchedule();
-        }
 
         function printSchedule() {
             window.print();

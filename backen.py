@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash, Response
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash, Response, abort
 import sqlite3
 import os
 import uuid
@@ -200,6 +200,33 @@ def create_notification(conn, user_id, title, message, icon='fa-bell', color='bl
         VALUES (?, ?, ?, ?, ?)
     ''', (user_id, title, message, icon, color))
 
+
+def get_avatar_url(user_id, avatar_filename):
+    """Build the public URL for a user's uploaded profile picture, or
+    None if they haven't uploaded one. Centralized here so every route
+    that returns a user to the frontend (messages, search, etc.) uses
+    the exact same path the upload endpoint saves to."""
+    if not avatar_filename:
+        return None
+    return f"/static/uploads/avatars/{user_id}/{avatar_filename}"
+
+
+def get_display_username(firstname, lastname, email):
+    """
+    There's no dedicated `username` column on `users` (yet) — profile.html
+    displays a handle like "superior111_" though, so build a stable one
+    from what we do have: the local part of the email (before the @) when
+    there is one, otherwise a lowercased firstname+lastname slug. This is
+    derived, not stored, so it's automatically consistent everywhere this
+    helper is used.
+    """
+    if email and '@' in email:
+        local_part = email.split('@')[0].strip()
+        if local_part:
+            return local_part
+    slug = f"{firstname or ''}{lastname or ''}".strip().lower().replace(' ', '')
+    return slug or f"user"
+
 # Initialize database tables
 def init_db():
     conn = sqlite3.connect('users.db')
@@ -295,6 +322,48 @@ def init_db():
         )
     ''')
 
+    # Per-user like tracking — one row per (resource, user) so a like can
+    # only ever be counted once per person, and can be reversed (unlike).
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS resource_likes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            resource_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(resource_id, user_id),
+            FOREIGN KEY (resource_id) REFERENCES resources (id),
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    # Per-user view tracking — one row per (resource, user) so repeat
+    # views from the same person are never counted twice.
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS resource_views (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            resource_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(resource_id, user_id),
+            FOREIGN KEY (resource_id) REFERENCES resources (id),
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    # Follows — one row per (follower, following) pair so a follow can
+    # only ever be counted once per person, and can be reversed (unfollow).
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS follows (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            follower_id INTEGER NOT NULL,
+            following_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(follower_id, following_id),
+            FOREIGN KEY (follower_id) REFERENCES users (id),
+            FOREIGN KEY (following_id) REFERENCES users (id)
+        )
+    ''')
+
     # Add priority column if the table pre-dates this feature
     try:
         cursor.execute("ALTER TABLE complaints ADD COLUMN priority TEXT DEFAULT 'medium'")
@@ -324,6 +393,187 @@ def init_db():
 
 # Call init_db to create tables
 init_db()
+
+# ============ RESOURCE SERIALIZATION ============
+
+def serialize_resource(row, liked_by_current_user=False, following_uploader=False, uploader_followers_count=0):
+    """
+    Turn one `resources` row (joined with u.firstname, u.lastname,
+    u.avatar_filename tacked on the end) into the JSON shape the
+    resourses.html frontend expects.
+
+    Expected row layout:
+      0 id, 1 user_id, 2 title, 3 description, 4 category, 5 resource_type,
+      6 file_name, 7 file_path, 8 file_size, 9 file_category,
+      10 file_extension, 11 privacy, 12 difficulty, 13 views, 14 downloads,
+      15 likes, 16 featured, 17 duration, 18 pages, 19 thumbnail_url,
+      20 upload_date, 21 firstname, 22 lastname, 23 avatar_filename
+    """
+    user_id = row[1]
+    firstname = row[21] if len(row) > 21 else None
+    lastname = row[22] if len(row) > 22 else None
+    avatar_filename = row[23] if len(row) > 23 else None
+
+    author = f"{firstname} {lastname}".strip() if firstname and lastname else 'Anonymous'
+    author_initials = f"{firstname[0]}{lastname[0]}" if firstname and lastname else 'AU'
+    avatar_url = get_avatar_url(user_id, avatar_filename)
+    file_url = f"/uploads/{user_id}/{row[6]}" if row[6] else ''
+    is_own_resource = session.get('user_id') is not None and session.get('user_id') == user_id
+
+    return {
+        'id': row[0],
+        'user_id': user_id,
+        'title': row[2],
+        'description': row[3],
+        'category': row[4],
+        'type': row[5],
+        'file_name': row[6],
+        'file_path': row[7],
+        'file_size': row[8],
+        'file_category': row[9],
+        'file_extension': row[10],
+        'privacy': row[11],
+        'difficulty': row[12],
+        'views': row[13],
+        'views_count': row[13],
+        'downloads': row[14],
+        'likes': row[15],
+        'likes_count': row[15],
+        'featured': row[16],
+        'duration': row[17],
+        'pages': row[18],
+        'thumbnail_url': row[19],
+        'upload_date': to_iso_utc(row[20]),
+        'author': author,
+        'author_initials': author_initials,
+        'uploader_username': author,
+        'uploader_avatar_url': avatar_url,
+        'uploader_followers_count': uploader_followers_count,
+        'liked_by_current_user': liked_by_current_user,
+        'following_uploader': following_uploader,
+        'is_own_resource': is_own_resource,
+        'file_url': file_url,
+        'is_large_file': row[8] > 10 * 1024 * 1024 if row[8] else False
+    }
+
+
+def get_liked_resource_ids(cursor, user_id):
+    """Set of resource ids the given user has liked, for batch lookups."""
+    if not user_id:
+        return set()
+    cursor.execute('SELECT resource_id FROM resource_likes WHERE user_id = ?', (user_id,))
+    return {row[0] for row in cursor.fetchall()}
+
+
+def user_has_liked(cursor, resource_id, user_id):
+    if not user_id:
+        return False
+    cursor.execute(
+        'SELECT 1 FROM resource_likes WHERE resource_id = ? AND user_id = ?',
+        (resource_id, user_id)
+    )
+    return cursor.fetchone() is not None
+
+
+def get_following_ids(cursor, user_id):
+    """Set of user ids the given user follows, for batch lookups."""
+    if not user_id:
+        return set()
+    cursor.execute('SELECT following_id FROM follows WHERE follower_id = ?', (user_id,))
+    return {row[0] for row in cursor.fetchall()}
+
+
+def user_is_following(cursor, follower_id, target_user_id):
+    if not follower_id:
+        return False
+    cursor.execute(
+        'SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?',
+        (follower_id, target_user_id)
+    )
+    return cursor.fetchone() is not None
+
+
+def get_follower_counts(cursor, user_ids):
+    """
+    Map of user_id -> follower count, batched for a list of uploader ids
+    in one query instead of one COUNT(*) per resource (N+1).
+    """
+    user_ids = [uid for uid in set(user_ids) if uid is not None]
+    if not user_ids:
+        return {}
+    placeholders = ','.join('?' for _ in user_ids)
+    cursor.execute(f'''
+        SELECT following_id, COUNT(*) FROM follows
+        WHERE following_id IN ({placeholders})
+        GROUP BY following_id
+    ''', user_ids)
+    return {row[0]: row[1] for row in cursor.fetchall()}
+
+
+def get_follow_counts_for_user(cursor, user_id):
+    """(followers_count, following_count) for a single user."""
+    cursor.execute('SELECT COUNT(*) FROM follows WHERE following_id = ?', (user_id,))
+    followers_count = cursor.fetchone()[0]
+    cursor.execute('SELECT COUNT(*) FROM follows WHERE follower_id = ?', (user_id,))
+    following_count = cursor.fetchone()[0]
+    return followers_count, following_count
+
+
+def build_profile_context(target_user_id):
+    """
+    Everything profile.html needs for a given user id: identity, follow
+    state relative to whoever's logged in, live counts, and their
+    resources shown in the "posts" grid. Returns None if the user
+    doesn't exist.
+    """
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+
+    cursor.execute(
+        'SELECT id, firstname, lastname, email, avatar_filename FROM users WHERE id = ?',
+        (target_user_id,)
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    user_id, firstname, lastname, email, avatar_filename = row
+
+    followers_count, following_count = get_follow_counts_for_user(cursor, user_id)
+
+    cursor.execute('SELECT COUNT(*) FROM resources WHERE user_id = ?', (user_id,))
+    posts_count = cursor.fetchone()[0]
+
+    cursor.execute('''
+        SELECT id, thumbnail_url
+        FROM resources
+        WHERE user_id = ?
+        ORDER BY upload_date DESC
+        LIMIT 30
+    ''', (user_id,))
+    posts = [{'id': r[0], 'thumbnail_url': r[1]} for r in cursor.fetchall()]
+
+    viewer_id = session.get('user_id')
+    is_own_profile = viewer_id is not None and viewer_id == user_id
+    is_following = user_is_following(cursor, viewer_id, user_id) if (viewer_id and not is_own_profile) else False
+
+    conn.close()
+
+    return dict(
+        profile_user_id=user_id,
+        username=get_display_username(firstname, lastname, email),
+        firstname=firstname,
+        lastname=lastname,
+        avatar_url=get_avatar_url(user_id, avatar_filename),
+        is_own_profile=is_own_profile,
+        is_following=is_following,
+        posts_count=posts_count,
+        followers_count=followers_count,
+        following_count=following_count,
+        bio_lines=None,
+        posts=posts
+    )
 
 # ============ EXISTING ROUTES ===============
 
@@ -525,7 +775,7 @@ def inject_user():
         row = cursor.fetchone()
         conn.close()
         if row and row[0]:
-            avatar_url = f"/static/uploads/avatars/{session['user_id']}/{row[0]}"
+            avatar_url = get_avatar_url(session['user_id'], row[0])
 
     return dict(
         firstname=session.get('firstname'),
@@ -544,6 +794,40 @@ def body():
 @app.route('/courses')
 def courses():
     return render_template('courses.html')
+
+@app.route('/profile')
+def profile():
+    """The logged-in user's own profile page."""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    ctx = build_profile_context(session['user_id'])
+    if ctx is None:
+        # Session points at a user_id that no longer exists in the DB
+        session.clear()
+        return redirect(url_for('login'))
+
+    return render_template('profile.html', **ctx)
+
+
+@app.route('/profile/<int:user_id>')
+def view_profile(user_id):
+    """Anyone else's profile page — this is what the Follow button and
+    live followers/following counts are actually for."""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Viewing your own id through this route just sends you to the
+    # canonical /profile instead of duplicating the same page.
+    if user_id == session['user_id']:
+        return redirect(url_for('profile'))
+
+    ctx = build_profile_context(user_id)
+    if ctx is None:
+        abort(404)
+
+    return render_template('profile.html', **ctx)
+
 
 @app.route('/schedule')
 def schedule():
@@ -604,7 +888,7 @@ def search_users():
 
     like_term = f'%{q}%'
     cursor.execute('''
-        SELECT id, firstname, lastname
+        SELECT id, firstname, lastname, avatar_filename
         FROM users
         WHERE id != ?
           AND (
@@ -621,7 +905,7 @@ def search_users():
 
     results = []
     for row in rows:
-        user_id, firstname, lastname = row
+        user_id, firstname, lastname, avatar_filename = row
         firstname = (firstname or '').strip()
         lastname = (lastname or '').strip()
         full_name = f"{firstname} {lastname}".strip()
@@ -635,6 +919,10 @@ def search_users():
             'id': user_id,
             'name': full_name,
             'avatar': initial,
+            # The account's real uploaded profile picture, if they have
+            # one — the messages.html frontend shows this instead of the
+            # initials badge whenever it's present.
+            'avatar_url': get_avatar_url(user_id, avatar_filename),
             'online': False,
             'lastSeen': ''
         })
@@ -844,6 +1132,7 @@ def list_conversations():
                 'id': -1,  # Special ID for broadcast
                 'name': '📢 All Users (Broadcast)',
                 'avatar': '📢',
+                'avatar_url': None,
                 'online': False,
                 'lastSeen': '',
                 'lastMessage': f'Broadcast: {last_broadcast[0][:50]}...' if last_broadcast else 'Send broadcast to all users',
@@ -853,13 +1142,14 @@ def list_conversations():
             })
 
     for other_id in other_ids:
-        cursor.execute('SELECT firstname, lastname FROM users WHERE id = ?', (other_id,))
+        cursor.execute('SELECT firstname, lastname, avatar_filename FROM users WHERE id = ?', (other_id,))
         user_row = cursor.fetchone()
         if not user_row:
             continue
 
         firstname = (user_row[0] or '').strip()
         lastname = (user_row[1] or '').strip()
+        avatar_filename = user_row[2]
         full_name = f"{firstname} {lastname}".strip()
         if not full_name:
             continue
@@ -892,6 +1182,10 @@ def list_conversations():
             'id': other_id,
             'name': full_name,
             'avatar': initial,
+            # The account's real uploaded profile picture, if they have
+            # one — the messages.html frontend shows this instead of the
+            # initials badge whenever it's present.
+            'avatar_url': get_avatar_url(other_id, avatar_filename),
             'online': False,
             'lastSeen': '',
             'lastMessage': last_message,
@@ -1259,7 +1553,7 @@ def upload_profile_photo():
     conn.commit()
     conn.close()
 
-    avatar_url = f"/static/uploads/avatars/{user_id}/{new_filename}"
+    avatar_url = get_avatar_url(user_id, new_filename)
     return jsonify({'success': True, 'avatar_url': avatar_url})
 
 @app.route('/upload', methods=['GET', 'POST'])
@@ -1342,44 +1636,27 @@ def upload_file():
         conn.commit()
         
         cursor.execute('''
-            SELECT r.*, u.firstname, u.lastname 
+            SELECT r.*, u.firstname, u.lastname, u.avatar_filename
             FROM resources r
             LEFT JOIN users u ON r.user_id = u.id
             WHERE r.id = ?
         ''', (resource_id,))
         
         resource_row = cursor.fetchone()
+
+        uploader_followers_count = 0
+        if resource_row:
+            uploader_followers_count, _ = get_follow_counts_for_user(cursor, resource_row[1])
+
         conn.close()
         
         if resource_row:
-            resource = {
-                'id': resource_row[0],
-                'user_id': resource_row[1],
-                'title': resource_row[2],
-                'description': resource_row[3],
-                'category': resource_row[4],
-                'type': resource_row[5],
-                'file_name': resource_row[6],
-                'file_path': resource_row[7],
-                'file_size': resource_row[8],
-                'file_category': resource_row[9],
-                'file_extension': resource_row[10],
-                'privacy': resource_row[11],
-                'difficulty': resource_row[12],
-                'views': resource_row[13],
-                'downloads': resource_row[14],
-                'likes': resource_row[15],
-                'featured': resource_row[16],
-                'duration': resource_row[17],
-                'pages': resource_row[18],
-                'thumbnail_url': resource_row[19],
-                'upload_date': resource_row[20],
-                'author': f"{resource_row[21]} {resource_row[22]}" if resource_row[21] and resource_row[22] else 'Anonymous',
-                'author_initials': f"{resource_row[21][0]}{resource_row[22][0]}" if resource_row[21] and resource_row[22] else 'AU',
-                'file_url': f"/uploads/{user_id}/{resource_row[6]}",
-                'is_large_file': file_size > 10 * 1024 * 1024
-            }
-            
+            resource = serialize_resource(
+                resource_row,
+                liked_by_current_user=False,
+                uploader_followers_count=uploader_followers_count
+            )
+
             return jsonify({
                 'success': True,
                 'message': 'File uploaded successfully',
@@ -1584,6 +1861,7 @@ def get_resources():
         search = request.args.get('search', '')
         sort_by = request.args.get('sort', 'newest')
         file_type = request.args.get('type', '')
+        difficulty = request.args.get('difficulty', '').strip().lower()
         limit = int(request.args.get('limit', 50))
         offset = int(request.args.get('offset', 0))
         
@@ -1591,7 +1869,7 @@ def get_resources():
         cursor = conn.cursor()
         
         query = '''
-            SELECT r.*, u.firstname, u.lastname 
+            SELECT r.*, u.firstname, u.lastname, u.avatar_filename
             FROM resources r
             LEFT JOIN users u ON r.user_id = u.id
             WHERE 1=1
@@ -1617,6 +1895,12 @@ def get_resources():
         if search:
             query += ' AND (r.title LIKE ? OR r.description LIKE ?)'
             params.extend([f'%{search}%', f'%{search}%'])
+
+        # "Grade" dropdown on the frontend filters by the existing
+        # difficulty column (beginner/intermediate/advanced).
+        if difficulty:
+            query += ' AND LOWER(r.difficulty) = ?'
+            params.append(difficulty)
         
         if sort_by == 'newest':
             query += ' ORDER BY r.upload_date DESC'
@@ -1647,44 +1931,33 @@ def get_resources():
         if search:
             count_query += ' AND (r.title LIKE ? OR r.description LIKE ?)'
             count_params.extend([f'%{search}%', f'%{search}%'])
+
+        if difficulty:
+            count_query += ' AND LOWER(r.difficulty) = ?'
+            count_params.append(difficulty)
         
         cursor.execute(count_query, count_params)
         total_count = cursor.fetchone()[0]
-        
+
+        # Batch-fetch which of these resources the current user has liked,
+        # which uploaders they already follow, and each uploader's live
+        # follower count — so the grid can render filled hearts /
+        # "Following" state / follower counts without N+1 queries.
+        liked_ids = get_liked_resource_ids(cursor, session.get('user_id'))
+        following_ids = get_following_ids(cursor, session.get('user_id'))
+        follower_counts = get_follower_counts(cursor, (row[1] for row in resources_rows))
+
         conn.close()
         
-        resources = []
-        for row in resources_rows:
-            file_url = f"/uploads/{row[1]}/{row[6]}" if row[6] else ''
-            
-            resource = {
-                'id': row[0],
-                'user_id': row[1],
-                'title': row[2],
-                'description': row[3],
-                'category': row[4],
-                'type': row[5],
-                'file_name': row[6],
-                'file_path': row[7],
-                'file_size': row[8],
-                'file_category': row[9],
-                'file_extension': row[10],
-                'privacy': row[11],
-                'difficulty': row[12],
-                'views': row[13],
-                'downloads': row[14],
-                'likes': row[15],
-                'featured': row[16],
-                'duration': row[17],
-                'pages': row[18],
-                'thumbnail_url': row[19],
-                'upload_date': row[20],
-                'author': f"{row[21]} {row[22]}" if row[21] and row[22] else 'Anonymous',
-                'author_initials': f"{row[21][0]}{row[22][0]}" if row[21] and row[22] else 'AU',
-                'file_url': file_url,
-                'is_large_file': row[8] > 10 * 1024 * 1024 if row[8] else False
-            }
-            resources.append(resource)
+        resources = [
+            serialize_resource(
+                row,
+                liked_by_current_user=row[0] in liked_ids,
+                following_uploader=row[1] in following_ids,
+                uploader_followers_count=follower_counts.get(row[1], 0)
+            )
+            for row in resources_rows
+        ]
         
         return jsonify({
             'success': True,
@@ -1700,59 +1973,41 @@ def get_resources():
 
 @app.route('/api/resources/<int:resource_id>', methods=['GET'])
 def get_resource(resource_id):
-    """Get a specific resource by ID"""
+    """Get a specific resource by ID.
+
+    NOTE: this endpoint no longer bumps the view counter — that happens
+    once, per-user, via POST /api/resources/<id>/view (see below), so
+    opening the same resource repeatedly doesn't inflate views just
+    because the details were re-fetched.
+    """
     try:
         conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT r.*, u.firstname, u.lastname 
+            SELECT r.*, u.firstname, u.lastname, u.avatar_filename
             FROM resources r
             LEFT JOIN users u ON r.user_id = u.id
             WHERE r.id = ?
         ''', (resource_id,))
         
         row = cursor.fetchone()
-        conn.close()
-        
+
         if not row:
+            conn.close()
             return jsonify({'success': False, 'message': 'Resource not found'}), 404
-        
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
-        cursor.execute('UPDATE resources SET views = views + 1 WHERE id = ?', (resource_id,))
-        conn.commit()
+
+        liked = user_has_liked(cursor, resource_id, session.get('user_id'))
+        following = user_is_following(cursor, session.get('user_id'), row[1])
+        followers_count, _ = get_follow_counts_for_user(cursor, row[1])
         conn.close()
-        
-        file_url = f"/uploads/{row[1]}/{row[6]}" if row[6] else ''
-        
-        resource = {
-            'id': row[0],
-            'user_id': row[1],
-            'title': row[2],
-            'description': row[3],
-            'category': row[4],
-            'type': row[5],
-            'file_name': row[6],
-            'file_path': row[7],
-            'file_size': row[8],
-            'file_category': row[9],
-            'file_extension': row[10],
-            'privacy': row[11],
-            'difficulty': row[12],
-            'views': row[13] + 1,
-            'downloads': row[14],
-            'likes': row[15],
-            'featured': row[16],
-            'duration': row[17],
-            'pages': row[18],
-            'thumbnail_url': row[19],
-            'upload_date': row[20],
-            'author': f"{row[21]} {row[22]}" if row[21] and row[22] else 'Anonymous',
-            'author_initials': f"{row[21][0]}{row[22][0]}" if row[21] and row[22] else 'AU',
-            'file_url': file_url,
-            'is_large_file': row[8] > 10 * 1024 * 1024 if row[8] else False
-        }
+
+        resource = serialize_resource(
+            row,
+            liked_by_current_user=liked,
+            following_uploader=following,
+            uploader_followers_count=followers_count
+        )
         
         return jsonify({
             'success': True,
@@ -1771,7 +2026,7 @@ def get_user_resources(user_id):
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT r.*, u.firstname, u.lastname 
+            SELECT r.*, u.firstname, u.lastname, u.avatar_filename
             FROM resources r
             LEFT JOIN users u ON r.user_id = u.id
             WHERE r.user_id = ?
@@ -1779,40 +2034,20 @@ def get_user_resources(user_id):
         ''', (user_id,))
         
         rows = cursor.fetchall()
+        liked_ids = get_liked_resource_ids(cursor, session.get('user_id'))
+        following_ids = get_following_ids(cursor, session.get('user_id'))
+        follower_counts = get_follower_counts(cursor, (row[1] for row in rows))
         conn.close()
         
-        resources = []
-        for row in rows:
-            file_url = f"/uploads/{row[1]}/{row[6]}" if row[6] else ''
-            
-            resource = {
-                'id': row[0],
-                'user_id': row[1],
-                'title': row[2],
-                'description': row[3],
-                'category': row[4],
-                'type': row[5],
-                'file_name': row[6],
-                'file_path': row[7],
-                'file_size': row[8],
-                'file_category': row[9],
-                'file_extension': row[10],
-                'privacy': row[11],
-                'difficulty': row[12],
-                'views': row[13],
-                'downloads': row[14],
-                'likes': row[15],
-                'featured': row[16],
-                'duration': row[17],
-                'pages': row[18],
-                'thumbnail_url': row[19],
-                'upload_date': row[20],
-                'author': f"{row[21]} {row[22]}" if row[21] and row[22] else 'Anonymous',
-                'author_initials': f"{row[21][0]}{row[22][0]}" if row[21] and row[22] else 'AU',
-                'file_url': file_url,
-                'is_large_file': row[8] > 10 * 1024 * 1024 if row[8] else False
-            }
-            resources.append(resource)
+        resources = [
+            serialize_resource(
+                row,
+                liked_by_current_user=row[0] in liked_ids,
+                following_uploader=row[1] in following_ids,
+                uploader_followers_count=follower_counts.get(row[1], 0)
+            )
+            for row in rows
+        ]
         
         return jsonify({
             'success': True,
@@ -1871,32 +2106,184 @@ def download_resource(resource_id):
         print(f"Error downloading resource: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/api/resources/<int:resource_id>/like', methods=['POST'])
-def like_resource(resource_id):
-    """Like a resource"""
+@app.route('/api/resources/<int:resource_id>/like', methods=['POST', 'DELETE'])
+def toggle_resource_like(resource_id):
+    """
+    POST   -> like the resource (idempotent: liking twice just stays liked)
+    DELETE -> unlike the resource
+
+    Whether the current user has already liked this resource is tracked
+    in resource_likes, keyed by (resource_id, user_id) with a UNIQUE
+    constraint — so a like can only ever be counted once per person,
+    no matter how many times they tap the button.
+    """
     try:
         if 'user_id' not in session:
             return jsonify({'success': False, 'message': 'Authentication required'}), 401
-        
+
+        user_id = session['user_id']
+
         conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
-        
-        cursor.execute('UPDATE resources SET likes = likes + 1 WHERE id = ?', (resource_id,))
-        conn.commit()
-        
+
+        cursor.execute('SELECT id FROM resources WHERE id = ?', (resource_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Resource not found'}), 404
+
+        if request.method == 'DELETE':
+            cursor.execute('''
+                DELETE FROM resource_likes WHERE resource_id = ? AND user_id = ?
+            ''', (resource_id, user_id))
+            if cursor.rowcount:
+                cursor.execute('UPDATE resources SET likes = MAX(likes - 1, 0) WHERE id = ?', (resource_id,))
+            conn.commit()
+            liked = False
+        else:
+            try:
+                cursor.execute('''
+                    INSERT INTO resource_likes (resource_id, user_id)
+                    VALUES (?, ?)
+                ''', (resource_id, user_id))
+                cursor.execute('UPDATE resources SET likes = likes + 1 WHERE id = ?', (resource_id,))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                conn.rollback()  # already liked by this user — no-op, stays liked
+            liked = True
+
         cursor.execute('SELECT likes FROM resources WHERE id = ?', (resource_id,))
-        new_likes = cursor.fetchone()[0]
-        
+        likes_count = cursor.fetchone()[0]
         conn.close()
-        
+
         return jsonify({
             'success': True,
-            'message': 'Resource liked',
-            'likes': new_likes
+            'liked': liked,
+            'likes': likes_count,
+            'likes_count': likes_count
         })
-        
+
     except Exception as e:
-        print(f"Error liking resource: {str(e)}")
+        print(f"Error toggling like: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/resources/<int:resource_id>/view', methods=['POST'])
+def track_resource_view(resource_id):
+    """
+    Count exactly one view per (resource, user), ever. First call for a
+    given user increments the counter; every call after that for the
+    same user is a no-op that just returns the current total.
+    """
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+        user_id = session['user_id']
+
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id FROM resources WHERE id = ?', (resource_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Resource not found'}), 404
+
+        counted = False
+        try:
+            cursor.execute('''
+                INSERT INTO resource_views (resource_id, user_id)
+                VALUES (?, ?)
+            ''', (resource_id, user_id))
+            cursor.execute('UPDATE resources SET views = views + 1 WHERE id = ?', (resource_id,))
+            conn.commit()
+            counted = True
+        except sqlite3.IntegrityError:
+            conn.rollback()  # this user already viewed it — don't double count
+
+        cursor.execute('SELECT views FROM resources WHERE id = ?', (resource_id,))
+        views_count = cursor.fetchone()[0]
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'counted': counted,
+            'views': views_count,
+            'views_count': views_count
+        })
+
+    except Exception as e:
+        print(f"Error tracking view: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/users/<int:target_user_id>/follow', methods=['POST', 'DELETE'])
+def toggle_follow(target_user_id):
+    """
+    POST   -> follow the given user (idempotent: following twice stays followed)
+    DELETE -> unfollow
+
+    Tracked in `follows`, keyed by (follower_id, following_id) with a
+    UNIQUE constraint — so a follow can only ever be counted once per
+    person, no matter how many times the button gets tapped.
+    """
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+        follower_id = session['user_id']
+
+        if follower_id == target_user_id:
+            return jsonify({'success': False, 'message': "You can't follow yourself"}), 400
+
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id FROM users WHERE id = ?', (target_user_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        if request.method == 'DELETE':
+            cursor.execute('''
+                DELETE FROM follows WHERE follower_id = ? AND following_id = ?
+            ''', (follower_id, target_user_id))
+            conn.commit()
+            following = False
+        else:
+            try:
+                cursor.execute('''
+                    INSERT INTO follows (follower_id, following_id)
+                    VALUES (?, ?)
+                ''', (follower_id, target_user_id))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                conn.rollback()  # already following — no-op, stays followed
+            following = True
+
+        cursor.execute('SELECT COUNT(*) FROM follows WHERE following_id = ?', (target_user_id,))
+        followers_count = cursor.fetchone()[0]
+
+        # Also hand back the target's following_count and the current
+        # user's own updated following_count, in case a page (like
+        # profile.html) wants to refresh both stats from one response
+        # without a second round-trip.
+        cursor.execute('SELECT COUNT(*) FROM follows WHERE follower_id = ?', (target_user_id,))
+        target_following_count = cursor.fetchone()[0]
+        cursor.execute('SELECT COUNT(*) FROM follows WHERE follower_id = ?', (follower_id,))
+        viewer_following_count = cursor.fetchone()[0]
+
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'following': following,
+            'followers_count': followers_count,
+            'target_following_count': target_following_count,
+            'viewer_following_count': viewer_following_count
+        })
+
+    except Exception as e:
+        print(f"Error toggling follow: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/resourses')
@@ -1966,6 +2353,9 @@ def delete_resource(resource_id):
             'DELETE FROM resources WHERE id = ?',
             (resource_id,)
         )
+        # Clean up per-user like/view tracking rows for the deleted resource
+        cursor.execute('DELETE FROM resource_likes WHERE resource_id = ?', (resource_id,))
+        cursor.execute('DELETE FROM resource_views WHERE resource_id = ?', (resource_id,))
         conn.commit()
         conn.close()
 
@@ -2048,6 +2438,13 @@ def admin_delete_user(user_id):
     
     # Delete user's complaints
     cursor.execute('DELETE FROM complaints WHERE user_id = ?', (user_id,))
+
+    # Delete user's like/view tracking rows
+    cursor.execute('DELETE FROM resource_likes WHERE user_id = ?', (user_id,))
+    cursor.execute('DELETE FROM resource_views WHERE user_id = ?', (user_id,))
+
+    # Delete follow relationships in both directions
+    cursor.execute('DELETE FROM follows WHERE follower_id = ? OR following_id = ?', (user_id, user_id))
     
     # Delete the user
     cursor.execute('DELETE FROM users WHERE id = ?', (user_id,))

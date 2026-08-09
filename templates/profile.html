@@ -1,0 +1,1546 @@
+{% extends "body.html" %}
+
+{% block allcontent %}
+<!--
+    PROFILE PAGE — expects these variables from your Flask route, e.g.:
+
+        return render_template(
+            'profile.html',
+            profile_user_id=user.id,
+            username=user.username,               # "superior111_"
+            firstname=user.firstname,              # "Forson"
+            lastname=user.lastname,
+            avatar_url=user.avatar_url,            # same field settings.html writes/reads
+            is_own_profile=(user.id == session.get('user_id')),
+            is_following=current_user_follows_this_profile,  # bool, only used when is_own_profile is False
+            posts_count=posts_count,
+            followers_count=followers_count,
+            following_count=following_count,
+            bio_lines=["NEVER AVERAGE", "1% \U0001F464\U0001F464", "ROMANS 8:18"],  # or bio.split('\n')
+        )
+
+    The uploads grid itself is fetched client-side from
+    /api/resources/user/<profile_user_id> (see the JS at the bottom) —
+    that endpoint already returns views/likes/file type/etc, so the grid
+    doesn't depend on a `posts` variable from the route at all.
+
+    Nothing here is hardcoded to one account — every account that hits this
+    route sees their own username, avatar, counts, bio, and uploads.
+
+    STRENGTH / ACHIEVEMENTS TABS — these read the SAME localStorage keys
+    (myCoursesData_<email>, keyed off course definitions) that the
+    Progress Tracking page writes to. That data lives in the browser of
+    whoever is currently logged in — it is NOT fetched from a server per
+    profile_user_id. That means:
+      - On your own profile (is_own_profile == True) these tabs show your
+        real course progress, computed the same way the Progress page
+        computes grades/achievements.
+      - On someone else's profile, there is no way to read their
+        localStorage from your browser, so these tabs show a short
+        "this is private to each device" notice instead of fake/zeroed
+        data. If you later move course progress to a real backend table
+        keyed by user id, swap loadMyCourses() below for a fetch to that
+        endpoint and the privacy check can go away.
+-->
+<style>
+    :root {
+        --primary-color: #4361ee;
+        --primary-dark: #3a0ca3;
+        --secondary-color: #7209b7;
+        --accent-color: #4cc9f0;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --info-color: #3b82f6;
+        --dark-color: #1e293b;
+        --light-color: #f8fafc;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --border-radius: 20px;
+        --border-radius-sm: 12px;
+        --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+        --hover-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .profile-page {
+        background: var(--ig-bg);
+        color: var(--ig-text);
+        min-height: 100vh;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        padding: 30px 24px 0;
+    }
+
+    .profile-page * {
+        box-sizing: border-box;
+    }
+
+    .profile-shell {
+        max-width: 935px;
+        margin: 0 auto;
+    }
+
+    /* ---------- Header row: avatar + identity + stats ---------- */
+    .profile-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 40px;
+        padding-bottom: 30px;
+        border-bottom: 1px solid var(--ig-border);
+        flex-wrap: wrap;
+    }
+
+    .profile-avatar-wrap {
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .profile-avatar {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        overflow: hidden;
+        background: linear-gradient(135deg, #405de6, #5851db, #833ab4, #c13584, #e1306c, #fd1d1d);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 52px;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+    }
+
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    @media (max-width: 600px) {
+        .profile-avatar {
+            width: 90px;
+            height: 90px;
+            font-size: 34px;
+        }
+    }
+
+    /* Small "Note" bubble like IG's status note — only rendered if the
+       backend provides one, so it's optional per account. */
+    .avatar-note {
+        position: absolute;
+        top: -6px;
+        right: -18px;
+        background: #2b2b2b;
+        border-radius: 16px;
+        padding: 6px 12px 6px 14px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 110px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border: 1px solid #3a3a3a;
+    }
+
+    @media (max-width: 600px) {
+        .avatar-note { display: none; }
+    }
+
+    .profile-identity {
+        flex: 1;
+        min-width: 260px;
+    }
+
+    .profile-username-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+
+    .profile-username {
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--ig-text);
+    }
+
+    .profile-settings-icon {
+        color: var(--ig-text);
+        font-size: 20px;
+        cursor: pointer;
+        opacity: 0.9;
+        text-decoration: none;
+    }
+
+    .profile-settings-icon:hover {
+        opacity: 1;
+    }
+
+    .profile-actions {
+        display: flex;
+        gap: 8px;
+        margin-left: 4px;
+    }
+
+    @media (max-width: 600px) {
+        .profile-username-row {
+            margin-bottom: 12px;
+        }
+        .profile-actions {
+            width: 100%;
+            margin-left: 0;
+            order: 3;
+        }
+    }
+
+    .pill-btn {
+        background: var(--ig-pill);
+        color: var(--ig-text);
+        border: none;
+        border-radius: 8px;
+        padding: 7px 16px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .pill-btn:hover {
+        background: var(--ig-pill-hover);
+    }
+
+    .pill-btn.primary {
+        background: #0095f6;
+    }
+
+    .pill-btn.primary:hover {
+        background: #1877f2;
+    }
+
+    /* Stats */
+    .profile-stats {
+        display: flex;
+        gap: 36px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+    }
+
+    .profile-stats .stat {
+        font-size: 15px;
+        color: var(--ig-text);
+    }
+
+    .profile-stats .stat strong {
+        font-weight: 700;
+    }
+
+    /* Pops when the follower count changes, matching the treatment on
+       the resources page's like/follower counts. */
+    @keyframes statCountPop {
+        0%   { transform: scale(1); }
+        40%  { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
+
+    .profile-stats .stat strong.pop {
+        display: inline-block;
+        animation: statCountPop 0.3s ease;
+    }
+
+    @media (max-width: 600px) {
+        .profile-stats {
+            gap: 22px;
+            font-size: 14px;
+        }
+    }
+
+    /* Bio */
+    .profile-fullname {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+
+    .profile-bio {
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--ig-text);
+        white-space: pre-line;
+    }
+
+    .profile-bio .bio-muted {
+        color: var(--ig-text-dim);
+    }
+
+    /* ---------- Highlights / New row ---------- */
+    .profile-highlights {
+        display: flex;
+        gap: 26px;
+        padding: 26px 0;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--ig-border);
+    }
+
+    .highlight-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        text-decoration: none;
+        color: var(--ig-text);
+    }
+
+    .highlight-circle {
+        width: 66px;
+        height: 66px;
+        border-radius: 50%;
+        border: 1px solid var(--ig-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: #1a1a1a;
+    }
+
+    .highlight-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .highlight-circle.new-circle {
+        border: 1px solid #444;
+        color: var(--ig-text);
+        font-size: 24px;
+    }
+
+    .highlight-label {
+        font-size: 12px;
+        color: var(--ig-text-dim);
+        max-width: 74px;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ---------- Tabs ---------- */
+    .profile-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 60px;
+        border-bottom: 1px solid var(--ig-border);
+    }
+
+    .profile-tab {
+        background: none;
+        border: none;
+        padding: 16px 4px;
+        color: var(--ig-text-dim);
+        font-size: 12px;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        border-top: 1px solid transparent;
+        margin-top: -1px;
+    }
+
+    .profile-tab i {
+        font-size: 18px;
+    }
+
+    .profile-tab.active {
+        color: var(--ig-text);
+        border-top-color: var(--ig-text);
+    }
+
+    @media (max-width: 600px) {
+        .profile-tabs {
+            gap: 0;
+            justify-content: space-around;
+        }
+        .profile-tab span {
+            display: none;
+        }
+    }
+
+    /* ---------- Tab panels ---------- */
+    .tab-panel {
+        display: none;
+    }
+
+    .tab-panel.active {
+        display: block;
+    }
+
+    /* ---------- Posts / uploads grid ---------- */
+    .posts-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+        padding: 4px 0 40px;
+    }
+
+    .post-tile {
+        display: block;
+        position: relative;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        background: var(--ig-surface);
+        cursor: pointer;
+        border: none;
+        padding: 0;
+    }
+
+    .post-tile img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    /* File-type badge, top-right — same idea as the resources page card */
+    .post-badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: rgba(0, 0, 0, 0.75);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 4px;
+        letter-spacing: 0.2px;
+        z-index: 2;
+    }
+
+    /* Hover overlay showing views + likes, IG-grid style */
+    .post-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        color: #fff;
+        font-weight: 700;
+        font-size: 15px;
+    }
+
+    .post-tile:hover .post-overlay,
+    .post-tile:focus-visible .post-overlay {
+        opacity: 1;
+    }
+
+    .post-overlay span {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .posts-empty {
+        padding: 60px 20px;
+        text-align: center;
+        color: var(--ig-text-dim);
+    }
+
+    .posts-empty i {
+        font-size: 44px;
+        margin-bottom: 14px;
+        display: block;
+    }
+
+    .posts-loading {
+        padding: 60px 20px;
+        text-align: center;
+        color: var(--ig-text-dim);
+    }
+
+    .posts-loading i {
+        font-size: 28px;
+        margin-bottom: 10px;
+        display: block;
+    }
+
+    @media (max-width: 600px) {
+        .profile-page {
+            padding: 18px 12px 0;
+        }
+        .profile-header {
+            gap: 20px;
+        }
+    }
+
+    /* ---------- Preview modal (reused pattern from resourses.html) ---------- */
+    .rp-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 3000;
+        padding: 20px;
+    }
+
+    .rp-modal-overlay.show {
+        display: flex;
+    }
+
+    .rp-modal-box {
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: 12px;
+        max-width: 720px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        color: var(--ig-text);
+    }
+
+    .rp-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--ig-border);
+        gap: 12px;
+    }
+
+    .rp-modal-header h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .rp-modal-header button {
+        background: none;
+        border: none;
+        color: var(--ig-text-dim);
+        font-size: 18px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .rp-modal-header button:hover {
+        color: var(--ig-text);
+    }
+
+    .rp-modal-body {
+        padding: 0;
+    }
+
+    .rp-modal-body img,
+    .rp-modal-body video {
+        width: 100%;
+        max-height: 65vh;
+        object-fit: contain;
+        display: block;
+        background: #000;
+    }
+
+    .rp-modal-body audio {
+        width: 100%;
+        padding: 30px 20px;
+    }
+
+    .rp-modal-body iframe {
+        width: 100%;
+        height: 65vh;
+        border: none;
+    }
+
+    .rp-modal-fallback {
+        padding: 40px 20px;
+        text-align: center;
+        color: var(--ig-text-dim);
+    }
+
+    .rp-modal-fallback a {
+        color: #0095f6;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .rp-modal-footer {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--ig-border);
+        font-size: 13px;
+        color: var(--ig-text-dim);
+        flex-wrap: wrap;
+    }
+
+    .rp-modal-footer span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* ---------- Strength tab (grade-based) ---------- */
+    .grade-overall {
+        display: flex;
+        justify-content: center;
+        gap: 48px;
+        padding: 30px 20px;
+        border-bottom: 1px solid var(--ig-border);
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+
+    .grade-overall-item {
+        text-align: center;
+    }
+
+    .grade-overall-number {
+        font-size: 40px;
+        font-weight: 700;
+        color: var(--ig-text);
+        line-height: 1;
+    }
+
+    .grade-overall-label {
+        font-size: 12px;
+        color: var(--ig-text-dim);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-top: 8px;
+    }
+
+    .grade-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    .grade-badge.grade-a { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .grade-badge.grade-b { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .grade-badge.grade-c { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .grade-badge.grade-d { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .grade-badge.grade-f { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+    .strength-list {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding: 0 4px 40px;
+    }
+
+    .strength-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .strength-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 18px;
+        margin-top: 2px;
+    }
+
+    .strength-details {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .strength-name-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        gap: 10px;
+    }
+
+    .strength-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--ig-text);
+    }
+
+    .strength-track {
+        height: 8px;
+        border-radius: 4px;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        overflow: hidden;
+    }
+
+    .strength-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.6s ease;
+    }
+
+    .strength-sub {
+        font-size: 12px;
+        color: var(--ig-text-dim);
+        margin-top: 6px;
+    }
+
+    /* ---------- Achievements tab ---------- */
+    .achievements-summary {
+        text-align: center;
+        padding: 20px;
+        color: var(--ig-text-dim);
+        font-size: 13px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--ig-border);
+        margin-bottom: 20px;
+    }
+
+    .achievements-dark-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+        padding: 0 4px 40px;
+    }
+
+    @media (max-width: 600px) {
+        .achievements-dark-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .achv-card {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius-sm);
+        padding: 16px;
+    }
+
+    .achv-card.locked {
+        opacity: 0.5;
+        filter: grayscale(0.6);
+    }
+
+    .achv-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 20px;
+    }
+
+    .achv-info {
+        min-width: 0;
+    }
+
+    .achv-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--ig-text);
+        margin-bottom: 3px;
+    }
+
+    .achv-desc {
+        font-size: 12.5px;
+        color: var(--ig-text-dim);
+        margin-bottom: 6px;
+        line-height: 1.35;
+    }
+
+    .achv-status {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--ig-text-dim);
+    }
+
+    .achv-card:not(.locked) .achv-status {
+        color: var(--success-color);
+    }
+</style>
+
+<div class="profile-page">
+    <div class="profile-shell">
+        <!-- ===== Header ===== -->
+        <div class="profile-header">
+            <div class="profile-avatar-wrap">
+                {% if status_note %}
+                <div class="avatar-note">
+                    <i class="fas fa-chevron-up" style="font-size:9px;"></i>
+                    <span>{{ status_note }}</span>
+                    <i class="fas fa-chevron-down" style="font-size:9px;"></i>
+                </div>
+                {% endif %}
+                <div class="profile-avatar">
+                    {% if avatar_url %}
+                        <img src="{{ avatar_url }}" alt="{{ username }}'s profile photo">
+                    {% else %}
+                        <span>{{ (firstname[0] if firstname else username[0]) | upper }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="profile-identity">
+                <div class="profile-username-row">
+                    <span class="profile-username">{{ username }}</span>
+                    {% if is_own_profile %}
+                    <a class="profile-settings-icon" href="/settings" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </a>
+                    {% endif %}
+
+                    <div class="profile-actions">
+                        {% if is_own_profile %}
+                            <a class="pill-btn" href="/settings">Edit Profile</a>
+                        {% else %}
+                            <button
+                                class="pill-btn primary"
+                                type="button"
+                                data-action="follow"
+                                data-follow-btn="{{ profile_user_id }}"
+                                data-user-id="{{ profile_user_id }}"
+                                data-following="{{ 'true' if is_following else 'false' }}"
+                            >{{ 'Following' if is_following else 'Follow' }}</button>
+                            <a class="pill-btn" href="/messages?user={{ profile_user_id }}">Message</a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="profile-stats">
+                    <span class="stat"><strong id="postsCountStat">{{ posts_count | default(0) }}</strong> posts</span>
+                    <span class="stat" data-followers-stat="{{ profile_user_id }}">
+                        <strong data-followers-count="{{ profile_user_id }}">{{ followers_count | default(0) }}</strong> followers
+                    </span>
+                    <span class="stat"><strong>{{ following_count | default(0) }}</strong> following</span>
+                </div>
+
+                {% if firstname or lastname %}
+                <div class="profile-fullname">{{ firstname }} {{ lastname }}</div>
+                {% endif %}
+
+                {% if bio_lines %}
+                <div class="profile-bio">{% for line in bio_lines %}{{ line }}{% if not loop.last %}
+{% endif %}{% endfor %}</div>
+                {% elif bio %}
+                <div class="profile-bio">{{ bio }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ===== Highlights / New ===== -->
+        <div class="profile-highlights">
+            {% if is_own_profile %}
+            <a class="highlight-item" href="/upload">
+                <div class="highlight-circle new-circle"><i class="fas fa-plus"></i></div>
+                <span class="highlight-label">New</span>
+            </a>
+            {% endif %}
+            {% for h in highlights | default([]) %}
+            <a class="highlight-item" href="{{ h.url }}">
+                <div class="highlight-circle"><img src="{{ h.cover_url }}" alt="{{ h.label }}"></div>
+                <span class="highlight-label">{{ h.label }}</span>
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- ===== Tabs ===== -->
+        <div class="profile-tabs">
+            <button class="profile-tab active" data-tab="uploads" type="button">
+                <i class="fas fa-th"></i><span>Uploads</span>
+            </button>
+            <button class="profile-tab" data-tab="strength" type="button">
+                <i class="fas fa-bolt"></i><span>Strength</span>
+            </button>
+            <button class="profile-tab" data-tab="achievements" type="button">
+                <i class="fas fa-trophy"></i><span>Achievements</span>
+            </button>
+        </div>
+
+        <!-- ===== Uploads panel — real resources, fetched client-side ===== -->
+        <div class="tab-panel active" id="panel-uploads">
+            <div class="posts-loading" id="postsLoading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Loading uploads…</div>
+            </div>
+            <div class="posts-grid" id="postsGrid" style="display:none;"></div>
+            <div class="posts-empty" id="postsEmpty" style="display:none;">
+                <i class="fas fa-camera"></i>
+                <div>No uploads yet</div>
+            </div>
+        </div>
+
+        <!-- ===== Strength panel — real course-progress stats ===== -->
+        <div class="tab-panel" id="panel-strength">
+            <div class="posts-loading" id="strengthLoading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Loading strength…</div>
+            </div>
+            <div id="strengthContent" style="display:none;"></div>
+        </div>
+
+        <!-- ===== Achievements panel — same unlock rules as the Progress page ===== -->
+        <div class="tab-panel" id="panel-achievements">
+            <div class="posts-loading" id="achievementsLoading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Loading achievements…</div>
+            </div>
+            <div id="achievementsContent" style="display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Resource preview modal -->
+<div class="rp-modal-overlay" id="rpModalOverlay">
+    <div class="rp-modal-box" id="rpModalBox"></div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    const PROFILE_USER_ID = {{ profile_user_id | tojson }};
+    const IS_OWN_PROFILE = {{ is_own_profile | tojson }};
+    // Same key format the Progress Tracking page uses — course data lives
+    // in the CURRENT browser's localStorage, keyed by the logged-in
+    // session's email, not by profile_user_id. See the note at the top
+    // of this file for why that means these tabs are only real on your
+    // own profile.
+    const SESSION_EMAIL = {{ session.get('email', 'default_user') | tojson }};
+
+    // ---------------------------------------------------------------
+    // TABS — three distinct panels, each with its own load-once fetch.
+    // ---------------------------------------------------------------
+    const tabs = document.querySelectorAll('.profile-tab');
+    const panels = document.querySelectorAll('.tab-panel');
+    let strengthLoaded = false;
+    let achievementsLoaded = false;
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            const target = this.dataset.tab;
+
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+
+            panels.forEach(p => p.classList.toggle('active', p.id === `panel-${target}`));
+
+            if (target === 'strength' && !strengthLoaded) {
+                strengthLoaded = true;
+                renderStrengthPanel();
+            }
+            if (target === 'achievements' && !achievementsLoaded) {
+                achievementsLoaded = true;
+                renderAchievementsPanel();
+            }
+        });
+    });
+
+    // ---------------------------------------------------------------
+    // UPLOADS GRID — real data from /api/resources/user/<id>, which
+    // already returns views_count, likes_count, file_category, title,
+    // thumbnail_url, file_url etc. (same shape the resources page uses).
+    // ---------------------------------------------------------------
+    let uploads = [];
+
+    async function loadUploads() {
+        const loading = document.getElementById('postsLoading');
+        const grid = document.getElementById('postsGrid');
+        const empty = document.getElementById('postsEmpty');
+
+        loading.style.display = 'block';
+        grid.style.display = 'none';
+        empty.style.display = 'none';
+
+        try {
+            const res = await fetch(`/api/resources/user/${PROFILE_USER_ID}`);
+            if (!res.ok) throw new Error(`Failed to load uploads (${res.status})`);
+            const data = await res.json();
+            uploads = data.resources || [];
+        } catch (err) {
+            console.error('Failed to load uploads:', err);
+            uploads = [];
+        }
+
+        loading.style.display = 'none';
+
+        const postsCountStat = document.getElementById('postsCountStat');
+        if (postsCountStat) postsCountStat.textContent = uploads.length;
+
+        if (!uploads.length) {
+            empty.style.display = 'block';
+            return;
+        }
+
+        grid.style.display = 'grid';
+        grid.innerHTML = uploads.map(renderTile).join('');
+    }
+
+    function renderTile(r) {
+        const views = r.views_count ?? r.views ?? 0;
+        const likes = r.likes_count ?? r.likes ?? 0;
+        const thumb = r.thumbnail_url || getDefaultThumbnail();
+
+        return `
+            <button class="post-tile" type="button" onclick="window.__openResourcePreview(${r.id})" title="${escapeAttr(r.title)}">
+                <span class="post-badge">${getFileTypeText(r.file_category)}</span>
+                <img src="${thumb}" alt="${escapeAttr(r.title)}" loading="lazy">
+                <span class="post-overlay">
+                    <span><i class="fas fa-eye"></i> ${formatCount(views)}</span>
+                    <span><i class="fas fa-heart"></i> ${formatCount(likes)}</span>
+                </span>
+            </button>
+        `;
+    }
+
+    function escapeAttr(str) {
+        const div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML.replace(/"/g, '&quot;');
+    }
+
+    function getFileTypeText(type) {
+        return {
+            video: 'Video',
+            pdf: 'Document',
+            doc: 'Document',
+            image: 'Image',
+            audio: 'Audio'
+        }[type] || 'File';
+    }
+
+    function getDefaultThumbnail() {
+        return 'https://source.unsplash.com/600x400/?file';
+    }
+
+    function formatCount(n) {
+        n = n || 0;
+        if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+        if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+        return n.toString();
+    }
+
+    function resolveCategory(r) {
+        const known = ['video', 'audio', 'image', 'pdf', 'doc'];
+        const raw = (r.file_category || '').toString().toLowerCase().trim();
+        if (known.includes(raw)) return raw;
+        return 'other';
+    }
+
+    // ---------------------------------------------------------------
+    // PREVIEW MODAL — opens the real file, tracks one view per user
+    // via POST /api/resources/<id>/view (same endpoint the resources
+    // page uses, so a view here and a view there never double-count).
+    // ---------------------------------------------------------------
+    const rpOverlay = document.getElementById('rpModalOverlay');
+    const rpBox = document.getElementById('rpModalBox');
+
+    window.__openResourcePreview = async function (id) {
+        try {
+            const res = await fetch(`/api/resources/${id}`);
+            if (!res.ok) throw new Error(`Failed to load resource (${res.status})`);
+            const data = await res.json();
+            const r = data.resource;
+            if (!r) return;
+
+            const category = resolveCategory(r);
+            let media;
+
+            if (!r.file_url) {
+                media = `<div class="rp-modal-fallback">This file is missing its URL.</div>`;
+            } else if (category === 'video') {
+                media = `<video controls autoplay><source src="${r.file_url}">Your browser can't play this video.</video>`;
+            } else if (category === 'audio') {
+                media = `<audio controls autoplay><source src="${r.file_url}">Your browser can't play this audio.</audio>`;
+            } else if (category === 'image') {
+                media = `<img src="${r.file_url}" alt="${escapeAttr(r.title)}">`;
+            } else if (category === 'pdf') {
+                media = `<iframe src="${r.file_url}" title="${escapeAttr(r.title)}"></iframe>`;
+            } else {
+                media = `
+                    <div class="rp-modal-fallback">
+                        <p>No inline preview for this file type.</p>
+                        <a href="/api/resources/${r.id}/download"><i class="fas fa-download"></i> Download</a>
+                    </div>`;
+            }
+
+            const views = r.views_count ?? r.views ?? 0;
+            const likes = r.likes_count ?? r.likes ?? 0;
+
+            rpBox.innerHTML = `
+                <div class="rp-modal-header">
+                    <h2>${escapeAttr(r.title)}</h2>
+                    <button type="button" onclick="window.__closeResourcePreview()">✕</button>
+                </div>
+                <div class="rp-modal-body">${media}</div>
+                <div class="rp-modal-footer">
+                    <span><i class="fas fa-eye"></i> ${formatCount(views)} views</span>
+                    <span><i class="fas fa-heart"></i> ${formatCount(likes)} likes</span>
+                </div>
+            `;
+
+            rpOverlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+
+            // One view per (resource, user), enforced server-side —
+            // opening the same resource again just returns the same total.
+            fetch(`/api/resources/${id}/view`, { method: 'POST' }).catch(() => {});
+        } catch (err) {
+            console.error('Failed to open resource preview:', err);
+        }
+    };
+
+    window.__closeResourcePreview = function () {
+        rpOverlay.querySelectorAll('video, audio').forEach(m => {
+            m.pause();
+            m.currentTime = 0;
+            m.src = '';
+            m.load();
+        });
+        rpOverlay.classList.remove('show');
+        rpBox.innerHTML = '';
+        document.body.style.overflow = '';
+        // Refresh so any view/like count picked up while the modal was
+        // open is reflected back in the grid.
+        loadUploads();
+    };
+
+    rpOverlay.addEventListener('click', function (e) {
+        if (e.target === rpOverlay) window.__closeResourcePreview();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && rpOverlay.classList.contains('show')) window.__closeResourcePreview();
+    });
+
+    loadUploads();
+
+    // ---------------------------------------------------------------
+    // FOLLOW / UNFOLLOW — same contract and optimistic-update pattern
+    // as the resources page: POST/DELETE /api/users/<id>/follow, with
+    // the server expected to return the up-to-date total, e.g.
+    // { "following": true, "followers_count": 1079 }. The "followers"
+    // stat at the top of the page updates instantly on click and then
+    // reconciles with whatever the server actually returns, so it
+    // can't drift out of sync even if this account was followed or
+    // unfollowed from somewhere else (like the resources page) in
+    // another tab.
+    // ---------------------------------------------------------------
+    const followBtn = document.querySelector('[data-action="follow"]');
+    if (followBtn) {
+        followBtn.addEventListener('click', async function () {
+            const userId = this.getAttribute('data-user-id');
+            const wasFollowing = this.dataset.following === 'true';
+            const newFollowing = !wasFollowing;
+
+            const countEl = document.querySelector(`[data-followers-count="${userId}"]`);
+            const currentCount = countEl ? parseInt(countEl.textContent.replace(/[^\d]/g, ''), 10) || 0 : 0;
+            const optimisticCount = Math.max(0, currentCount + (wasFollowing ? -1 : 1));
+
+            this.disabled = true;
+            applyFollowState(this, newFollowing);
+            updateFollowerCount(userId, optimisticCount, { animate: true });
+
+            let res;
+            try {
+                res = await fetch(`/api/users/${userId}/follow`, {
+                    method: wasFollowing ? 'DELETE' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin'
+                });
+            } catch (networkErr) {
+                // Couldn't reach the server at all — keep the optimistic
+                // state rather than snapping it back.
+                console.warn('[follow] request did not reach the server; keeping local state.', networkErr);
+                this.disabled = false;
+                return;
+            }
+
+            if (res.status === 401) {
+                window.location.href = '/Login';
+                return;
+            }
+
+            if (res.status === 404 || res.status === 405) {
+                // Endpoint not wired up on the backend yet — leave the
+                // optimistic follow state/count as-is instead of
+                // reverting it, same as the resources page.
+                console.warn(`[follow] "/api/users/${userId}/follow" isn't available yet (${res.status}); keeping local state.`);
+                this.disabled = false;
+                return;
+            }
+
+            try {
+                if (!res.ok) throw new Error(`Follow request failed (${res.status})`);
+
+                const data = await res.json();
+                const finalFollowing = typeof data.following === 'boolean' ? data.following : newFollowing;
+                const finalCount = typeof data.followers_count === 'number' ? data.followers_count : optimisticCount;
+
+                applyFollowState(this, finalFollowing);
+                updateFollowerCount(userId, finalCount, { animate: false });
+            } catch (err) {
+                // A genuine server-side error — this is the one case
+                // where rolling back is correct.
+                console.error('Failed to toggle follow:', err);
+                applyFollowState(this, wasFollowing);
+                updateFollowerCount(userId, currentCount, { animate: false });
+            } finally {
+                this.disabled = false;
+            }
+        });
+    }
+
+    function applyFollowState(btn, following) {
+        btn.dataset.following = following;
+        btn.textContent = following ? 'Following' : 'Follow';
+        btn.classList.toggle('primary', !following);
+    }
+
+    function updateFollowerCount(userId, count, { animate = false } = {}) {
+        const countEl = document.querySelector(`[data-followers-count="${userId}"]`);
+        if (!countEl) return;
+        countEl.textContent = count;
+        if (animate) {
+            countEl.classList.remove('pop');
+            void countEl.offsetWidth; // force reflow so the class removal registers
+            countEl.classList.add('pop');
+            setTimeout(() => countEl.classList.remove('pop'), 300);
+        }
+    }
+
+    // =================================================================
+    // STRENGTH + ACHIEVEMENTS — mirrors the data model and unlock rules
+    // from the Progress Tracking page so the two pages never disagree.
+    // =================================================================
+
+    // Same course catalog as the Progress page. Kept in sync manually
+    // for now — if you move this to a shared /static/js file or an API
+    // endpoint later, both pages should read from that single source
+    // instead of each keeping their own copy.
+    const courseDefinitions = [
+        { id: 'html', name: 'HTML Tutorial', color: '#e44d26', icon: 'fa-html5', iconType: 'fab',
+          modules: [
+              { exercises: 5, quiz: true }, { exercises: 8, quiz: true }, { exercises: 6, quiz: true },
+              { exercises: 4, quiz: true }, { exercises: 5, quiz: true }, { exercises: 7, quiz: true },
+              { exercises: 6, quiz: true }, { exercises: 4, quiz: true }, { exercises: 3, quiz: true },
+              { exercises: 6, quiz: true }
+          ]},
+        { id: 'css', name: 'CSS Tutorial', color: '#264de4', icon: 'fa-css3-alt', iconType: 'fab',
+          modules: [
+              { exercises: 4, quiz: true }, { exercises: 5, quiz: true }, { exercises: 10, quiz: true },
+              { exercises: 6, quiz: true }, { exercises: 5, quiz: true }, { exercises: 7, quiz: true },
+              { exercises: 5, quiz: true }, { exercises: 5, quiz: true }, { exercises: 8, quiz: true },
+              { exercises: 12, quiz: true }
+          ]},
+        { id: 'javascript', name: 'JavaScript Tutorial', color: '#f7df1e', icon: 'fa-js', iconType: 'fab',
+          modules: [
+              { exercises: 5, quiz: true }, { exercises: 8, quiz: true }, { exercises: 7, quiz: true },
+              { exercises: 10, quiz: true }, { exercises: 9, quiz: true }, { exercises: 8, quiz: true },
+              { exercises: 7, quiz: true }, { exercises: 9, quiz: true }, { exercises: 8, quiz: true },
+              { exercises: 12, quiz: true }
+          ]},
+        { id: 'python', name: 'Python Tutorial', color: '#306998', icon: 'fa-python', iconType: 'fab',
+          modules: [
+              { exercises: 4, quiz: true }, { exercises: 5, quiz: true }, { exercises: 6, quiz: true },
+              { exercises: 8, quiz: true }, { exercises: 7, quiz: true }, { exercises: 5, quiz: true },
+              { exercises: 6, quiz: true }, { exercises: 6, quiz: true }, { exercises: 7, quiz: true },
+              { exercises: 8, quiz: true }
+          ]},
+        { id: 'sql', name: 'SQL Tutorial', color: '#00758f', icon: 'fa-database', iconType: 'fas',
+          modules: [
+              { exercises: 3, quiz: true }, { exercises: 4, quiz: true }, { exercises: 6, quiz: true },
+              { exercises: 5, quiz: true }, { exercises: 4, quiz: true }, { exercises: 4, quiz: true },
+              { exercises: 5, quiz: true }, { exercises: 4, quiz: true }, { exercises: 3, quiz: true },
+              { exercises: 8, quiz: true }
+          ]},
+        { id: 'react', name: 'React Tutorial', color: '#61dafb', icon: 'fa-react', iconType: 'fab',
+          modules: [
+              { exercises: 4, quiz: true }, { exercises: 6, quiz: true }, { exercises: 5, quiz: true },
+              { exercises: 7, quiz: true }, { exercises: 6, quiz: true }, { exercises: 7, quiz: true },
+              { exercises: 8, quiz: true }, { exercises: 6, quiz: true }, { exercises: 7, quiz: true },
+              { exercises: 6, quiz: true }
+          ]}
+    ];
+
+    function getCourse(id) {
+        return courseDefinitions.find(c => c.id === id);
+    }
+
+    function loadMyCourses() {
+        if (!IS_OWN_PROFILE) return [];
+        const key = `myCoursesData_${SESSION_EMAIL}`;
+        const stored = localStorage.getItem(key);
+        if (!stored) return [];
+        try {
+            const parsed = JSON.parse(stored);
+            return parsed.map(enr => ({
+                ...enr,
+                completed: enr.completed || [],
+                exercisesCompleted: enr.exercisesCompleted || 0,
+                quizzesPassed: enr.quizzesPassed || 0,
+                progress: enr.progress || 0
+            }));
+        } catch (e) {
+            console.warn('Failed to parse stored course data');
+            return [];
+        }
+    }
+
+    function privacyNoticeHTML(label) {
+        return `
+            <div class="posts-empty">
+                <i class="fas fa-lock"></i>
+                <div>${label} is stored on each person's own device and can't be shown on someone else's profile.</div>
+            </div>`;
+    }
+
+    // ---------- Strength (= grades) ----------
+    // Same formula as the Progress page's Grades tab: exercises are worth
+    // 70% (full credit once any are completed), quizzes are worth 30%
+    // scored as passed ÷ attempted — where "attempted" is inferred from
+    // completed modules that carry a quiz, since that's the only attempt
+    // signal this app stores. Failing quizzes you actually took pulls the
+    // grade down; quizzes you never reached don't count against you.
+    function calculateGrade(exercisesCompleted, quizzesPassed, quizzesAttempted) {
+        const hasExerciseWork = exercisesCompleted > 0;
+        const hasQuizWork = quizzesAttempted > 0;
+
+        if (!hasExerciseWork && !hasQuizWork) return { grade: 'N/A', gradePoint: 0, percentage: 0 };
+
+        const exerciseScore = hasExerciseWork ? 100 : 0;
+        const quizScore = hasQuizWork ? Math.min(100, (quizzesPassed / quizzesAttempted) * 100) : 0;
+
+        let weightedScore;
+        if (hasExerciseWork && hasQuizWork) {
+            weightedScore = (exerciseScore * 0.7) + (quizScore * 0.3);
+        } else if (hasExerciseWork) {
+            weightedScore = exerciseScore;
+        } else {
+            weightedScore = quizScore;
+        }
+
+        let grade, gradePoint;
+        if (weightedScore >= 90) { grade = 'A'; gradePoint = 4.0; }
+        else if (weightedScore >= 85) { grade = 'A-'; gradePoint = 3.7; }
+        else if (weightedScore >= 80) { grade = 'B+'; gradePoint = 3.3; }
+        else if (weightedScore >= 75) { grade = 'B'; gradePoint = 3.0; }
+        else if (weightedScore >= 70) { grade = 'B-'; gradePoint = 2.7; }
+        else if (weightedScore >= 65) { grade = 'C+'; gradePoint = 2.3; }
+        else if (weightedScore >= 60) { grade = 'C'; gradePoint = 2.0; }
+        else if (weightedScore >= 55) { grade = 'C-'; gradePoint = 1.7; }
+        else if (weightedScore >= 50) { grade = 'D+'; gradePoint = 1.3; }
+        else if (weightedScore >= 40) { grade = 'D'; gradePoint = 1.0; }
+        else { grade = 'F'; gradePoint = 0.0; }
+
+        return { grade, gradePoint, percentage: Math.round(weightedScore) };
+    }
+
+    function getGradeClass(grade) {
+        const map = {
+            'A': 'grade-a', 'A-': 'grade-a',
+            'B+': 'grade-b', 'B': 'grade-b', 'B-': 'grade-b',
+            'C+': 'grade-c', 'C': 'grade-c', 'C-': 'grade-c',
+            'D+': 'grade-d', 'D': 'grade-d', 'F': 'grade-f'
+        };
+        return map[grade] || 'grade-c';
+    }
+
+    function renderStrengthPanel() {
+        const loading = document.getElementById('strengthLoading');
+        const content = document.getElementById('strengthContent');
+        loading.style.display = 'none';
+        content.style.display = 'block';
+
+        if (!IS_OWN_PROFILE) {
+            content.innerHTML = privacyNoticeHTML('Grades');
+            return;
+        }
+
+        const enrolled = loadMyCourses();
+        if (!enrolled.length) {
+            content.innerHTML = `
+                <div class="posts-empty">
+                    <i class="fas fa-bolt"></i>
+                    <div>No grades yet — enroll in a course and complete a module to get your first grade</div>
+                </div>`;
+            return;
+        }
+
+        let totalGradePoints = 0;
+        let totalWeightedCredits = 0;
+
+        const courseGrades = enrolled.map(enr => {
+            const course = getCourse(enr.courseId);
+            if (!course) return null;
+
+            // quizzesAttempted mirrors the Progress page: count of
+            // completed modules that carry a quiz.
+            let quizzesAttempted = 0;
+            (enr.completed || []).forEach(index => {
+                const module = course.modules[index];
+                if (module && module.quiz) quizzesAttempted += 1;
+            });
+
+            const exercisesCompleted = enr.exercisesCompleted || 0;
+            const quizzesPassed = enr.quizzesPassed || 0;
+
+            if (exercisesCompleted === 0 && quizzesAttempted === 0) return null;
+
+            const result = calculateGrade(exercisesCompleted, quizzesPassed, quizzesAttempted);
+
+            totalGradePoints += result.gradePoint * (course.modules.length / 10);
+            totalWeightedCredits += (course.modules.length / 10);
+
+            let detail;
+            if (exercisesCompleted > 0 && quizzesAttempted > 0) {
+                detail = `${exercisesCompleted} exercises • ${quizzesPassed}/${quizzesAttempted} quizzes`;
+            } else if (exercisesCompleted > 0) {
+                detail = `${exercisesCompleted} exercises`;
+            } else {
+                detail = `${quizzesPassed}/${quizzesAttempted} quizzes`;
+            }
+
+            return {
+                name: course.name.replace(' Tutorial', ''),
+                color: course.color,
+                icon: course.icon,
+                iconType: course.iconType || 'fab',
+                grade: result.grade,
+                gradePoint: result.gradePoint,
+                percentage: result.percentage,
+                detail
+            };
+        }).filter(Boolean).sort((a, b) => b.gradePoint - a.gradePoint);
+
+        if (!courseGrades.length) {
+            content.innerHTML = `
+                <div class="posts-empty">
+                    <i class="fas fa-pencil-alt"></i>
+                    <div>Start practicing! Complete exercises or quizzes to earn your first grade.</div>
+                </div>`;
+            return;
+        }
+
+        const gpa = totalWeightedCredits > 0 ? totalGradePoints / totalWeightedCredits : 0;
+        const overallGrade = gpa >= 3.7 ? 'A' : gpa >= 3.3 ? 'A-' : gpa >= 3.0 ? 'B' :
+            gpa >= 2.7 ? 'B-' : gpa >= 2.3 ? 'C+' : gpa >= 2.0 ? 'C' : gpa > 0 ? 'D' : 'F';
+
+        content.innerHTML = `
+            <div class="grade-overall">
+                <div class="grade-overall-item">
+                    <div class="grade-overall-number">${gpa.toFixed(2)}</div>
+                    <div class="grade-overall-label">GPA</div>
+                </div>
+                <div class="grade-overall-item">
+                    <span class="grade-badge ${getGradeClass(overallGrade)}" style="font-size:18px; padding:6px 16px;">${overallGrade}</span>
+                    <div class="grade-overall-label">Overall Grade</div>
+                </div>
+            </div>
+            <div class="strength-list">
+                ${courseGrades.map(s => `
+                    <div class="strength-row">
+                        <div class="strength-icon" style="background:${s.color};">
+                            <i class="${s.iconType} ${s.icon}"></i>
+                        </div>
+                        <div class="strength-details">
+                            <div class="strength-name-row">
+                                <span class="strength-name">${s.name}</span>
+                                <span class="grade-badge ${getGradeClass(s.grade)}">${s.grade}</span>
+                            </div>
+                            <div class="strength-track">
+                                <div class="strength-fill" style="width:${s.percentage}%; background:${s.color};"></div>
+                            </div>
+                            <div class="strength-sub">${s.percentage}% • ${s.detail}</div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    // ---------- Achievements ----------
+    // Identical unlock thresholds to the Progress page's achievement list,
+    // so unlocking one on either page always agrees with the other.
+    function renderAchievementsPanel() {
+        const loading = document.getElementById('achievementsLoading');
+        const content = document.getElementById('achievementsContent');
+        loading.style.display = 'none';
+        content.style.display = 'block';
+
+        if (!IS_OWN_PROFILE) {
+            content.innerHTML = privacyNoticeHTML('Achievements');
+            return;
+        }
+
+        const enrolled = loadMyCourses();
+        const totalModules = enrolled.reduce((sum, enr) => sum + (enr.completed ? enr.completed.length : 0), 0);
+        const totalExercises = enrolled.reduce((sum, enr) => sum + (enr.exercisesCompleted || 0), 0);
+        const totalQuizzes = enrolled.reduce((sum, enr) => sum + (enr.quizzesPassed || 0), 0);
+
+        const achievements = [
+            { title: 'First Steps', desc: 'Complete your first module', icon: 'fa-flag', color: '#4361ee', unlocked: totalModules >= 1 },
+            { title: 'Quick Learner', desc: 'Complete 5 modules', icon: 'fa-bolt', color: '#feca57', unlocked: totalModules >= 5 },
+            { title: 'Dedicated Student', desc: 'Complete 10 modules', icon: 'fa-star', color: '#ffd700', unlocked: totalModules >= 10 },
+            { title: 'Practice Makes Perfect', desc: 'Complete 20 exercises', icon: 'fa-pencil', color: '#10b981', unlocked: totalExercises >= 20 },
+            { title: 'Exercise Master', desc: 'Complete 50 exercises', icon: 'fa-trophy', color: '#ff6b6b', unlocked: totalExercises >= 50 },
+            { title: 'Quiz Champion', desc: 'Pass 3 quizzes', icon: 'fa-brain', color: '#3a0ca3', unlocked: totalQuizzes >= 3 },
+            { title: 'Multi-Course Learner', desc: 'Enroll in 3 courses', icon: 'fa-book', color: '#1dd1a1', unlocked: enrolled.length >= 3 },
+            { title: 'Course Master', desc: 'Complete an entire course', icon: 'fa-graduation-cap', color: '#feca57', unlocked: enrolled.some(e => e.progress >= 100) }
+        ];
+
+        const unlockedCount = achievements.filter(a => a.unlocked).length;
+
+        content.innerHTML = `
+            <div class="achievements-summary">${unlockedCount}/${achievements.length} Unlocked</div>
+            <div class="achievements-dark-grid">
+                ${achievements.map(a => `
+                    <div class="achv-card ${a.unlocked ? '' : 'locked'}">
+                        <div class="achv-icon" style="background:${a.color};">
+                            <i class="fas ${a.icon}"></i>
+                        </div>
+                        <div class="achv-info">
+                            <div class="achv-title">${a.title}</div>
+                            <div class="achv-desc">${a.desc}</div>
+                            <div class="achv-status">${a.unlocked ? '✅ Unlocked' : '🔒 Locked'}</div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+})();
+</script>
+{% endblock %}

@@ -1,95 +1,666 @@
 {% extends "fronten.html" %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='services.css') }}">
-<div class="head-images">
-    <h1 class="head">OUR SERVICES<br><span class="onhead">At Eschool, we offer a range of services designed to make learning effective, engaging, and accessible for everyone:</span><br><br>
-    </h1>
-</div>
-<div class="header">
-<div class="header-text">
-<h1 class="hfirst"><span class="greatsec">1. High-Quality Video Lessons</span><br>Our video lessons simplify complex concepts, making learning easier and more enjoyable. Each lesson is carefully structured to ensure clarity and understanding for students at all levels.</h1>
-</div>
-<img src="static/online-tutorials-concept.png" alt="sicof image">
-</div>
-<div class="lucid">
-       <div>
-         <hr style="border: 2px solid black;">
-       <div class="bigo">
-       <img src="static/Gemini_Generated_Image_pa7x2opa7x2opa7x.png" alt="lucid image">
-<div class="about-text">
-<p class="manyw"><span class="greatsec">2. good Subject Notes</span><br>We provide well-organized, concise, and easy-to-follow notes for every subject, helping learners revise efficiently and strengthen their understanding.<br><br>
-</p>
-       </div>
-       </div>
-       </div>
-       <hr style="border: 2px solid black;">
-<div class="headers">
-<div class="headers-text">
-<h1 class="hfirst"><span class="greatsec">3. Career and Skill Development Resources</span><br>From exam preparation to professional growth, we offer tools and guidance that empower learners to achieve their academic and career goals.</h1>
-</div>
-<img src="static/Gemini_Generated_Image_7q2k2p7q2k2p7q2k.png" alt="headers image">
-</div>
-<hr style="border: 2px solid black;">
-       <div class="bigo">
-       <img src="static/Gemini_Generated_Image_pa7x2opa7x2opa7x.png" alt="lucid image">
-<div class="about-text">
-<p class="manyw"><span class="greatsec">4. Teacher Support and Opportunities</span><br>Eschool provides a platform for teachers to share their knowledge, reach learners worldwide, and earn from their expertise. We support educators in creating high-quality content and growing their teaching careers.<br><br>
-</p>
-       </div>
-       </div>
-</div>
+<style>
+  :root{
+    --primary:#2563EB;
+    --secondary:#3B82F6;
+    --accent:#14B8A6;
+    --highlight:#F59E0B;
+    --bg:#F8FAFC;
+    --dark:#0F172A;
+    --gray:#64748B;
+    --radius-lg:28px;
+    --radius-md:18px;
+    --radius-sm:12px;
+    --shadow:0 20px 50px -20px rgba(15,23,42,.18);
+    --glass:rgba(255,255,255,.7);
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--dark); font-family:'Inter',system-ui,sans-serif; overflow-x:hidden; }
+  .container{ max-width:1180px; margin:0 auto; padding:0 24px; }
+  section{ position:relative; padding:100px 0; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--primary); background:rgba(37,99,235,.08); padding:7px 16px; border-radius:999px; margin-bottom:18px;
+  }
+  h1,h2,h3,h4{ font-family:'Manrope',sans-serif; font-weight:800; letter-spacing:-.02em; margin:0; }
+  .sec-title{ font-size:36px; margin-bottom:14px; }
+  .sec-sub{ font-size:16px; color:var(--gray); max-width:580px; line-height:1.6; margin-bottom:52px; }
+  .center{ text-align:center; margin-left:auto; margin-right:auto; }
+  a{ color:inherit; }
 
-<footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-column">
-                    <h3>Eschool</h3>
-                    <p style="color: #a0aec0; margin-bottom: 20px;">The all-in-one platform for modern<br> and online learning.</p>
-                    <div style="display: flex; gap: 15px;">
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-facebook"></i></a>
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-twitter"></i></a>
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-instagram"></i></a>
-                    </div>
-                </div>
-                
-                <div class="footer-column">
-                    <h3>Product</h3>
-                    <ul>
-                        <li><a href="#">Features</a></li>
-                        <li><a href="#">Solutions</a></li>
-                        <li><a href="#">Pricing</a></li>
-                        <li><a href="#">Integrations</a></li>
-                        <li><a href="#">Updates</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-column">
-                    <h3>Resources</h3>
-                    <ul>
-                        <li><a href="#">Blog</a></li>
-                        <li><a href="#">Help Center</a></li>
-                        <li><a href="#">Community</a></li>
-                        <li><a href="#">Events</a></li>
-                        <li><a href="#">Partners</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-column">
-                    <h3>Company</h3>
-                    <ul>
-                        <li><a href="#">About Us</a></li>
-                        <li><a href="#">Careers</a></li>
-                        <li><a href="#">Contact</a></li>
-                        <li><a href="#">Donate</a></li>
-                        <li><a href="#">Privacy Policy</a></li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="copyright">
-                &copy; 2025 Eschool. All rights reserved.
-            </div>
+  .reveal{ opacity:0; transform:translateY(26px); transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+  .reveal.left{ transform:translateX(-30px); } .reveal.left.in{ transform:translateX(0); }
+  .reveal.right{ transform:translateX(30px); } .reveal.right.in{ transform:translateX(0); }
+
+  .dotgrid{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:radial-gradient(rgba(15,23,42,.06) 1px, transparent 1px);
+    background-size:26px 26px;
+    mask-image:radial-gradient(ellipse 70% 50% at 50% 0%, black, transparent 80%);
+  }
+
+  /* ============ HERO ============ */
+  .hero{ padding:150px 0 110px; overflow:hidden; }
+  .hero-blobs{ position:absolute; inset:0; z-index:0; overflow:hidden; }
+  .blob{ position:absolute; border-radius:50%; filter:blur(80px); opacity:.5; animation:drift 24s ease-in-out infinite alternate; }
+  .blob.b1{ width:480px; height:480px; top:-160px; right:-120px; background:radial-gradient(circle, var(--primary), transparent 70%); }
+  .blob.b2{ width:380px; height:380px; bottom:-140px; left:-100px; background:radial-gradient(circle, var(--accent), transparent 70%); animation-duration:30s; animation-delay:-8s; }
+  @keyframes drift{ to{ transform:translate(36px,-40px) scale(1.08); } }
+
+  .hero-grid{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:60px; align-items:center; }
+  .hero h1{ font-size:44px; line-height:1.12; margin-bottom:20px; }
+  .hero h1 .grad{ background:linear-gradient(90deg,var(--primary),var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero p.lead{ font-size:16.5px; color:var(--gray); line-height:1.7; max-width:520px; margin-bottom:32px; }
+  .btn-row{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:48px; }
+  .btn{
+    position:relative; overflow:hidden; display:inline-flex; align-items:center; gap:8px;
+    padding:14px 26px; border-radius:999px; font-weight:700; font-size:14.5px; cursor:pointer; border:none;
+    font-family:'Manrope',sans-serif; text-decoration:none; transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .btn-primary{ background:linear-gradient(90deg,var(--primary),var(--secondary)); color:#fff; box-shadow:0 14px 30px -10px rgba(37,99,235,.55); }
+  .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 18px 36px -8px rgba(37,99,235,.65); }
+  .btn-primary::before{
+    content:''; position:absolute; top:0; left:-60%; width:35%; height:100%;
+    background:linear-gradient(115deg, transparent, rgba(255,255,255,.45), transparent); transform:skewX(-20deg);
+    animation:shine 3.4s ease-in-out infinite;
+  }
+  @keyframes shine{ 0%{left:-60%;} 45%{left:130%;} 100%{left:130%;} }
+  .btn-ghost{ background:rgba(255,255,255,.7); border:1.5px solid rgba(15,23,42,.12); color:var(--dark); backdrop-filter:blur(8px); }
+  .btn-ghost:hover{ border-color:var(--primary); color:var(--primary); transform:translateY(-2px); }
+  .btn .ripple{ position:absolute; border-radius:50%; background:rgba(255,255,255,.5); transform:scale(0); animation:rip .6s ease-out forwards; pointer-events:none; }
+  @keyframes rip{ to{ transform:scale(3.2); opacity:0; } }
+
+  .stat-row{ display:flex; gap:38px; flex-wrap:wrap; }
+  .stat-row .stat b{ display:block; font-family:'Manrope',sans-serif; font-weight:800; font-size:26px; color:var(--dark); }
+  .stat-row .stat span{ font-size:12.5px; color:var(--gray); }
+
+  .hero-visual{ position:relative; height:420px; }
+  .shape{ position:absolute; border-radius:32px; animation:float 7s ease-in-out infinite; }
+  .shape.s1{ width:220px; height:220px; top:10px; right:40px; background:linear-gradient(135deg, var(--primary), var(--secondary)); opacity:.16; border-radius:50%; animation-duration:8s; }
+  .shape.s2{ width:150px; height:150px; bottom:40px; right:120px; background:linear-gradient(135deg, var(--accent), var(--secondary)); opacity:.9; transform:rotate(18deg); animation-duration:6.5s; animation-delay:-2s; }
+  .shape.s3{ width:110px; height:110px; top:120px; right:230px; border-radius:50%; border:3px solid var(--highlight); opacity:.8; animation-duration:9s; animation-delay:-4s; }
+  .shape.s4{ width:80px; height:80px; bottom:110px; right:20px; background:var(--highlight); opacity:.85; border-radius:22px; animation-duration:5.5s; animation-delay:-1s; }
+  .shape .glyph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; }
+  .shape .glyph svg{ width:44%; height:44%; }
+  @keyframes float{ 0%,100%{ transform:translateY(0) rotate(var(--r,0deg)); } 50%{ transform:translateY(-18px) rotate(var(--r,0deg)); } }
+
+  /* ============ SERVICE CARDS ============ */
+  .grid-4{ display:grid; grid-template-columns:repeat(4,1fr); gap:22px; }
+  .grid-2{ display:grid; grid-template-columns:repeat(2,1fr); gap:22px; }
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+
+  .svc-card{
+    position:relative; background:var(--glass); backdrop-filter:blur(14px); border-radius:var(--radius-md);
+    padding:28px 24px; border:1.5px solid rgba(15,23,42,.06); box-shadow:var(--shadow);
+    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  }
+  .svc-card:hover{ transform:translateY(-6px); border-color:transparent; box-shadow:0 30px 60px -18px rgba(37,99,235,.3); }
+  .svc-card:hover::before{ opacity:1; }
+  .svc-card::before{
+    content:''; position:absolute; inset:0; border-radius:var(--radius-md); padding:1.5px; opacity:0; transition:opacity .25s ease;
+    background:linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+  }
+  .svc-card .ic{
+    width:48px; height:48px; border-radius:13px; display:flex; align-items:center; justify-content:center; margin-bottom:14px;
+    background:linear-gradient(135deg, var(--primary), var(--accent)); color:#fff;
+  }
+  .svc-card .ic svg{ width:22px; height:22px; }
+  .svc-card h4{ font-size:15.5px; margin-bottom:7px; }
+  .svc-card p{ font-size:12.8px; color:var(--gray); line-height:1.6; margin:0 0 14px; }
+  .learn-more{
+    display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:700; color:var(--primary);
+    text-decoration:none; transition:gap .2s ease;
+  }
+  .learn-more svg{ width:13px; height:13px; transition:transform .2s ease; }
+  .svc-card:hover .learn-more svg{ transform:translateX(3px); }
+
+  /* ============ WHY CHOOSE ============ */
+  .why-grid{ display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center; }
+  .check-list{ display:flex; flex-direction:column; gap:14px; }
+  .check-item{ display:flex; align-items:center; gap:12px; }
+  .check-item .tick{
+    width:28px; height:28px; min-width:28px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--primary));
+    display:flex; align-items:center; justify-content:center; color:#fff;
+  }
+  .check-item .tick svg{ width:14px; height:14px; }
+  .check-item span{ font-size:14.5px; font-weight:600; }
+
+  .float-panel{ position:relative; height:380px; }
+  .info-card{
+    position:absolute; background:#fff; border-radius:16px; padding:16px 18px; box-shadow:var(--shadow);
+    display:flex; align-items:center; gap:12px; animation:float 6.5s ease-in-out infinite;
+  }
+  .info-card .n{ font-family:'Manrope',sans-serif; font-weight:800; font-size:19px; color:var(--primary); }
+  .info-card .l{ font-size:11px; color:var(--gray); }
+  .info-card.ic1{ top:0; left:10%; animation-duration:7s; }
+  .info-card.ic2{ top:38%; right:0; animation-duration:8s; animation-delay:-2s; }
+  .info-card.ic3{ bottom:10px; left:16%; animation-duration:6s; animation-delay:-4s; }
+  .info-card .dot{ width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,var(--primary),var(--accent)); display:flex; align-items:center; justify-content:center; color:#fff; }
+  .info-card .dot svg{ width:18px; height:18px; }
+
+  /* ============ CATEGORIES ============ */
+  .cat-card{
+    text-align:center; padding:26px 16px; background:#fff; border-radius:var(--radius-md);
+    border:1.5px solid rgba(15,23,42,.06); transition:all .25s ease;
+  }
+  .cat-card:hover{ transform:translateY(-5px); border-color:var(--accent); box-shadow:0 20px 40px -18px rgba(20,184,166,.35); }
+  .cat-card .ic{
+    width:46px; height:46px; border-radius:50%; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg, var(--secondary), var(--accent)); color:#fff;
+  }
+  .cat-card .ic svg{ width:21px; height:21px; }
+  .cat-card h4{ font-size:14px; margin-bottom:4px; }
+  .cat-card p{ font-size:11.5px; color:var(--gray); margin:0; }
+
+  /* ============ PROCESS / JOURNEY ============ */
+  .journey{ display:grid; grid-template-columns:repeat(5,1fr); gap:16px; position:relative; }
+  .journey::before{ content:''; position:absolute; top:26px; left:8%; right:8%; height:2px; background:rgba(15,23,42,.1); z-index:0; }
+  .j-step{ position:relative; z-index:1; text-align:center; }
+  .j-step .num{
+    width:54px; height:54px; border-radius:50%; margin:0 auto 14px; display:flex; align-items:center; justify-content:center;
+    background:#fff; border:2px solid var(--primary); color:var(--primary); font-family:'Manrope',sans-serif; font-weight:800; font-size:16px;
+    transition:all .3s ease;
+  }
+  .j-step.in .num{ background:linear-gradient(135deg,var(--primary),var(--accent)); color:#fff; border-color:transparent; }
+  .j-step h4{ font-size:13.5px; margin-bottom:5px; }
+  .j-step p{ font-size:11.5px; color:var(--gray); margin:0; }
+
+  /* ============ STATS ============ */
+  .stats-sec{ background:linear-gradient(135deg, var(--dark), #1e293b); color:#fff; border-radius:var(--radius-lg); margin:0 24px; padding:70px 40px; }
+  .stats-inner{ max-width:1100px; margin:0 auto; }
+  .stats-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:20px; text-align:center; }
+  .stat-card{ padding:14px; }
+  .stat-card b{ display:block; font-family:'Manrope',sans-serif; font-weight:800; font-size:34px;
+    background:linear-gradient(90deg,#fff, #bfdbfe); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .stat-card span{ font-size:12px; color:#94a3b8; }
+
+  /* ============ TESTIMONIALS ============ */
+  .card{ background:var(--glass); backdrop-filter:blur(14px); border-radius:var(--radius-md); padding:28px 24px; border:1px solid rgba(15,23,42,.06); box-shadow:var(--shadow); transition:transform .25s ease, box-shadow .25s ease; }
+  .card:hover{ transform:translateY(-6px); box-shadow:0 30px 60px -18px rgba(37,99,235,.25); }
+  .testi-top{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .avatar{ width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Manrope',sans-serif; font-weight:800; font-size:15px; color:#fff; background:linear-gradient(135deg, var(--primary), var(--accent)); }
+  .testi-name{ font-size:14px; font-weight:700; }
+  .testi-role{ font-size:11.5px; color:var(--gray); }
+  .stars{ display:flex; gap:2px; margin-bottom:10px; color:var(--highlight); }
+  .card p.quote{ font-size:13.5px; color:var(--gray); line-height:1.7; margin:0; }
+
+  /* ============ FAQ ============ */
+  .faq-list{ max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+  .faq-item{ background:#fff; border-radius:var(--radius-sm); border:1.5px solid rgba(15,23,42,.07); overflow:hidden; }
+  .faq-q{
+    width:100%; text-align:left; background:none; border:none; padding:18px 22px; cursor:pointer;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    font-family:'Manrope',sans-serif; font-weight:700; font-size:14.5px; color:var(--dark);
+  }
+  .faq-q .plus{ min-width:22px; height:22px; border-radius:50%; background:rgba(37,99,235,.1); color:var(--primary); display:flex; align-items:center; justify-content:center; transition:transform .3s ease; }
+  .faq-q .plus svg{ width:11px; height:11px; }
+  .faq-item.open .faq-q .plus{ transform:rotate(45deg); background:var(--primary); color:#fff; }
+  .faq-a{ max-height:0; overflow:hidden; transition:max-height .35s ease; }
+  .faq-a p{ padding:0 22px 20px; margin:0; font-size:13.5px; color:var(--gray); line-height:1.7; }
+
+  /* ============ CTA ============ */
+  .cta{ position:relative; overflow:hidden; border-radius:var(--radius-lg); margin:0 24px; background:linear-gradient(120deg, var(--primary), var(--accent)); padding:80px 40px; text-align:center; color:#fff; }
+  .cta .blob{ opacity:.25; }
+  .cta h2{ font-size:32px; margin-bottom:14px; position:relative; z-index:1; }
+  .cta p{ font-size:15px; opacity:.92; max-width:520px; margin:0 auto 30px; position:relative; z-index:1; }
+  .cta .btn-row{ justify-content:center; position:relative; z-index:1; margin-bottom:0; }
+  .cta .btn-primary{ background:#fff; color:var(--primary); box-shadow:0 14px 30px -10px rgba(0,0,0,.3); }
+  .cta .btn-ghost{ background:rgba(255,255,255,.14); color:#fff; border-color:rgba(255,255,255,.4); }
+
+  /* ============ FOOTER ============ */
+  footer.site-foot{ background:linear-gradient(180deg, var(--dark), #060b16); color:#fff; padding:70px 0 26px; margin-top:20px; }
+  .foot-grid{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1.2fr; gap:40px; margin-bottom:44px; }
+  .foot-brand{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .foot-brand span{ font-family:'Manrope',sans-serif; font-weight:800; font-size:18px; }
+  .foot-col p{ font-size:13px; color:#94a3b8; line-height:1.7; }
+  .foot-col h5{ font-family:'Manrope',sans-serif; font-size:13.5px; margin-bottom:16px; color:#e2e8f0; }
+  .foot-col ul{ list-style:none; margin:0; padding:0; }
+  .foot-col ul li{ margin-bottom:10px; }
+  .foot-col ul a{ color:#94a3b8; text-decoration:none; font-size:13px; transition:color .2s ease; }
+  .foot-col ul a:hover{ color:#fff; }
+  .social-row{ display:flex; gap:10px; margin-top:16px; }
+  .social-row a{ width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,.06); display:flex; align-items:center; justify-content:center; color:#94a3b8; transition:all .2s ease; }
+  .social-row a:hover{ background:var(--primary); color:#fff; transform:translateY(-2px); }
+  .social-row svg{ width:15px; height:15px; }
+  .newsletter{ display:flex; gap:8px; margin-top:6px; }
+  .newsletter input{ flex:1; height:42px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); color:#fff; padding:0 14px; font-size:12.5px; outline:none; }
+  .newsletter input::placeholder{ color:#64748B; }
+  .newsletter button{ height:42px; padding:0 16px; border-radius:10px; border:none; background:var(--primary); color:#fff; font-weight:700; font-size:12.5px; cursor:pointer; }
+  .newsletter-msg{ font-size:11.5px; color:var(--accent); margin-top:8px; min-height:14px; }
+  .copyright{ text-align:center; padding-top:26px; border-top:1px solid rgba(255,255,255,.08); color:#64748B; font-size:12px; }
+
+  @media (max-width:980px){
+    .hero-grid, .why-grid{ grid-template-columns:1fr; }
+    .hero-visual{ height:260px; }
+    .grid-4{ grid-template-columns:repeat(2,1fr); }
+    .grid-3{ grid-template-columns:repeat(2,1fr); }
+    .stats-grid{ grid-template-columns:repeat(3,1fr); }
+    .journey{ grid-template-columns:1fr; gap:26px; }
+    .journey::before{ display:none; }
+    .foot-grid{ grid-template-columns:1fr 1fr; }
+    .float-panel{ height:auto; display:flex; flex-direction:column; gap:14px; }
+    .info-card{ position:static; }
+  }
+  @media (max-width:620px){
+    section{ padding:70px 0; }
+    .hero{ padding:120px 0 70px; }
+    .hero h1{ font-size:30px; }
+    .grid-4, .grid-3, .grid-2{ grid-template-columns:1fr; }
+    .stats-grid{ grid-template-columns:1fr 1fr; }
+    .foot-grid{ grid-template-columns:1fr; }
+    .stats-sec, .cta{ margin:0 14px; padding:50px 22px; }
+  }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+
+<div class="dotgrid"></div>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-blobs"><div class="blob b1"></div><div class="blob b2"></div></div>
+  <div class="container hero-grid">
+    <div class="reveal in">
+      <span class="eyebrow">Our Services</span>
+      <h1>Everything You Need to <span class="grad">Learn, Grow, and Succeed</span></h1>
+      <p class="lead">Eschool brings complete educational solutions to students, teachers, and lifelong learners — video lessons, structured notes, mock exams, career guidance, and more, all in one place.</p>
+      <div class="btn-row">
+        <a href="/courses" class="btn btn-primary" data-ripple>Explore Courses</a>
+        <a href="/register" class="btn btn-ghost" data-ripple>Get Started</a>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><b data-count="350" data-suffix="+">0</b><span>Courses</span></div>
+        <div class="stat"><b data-count="15000" data-suffix="+">0</b><span>Students</span></div>
+        <div class="stat"><b data-count="120" data-suffix="+">0</b><span>Teachers</span></div>
+        <div class="stat"><b data-count="98" data-suffix="%">0</b><span>Satisfaction</span></div>
+      </div>
+    </div>
+    <div class="hero-visual reveal right in">
+      <div class="shape s1"></div>
+      <div class="shape s2"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span></div>
+      <div class="shape s3"></div>
+      <div class="shape s4"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SERVICES GRID ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">What We Offer</span>
+      <h2 class="sec-title">Ten ways Eschool helps you learn</h2>
+      <p class="sec-sub center">A complete toolkit for students, teachers, and lifelong learners — built to make studying clearer, faster, and more rewarding.</p>
+    </div>
+    <div class="grid-4">
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></div>
+        <h4>Video Lessons</h4><p>Interactive video courses taught by experienced educators.</p>
+        <a href="/courses" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+        <h4>Study Notes</h4><p>Easy-to-understand, well-organized notes for every subject.</p>
+        <a href="/resourses" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+        <h4>Practice Tests</h4><p>Mock exams and quizzes with instant feedback.</p>
+        <a href="/courses" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M9 14l-2 7 5-3 5 3-2-7"/></svg></div>
+        <h4>Certification</h4><p>Receive certificates after completing your courses.</p>
+        <a href="/progres" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg></div>
+        <h4>Expert Teachers</h4><p>Learn from experienced educators and professionals.</p>
+        <a href="/courses" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9M14 17H5M17 3l3 4-3 4M7 13l-3 4 3 4"/></svg></div>
+        <h4>Career Guidance</h4><p>Career advice, mentorship, and professional development.</p>
+        <a href="/career" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 16h.01M16 16h.01"/></svg></div>
+        <h4>AI Learning Assistant</h4><p>Personalized learning support powered by artificial intelligence.</p>
+        <a href="#" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg></div>
+        <h4>Progress Tracking</h4><p>Track your learning progress with detailed analytics.</p>
+        <a href="/progres" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <h4>Study Planner</h4><p>Organize your learning schedule effectively.</p>
+        <a href="/schedule" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg></div>
+        <h4>Learn Anywhere</h4><p>Access your courses from any device, anytime.</p>
+        <a href="/courses" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHY CHOOSE ============ -->
+<section>
+  <div class="container why-grid">
+    <div class="reveal left">
+      <span class="eyebrow">Why Choose Us</span>
+      <h2 class="sec-title">Built for how you actually learn</h2>
+      <div class="check-list" style="margin-top:26px;">
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Expert instructors</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Flexible learning</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Affordable education</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Interactive content</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Career-focused courses</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Mobile-friendly learning</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Regular updates</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Secure platform</span></div>
+      </div>
+    </div>
+    <div class="float-panel reveal right">
+      <div class="info-card ic1"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><div><div class="n">5M+</div><div class="l">Lessons completed</div></div></div>
+      <div class="info-card ic2"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M9 14l-2 7 5-3 5 3-2-7"/></svg></span><div><div class="n">98%</div><div class="l">Would recommend</div></div></div>
+      <div class="info-card ic3"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V6l-8-4z"/></svg></span><div><div class="n">24/7</div><div class="l">Platform uptime</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LEARNING CATEGORIES ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">Categories</span>
+      <h2 class="sec-title">Explore what you can learn</h2>
+    </div>
+    <div class="grid-4" style="margin-top:44px;">
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 4v16M16 4v16M4 8h16M4 16h16"/></svg></div><h4>Mathematics</h4><p>Algebra to calculus</p></div>
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l1 6-4 4-4-4z"/><path d="M6 21c0-4 2-6 6-6s6 2 6 6"/></svg></div><h4>Science</h4><p>Physics, chemistry, biology</p></div>
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h4>English</h4><p>Grammar & literature</p></div>
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M13 5l-2 14"/></svg></div><h4>Programming</h4><p>Web, apps & software</p></div>
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 16h.01M16 16h.01"/></svg></div><h4>Artificial Intelligence</h4><p>ML, AI & data science</p></div>
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1"/></svg></div><h4>Business</h4><p>Management & finance</p></div>
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div><h4>History</h4><p>World & regional history</p></div>
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><h4>Computer Studies</h4><p>Systems & fundamentals</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LEARNING PROCESS ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">How It Works</span>
+      <h2 class="sec-title">Five steps to your certificate</h2>
+    </div>
+    <div class="journey" style="margin-top:50px;">
+      <div class="j-step reveal"><div class="num">1</div><h4>Register</h4><p>Create your free account.</p></div>
+      <div class="j-step reveal"><div class="num">2</div><h4>Choose a Course</h4><p>Pick from 350+ subjects.</p></div>
+      <div class="j-step reveal"><div class="num">3</div><h4>Watch Lessons</h4><p>Learn at your own pace.</p></div>
+      <div class="j-step reveal"><div class="num">4</div><h4>Complete Assessments</h4><p>Put your knowledge to the test.</p></div>
+      <div class="j-step reveal"><div class="num">5</div><h4>Earn Your Certificate</h4><p>Show off what you've learned.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PLATFORM STATISTICS ============ -->
+<section>
+  <div class="stats-sec reveal">
+    <div class="stats-inner">
+      <div class="center" style="margin-bottom:40px;">
+        <span class="eyebrow" style="background:rgba(255,255,255,.1); color:#93c5fd;">By the Numbers</span>
+        <h2 class="sec-title" style="color:#fff;">Eschool at a glance</h2>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><b data-count="15000" data-suffix="+">0</b><span>Active Students</span></div>
+        <div class="stat-card"><b data-count="350" data-suffix="+">0</b><span>Courses</span></div>
+        <div class="stat-card"><b data-count="120" data-suffix="+">0</b><span>Teachers</span></div>
+        <div class="stat-card"><b data-count="98" data-suffix="%">0</b><span>Satisfaction</span></div>
+        <div class="stat-card"><b data-count="5" data-suffix="M+">0</b><span>Lessons Completed</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TESTIMONIALS ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">Testimonials</span>
+      <h2 class="sec-title">What learners say about our services</h2>
+    </div>
+    <div class="grid-3" style="margin-top:44px;">
+      <div class="card reveal">
+        <div class="testi-top"><div class="avatar">D</div><div><div class="testi-name">Daniel T.</div><div class="testi-role">University Student</div></div></div>
+        <div class="stars">★★★★★</div>
+        <p class="quote">"The practice tests with instant feedback helped me catch mistakes I didn't know I was making."</p>
+      </div>
+      <div class="card reveal">
+        <div class="testi-top"><div class="avatar">M</div><div><div class="testi-name">Mei L.</div><div class="testi-role">Working Professional</div></div></div>
+        <div class="stars">★★★★★</div>
+        <p class="quote">"Career guidance plus a real certificate at the end — that combination is hard to find elsewhere."</p>
+      </div>
+      <div class="card reveal">
+        <div class="testi-top"><div class="avatar">J</div><div><div class="testi-name">Josiah N.</div><div class="testi-role">High School Student</div></div></div>
+        <div class="stars">★★★★★</div>
+        <p class="quote">"The study planner keeps me on track, and I can watch lessons again whenever a topic doesn't click."</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">FAQ</span>
+      <h2 class="sec-title">Frequently asked questions</h2>
+    </div>
+    <div class="faq-list" style="margin-top:44px;">
+      <div class="faq-item reveal">
+        <button class="faq-q">How do I enroll?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Create a free account, browse the course catalog, and enroll in any course with one click — you can start watching lessons right away.</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q">Are certificates provided?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Yes — once you complete a course's lessons and assessments, a certificate is generated automatically and added to your profile.</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q">Can I study on mobile?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Eschool works fully in the browser on any device — phone, tablet, or desktop — with no app install required.</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q">Are courses self-paced?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Yes. There are no fixed class times — pause, rewatch, and pick up exactly where you left off, whenever it suits you.</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q">How do teachers upload content?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Teachers get access to an upload dashboard where they can publish video lessons, notes, and resources directly to their courses.</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q">Is there lifetime access?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Once you enroll in a course, it stays in your account — you can revisit lessons and notes any time in the future.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section>
+  <div class="cta reveal">
+    <div class="hero-blobs"><div class="blob b1"></div><div class="blob b2"></div></div>
+    <h2>Start Learning Today</h2>
+    <p>Join thousands of learners already building real skills with Eschool — sign up free and explore every service in minutes.</p>
+    <div class="btn-row">
+      <a href="/register" class="btn btn-primary" data-ripple>Register Free</a>
+      <a href="/courses" class="btn btn-ghost" data-ripple>Explore Courses</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-foot">
+  <div class="container">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <div class="foot-brand">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3L1 8l11 5 9-4.09V17h2V8L12 3z" fill="url(#fg1)"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="url(#fg1)" opacity=".7"/><defs><linearGradient id="fg1" x1="1" y1="3" x2="23" y2="21"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#14B8A6"/></linearGradient></defs></svg>
+          <span>Eschool</span>
         </div>
-    </footer>
+        <p>The all-in-one platform for modern, accessible online learning.</p>
+        <div class="social-row">
+          <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg></a>
+          <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 5.9c-.7.3-1.5.6-2.3.7.8-.5 1.5-1.3 1.8-2.3-.8.5-1.7.8-2.6 1a4.1 4.1 0 0 0-7 3.7A11.6 11.6 0 0 1 3.4 4.6a4.1 4.1 0 0 0 1.3 5.5c-.7 0-1.3-.2-1.9-.5v.1c0 2 1.4 3.6 3.3 4a4.1 4.1 0 0 1-1.8.1 4.1 4.1 0 0 0 3.8 2.9A8.3 8.3 0 0 1 2 18.4a11.6 11.6 0 0 0 6.3 1.8c7.5 0 11.7-6.3 11.7-11.7v-.5c.8-.6 1.5-1.3 2-2.1z"/></svg></a>
+          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.1c.5-1 1.9-2 3.8-2 4 0 4.8 2.6 4.8 6V21h-4v-5.3c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V21H9z"/></svg></a>
+          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.7 0 3 0 4.1.06 1.1.05 1.8.22 2.4.46.7.28 1.2.6 1.7 1.1.5.5.9 1 1.1 1.7.25.6.42 1.4.46 2.4.06 1.1.06 1.5.06 4.1s0 3-.06 4.1c-.04 1.1-.2 1.8-.46 2.4-.28.7-.6 1.2-1.1 1.7-.5.5-1 .8-1.7 1.1-.6.24-1.3.4-2.4.46-1.1.06-1.4.06-4.1.06s-3 0-4.1-.06c-1.1-.06-1.8-.22-2.4-.46-.7-.3-1.2-.6-1.7-1.1-.5-.5-.8-1-1.1-1.7-.24-.6-.4-1.3-.46-2.4C2 15 2 14.7 2 12s0-3 .06-4.1c.06-1.1.22-1.8.46-2.4.3-.7.6-1.2 1.1-1.7.5-.5 1-.8 1.7-1.1.6-.24 1.3-.41 2.4-.46C9 2 9.3 2 12 2zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zm5.2-8.4a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z"/></svg></a>
+        </div>
+      </div>
+      <div class="foot-col">
+        <h5>Quick Links</h5>
+        <ul>
+          <li><a href="/courses">Courses</a></li>
+          <li><a href="/aboutus">About</a></li>
+          <li><a href="/services">Services</a></li>
+          <li><a href="/contact">Contact</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h5>Legal</h5>
+        <ul>
+          <li><a href="/help">Help Center</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h5>Stay Updated</h5>
+        <p style="margin-bottom:12px;">Get new courses and learning tips in your inbox.</p>
+        <form class="newsletter" id="newsForm">
+          <input type="email" placeholder="Your email" required>
+          <button type="submit">Subscribe</button>
+        </form>
+        <div class="newsletter-msg" id="newsMsg"></div>
+      </div>
+    </div>
+    <div class="copyright">&copy; 2025 Eschool. All rights reserved.</div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // ---- scroll reveal ----
+  var revealEls = document.querySelectorAll('.reveal');
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if (entry.isIntersecting){ entry.target.classList.add('in'); io.unobserve(entry.target); }
+    });
+  }, { threshold: .15 });
+  revealEls.forEach(function(el, i){
+    el.style.transitionDelay = (Math.min(i % 6, 5) * 70) + 'ms';
+    io.observe(el);
+  });
+
+  // ---- journey steps stagger-in ----
+  document.querySelectorAll('.j-step').forEach(function(step, i){
+    var jIO = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){ setTimeout(function(){ step.classList.add('in'); }, i * 120); jIO.unobserve(step); }
+      });
+    }, { threshold:.4 });
+    jIO.observe(step);
+  });
+
+  // ---- animated counters ----
+  document.querySelectorAll('[data-count]').forEach(function(el){
+    var target = parseInt(el.dataset.count, 10);
+    var suffix = el.dataset.suffix || '';
+    var cIO = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (!e.isIntersecting) return;
+        cIO.unobserve(el);
+        var duration = 1400, startTime = null;
+        function step(ts){
+          if (!startTime) startTime = ts;
+          var progress = Math.min((ts - startTime) / duration, 1);
+          var eased = 1 - Math.pow(1 - progress, 3);
+          var val = Math.floor(eased * target);
+          el.textContent = val.toLocaleString() + suffix;
+          if (progress < 1) requestAnimationFrame(step);
+          else el.textContent = target.toLocaleString() + suffix;
+        }
+        requestAnimationFrame(step);
+      });
+    }, { threshold:.5 });
+    cIO.observe(el);
+  });
+
+  // ---- ripple on buttons ----
+  document.querySelectorAll('[data-ripple]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      var rect = btn.getBoundingClientRect();
+      var span = document.createElement('span');
+      span.className = 'ripple';
+      var size = Math.max(rect.width, rect.height);
+      span.style.width = span.style.height = size + 'px';
+      span.style.left = (e.clientX - rect.left - size/2) + 'px';
+      span.style.top = (e.clientY - rect.top - size/2) + 'px';
+      btn.appendChild(span);
+      setTimeout(function(){ span.remove(); }, 650);
+    });
+  });
+
+  // ---- FAQ accordion ----
+  document.querySelectorAll('.faq-item').forEach(function(item){
+    var q = item.querySelector('.faq-q');
+    var a = item.querySelector('.faq-a');
+    q.addEventListener('click', function(){
+      var isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item.open').forEach(function(openItem){
+        if (openItem !== item){
+          openItem.classList.remove('open');
+          openItem.querySelector('.faq-a').style.maxHeight = null;
+        }
+      });
+      if (isOpen){
+        item.classList.remove('open');
+        a.style.maxHeight = null;
+      } else {
+        item.classList.add('open');
+        a.style.maxHeight = a.scrollHeight + 'px';
+      }
+    });
+  });
+
+  // ---- newsletter (front-end only placeholder) ----
+  var newsForm = document.getElementById('newsForm');
+  if (newsForm){
+    newsForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      document.getElementById('newsMsg').textContent = "Thanks — you're on the list!";
+      newsForm.reset();
+    });
+  }
+
+  // ---- subtle hero parallax ----
+  var visual = document.querySelector('.hero-visual');
+  if (visual && matchMedia('(prefers-reduced-motion: no-preference)').matches){
+    document.querySelector('.hero').addEventListener('mousemove', function(e){
+      var x = (e.clientX / window.innerWidth - .5) * 14;
+      var y = (e.clientY / window.innerHeight - .5) * 14;
+      visual.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+    });
+  }
+})();
+</script>
 {% endblock %}

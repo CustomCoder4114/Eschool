@@ -1016,7 +1016,7 @@
                         <i class="fas fa-plus-circle"></i>
                         <span class="action-label">New Post</span>
                     </a>
-                    <a href="/settings" class="action-btn">
+                    <a href="/profile" class="action-btn">
                         <i class="fas fa-user-cog"></i>
                         <span class="action-label">Profile</span>
                     </a>
@@ -1076,48 +1076,16 @@
                 </div>
             </div>
 
-            <!-- Recent Activity -->
+            <!-- Recent Activity - DYNAMIC -->
             <div class="dashboard-card">
                 <div class="card-header">
                     <h3 class="card-title">Recent Activity</h3>
-                    <a href="#" class="card-link">See All <i class="fas fa-arrow-right"></i></a>
                 </div>
-                <div class="activity-list">
-                    <div class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="activity-content">
-                            <div class="activity-text">You completed "Functions & Graphs" lesson</div>
-                            <div class="activity-time">2 hours ago</div>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-comment"></i>
-                        </div>
-                        <div class="activity-content">
-                            <div class="activity-text">There is a post on the science-pressure</div>
-                            <div class="activity-time">Yesterday, 4:30 PM</div>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-upload"></i>
-                        </div>
-                        <div class="activity-content">
-                            <div class="activity-text">You uploaded "Physics Lab Report.pdf"</div>
-                            <div class="activity-time">Yesterday, 11:15 AM</div>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <div class="activity-icon">
-                            <i class="fas fa-trophy"></i>
-                        </div>
-                        <div class="activity-content">
-                            <div class="activity-text">You earned the "Physics Pro" badge congrats</div>
-                            <div class="activity-time">2 days ago</div>
-                        </div>
+                <div class="activity-list" id="dashboardActivityList">
+                    <div class="no-courses-message" id="noActivityMessage" style="display:none;">
+                        <i class="fas fa-clock-rotate-left"></i>
+                        <p>No recent activity yet. Start a course or quiz to see it here.</p>
+                        <a href="/courses" class="btn btn-primary">Browse Courses</a>
                     </div>
                 </div>
             </div>
@@ -1137,7 +1105,7 @@
                     <h3 class="card-title">
                         <i class="fas fa-users" style="color: var(--primary-color); margin-right: 8px;"></i> Followers & Following
                     </h3>
-                    <a href="/messages" class="card-link">Connect <i class="fas fa-arrow-right"></i></a>
+                    <a href="/profile" class="card-link">Full view <i class="fas fa-arrow-right"></i></a>
                 </div>
                 
                 <!-- Follow Stats -->
@@ -1192,7 +1160,7 @@
 <script>
 // ========== FOLLOWERS & FOLLOWING DATA ==========
 function getFollowDataKey() {
-    const email = '{{ session.get('email', 'default_user') }}';
+    const email = {{ session.get('email', 'default_user') | tojson }};
     return `followData_${email}`;
 }
 
@@ -1372,16 +1340,34 @@ function getCourse(id) {
 }
 
 // ========== GRADE CALCULATION ==========
-function calculateGrade(exercisesCompleted, totalExercises, quizzesPassed, totalQuizzes) {
-    if (totalExercises === 0 && totalQuizzes === 0) return { grade: 'N/A', gradePoint: 0, percentage: 0 };
-    
-    const exerciseScore = totalExercises > 0 ? (exercisesCompleted / totalExercises) * 100 : 0;
-    const quizScore = totalQuizzes > 0 ? (quizzesPassed / totalQuizzes) * 100 : 0;
+// FIX: this used to score a quiz component as (quizzesPassed / totalQuizzesAvailable
+// in the WHOLE course), and would only include quizzes in the weighted grade at all
+// when totalQuizzes > 0 — but totalQuizzes here meant "how many quizzes this course
+// has", not "how many you've attempted". A student who failed every quiz they took
+// still had quizzesPassed = 0, which this function couldn't tell apart from "hasn't
+// tried any quiz yet" — so poor quiz performance was silently excluded instead of
+// counted against the grade. It also scored exercises as (completed / ALL exercises
+// in the course), which is a completion percentage, not a performance score.
+//
+// Now: exercisesCompleted and quizzesAttempted both reflect only work actually done
+// (see generateGradesFromEnrolled below, which now tracks attempted quizzes as the
+// completed modules that carry a quiz). Completed exercises are treated as fully
+// correct (no partial-credit data exists to do otherwise), but quiz score is a real
+// passed/attempted ratio — so failing quizzes you did attempt now properly lowers
+// the grade instead of being ignored.
+function calculateGrade(exercisesCompleted, quizzesPassed, quizzesAttempted) {
+    const hasExerciseWork = exercisesCompleted > 0;
+    const hasQuizWork = quizzesAttempted > 0;
+
+    if (!hasExerciseWork && !hasQuizWork) return { grade: 'N/A', gradePoint: 0, percentage: 0 };
+
+    const exerciseScore = hasExerciseWork ? 100 : 0;
+    const quizScore = hasQuizWork ? Math.min(100, (quizzesPassed / quizzesAttempted) * 100) : 0;
     
     let weightedScore;
-    if (totalExercises > 0 && totalQuizzes > 0) {
+    if (hasExerciseWork && hasQuizWork) {
         weightedScore = (exerciseScore * 0.7) + (quizScore * 0.3);
-    } else if (totalExercises > 0) {
+    } else if (hasExerciseWork) {
         weightedScore = exerciseScore;
     } else {
         weightedScore = quizScore;
@@ -1430,26 +1416,32 @@ function generateGradesFromEnrolled(enrolled) {
         if (!course) return;
         
         let totalExercisesCompleted = 0;
-        let totalExercisesAvailable = 0;
-        let totalQuizzesAvailable = 0;
-        
-        const modulesWithQuizzes = course.modules.filter(m => m.quiz === true);
-        totalQuizzesAvailable = modulesWithQuizzes.length;
+        // FIX: quizzesAttempted approximates "quizzes the student actually took" as
+        // the number of completed modules that carry a quiz (there's no separate
+        // attempt-tracking field in the stored data — completing a quiz-bearing
+        // module is the closest available signal that its quiz was attempted).
+        // This replaces totalQuizzesAvailable (every quiz the whole course has,
+        // regardless of whether the student ever got to it), which is what made
+        // quiz performance either diluted by untouched modules or ignored outright.
+        let quizzesAttempted = 0;
         
         course.modules.forEach((module, index) => {
             const moduleExercises = module.exercises || 0;
-            totalExercisesAvailable += moduleExercises;
             if (enr.completed && enr.completed.includes(index)) {
                 totalExercisesCompleted += moduleExercises;
+                if (module.quiz === true) {
+                    quizzesAttempted += 1;
+                }
             }
         });
         
         const quizzesPassed = enr.quizzesPassed || 0;
         
-        if (totalExercisesAvailable > 0 || totalQuizzesAvailable > 0) {
-            const courseGrade = calculateGrade(
-                totalExercisesCompleted, totalExercisesAvailable, quizzesPassed, totalQuizzesAvailable
-            );
+        // FIX: only produce a grade for a course the student has actually done
+        // something in (previously checked whether the course HAS exercises/quizzes
+        // defined at all, which is true for every course regardless of activity).
+        if (totalExercisesCompleted > 0 || quizzesAttempted > 0) {
+            const courseGrade = calculateGrade(totalExercisesCompleted, quizzesPassed, quizzesAttempted);
             allGrades.push({
                 course: course.name,
                 grade: courseGrade.grade,
@@ -1457,10 +1449,12 @@ function generateGradesFromEnrolled(enrolled) {
                 percentage: courseGrade.percentage
             });
             
-            if (courseGrade.gradePoint > 0) {
-                totalGradePoints += courseGrade.gradePoint * (course.modules.length / 10);
-                totalWeightedCredits += (course.modules.length / 10);
-            }
+            // FIX: previously skipped adding to the GPA whenever gradePoint was 0,
+            // which meant a genuinely earned F was excluded instead of pulling the
+            // GPA down. Since this block only runs when real work was done, the
+            // grade is never the "N/A" case and should always count.
+            totalGradePoints += courseGrade.gradePoint * (course.modules.length / 10);
+            totalWeightedCredits += (course.modules.length / 10);
         }
     });
     
@@ -1510,7 +1504,7 @@ function updateAcademicStats() {
 
 // ========== COURSE DATA ==========
 function getStorageKey() {
-    const email = '{{ session.get('email', 'default_user') }}';
+    const email = {{ session.get('email', 'default_user') | tojson }};
     return `myCoursesData_${email}`;
 }
 
@@ -1630,7 +1624,7 @@ function renderMyCourses() {
 
 // ========== STUDY TIME ==========
 function getStudyTimeKey() {
-    const email = '{{ session.get('email', 'default_user') }}';
+    const email = {{ session.get('email', 'default_user') | tojson }};
     return `studyTimeData_${email}`;
 }
 
@@ -1673,6 +1667,91 @@ function updateDashboardStats() {
     document.getElementById('activeCoursesCount').textContent = activeCourses;
     document.getElementById('avgProgressCount').textContent = `${avgProgress}%`;
     document.getElementById('streakDaysCount').textContent = streakDays;
+}
+
+// ========== RECENT ACTIVITY (dynamic — driven by course/quiz start & completion events) ==========
+function getActivityStorageKey() {
+    const email = {{ session.get('email', 'default_user') | tojson }};
+    return `recentActivity_${email}`;
+}
+
+function loadRecentActivity() {
+    const key = getActivityStorageKey();
+    const stored = localStorage.getItem(key);
+    if (stored) {
+        try { return JSON.parse(stored); } catch (e) { console.warn('Failed to parse activity data'); }
+    }
+    return [];
+}
+
+function activityTimeAgo(ts) {
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+    if (diff < 172800) return 'Yesterday';
+    return new Date(ts).toLocaleDateString();
+}
+
+const activityIconMap = {
+    'start':            'fa-play-circle',
+    'complete':         'fa-check-circle',
+    'quiz-start':       'fa-question-circle',
+    'quiz-pass':        'fa-trophy',
+    'quiz-fail':        'fa-xmark-circle',
+    'event-added':      'fa-calendar-plus',
+    'event-completed':  'fa-calendar-check',
+    'event-deleted':    'fa-calendar-xmark',
+    'event-updated':    'fa-calendar-day',
+    'event-incomplete': 'fa-triangle-exclamation'
+};
+
+const activityTextMap = {
+    'start':            a => `You started "${a.courseName}"`,
+    'complete':         a => `You completed "${a.courseName}"`,
+    'quiz-start':       a => `You started the "${a.courseName}" quiz`,
+    'quiz-pass':        a => `You passed the "${a.courseName}" quiz (${a.extra || ''})`,
+    'quiz-fail':        a => `You attempted the "${a.courseName}" quiz (${a.extra || ''})`,
+    'event-added':      a => `You scheduled "${a.courseName}"${a.extra ? ' — ' + a.extra : ''}`,
+    'event-completed':  a => `You completed the event "${a.courseName}"`,
+    'event-deleted':    a => `You deleted the event "${a.courseName}"`,
+    'event-updated':    a => `You updated the event "${a.courseName}"`,
+    'event-incomplete': a => `You missed the event "${a.courseName}"`
+};
+
+function renderDashboardActivity() {
+    const container = document.getElementById('dashboardActivityList');
+    const emptyMsg = document.getElementById('noActivityMessage');
+    if (!container) return;
+
+    const activity = loadRecentActivity();
+
+    // clear any previously rendered items, keep the empty-state node
+    container.querySelectorAll('.activity-item').forEach(el => el.remove());
+
+    if (!activity.length) {
+        if (emptyMsg) emptyMsg.style.display = 'block';
+        return;
+    }
+    if (emptyMsg) emptyMsg.style.display = 'none';
+
+    const recent = activity.slice(0, 5);
+    recent.forEach(a => {
+        const icon = activityIconMap[a.type] || 'fa-circle-info';
+        const textFn = activityTextMap[a.type];
+        const text = textFn ? textFn(a) : 'Activity';
+
+        const item = document.createElement('div');
+        item.className = 'activity-item';
+        item.innerHTML = `
+            <div class="activity-icon"><i class="fas ${icon}"></i></div>
+            <div class="activity-content">
+                <div class="activity-text">${text}</div>
+                <div class="activity-time">${activityTimeAgo(a.timestamp)}</div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
 }
 
 // ========== CALENDAR ==========
@@ -1747,20 +1826,50 @@ function generateCalendar() {
 }
 
 // ========== INIT ==========
-document.addEventListener('DOMContentLoaded', function() {
-    generateCalendar();
+// FIX: the Academic Strength card (and the rest of the dashboard) only
+// refreshed on page load and then again every 30 seconds — so if you
+// completed an exercise, you could be staring at stale numbers for up to
+// half a minute. Pulled the refresh logic into one function so it can be
+// triggered instantly from multiple places, not just the timer.
+function refreshDashboardData() {
     renderMyCourses();
     updateDashboardStats();
     updateAcademicStats();
     updateFollowStats();
+    renderDashboardActivity();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    generateCalendar();
+    refreshDashboardData();
     renderSuggestions();
-    
-    setInterval(function() {
-        renderMyCourses();
-        updateDashboardStats();
-        updateAcademicStats();
-        updateFollowStats();
-    }, 30000);
+
+    // Fallback poll — much shorter than the old 30s, in case nothing else
+    // catches a same-tab change (e.g. exercises are recorded via a script
+    // running elsewhere on this same page without a full navigation).
+    setInterval(refreshDashboardData, 5000);
+
+    // Instantly refresh the moment this tab becomes visible again — the
+    // most common real case is: student does an exercise on the course
+    // page in another tab, then switches back to the dashboard tab.
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            refreshDashboardData();
+        }
+    });
+
+    // Instantly refresh when course progress, quiz results, or activity
+    // change in another tab/window via localStorage (the 'storage' event
+    // only fires in OTHER tabs, which is exactly the cross-tab case above
+    // plus the case below). Previously this only listened for activity
+    // updates, so completing an exercise elsewhere never touched the
+    // Academic Strength card until the next 30s tick.
+    window.addEventListener('storage', function(e) {
+        if (e.key === getStorageKey() || e.key === getStudyTimeKey() ||
+            e.key === 'notification_trigger' || e.key === getActivityStorageKey()) {
+            refreshDashboardData();
+        }
+    });
 });
 
 // ========== QUICK ACTIONS ==========

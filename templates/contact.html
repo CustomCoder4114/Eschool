@@ -1,71 +1,1166 @@
 {% extends "fronten.html" %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='contact.css') }}">
-<div>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact Us | Eschool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
 
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="contact.css">
-</head>
-<body>
+<style>
+/* ============================================================
+   ESCHOOL CONTACT — DESIGN TOKENS
+   Display: Manrope / Body: Inter / Eyebrows+Numerals: Poppins
+   Signature: "Signal" hero — a pulsing connection-node motif
+   that literally visualizes "Let's Connect"
+   ============================================================ */
+#eschool-contact{
+  --primary:#2563EB;
+  --secondary:#3B82F6;
+  --accent:#14B8A6;
+  --highlight:#F59E0B;
+  --success:#22C55E;
+  --bg:#F8FAFC;
+  --ink:#0F172A;
+  --muted:#64748B;
+  --white:#FFFFFF;
+  --glass-bg: rgba(255,255,255,0.6);
+  --glass-border: rgba(255,255,255,0.8);
+  --glass-shadow: 0 20px 50px -12px rgba(15,23,42,0.12);
+  --radius-sm:12px;
+  --radius-md:20px;
+  --radius-lg:28px;
+  --ease: cubic-bezier(.16,1,.3,1);
+  --font-display:'Manrope', sans-serif;
+  --font-body:'Inter', sans-serif;
+  --font-num:'Poppins', sans-serif;
 
-<!-- Header -->
-<section class="header">
-    <h1>Contact Eschool</h1>
-    <p>We’re here to support students, teachers, and partners.</p>
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--bg);
+  overflow-x: hidden;
+  position: relative;
+}
+
+#eschool-contact *{ box-sizing: border-box; }
+#eschool-contact img{ max-width:100%; display:block; }
+#eschool-contact a{ text-decoration:none; color:inherit; }
+#eschool-contact ul{ list-style:none; }
+#eschool-contact button{ font-family:inherit; }
+#eschool-contact section{ position:relative; z-index:2; }
+
+#eschool-contact h1,
+#eschool-contact h2,
+#eschool-contact h3,
+#eschool-contact h4{
+  font-family: var(--font-display);
+  color: var(--ink);
+  line-height:1.15;
+  letter-spacing:-0.02em;
+  margin:0;
+}
+
+#eschool-contact .eyebrow{
+  font-family: var(--font-num);
+  font-size:0.78rem;
+  font-weight:600;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color: var(--primary);
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+#eschool-contact .eyebrow::before{
+  content:'';
+  width:18px; height:2px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius:2px;
+}
+
+#eschool-contact .wrap{
+  max-width:1200px;
+  margin:0 auto;
+  padding: 0 32px;
+}
+#eschool-contact .section-pad{ padding: 110px 0; }
+@media (max-width: 900px){
+  #eschool-contact .section-pad{ padding: 70px 0; }
+  #eschool-contact .wrap{ padding: 0 20px; }
+}
+
+/* ---------- Reveal on scroll ---------- */
+#eschool-contact .reveal{
+  opacity:0;
+  transform: translateY(28px);
+  transition: opacity .8s var(--ease), transform .8s var(--ease);
+}
+#eschool-contact .reveal.in-view{ opacity:1; transform:none; }
+#eschool-contact .reveal-delay-1{ transition-delay:.08s; }
+#eschool-contact .reveal-delay-2{ transition-delay:.16s; }
+#eschool-contact .reveal-delay-3{ transition-delay:.24s; }
+#eschool-contact .reveal-delay-4{ transition-delay:.32s; }
+
+@media (prefers-reduced-motion: reduce){
+  #eschool-contact *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+}
+
+/* ============================================================
+   AMBIENT BACKGROUND (shared across page — fixed layer)
+   ============================================================ */
+#eschool-contact .ambient-bg{
+  position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+  background:
+    radial-gradient(circle at 8% 6%, rgba(37,99,235,0.10), transparent 45%),
+    radial-gradient(circle at 92% 18%, rgba(20,184,166,0.10), transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(59,130,246,0.08), transparent 50%),
+    var(--bg);
+}
+#eschool-contact .dot-grid{
+  position:absolute; inset:0;
+  background-image: radial-gradient(rgba(15,23,42,0.07) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+  opacity:.5;
+}
+#eschool-contact .blur-circle{
+  position:absolute; border-radius:50%; filter: blur(70px); opacity:.35;
+  animation: float-slow 22s ease-in-out infinite;
+}
+#eschool-contact .blur-circle.c1{ width:420px; height:420px; background:var(--secondary); top:-120px; left:-100px; }
+#eschool-contact .blur-circle.c2{ width:360px; height:360px; background:var(--accent); top:30%; right:-140px; animation-delay:-6s; }
+#eschool-contact .blur-circle.c3{ width:300px; height:300px; background:var(--highlight); opacity:.18; bottom:5%; left:20%; animation-delay:-12s; }
+@keyframes float-slow{
+  0%,100%{ transform: translate(0,0) scale(1); }
+  50%{ transform: translate(30px,-40px) scale(1.08); }
+}
+
+/* ============================================================
+   HERO — "Signal" (connection-node motif)
+   ============================================================ */
+#eschool-contact .hero{ padding:150px 0 90px; }
+#eschool-contact .hero-grid{
+  display:grid; grid-template-columns: 1.05fr 0.95fr; gap:56px; align-items:center;
+}
+@media (max-width: 980px){ #eschool-contact .hero-grid{ grid-template-columns:1fr; } }
+
+#eschool-contact .hero h1{
+  font-size: clamp(2.6rem, 5.2vw, 4.1rem);
+  font-weight:800;
+  margin: 18px 0 20px;
+}
+#eschool-contact .hero h1 .accent-word{
+  background: linear-gradient(100deg, var(--primary), var(--accent));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+#eschool-contact .hero p.lead{
+  font-size:1.15rem; color:var(--muted); max-width:520px; line-height:1.7; margin-bottom:36px;
+}
+
+#eschool-contact .btn-row{ display:flex; gap:16px; flex-wrap:wrap; margin-bottom:56px; }
+#eschool-contact .btn{
+  position:relative; overflow:hidden; isolation:isolate;
+  font-family:var(--font-display); font-weight:700; font-size:0.98rem;
+  padding:16px 30px; border-radius:100px; cursor:pointer; border:none;
+  display:inline-flex; align-items:center; gap:10px;
+  transition: transform .35s var(--ease), box-shadow .35s var(--ease);
+}
+#eschool-contact .btn-primary{
+  color:#fff;
+  background: linear-gradient(100deg, var(--primary), var(--secondary));
+  box-shadow: 0 10px 30px -8px rgba(37,99,235,0.55);
+}
+#eschool-contact .btn-primary:hover{ transform: translateY(-3px); box-shadow: 0 16px 36px -8px rgba(37,99,235,0.65); }
+#eschool-contact .btn-ghost{
+  color:var(--ink); background: var(--glass-bg);
+  border:1px solid rgba(15,23,42,0.1);
+  backdrop-filter: blur(10px);
+}
+#eschool-contact .btn-ghost:hover{ transform: translateY(-3px); border-color: var(--primary); color:var(--primary); }
+#eschool-contact .btn .shine{
+  position:absolute; top:0; left:-60%; width:40%; height:100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform: skewX(-20deg);
+  animation: shine-sweep 3.2s ease-in-out infinite;
+}
+@keyframes shine-sweep{
+  0%{ left:-60%; } 45%,100%{ left:130%; }
+}
+#eschool-contact .btn:focus-visible, #eschool-contact input:focus-visible, #eschool-contact select:focus-visible, #eschool-contact textarea:focus-visible, #eschool-contact .accordion-q:focus-visible{
+  outline: 3px solid var(--highlight); outline-offset:2px;
+}
+
+/* stat strip */
+#eschool-contact .stat-strip{
+  display:grid; grid-template-columns: repeat(4,1fr); gap:18px;
+}
+@media (max-width:700px){ #eschool-contact .stat-strip{ grid-template-columns:1fr 1fr; } }
+#eschool-contact .stat{
+  background: var(--glass-bg); border:1px solid var(--glass-border);
+  backdrop-filter: blur(14px);
+  border-radius: var(--radius-sm); padding:18px 16px;
+  box-shadow: var(--glass-shadow);
+}
+#eschool-contact .stat .num{
+  font-family:var(--font-num); font-weight:600; font-size:1.5rem; color:var(--primary);
+}
+#eschool-contact .stat .lbl{ font-size:0.8rem; color:var(--muted); margin-top:4px; }
+
+/* Signal illustration */
+#eschool-contact .signal-wrap{ position:relative; aspect-ratio:1/1; max-width:480px; margin:0 auto; }
+#eschool-contact .signal-wrap svg{ width:100%; height:100%; }
+#eschool-contact .signal-ring{ transform-origin:center; animation: ring-pulse 4s ease-out infinite; }
+#eschool-contact .signal-ring.r2{ animation-delay:1.3s; }
+#eschool-contact .signal-ring.r3{ animation-delay:2.6s; }
+@keyframes ring-pulse{
+  0%{ opacity:.65; transform:scale(.55); }
+  80%{ opacity:0; transform:scale(1.05); }
+  100%{ opacity:0; transform:scale(1.05); }
+}
+#eschool-contact .signal-line{ stroke-dasharray:6 6; animation: dash-move 6s linear infinite; }
+@keyframes dash-move{ to{ stroke-dashoffset:-120; } }
+#eschool-contact .signal-node{ animation: node-glow 3s ease-in-out infinite; }
+@keyframes node-glow{ 0%,100%{ filter:drop-shadow(0 0 0px rgba(37,99,235,0.6)); } 50%{ filter:drop-shadow(0 0 10px rgba(37,99,235,0.75)); } }
+#eschool-contact .signal-core{ animation: core-breathe 3.2s ease-in-out infinite; transform-origin:center; }
+@keyframes core-breathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.08); } }
+
+/* ============================================================
+   CONTACT METHOD CARDS
+   ============================================================ */
+#eschool-contact .method-grid{
+  display:grid; grid-template-columns: repeat(4,1fr); gap:22px;
+}
+@media (max-width:980px){ #eschool-contact .method-grid{ grid-template-columns:1fr 1fr; } }
+@media (max-width:560px){ #eschool-contact .method-grid{ grid-template-columns:1fr; } }
+
+#eschool-contact .glass-card{
+  position:relative;
+  background: var(--glass-bg);
+  border-radius: var(--radius-md);
+  padding: 30px 26px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(14px);
+  box-shadow: var(--glass-shadow);
+  transition: transform .4s var(--ease), box-shadow .4s var(--ease);
+  overflow:hidden;
+}
+#eschool-contact .glass-card::before{
+  content:''; position:absolute; inset:0; border-radius:inherit; padding:1px;
+  background: linear-gradient(135deg, rgba(37,99,235,0.5), rgba(20,184,166,0.4), transparent 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity:0; transition: opacity .4s var(--ease);
+}
+#eschool-contact .glass-card:hover{ transform: translateY(-8px); box-shadow: 0 26px 55px -14px rgba(37,99,235,0.28); }
+#eschool-contact .glass-card:hover::before{ opacity:1; }
+#eschool-contact .glass-card:active{ transform: translateY(-4px) scale(.99); }
+
+#eschool-contact .icon-badge{
+  width:52px; height:52px; border-radius:16px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:18px;
+  box-shadow: 0 10px 22px -8px rgba(37,99,235,0.55);
+}
+#eschool-contact .icon-badge svg{ width:24px; height:24px; stroke:#fff; fill:none; stroke-width:1.8; }
+
+#eschool-contact .glass-card h3{ font-size:1.1rem; margin-bottom:8px; }
+#eschool-contact .glass-card p{ color:var(--muted); font-size:0.92rem; line-height:1.6; }
+#eschool-contact .card-link{ display:inline-flex; align-items:center; gap:6px; margin-top:14px; font-weight:600; font-size:0.88rem; color:var(--primary); }
+#eschool-contact .card-link svg{ width:14px; height:14px; transition: transform .3s var(--ease); }
+#eschool-contact .glass-card:hover .card-link svg{ transform: translateX(4px); }
+
+/* ============================================================
+   SECTION HEADERS
+   ============================================================ */
+#eschool-contact .section-head{ max-width:640px; margin-bottom:52px; }
+#eschool-contact .section-head h2{ font-size: clamp(1.8rem,3vw,2.5rem); margin-top:14px; }
+#eschool-contact .section-head p{ color:var(--muted); margin-top:14px; font-size:1.02rem; line-height:1.7; }
+#eschool-contact .section-head.center{ margin-left:auto; margin-right:auto; text-align:center; }
+
+/* ============================================================
+   FORM + INFO LAYOUT
+   ============================================================ */
+#eschool-contact .form-section .layout{
+  display:grid; grid-template-columns: 1.3fr 0.9fr; gap:40px; align-items:start;
+}
+@media (max-width:980px){ #eschool-contact .form-section .layout{ grid-template-columns:1fr; } }
+
+#eschool-contact .form-card{
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 44px;
+  box-shadow: 0 24px 60px -18px rgba(15,23,42,0.14);
+  border: 1px solid rgba(226,232,240,0.8);
+}
+@media (max-width:560px){ #eschool-contact .form-card{ padding:26px; } }
+
+#eschool-contact .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+@media (max-width:640px){ #eschool-contact .form-grid{ grid-template-columns:1fr; } }
+#eschool-contact .form-grid .full{ grid-column: 1 / -1; }
+
+#eschool-contact .field{ position:relative; margin-bottom:6px; }
+#eschool-contact .field .field-icon{
+  position:absolute; left:16px; top:18px; width:18px; height:18px;
+  stroke: var(--muted); fill:none; stroke-width:1.8; transition: stroke .3s;
+  pointer-events:none;
+}
+#eschool-contact .field input,
+#eschool-contact .field select,
+#eschool-contact .field textarea{
+  width:100%; padding: 20px 16px 8px 46px;
+  border-radius: 14px; border: 1.5px solid #E2E8F0;
+  font-family: var(--font-body); font-size:0.98rem; color:var(--ink);
+  background: #F8FAFC;
+  transition: border-color .3s var(--ease), box-shadow .3s var(--ease), background .3s;
+  appearance:none;
+}
+#eschool-contact .field select{ padding-top:20px; }
+#eschool-contact .field textarea{ padding-top:26px; min-height:140px; resize:vertical; }
+#eschool-contact .field input:focus,
+#eschool-contact .field select:focus,
+#eschool-contact .field textarea:focus{
+  outline:none; border-color: var(--primary); background:#fff;
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.14);
+}
+#eschool-contact .field input:focus ~ .field-icon,
+#eschool-contact .field textarea:focus ~ .field-icon{ stroke: var(--primary); }
+
+#eschool-contact .field label{
+  position:absolute; left:46px; top:19px; color:var(--muted); font-size:0.96rem;
+  pointer-events:none; transition: all .22s var(--ease); background:transparent;
+}
+#eschool-contact .field input:focus + label,
+#eschool-contact .field input:not(:placeholder-shown) + label,
+#eschool-contact .field textarea:focus + label,
+#eschool-contact .field textarea:not(:placeholder-shown) + label,
+#eschool-contact .field.has-value label{
+  top:8px; font-size:0.72rem; font-weight:600; color: var(--primary);
+}
+#eschool-contact .field select + label{ top:8px; font-size:0.72rem; font-weight:600; color:var(--primary); left:46px; }
+
+#eschool-contact .field .valid-tick{
+  position:absolute; right:14px; top:18px; width:18px; height:18px;
+  color: var(--success); opacity:0; transform: scale(.6); transition: all .25s var(--ease);
+}
+#eschool-contact .field.is-valid .valid-tick{ opacity:1; transform:scale(1); }
+#eschool-contact .field.is-invalid input{ border-color:#EF4444; box-shadow: 0 0 0 4px rgba(239,68,68,0.1); }
+
+#eschool-contact .char-count{ text-align:right; font-size:0.76rem; color:var(--muted); margin-top:6px; }
+
+#eschool-contact .file-drop{
+  border:1.5px dashed #CBD5E1; border-radius:14px; padding:20px; text-align:center;
+  color:var(--muted); font-size:0.88rem; cursor:pointer; background:#F8FAFC;
+  transition: border-color .3s, background .3s;
+}
+#eschool-contact .file-drop:hover{ border-color:var(--primary); background:#EFF6FF; }
+
+#eschool-contact .method-toggle{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+#eschool-contact .method-toggle label{
+  position:static; display:flex; align-items:center; gap:8px;
+  padding:10px 16px; border-radius:100px; border:1.5px solid #E2E8F0;
+  font-size:0.85rem; color:var(--muted); cursor:pointer; transition: all .25s;
+}
+#eschool-contact .method-toggle input{ accent-color: var(--primary); width:auto; padding:0; }
+#eschool-contact .method-toggle input:checked ~ span{ color:var(--primary); }
+
+#eschool-contact .submit-btn{
+  width:100%; margin-top:14px; padding:18px; border:none; border-radius:14px;
+  font-family:var(--font-display); font-weight:700; font-size:1rem; color:#fff;
+  background: linear-gradient(100deg, var(--primary), var(--secondary));
+  cursor:pointer; position:relative; overflow:hidden; isolation:isolate;
+  box-shadow: 0 14px 32px -10px rgba(37,99,235,0.55);
+  transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+#eschool-contact .submit-btn:hover{ transform: translateY(-2px); box-shadow: 0 18px 38px -8px rgba(37,99,235,0.65); }
+#eschool-contact .submit-btn .spinner{
+  width:18px; height:18px; border-radius:50%; border:2.5px solid rgba(255,255,255,0.4);
+  border-top-color:#fff; display:none; animation: spin .7s linear infinite;
+}
+#eschool-contact .submit-btn.loading .btn-label{ opacity:0; }
+#eschool-contact .submit-btn.loading .spinner{ display:block; position:absolute; }
+#eschool-contact .submit-btn.success{ background: linear-gradient(100deg, var(--success), #16A34A); }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+#eschool-contact .ripple{
+  position:absolute; border-radius:50%; background: rgba(255,255,255,0.5);
+  transform: scale(0); animation: ripple-anim .65s ease-out;
+  pointer-events:none;
+}
+@keyframes ripple-anim{ to{ transform:scale(3.2); opacity:0; } }
+
+#eschool-contact .form-note{
+  display:flex; align-items:center; gap:8px; margin-top:16px; font-size:0.82rem; color:var(--muted);
+}
+#eschool-contact .form-note svg{ width:16px; height:16px; stroke:var(--success); flex-shrink:0; }
+
+/* info cards column */
+#eschool-contact .info-stack{ display:flex; flex-direction:column; gap:16px; }
+#eschool-contact .info-card{
+  display:flex; gap:16px; align-items:flex-start;
+  background: var(--glass-bg); border:1px solid var(--glass-border);
+  backdrop-filter: blur(14px); border-radius: var(--radius-md);
+  padding:20px 22px; box-shadow: var(--glass-shadow);
+  transition: transform .35s var(--ease), box-shadow .35s var(--ease);
+}
+#eschool-contact .info-card:hover{ transform: translateX(6px); box-shadow: 0 20px 40px -14px rgba(37,99,235,0.25); }
+#eschool-contact .info-card .icon-badge{ width:44px; height:44px; margin-bottom:0; flex-shrink:0; border-radius:13px; }
+#eschool-contact .info-card .icon-badge svg{ width:20px; height:20px; }
+#eschool-contact .info-card h4{ font-size:0.98rem; margin-bottom:4px; }
+#eschool-contact .info-card p{ color:var(--muted); font-size:0.88rem; line-height:1.55; }
+
+/* ============================================================
+   MAP SECTION
+   ============================================================ */
+#eschool-contact .map-panel{
+  border-radius: var(--radius-lg); overflow:hidden; position:relative;
+  min-height:340px; display:flex; align-items:center; justify-content:center;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(37,99,235,0.16), transparent 55%),
+    radial-gradient(circle at 75% 70%, rgba(20,184,166,0.14), transparent 50%),
+    linear-gradient(160deg, #EFF6FF, #F0FDFA);
+  border:1px solid rgba(37,99,235,0.12);
+}
+#eschool-contact .map-panel .dot-grid{ opacity:.4; mask-image:none; }
+#eschool-contact .map-content{ position:relative; z-index:2; text-align:center; padding:40px; }
+#eschool-contact .pin-wrap{ width:70px; height:70px; margin:0 auto 18px; position:relative; }
+#eschool-contact .pin-pulse{
+  position:absolute; inset:0; border-radius:50%; background: rgba(37,99,235,0.25);
+  animation: pin-pulse 2.4s ease-out infinite;
+}
+@keyframes pin-pulse{ 0%{ transform:scale(.4); opacity:.8; } 100%{ transform:scale(1.6); opacity:0; } }
+#eschool-contact .pin-icon{
+  position:relative; width:70px; height:70px; border-radius:50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 14px 30px -8px rgba(37,99,235,0.5);
+}
+#eschool-contact .pin-icon svg{ width:30px; height:30px; stroke:#fff; fill:none; stroke-width:1.8; }
+#eschool-contact .map-content h3{ font-size:1.3rem; margin-bottom:6px; }
+#eschool-contact .map-content p{ color:var(--muted); margin-bottom:20px; }
+
+/* ============================================================
+   FAQ ACCORDION
+   ============================================================ */
+#eschool-contact .accordion{ max-width:800px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+#eschool-contact .accordion-item{
+  background: var(--white); border:1.5px solid #E2E8F0; border-radius:16px; overflow:hidden;
+  transition: border-color .3s, box-shadow .3s;
+}
+#eschool-contact .accordion-item.open{ border-color: var(--primary); box-shadow: 0 16px 34px -14px rgba(37,99,235,0.25); }
+#eschool-contact .accordion-q{
+  width:100%; text-align:left; background:none; border:none; cursor:pointer;
+  padding:20px 24px; display:flex; justify-content:space-between; align-items:center; gap:16px;
+  font-family: var(--font-display); font-weight:600; font-size:1rem; color:var(--ink);
+}
+#eschool-contact .accordion-q .plus{
+  flex-shrink:0; width:30px; height:30px; border-radius:50%; background:#EFF6FF;
+  display:flex; align-items:center; justify-content:center; transition: transform .35s var(--ease), background .3s;
+}
+#eschool-contact .accordion-item.open .plus{ transform: rotate(135deg); background: var(--primary); }
+#eschool-contact .accordion-item.open .plus svg{ stroke:#fff; }
+#eschool-contact .accordion-q .plus svg{ width:14px; height:14px; stroke:var(--primary); fill:none; stroke-width:2.4; }
+#eschool-contact .accordion-a{
+  max-height:0; overflow:hidden; transition: max-height .4s var(--ease);
+}
+#eschool-contact .accordion-a-inner{ padding: 0 24px 22px; color:var(--muted); font-size:0.94rem; line-height:1.7; }
+
+/* ============================================================
+   SUPPORT CATEGORIES
+   ============================================================ */
+#eschool-contact .support-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:22px; }
+@media (max-width:900px){ #eschool-contact .support-grid{ grid-template-columns:1fr 1fr; } }
+@media (max-width:560px){ #eschool-contact .support-grid{ grid-template-columns:1fr; } }
+
+/* ============================================================
+   WHY CONTACT
+   ============================================================ */
+#eschool-contact .why-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:22px; }
+@media (max-width:900px){ #eschool-contact .why-grid{ grid-template-columns:1fr 1fr; } }
+@media (max-width:560px){ #eschool-contact .why-grid{ grid-template-columns:1fr; } }
+
+/* ============================================================
+   TESTIMONIALS
+   ============================================================ */
+#eschool-contact .testi-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:22px; }
+@media (max-width:900px){ #eschool-contact .testi-grid{ grid-template-columns:1fr; } }
+#eschool-contact .testi-card{ padding:30px; }
+#eschool-contact .stars{ display:flex; gap:3px; margin-bottom:16px; }
+#eschool-contact .stars svg{ width:16px; height:16px; fill:var(--highlight); stroke:none; }
+#eschool-contact .testi-card p.quote{ color:var(--ink); font-size:0.98rem; line-height:1.7; margin-bottom:22px; }
+#eschool-contact .testi-person{ display:flex; align-items:center; gap:12px; }
+#eschool-contact .avatar{
+  width:44px; height:44px; border-radius:50%; flex-shrink:0;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-family:var(--font-display); font-weight:700; font-size:0.9rem;
+}
+#eschool-contact .testi-person .name{ font-weight:700; font-size:0.92rem; }
+#eschool-contact .testi-person .country{ font-size:0.8rem; color:var(--muted); }
+
+/* ============================================================
+   CTA BAND
+   ============================================================ */
+#eschool-contact .cta-band{
+  position:relative; overflow:hidden; border-radius: var(--radius-lg);
+  background: linear-gradient(120deg, var(--primary), var(--secondary) 55%, var(--accent));
+  padding:70px 50px; text-align:center; color:#fff;
+  margin: 0 32px;
+}
+@media (max-width:700px){ #eschool-contact .cta-band{ padding:50px 26px; margin:0 20px; } }
+#eschool-contact .cta-band::before{
+  content:''; position:absolute; inset:-40%; opacity:.5;
+  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 45%),
+              radial-gradient(circle at 80% 80%, rgba(255,255,255,0.18), transparent 45%);
+  animation: cta-drift 14s ease-in-out infinite;
+}
+@keyframes cta-drift{ 0%,100%{ transform: translate(0,0); } 50%{ transform: translate(3%,-3%); } }
+#eschool-contact .cta-band h2{ color:#fff; font-size: clamp(1.8rem,3.4vw,2.5rem); position:relative; z-index:2; }
+#eschool-contact .cta-band p{ color:rgba(255,255,255,0.9); max-width:560px; margin:16px auto 32px; position:relative; z-index:2; }
+#eschool-contact .cta-band .btn-row{ justify-content:center; margin-bottom:0; position:relative; z-index:2; }
+#eschool-contact .cta-band .btn-white{ background:#fff; color:var(--primary); }
+#eschool-contact .cta-band .btn-white:hover{ transform: translateY(-3px) scale(1.02); }
+#eschool-contact .cta-band .btn-outline{ background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,0.6); }
+#eschool-contact .cta-band .btn-outline:hover{ background:rgba(255,255,255,0.12); transform: translateY(-3px); }
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+#eschool-contact .site-footer{
+  background: linear-gradient(180deg, #0F172A, #0B1220);
+  color:#CBD5E1; padding: 70px 0 30px; margin-top:110px; position:relative; overflow:hidden;
+}
+#eschool-contact .site-footer::before{
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(circle at 15% 0%, rgba(37,99,235,0.18), transparent 40%),
+              radial-gradient(circle at 85% 20%, rgba(20,184,166,0.14), transparent 40%);
+}
+#eschool-contact .footer-grid{
+  position:relative; z-index:2;
+  display:grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap:40px;
+  padding-bottom:44px; border-bottom:1px solid rgba(255,255,255,0.08);
+}
+@media (max-width:800px){ #eschool-contact .footer-grid{ grid-template-columns:1fr 1fr; } }
+@media (max-width:520px){ #eschool-contact .footer-grid{ grid-template-columns:1fr; } }
+#eschool-contact .footer-brand h3{ color:#fff; font-size:1.3rem; margin-bottom:12px; }
+#eschool-contact .footer-brand p{ font-size:0.88rem; color:#94A3B8; line-height:1.7; max-width:280px; }
+#eschool-contact .footer-col h4{ color:#fff; font-size:0.9rem; margin-bottom:16px; }
+#eschool-contact .footer-col ul{ display:flex; flex-direction:column; gap:10px; }
+#eschool-contact .footer-col a{ font-size:0.87rem; color:#94A3B8; transition: color .25s, padding-left .25s; }
+#eschool-contact .footer-col a:hover{ color:#fff; padding-left:4px; }
+#eschool-contact .social-row{ display:flex; gap:10px; margin-top:16px; }
+#eschool-contact .social-row a{
+  width:38px; height:38px; border-radius:11px; background: rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.1);
+  display:flex; align-items:center; justify-content:center;
+  transition: background .3s, transform .3s;
+}
+#eschool-contact .social-row a:hover{ background: linear-gradient(135deg, var(--primary), var(--accent)); transform: translateY(-3px); }
+#eschool-contact .social-row svg{ width:16px; height:16px; stroke:#fff; fill:none; stroke-width:1.8; }
+#eschool-contact .newsletter-form{ display:flex; margin-top:14px; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.14); }
+#eschool-contact .newsletter-form input{
+  flex:1; background: rgba(255,255,255,0.05); border:none; padding:12px 14px; color:#fff; font-size:0.85rem;
+}
+#eschool-contact .newsletter-form input::placeholder{ color:#64748B; }
+#eschool-contact .newsletter-form input:focus{ outline:none; }
+#eschool-contact .newsletter-form button{
+  background: linear-gradient(100deg, var(--primary), var(--accent)); color:#fff; border:none;
+  padding:0 18px; font-weight:600; font-size:0.85rem; cursor:pointer;
+}
+#eschool-contact .footer-bottom{
+  position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center;
+  padding-top:26px; font-size:0.82rem; color:#64748B; flex-wrap:wrap; gap:10px;
+}
+#eschool-contact .footer-bottom a{ color:#94A3B8; }
+#eschool-contact .footer-bottom a:hover{ color:#fff; }
+</style>
+
+<div id="eschool-contact">
+
+<div class="ambient-bg">
+  <div class="dot-grid"></div>
+  <div class="blur-circle c1"></div>
+  <div class="blur-circle c2"></div>
+  <div class="blur-circle c3"></div>
+</div>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow reveal in-view">Get in touch</span>
+      <h1 class="reveal in-view">Let's <span class="accent-word">Connect</span></h1>
+      <p class="lead reveal in-view reveal-delay-1">We're always ready to help students, teachers, schools, and partners succeed &mdash; wherever you are in the world.</p>
+
+      <div class="btn-row reveal in-view reveal-delay-2">
+        <a href="#send-message" class="btn btn-primary"><span class="shine"></span>Send a Message</a>
+        <a href="#faq" class="btn btn-ghost">Visit Help Center</a>
+      </div>
+
+      <div class="stat-strip reveal in-view reveal-delay-3">
+        <div class="stat"><div class="num" data-count="24" data-suffix="/7">0</div><div class="lbl">Customer support</div></div>
+        <div class="stat"><div class="num" data-count="15000" data-suffix="+">0</div><div class="lbl">Happy students</div></div>
+        <div class="stat"><div class="num" data-count="99" data-suffix="%">0</div><div class="lbl">Satisfaction rate</div></div>
+        <div class="stat"><div class="num" data-count="5" data-suffix=" min">0</div><div class="lbl">Avg. response time</div></div>
+      </div>
+    </div>
+
+    <div class="signal-wrap reveal in-view reveal-delay-2">
+      <svg viewBox="0 0 480 480" aria-hidden="true">
+        <defs>
+          <linearGradient id="sigGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#2563EB"/>
+            <stop offset="100%" stop-color="#14B8A6"/>
+          </linearGradient>
+        </defs>
+        <circle class="signal-ring r1" cx="240" cy="240" r="90" fill="none" stroke="url(#sigGrad)" stroke-width="1.5"/>
+        <circle class="signal-ring r2" cx="240" cy="240" r="90" fill="none" stroke="url(#sigGrad)" stroke-width="1.5"/>
+        <circle class="signal-ring r3" cx="240" cy="240" r="90" fill="none" stroke="url(#sigGrad)" stroke-width="1.5"/>
+
+        <line class="signal-line" x1="240" y1="240" x2="110" y2="140" stroke="#3B82F6" stroke-width="1.4" opacity="0.55"/>
+        <line class="signal-line" x1="240" y1="240" x2="380" y2="120" stroke="#14B8A6" stroke-width="1.4" opacity="0.55"/>
+        <line class="signal-line" x1="240" y1="240" x2="370" y2="330" stroke="#3B82F6" stroke-width="1.4" opacity="0.55"/>
+        <line class="signal-line" x1="240" y1="240" x2="95" y2="345" stroke="#14B8A6" stroke-width="1.4" opacity="0.55"/>
+        <line class="signal-line" x1="240" y1="240" x2="240" y2="70" stroke="#F59E0B" stroke-width="1.4" opacity="0.45"/>
+
+        <circle class="signal-node" cx="110" cy="140" r="7" fill="#3B82F6"/>
+        <circle class="signal-node" cx="380" cy="120" r="6" fill="#14B8A6"/>
+        <circle class="signal-node" cx="370" cy="330" r="8" fill="#2563EB"/>
+        <circle class="signal-node" cx="95" cy="345" r="6" fill="#14B8A6"/>
+        <circle class="signal-node" cx="240" cy="70" r="5" fill="#F59E0B"/>
+
+        <circle class="signal-core" cx="240" cy="240" r="34" fill="url(#sigGrad)"/>
+        <path d="M226 240l9 9 20-20" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
 </section>
 
-<!-- Contact Section -->
-<section class="contact-container">
+<!-- ============ CONTACT METHODS ============ -->
+<section class="section-pad">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">How to reach us</span>
+      <h2>Choose the way that suits you</h2>
+    </div>
+    <div class="method-grid">
+      <div class="glass-card reveal">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M3 6l9 7 9-7M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z"/></svg></div>
+        <h3>Email Us</h3>
+        <p>Professional support through email, usually answered same day.</p>
+        <a href="mailto:support@eschool.com" class="card-link">support@eschool.com <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="glass-card reveal reveal-delay-1">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.12.9.33 1.79.63 2.65a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.43-1.2a2 2 0 012.11-.45c.86.3 1.75.51 2.65.63A2 2 0 0122 16.92z"/></svg></div>
+        <h3>Call Us</h3>
+        <p>Speak directly with our team for urgent or detailed queries.</p>
+        <a href="tel:+254700000000" class="card-link">+254 XXX XXX XXX <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="glass-card reveal reveal-delay-2">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
+        <h3>Live Chat</h3>
+        <p>Instant online support for quick questions, day or night.</p>
+        <a href="#" class="card-link">Start a chat <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="glass-card reveal reveal-delay-3">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <h3>Visit Us</h3>
+        <p>View our office location, directions, and working hours.</p>
+        <a href="#map" class="card-link">Nairobi, Kenya <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <!-- Contact Form -->
-    <div class="contact-form">
-        <h2>Send Us a Message</h2>
+<!-- ============ FORM + INFO ============ -->
+<section class="section-pad form-section" id="send-message">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Send a message</span>
+      <h2>Tell us how we can help</h2>
+      <p>Fill in the form and our team will get back to you &mdash; most messages are answered within five minutes during working hours.</p>
+    </div>
 
-        <form>
-            <input type="text" placeholder="Your Name" required>
-            <input type="email" placeholder="Your Email" required>
+    <div class="layout">
+      <form class="form-card reveal" id="contactForm" novalidate>
+        <div class="form-grid">
 
-            <select>
-                <option>Student</option>
-                <option>Teacher</option>
-                <option>Partner</option>
-                <option>Other</option>
+          <div class="field">
+            <input type="text" id="fullName" placeholder=" " required>
+            <label for="fullName">Full Name</label>
+            <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <svg class="valid-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+
+          <div class="field">
+            <input type="email" id="email" placeholder=" " required>
+            <label for="email">Email Address</label>
+            <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l9 7 9-7M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z"/></svg>
+            <svg class="valid-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+
+          <div class="field">
+            <input type="tel" id="phone" placeholder=" ">
+            <label for="phone">Phone Number</label>
+            <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.12.9.33 1.79.63 2.65a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.43-1.2a2 2 0 012.11-.45c.86.3 1.75.51 2.65.63A2 2 0 0122 16.92z"/></svg>
+          </div>
+
+          <div class="field">
+            <input type="text" id="subject" placeholder=" " required>
+            <label for="subject">Subject</label>
+            <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4zM4 9h16M9 4v16"/></svg>
+          </div>
+
+          <div class="field full">
+            <select id="userType" required>
+              <option value="" disabled selected hidden></option>
+              <option>Student</option>
+              <option>Teacher</option>
+              <option>Parent</option>
+              <option>Partner</option>
+              <option>Other</option>
             </select>
+            <label for="userType">User Type</label>
+            <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
 
-            <textarea placeholder="Your Message" required></textarea>
+          <div class="field full">
+            <textarea id="message" placeholder=" " maxlength="600" required></textarea>
+            <label for="message">Message</label>
+            <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <div class="char-count"><span id="charCount">0</span>/600</div>
+          </div>
 
-            <button type="submit">Send Message</button>
-        </form>
+          <div class="field full">
+            <label style="position:static; font-size:0.85rem; font-weight:600; color:var(--ink); display:block; margin-bottom:8px;">Attachment <span style="color:var(--muted); font-weight:400;">(optional)</span></label>
+            <div class="file-drop" id="fileDrop">Click to attach a file, or drag it here</div>
+            <input type="file" id="fileInput" style="display:none;">
+          </div>
+
+          <div class="field full">
+            <label style="position:static; font-size:0.85rem; font-weight:600; color:var(--ink); display:block; margin-bottom:8px;">Preferred contact method</label>
+            <div class="method-toggle">
+              <label><input type="radio" name="prefContact" checked><span>Email</span></label>
+              <label><input type="radio" name="prefContact"><span>Phone</span></label>
+              <label><input type="radio" name="prefContact"><span>Either</span></label>
+            </div>
+          </div>
+
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">
+          <span class="btn-label">Send Message</span>
+          <span class="spinner"></span>
+        </button>
+        <div class="form-note">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4M12 3l8 4v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z"/></svg>
+          Your information is encrypted and never shared.
+        </div>
+      </form>
+
+      <div class="info-stack reveal reveal-delay-1">
+        <div class="info-card">
+          <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+          <div><h4>Office Location</h4><p>Nairobi, Kenya</p></div>
+        </div>
+        <div class="info-card">
+          <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M3 6l9 7 9-7M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z"/></svg></div>
+          <div><h4>Email Address</h4><p>support@eschool.com</p></div>
+        </div>
+        <div class="info-card">
+          <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.12.9.33 1.79.63 2.65a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.43-1.2a2 2 0 012.11-.45c.86.3 1.75.51 2.65.63A2 2 0 0122 16.92z"/></svg></div>
+          <div><h4>Phone</h4><p>+254 XXX XXX XXX</p></div>
+        </div>
+        <div class="info-card">
+          <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+          <div><h4>Working Hours</h4><p>Monday &ndash; Sunday, open 24 hours</p></div>
+        </div>
+        <div class="info-card">
+          <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z"/></svg></div>
+          <div><h4>Website</h4><p>www.eschool.com</p></div>
+        </div>
+      </div>
     </div>
-
-    <!-- Contact Info -->
-    <div class="contact-info">
-        <h2>Contact Information</h2>
-
-        <p>Location : Nairobi, Kenya</p>
-        <p>Email : eschool.com</p>
-        <p>Phone no. : +254 0721994835</p>
-        <p>+254 0721994835</p>
-
-        <p class="note">
-            Users can contact us here to learn how to upload
-            educational videos and notes for students.
-        </p>
-    </div>
-
+  </div>
 </section>
 
-<!-- Footer -->
-<footer>
-    <p>© 2025 Eschool. All rights reserved.</p>
+<!-- ============ MAP ============ -->
+<section class="section-pad" id="map">
+  <div class="wrap">
+    <div class="map-panel reveal">
+      <div class="dot-grid"></div>
+      <div class="map-content">
+        <div class="pin-wrap">
+          <div class="pin-pulse"></div>
+          <div class="pin-icon"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        </div>
+        <h3>Eschool Head Office</h3>
+        <p>Nairobi, Kenya &middot; Open 24 hours, every day</p>
+        <a href="#" class="btn btn-primary"><span class="shine"></span>Open in Maps</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="section-pad" id="faq">
+  <div class="wrap">
+    <div class="section-head center reveal" style="margin-left:auto;margin-right:auto;">
+      <span class="eyebrow">Support</span>
+      <h2>Frequently asked questions</h2>
+    </div>
+    <div class="accordion reveal">
+      <div class="accordion-item">
+        <button class="accordion-q" aria-expanded="false">How do I create an account?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Click "Sign Up" on the homepage, enter your details, and verify your email to activate your account.</div></div>
+      </div>
+      <div class="accordion-item">
+        <button class="accordion-q" aria-expanded="false">How do I upload educational content?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Teachers can go to their Dashboard, select "Upload Content", and add videos or notes directly to a course.</div></div>
+      </div>
+      <div class="accordion-item">
+        <button class="accordion-q" aria-expanded="false">How do I become a teacher?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Apply through the "Become a Teacher" page. Our team reviews applications and responds within a few working days.</div></div>
+      </div>
+      <div class="accordion-item">
+        <button class="accordion-q" aria-expanded="false">How can I reset my password?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Select "Forgot Password" on the login page and follow the instructions sent to your registered email.</div></div>
+      </div>
+      <div class="accordion-item">
+        <button class="accordion-q" aria-expanded="false">How long does support take?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Most requests are answered within five minutes; complex issues are typically resolved within 24 hours.</div></div>
+      </div>
+      <div class="accordion-item">
+        <button class="accordion-q" aria-expanded="false">Can I contact Eschool by phone?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Yes, our phone line is open 24/7 &mdash; you'll find the number in the Contact Information section above.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SUPPORT CATEGORIES ============ -->
+<section class="section-pad">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Departments</span>
+      <h2>Talk to the right team</h2>
+    </div>
+    <div class="support-grid">
+      <div class="glass-card reveal">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5zM6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+        <h3>Student Support</h3><p>Help with courses, progress tracking, and learning tools.</p>
+      </div>
+      <div class="glass-card reveal reveal-delay-1">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z"/></svg></div>
+        <h3>Teacher Support</h3><p>Guidance on uploading content and managing classrooms.</p>
+      </div>
+      <div class="glass-card reveal reveal-delay-2">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 100-16 8 8 0 000 16zM12 8v4l3 3"/></svg></div>
+        <h3>Technical Support</h3><p>Troubleshooting for bugs, logins, and platform issues.</p>
+      </div>
+      <div class="glass-card reveal">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+        <h3>Billing</h3><p>Questions about payments, plans, and receipts.</p>
+      </div>
+      <div class="glass-card reveal reveal-delay-1">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M20 7h-9M14 17H5M17 3l4 4-4 4M7 13l-4 4 4 4"/></svg></div>
+        <h3>Career Support</h3><p>Explore open roles and opportunities to join our team.</p>
+      </div>
+      <div class="glass-card reveal reveal-delay-2">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/><circle cx="19" cy="8" r="3"/></svg></div>
+        <h3>Business Partnerships</h3><p>Collaboration and integration opportunities for schools.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHY CONTACT ============ -->
+<section class="section-pad">
+  <div class="wrap">
+    <div class="section-head center reveal" style="margin-left:auto;margin-right:auto;">
+      <span class="eyebrow">Why Eschool</span>
+      <h2>Reaching out is easy</h2>
+    </div>
+    <div class="why-grid">
+      <div class="glass-card reveal">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg></div>
+        <h3>Fast Responses</h3><p>Average reply within minutes, any day of the week.</p>
+      </div>
+      <div class="glass-card reveal reveal-delay-1">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg></div>
+        <h3>Secure Communication</h3><p>Your information is encrypted and protected.</p>
+      </div>
+      <div class="glass-card reveal reveal-delay-2">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5zM6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+        <h3>Education Experts</h3><p>Talk directly with knowledgeable, trained staff.</p>
+      </div>
+      <div class="glass-card reveal reveal-delay-3">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z"/></svg></div>
+        <h3>Global Support</h3><p>Helping learners connect from around the world.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TESTIMONIALS ============ -->
+<section class="section-pad">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Testimonials</span>
+      <h2>What people say about our support</h2>
+    </div>
+    <div class="testi-grid">
+      <div class="glass-card testi-card reveal">
+        <div class="stars">
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+        </div>
+        <p class="quote">"Support replied within minutes and solved my login issue right away. It felt effortless."</p>
+        <div class="testi-person"><div class="avatar">AM</div><div><div class="name">Amina M.</div><div class="country">Kenya</div></div></div>
+      </div>
+      <div class="glass-card testi-card reveal reveal-delay-1">
+        <div class="stars">
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+        </div>
+        <p class="quote">"As a teacher, uploading content used to confuse me. One chat with the team and it was clear."</p>
+        <div class="testi-person"><div class="avatar">DK</div><div><div class="name">David K.</div><div class="country">Uganda</div></div></div>
+      </div>
+      <div class="glass-card testi-card reveal reveal-delay-2">
+        <div class="stars">
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
+        </div>
+        <p class="quote">"Our partnership inquiry was handled professionally from the first email. Genuinely impressed."</p>
+        <div class="testi-person"><div class="avatar">SR</div><div><div class="name">Sofia R.</div><div class="country">Philippines</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA BAND ============ -->
+<section class="section-pad" style="padding-top:20px;">
+  <div class="cta-band reveal">
+    <h2>Have Questions? We're Ready to Help.</h2>
+    <p>Whatever you're trying to do &mdash; learn, teach, or partner with us &mdash; our team is one message away.</p>
+    <div class="btn-row">
+      <a href="#send-message" class="btn btn-white"><span class="shine"></span>Contact Us Now</a>
+      <a href="#" class="btn btn-outline">Browse Courses</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <h3>Eschool</h3>
+        <p>A learning platform connecting students, teachers, and schools across the world.</p>
+        <div class="social-row">
+          <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+          <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/></svg></a>
+          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
+          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul><li><a href="#">About</a></li><li><a href="#">Courses</a></li><li><a href="#">Services</a></li><li><a href="#">Contact</a></li></ul>
+      </div>
+      <div class="footer-col">
+        <h4>Support</h4>
+        <ul><li><a href="#faq">Help Center</a></li><li><a href="#">Privacy Policy</a></li><li><a href="#">Terms of Service</a></li></ul>
+      </div>
+      <div class="footer-col">
+        <h4>Newsletter</h4>
+        <p style="font-size:0.85rem; color:#94A3B8;">Get updates on new courses and features.</p>
+        <form class="newsletter-form" onsubmit="return false;">
+          <input type="email" placeholder="Your email">
+          <button type="submit">Join</button>
+        </form>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2025 Eschool. All rights reserved.</span>
+      <span><a href="#">Privacy</a> &middot; <a href="#">Terms</a></span>
+    </div>
+  </div>
 </footer>
 
-</body>
-</html>
-
 </div>
+
+<script>
+(function(){
+  var root = document.getElementById('eschool-contact');
+  if(!root) return;
+
+  /* Reveal on scroll */
+  var revealEls = root.querySelectorAll('.reveal');
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('in-view'); io.unobserve(e.target); }
+      });
+    }, { threshold:0.12 });
+    revealEls.forEach(function(el){ el.classList.remove('in-view'); io.observe(el); });
+  } else {
+    revealEls.forEach(function(el){ el.classList.add('in-view'); });
+  }
+
+  /* Counter animation */
+  var counters = root.querySelectorAll('.num[data-count]');
+  function animateCount(el){
+    var target = parseInt(el.getAttribute('data-count'), 10);
+    var suffix = el.getAttribute('data-suffix') || '';
+    var dur = 1400, start = null;
+    function step(ts){
+      if(!start) start = ts;
+      var p = Math.min((ts - start) / dur, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(eased * target) + suffix;
+      if(p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  if('IntersectionObserver' in window){
+    var cio = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ animateCount(e.target); cio.unobserve(e.target); }
+      });
+    }, { threshold:0.5 });
+    counters.forEach(function(c){ cio.observe(c); });
+  } else {
+    counters.forEach(animateCount);
+  }
+
+  /* Floating label helper for browsers without :placeholder-shown edge cases */
+  root.querySelectorAll('.field input, .field textarea').forEach(function(inp){
+    inp.addEventListener('input', function(){
+      inp.closest('.field').classList.toggle('has-value', inp.value.length > 0);
+    });
+  });
+  root.querySelectorAll('.field select').forEach(function(sel){
+    sel.addEventListener('change', function(){
+      sel.closest('.field').classList.toggle('has-value', sel.value.length > 0);
+    });
+  });
+
+  /* Simple validation states */
+  var emailField = root.querySelector('#email');
+  if(emailField){
+    emailField.addEventListener('blur', function(){
+      var wrap = emailField.closest('.field');
+      var ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailField.value);
+      wrap.classList.toggle('is-valid', ok);
+      wrap.classList.toggle('is-invalid', !ok && emailField.value.length > 0);
+    });
+  }
+  var nameField = root.querySelector('#fullName');
+  if(nameField){
+    nameField.addEventListener('blur', function(){
+      var wrap = nameField.closest('.field');
+      wrap.classList.toggle('is-valid', nameField.value.trim().length > 1);
+    });
+  }
+
+  /* Character counter */
+  var msg = root.querySelector('#message');
+  var count = root.querySelector('#charCount');
+  if(msg && count){
+    msg.addEventListener('input', function(){
+      count.textContent = msg.value.length;
+      msg.style.height = 'auto';
+      msg.style.height = msg.scrollHeight + 'px';
+    });
+  }
+
+  /* File drop label */
+  var fileDrop = root.querySelector('#fileDrop');
+  var fileInput = root.querySelector('#fileInput');
+  if(fileDrop && fileInput){
+    fileDrop.addEventListener('click', function(){ fileInput.click(); });
+    fileInput.addEventListener('change', function(){
+      fileDrop.textContent = fileInput.files[0] ? fileInput.files[0].name : 'Click to attach a file, or drag it here';
+    });
+  }
+
+  /* Ripple on buttons */
+  root.querySelectorAll('.btn, .submit-btn').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      var rect = btn.getBoundingClientRect();
+      var ripple = document.createElement('span');
+      var size = Math.max(rect.width, rect.height);
+      ripple.className = 'ripple';
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
+      ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
+      btn.appendChild(ripple);
+      setTimeout(function(){ ripple.remove(); }, 650);
+    });
+  });
+
+  /* Form submit -> loading -> success */
+  var form = root.querySelector('#contactForm');
+  var submitBtn = root.querySelector('#submitBtn');
+  if(form && submitBtn){
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      if(!form.checkValidity()){ form.reportValidity(); return; }
+      submitBtn.classList.add('loading');
+      setTimeout(function(){
+        submitBtn.classList.remove('loading');
+        submitBtn.classList.add('success');
+        submitBtn.querySelector('.btn-label').textContent = 'Message Sent';
+        submitBtn.querySelector('.btn-label').style.opacity = 1;
+        setTimeout(function(){
+          submitBtn.classList.remove('success');
+          submitBtn.querySelector('.btn-label').textContent = 'Send Message';
+          form.reset();
+          root.querySelectorAll('.field').forEach(function(f){ f.classList.remove('has-value','is-valid'); });
+          if(count) count.textContent = '0';
+        }, 2400);
+      }, 1500);
+    });
+  }
+
+  /* FAQ accordion */
+  root.querySelectorAll('.accordion-item').forEach(function(item){
+    var q = item.querySelector('.accordion-q');
+    var a = item.querySelector('.accordion-a');
+    q.addEventListener('click', function(){
+      var isOpen = item.classList.contains('open');
+      root.querySelectorAll('.accordion-item.open').forEach(function(openItem){
+        if(openItem !== item){
+          openItem.classList.remove('open');
+          openItem.querySelector('.accordion-q').setAttribute('aria-expanded','false');
+          openItem.querySelector('.accordion-a').style.maxHeight = null;
+        }
+      });
+      item.classList.toggle('open', !isOpen);
+      q.setAttribute('aria-expanded', String(!isOpen));
+      a.style.maxHeight = !isOpen ? a.scrollHeight + 'px' : null;
+    });
+  });
+
+  /* Mouse parallax on hero signal */
+  var hero = root.querySelector('.hero');
+  var signal = root.querySelector('.signal-wrap');
+  if(hero && signal && window.matchMedia('(pointer:fine)').matches){
+    hero.addEventListener('mousemove', function(e){
+      var rect = hero.getBoundingClientRect();
+      var x = (e.clientX - rect.left) / rect.width - 0.5;
+      var y = (e.clientY - rect.top) / rect.height - 0.5;
+      signal.style.transform = 'translate(' + (x*14) + 'px,' + (y*14) + 'px)';
+    });
+  }
+})();
+</script>
 {% endblock %}

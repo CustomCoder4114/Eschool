@@ -1,69 +1,351 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-<link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <title>Eschool</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='cssi.css') }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="ESCHOOL — a premium online learning platform. Education is a right.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2360A5FA'/%3E%3Cstop offset='100%25' stop-color='%232DD4BF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='12' fill='%230F172A'/%3E%3Cpath d='M32 4 62 19 32 34 2 19Z' fill='url(%23g)'/%3E%3Cpath d='M13 24v14c0 4.5 8.5 11 19 11s19-6.5 19-11V24' fill='none' stroke='url(%23g)' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M62 19v18' fill='none' stroke='url(%23g)' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='62' cy='41' r='4' fill='%232DD4BF'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<title>Eschool.</title>
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root{
+    --primary: #2563EB;
+    --primary-light: #3B82F6;
+    --secondary: #14B8A6;
+    --accent: #F59E0B;
+    --bg: #F8FAFC;
+    --surface: #ffffff;
+    --border: #e2e8f0;
+    --text-dark: #0F172A;
+    --text-gray: #64748B;
+
+    --radius-sm: 16px;
+    --radius-md: 22px;
+    --radius-lg: 30px;
+
+    --shadow-sm: 0 4px 14px rgba(15,23,42,0.06);
+    --shadow-md: 0 20px 44px rgba(15,23,42,0.12);
+
+    --grad-primary: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    --grad-accent: linear-gradient(135deg, var(--secondary) 0%, var(--primary-light) 100%);
+
+    --font-display: 'Poppins', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-alt: 'Manrope', sans-serif;
+}
+
+*{ box-sizing: border-box; }
+
+@media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}
+
+html{ scroll-behavior: smooth; }
+body, html{ min-height: 100vh; margin: 0; padding: 0; }
+
+body{
+    background-color: var(--bg);
+    color: var(--text-dark);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+a{ color: inherit; }
+img{ max-width: 100%; display: block; }
+
+:focus-visible{
+    outline: 3px solid var(--primary-light);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.skip-link{
+    position: absolute;
+    left: -999px;
+    top: auto;
+    background: #fff;
+    color: var(--text-dark);
+    padding: 10px 16px;
+    border-radius: 6px;
+    z-index: 10000;
+    font-weight: 600;
+}
+.skip-link:focus{ left: 12px; top: 12px; }
+
+/* ============================================================
+   NAVBAR — glass, blue gradient logo, always a single row
+   ============================================================ */
+.navbar {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    width: 100%;
+    gap: 10px;
+    padding: 14px 40px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    box-shadow: var(--shadow-sm);
+}
+
+.whlogo { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; flex-shrink: 1; }
+
+.logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-size: clamp(17px, 4.4vw, 25px);
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    text-decoration: none;
+    line-height: 1.1;
+    white-space: nowrap;
+    background: linear-gradient(135deg, #ffffff 0%, #93c5fd 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* FIX: the gradient text-fill above is inherited by children, which made
+   the graduation-cap icon invisible (transparent fill, no gradient
+   background of its own to clip against). Give the icon its own solid
+   color so it renders instead of disappearing. */
+.logo-icon {
+    font-size: 0.92em;
+    color: #93c5fd;
+    -webkit-text-fill-color: #93c5fd;
+}
+
+.red{ color: var(--accent); -webkit-text-fill-color: var(--accent); }
+
+.slogan {
+    margin: 2px 0 0;
+    padding: 0;
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    white-space: nowrap;
+}
+
+.ulc { list-style: none; display: flex; gap: 36px; margin: 0; padding: 0; font-weight: 500; }
+
+.ulc li a {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    font-family: var(--font-body);
+    font-size: 15px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+.ulc li a:hover, .ulc li a.active { color: #ffffff; border-bottom-color: var(--primary-light); }
+
+.hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 22px;
+    height: 16px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    flex-shrink: 0;
+    z-index: 9999;
+}
+.hamburger div { width: 100%; height: 2.5px; background-color: white; border-radius: 2px; transition: all 0.3s ease; }
+.hamburger.active div:nth-child(1) { transform: rotate(45deg) translate(4px, 5px); }
+.hamburger.active div:nth-child(2) { opacity: 0; }
+.hamburger.active div:nth-child(3) { transform: rotate(-45deg) translate(4px, -5px); }
+
+.allbtn { display: flex; gap: 8px; flex-shrink: 0; }
+
+.allbtn .btn {
+    min-width: unset;
+    white-space: nowrap;
+    height: 38px;
+    padding: 0 16px;
+    font-weight: 600;
+    font-size: 13px;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-body);
+}
+
+#logbtn { background-color: transparent; border: 1.5px solid rgba(255,255,255,0.4); color: white; }
+#regbtn { background: var(--grad-primary); color: white; box-shadow: 0 4px 14px rgba(37,99,235,0.4); }
+#logbtn:hover { background-color: rgba(255,255,255,0.12); border-color: white; }
+#regbtn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(37,99,235,0.5); }
+
+@media (max-width: 1000px) {
+    .ulc {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        background-color: rgba(15,23,42,0.97);
+        position: absolute;
+        top: 100%;
+        left: 0;
+        text-align: center;
+        gap: 0;
+        padding: 8px 0;
+        box-shadow: var(--shadow-md);
+    }
+    .ulc li { padding: 12px 0; width: 100%; }
+    .ulc li a{ padding-bottom: 4px; }
+    .ulc.active { display: flex; }
+    .hamburger { display: flex; }
+}
+
+@media (max-width: 480px){
+    .navbar{ padding: 10px 14px; gap: 8px; }
+    .slogan{ display: none; }
+    .allbtn .btn{ height: 32px; padding: 0 11px; font-size: 11.5px; }
+    .allbtn{ gap: 6px; }
+}
+@media (max-width: 360px){ .allbtn .btn span.btn-long{ display: none; } }
+
+/* ============================================================
+   PILL NAV (page-level tabs)
+   ============================================================ */
+.pill-container{
+    display: flex; flex-wrap: wrap; background: var(--surface); padding: 6px; border-radius: 40px;
+    gap: 6px; align-items: center; justify-content: center; width: fit-content; margin: 100px auto 0;
+    position: sticky; top: 70px; z-index: 100; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+}
+.pill-btn{
+    display: flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 30px; cursor: pointer;
+    font-weight: 600; font-family: var(--font-body); font-size: 14px; border: none; background: transparent;
+    transition: background .18s ease, color .18s ease; color: var(--text-dark);
+}
+.pill-btn svg { width: 18px; height: 18px; }
+.pill-btn.active{ background: var(--primary); color: #fff; }
+.pill-btn:not(.active):hover{ background: #eff6ff; }
+
+/* ============================================================
+   FOOTER — shared site-wide chrome
+   ============================================================ */
+footer{
+    position: relative;
+    background: radial-gradient(circle at 15% 20%, rgba(37,99,235,0.35), transparent 55%),
+                radial-gradient(circle at 85% 80%, rgba(20,184,166,0.25), transparent 50%),
+                #0B1120;
+    color: white;
+    padding: 64px 40px 28px;
+}
+
+.footer-content{
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 40px;
+    max-width: 1200px; margin: 0 auto 44px; position: relative; z-index: 1;
+}
+.footer-column{ flex: 1; min-width: 180px; }
+.footer-column h3{ font-family: var(--font-display); font-size: 1.05rem; margin-bottom: 20px; color: white; font-weight: 700; }
+.footer-column ul{ list-style: none; margin: 0; padding: 0; }
+.footer-column ul li{ margin-bottom: 11px; }
+.footer-column a{ color: rgba(255,255,255,0.6); text-decoration: none; transition: color 0.2s ease; font-size: 14px; }
+.footer-column a:hover{ color: var(--primary-light); }
+
+.footer-logo{
+    font-family: var(--font-display); font-weight: 800; font-size: 22px; margin-bottom: 12px; display: block;
+    background: linear-gradient(135deg, #fff 0%, #93c5fd 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.footer-social{ display: flex; gap: 12px; margin-top: 18px; }
+.footer-social a{
+    width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;
+}
+.footer-social a:hover{ background: var(--grad-primary); transform: translateY(-3px); }
+.footer-social svg{ width: 16px; height: 16px; fill: white; }
+
+.copyright{
+    text-align: center; padding-top: 28px; border-top: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.45); font-size: 0.85rem; max-width: 1200px; margin: 0 auto; position: relative; z-index: 1;
+}
+
+@media (max-width: 768px){ .footer-content{ flex-direction: column; } }
+</style>
 </head>
 
 <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
+
     <nav class="navbar">
-        <div class="whlogo">
-        <a class="logo" href="/"><span class="red">E</span>SCHOOL</a>
-        <p class="slogan">EDUCATION IS A RIGHT</p>
-        </div>
-        <ul class="ulc">
+        <a href="/dashboard" class="logo">
+                <i class="fas fa-graduation-cap logo-icon"></i>
+                <div class="logo-text">E<span>school</span></div>
+            </a>
+
+        <ul class="ulc" id="navLinks">
             <li><a class="link active" href="/">Home</a></li>
             <li><a class="link" href="/aboutus">About us</a></li>
             <li><a class="link" href="/services">Services</a></li>
             <li><a class="link" href="/contact">Contact</a></li>
-            <li><a class="link" href="/help">Help</a></li>     
+            <li><a class="link" href="/career">Career</a></li>
+            <li><a class="link" href="/earn">Earn</a></li>
         </ul>
-        <div class="hamburger" onclick="toggleMenu()">
-  <div></div>
-  <div></div>
-  <div></div>
-</div>
 
+        <button class="hamburger" onclick="toggleMenu()" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navLinks">
+            <div></div><div></div><div></div>
+        </button>
 
         <div class="allbtn">
-         <button id="logbtn" class="btn" onclick="window.location.href='/Login'">Login</button>
-        <button class="btn" onclick="window.location.href='/register'" id="regbtn">Register</button>
+            <button id="logbtn" class="btn" onclick="window.location.href='/Login'"><span class="btn-long">Log in</button>
+            <button class="btn" onclick="window.location.href='/register'" id="regbtn"><span class="btn-long">Register</button>
         </div>
     </nav>
+
     <script>
-  function toggleMenu() {
-  document.querySelector('.ulc').classList.toggle('active');
-  document.querySelector('.hamburger').classList.toggle('active');
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-    const links = document.querySelectorAll('.ulc li a');
-
-
-    let activeLink = localStorage.getItem("activeNavLink");
-    if (activeLink) {
-        links.forEach(l => l.classList.remove("active"));
-        const linkToActivate = document.querySelector(`.ulc li a[href="${activeLink}"]`);
-        if (linkToActivate) {
-            linkToActivate.classList.add("active");
+        function toggleMenu() {
+            const nav = document.querySelector('.ulc');
+            const burger = document.querySelector('.hamburger');
+            const expanded = nav.classList.toggle('active');
+            burger.classList.toggle('active');
+            burger.setAttribute('aria-expanded', expanded);
         }
-    }
 
-
-    links.forEach(link => {
-        link.addEventListener('click', function () {
-            localStorage.setItem("activeNavLink", this.getAttribute("href"));
+        document.addEventListener("DOMContentLoaded", function () {
+            const links = document.querySelectorAll('.ulc li a');
+            let activeLink = localStorage.getItem("activeNavLink");
+            if (activeLink) {
+                links.forEach(l => l.classList.remove("active"));
+                const linkToActivate = document.querySelector(`.ulc li a[href="${activeLink}"]`);
+                if (linkToActivate) linkToActivate.classList.add("active");
+            }
+            links.forEach(link => {
+                link.addEventListener('click', function () {
+                    localStorage.setItem("activeNavLink", this.getAttribute("href"));
+                    document.querySelector('.ulc').classList.remove('active');
+                    document.querySelector('.hamburger').classList.remove('active');
+                });
+            });
         });
-    });
-});
-</script>
+    </script>
 
+    <main id="main-content">
+        
+    </main>
 
-    {% block content %}
-    {% endblock %}
+    
 </body>
-
+{% block content %}
+        {% endblock %}
 </html>

@@ -2,6 +2,346 @@
 
 {% block allcontent %}
 <link rel="stylesheet" href="{{ url_for('static', filename='resourses.css') }}">
+
+<style>
+/* =====================================================
+   YOUTUBE-STYLE RESOURCE GRID
+   (Scoped to this page — safe to also move into
+   resourses.css if you'd rather keep styles separate)
+===================================================== */
+
+.content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 28px 16px;
+    padding: 8px 0 32px;
+}
+
+.resource-card {
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* ---- Thumbnail ---- */
+.resource-thumbnail {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #eee;
+    flex-shrink: 0;
+}
+
+.resource-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.2s ease;
+}
+
+.resource-card:hover .resource-thumbnail img {
+    transform: scale(1.03);
+}
+
+.resource-badge {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.2px;
+}
+
+/* ---- Body of the card: title on top, footer pinned to bottom ---- */
+.resource-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding-top: 12px;
+}
+
+.resource-title {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: #0f0f0f;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Pushed to the bottom of the card no matter how tall the title is */
+.resource-footer {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.footer-uploader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.uploader-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #ddd;
+}
+
+/* Avatars that link to a profile get a pointer + a subtle hover cue,
+   distinct from the card's own pointer cursor, so it's clear the
+   avatar itself is a separate tap target. */
+.uploader-avatar.clickable-avatar {
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.uploader-avatar.clickable-avatar:hover {
+    opacity: 0.85;
+}
+
+.uploader-avatar.clickable-avatar:active {
+    transform: scale(0.94);
+}
+
+.uploader-name-group {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.uploader-name {
+    font-size: 13px;
+    color: #383838;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Small follower count under the uploader's name — keyed by uploader id
+   via data-follower-count so it stays in sync with the modal copy. */
+.uploader-follower-count {
+    font-size: 11px;
+    color: #909090;
+    white-space: nowrap;
+}
+
+/* In the card footer, the name/follower-count block fills whatever space
+   is left so the follow button always lands flush against the right
+   edge, right next to the avatar row rather than floating on its own line. */
+.footer-uploader .uploader-name-group {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ---- Follow button ---- */
+.follow-btn {
+    border: none;
+    background: #0f0f0f;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.follow-btn:hover {
+    background: #272727;
+}
+
+.follow-btn:active {
+    transform: scale(0.94);
+}
+
+.follow-btn.following {
+    background: #f0f0f0;
+    color: #0f0f0f;
+}
+
+.follow-btn.following:hover {
+    background: #e2e2e2;
+}
+
+.follow-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.preview-uploader-row .follow-btn {
+    margin-left: 6px;
+}
+
+.footer-stats {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #606060;
+}
+
+.resource-views {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+/* ---- Like button + tap animation ---- */
+.like-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #606060;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 16px;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.like-btn:hover {
+    background: #f0f0f0;
+    color: #0f0f0f;
+}
+
+.like-btn.liked {
+    color: #ff0033;
+}
+
+.like-btn i {
+    font-size: 13px;
+    display: inline-block;
+}
+
+.like-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+/* Heart pops on every tap, whether liking or unliking */
+@keyframes heartPop {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.5); }
+    60%  { transform: scale(0.85); }
+    100% { transform: scale(1); }
+}
+
+.like-btn.pop i {
+    animation: heartPop 0.35s ease;
+}
+
+/* Little red burst behind the heart the moment it gets liked */
+.like-btn {
+    position: relative;
+}
+
+.like-btn .like-burst {
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    margin-top: -10px;
+    border-radius: 50%;
+    background: rgba(255, 0, 51, 0.35);
+    transform: scale(0);
+    pointer-events: none;
+}
+
+.like-btn.pop.liked .like-burst {
+    animation: likeBurst 0.4s ease-out;
+}
+
+@keyframes likeBurst {
+    0%   { transform: scale(0.2); opacity: 0.8; }
+    100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* Follower count pops too, same treatment as the like count */
+@keyframes countPop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.25); }
+    100% { transform: scale(1); }
+}
+
+.uploader-follower-count.pop,
+.preview-uploader-row .uploader-follower-count.pop {
+    animation: countPop 0.3s ease;
+}
+
+/* =====================================================
+   PREVIEW MODAL — uploader/like/view row now sits at
+   the BOTTOM of the preview, below the media.
+===================================================== */
+.preview-uploader-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px 0;
+    border-top: 1px solid #eee;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.preview-uploader-row .uploader-name-group {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+
+.preview-uploader-row .uploader-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f0f0f;
+}
+
+.preview-uploader-row .uploader-follower-count {
+    font-size: 12px;
+}
+
+.preview-uploader-row .resource-views {
+    font-size: 13px;
+    color: #606060;
+}
+
+.preview-uploader-row .like-btn {
+    margin-left: auto;
+    font-size: 14px;
+    padding: 6px 14px;
+    background: #f0f0f0;
+}
+
+.preview-uploader-row .like-btn:hover {
+    background: #e2e2e2;
+}
+</style>
+
 <div class="main-container">
     <!-- Resources Header -->
     <header class="resources-header">
@@ -28,7 +368,7 @@
             <i class="fas fa-image"></i> Images
         </button>
         <button class="main-tab-btn" onclick="switchTab('audio', this)" data-tab="audio">
-            <i class="fas fa-music"></i> Questions
+            <i class="fas fa-music"></i> Audio
         </button>
     </div>
 
@@ -55,9 +395,12 @@
                 <option value="smallest">Smallest Files</option>
                 <option value="popular">Most Popular</option>
             </select>
-            <button class="btn btn-primary" onclick="refreshResources()">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
+            <select id="gradeFilter" class="select-control">
+                <option value="">All Grades</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+            </select>
         </div>
     </div>
 
@@ -108,16 +451,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /* =====================================================
    EVENT LISTENERS
+   Search is debounced (fires 350ms after the user stops
+   typing) so every keystroke doesn't trigger a request;
+   the dropdowns re-fetch immediately on change.
 ===================================================== */
+let searchDebounceTimer = null;
+
 function setupEventListeners() {
     const searchInput = document.getElementById("searchInput");
     const courseFilter = document.getElementById("courseFilter");
     const sortFilter = document.getElementById("sortFilter");
+    const gradeFilter = document.getElementById("gradeFilter");
     const modal = document.getElementById("previewModal");
 
-    if (searchInput) searchInput.addEventListener("input", filterResources);
-    if (courseFilter) courseFilter.addEventListener("change", filterResources);
-    if (sortFilter) sortFilter.addEventListener("change", filterResources);
+    if (searchInput) {
+        searchInput.addEventListener("input", () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(loadAllResources, 350);
+        });
+    }
+    if (courseFilter) courseFilter.addEventListener("change", loadAllResources);
+    if (sortFilter) sortFilter.addEventListener("change", loadAllResources);
+    if (gradeFilter) gradeFilter.addEventListener("change", loadAllResources);
 
     if (modal) {
         modal.addEventListener("click", e => {
@@ -132,22 +487,53 @@ function setupEventListeners() {
 
 /* =====================================================
    LOAD RESOURCES
+   Every active filter — search text, course/category,
+   sort order, grade (difficulty), and the active tab —
+   is sent to the backend as a query param, so the list
+   that comes back is already exactly what should be
+   shown. The backend already supported category/search/
+   sort/type; difficulty (grade) filtering was added
+   alongside this change.
 ===================================================== */
 async function loadAllResources() {
+    const grid = document.getElementById("resourcesGrid");
+    if (grid) grid.innerHTML = "<p style='padding:20px; color:#606060;'>Loading...</p>";
+
     try {
-        const res = await fetch("/api/resources");
+        const params = new URLSearchParams();
+
+        const search = document.getElementById("searchInput")?.value.trim();
+        if (search) params.set("search", search);
+
+        const category = document.getElementById("courseFilter")?.value;
+        if (category) params.set("category", category);
+
+        const sort = document.getElementById("sortFilter")?.value;
+        if (sort) params.set("sort", sort);
+
+        const grade = document.getElementById("gradeFilter")?.value;
+        if (grade) params.set("difficulty", grade);
+
+        const tab = getActiveTab();
+        if (tab !== "all") params.set("type", tab);
+
+        const res = await fetch(`/api/resources?${params.toString()}`);
         const data = await res.json();
         allResources = data.resources || [];
-        renderResources(getActiveTab());
+        renderResources();
     } catch (err) {
         console.error("Failed to load resources:", err);
         allResources = [];
-        renderResources(getActiveTab());
+        renderResources();
     }
 }
 
 /* =====================================================
    TABS
+   Switching tabs re-fetches from the backend with
+   type=<tab> instead of filtering an already-loaded
+   list, so it combines correctly with search/category/
+   sort/grade instead of ignoring them.
 ===================================================== */
 function getActiveTab() {
     const active = document.querySelector(".main-tab-btn.active");
@@ -157,56 +543,414 @@ function getActiveTab() {
 function switchTab(tab, btn) {
     document.querySelectorAll(".main-tab-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    renderResources(tab);
-}
-
-/* =====================================================
-   FILTERING
-===================================================== */
-function filterResources() {
-    renderResources(getActiveTab());
+    loadAllResources();
 }
 
 /* =====================================================
    RENDER GRID
+   Filtering already happened server-side in
+   loadAllResources() — this just paints whatever came
+   back.
 ===================================================== */
-function renderResources(tab = "all") {
+function renderResources() {
     const grid = document.getElementById("resourcesGrid");
     if (!grid) return;
 
-    let list = [...allResources];
-
-    if (tab !== "all") {
-        list = list.filter(r => {
-            if (tab === "videos") return r.file_category === "video";
-            if (tab === "documents") return ["pdf", "doc"].includes(r.file_category);
-            if (tab === "images") return r.file_category === "image";
-            if (tab === "audio") return r.file_category === "audio";
-            if (tab === "other") return !["video", "pdf", "doc", "image", "audio"].includes(r.file_category);
-            return true;
-        });
-    }
-
-    grid.innerHTML = list.length
-        ? list.map(createResourceCard).join("")
+    grid.innerHTML = allResources.length
+        ? allResources.map(createResourceCard).join("")
         : "<p style='padding:20px'>No resources found</p>";
 }
 
 /* =====================================================
-   CARD
+   CARD  ✅ Title at top, uploader/views/like footer
+   pinned to the BOTTOM of the card.
+
+   IMPORTANT: like button & views span use data-* attributes
+   (data-like-btn / data-views) instead of relying solely on
+   a single id, because the SAME resource can be rendered
+   twice at once — once in the grid card, once in the preview
+   modal. Two elements sharing one id meant getElementById()
+   only ever found the card's copy, so tapping like inside
+   the modal silently updated the (invisible) card behind it
+   instead of the button you were actually looking at. Using
+   querySelectorAll on the data attribute updates every
+   matching instance, wherever it is on the page.
 ===================================================== */
 function createResourceCard(r) {
+    const uploaderName = r.uploader_username || "Unknown";
+    const uploaderAvatar = r.uploader_avatar_url || getDefaultAvatar(uploaderName);
+    const views = r.views_count ?? r.views ?? 0;
+    const likes = r.likes_count ?? r.likes ?? 0;
+    const followers = r.uploader_followers_count ?? r.uploader_followers ?? 0;
+    const isLiked = !!r.liked_by_current_user;
+    const isFollowing = !!r.following_uploader;
+
     return `
         <div class="resource-card" onclick="previewResource(${r.id})">
             <div class="resource-thumbnail">
-                <img src="${r.thumbnail_url || getDefaultThumbnail()}">
+                <img src="${r.thumbnail_url || getDefaultThumbnail()}" alt="${r.title}">
                 <span class="resource-badge">${getFileTypeText(r.file_category)}</span>
             </div>
+
             <div class="resource-content">
-                <h3>${r.title}</h3>
+                <h3 class="resource-title">${r.title}</h3>
+
+                <div class="resource-footer">
+                    <div class="footer-uploader">
+                        ${avatarHtml(r.user_id, uploaderName, uploaderAvatar)}
+                        <div class="uploader-name-group">
+                            <span class="uploader-name">${uploaderName}</span>
+                            ${followerCountHtml(r.user_id, followers)}
+                        </div>
+                        ${followButtonHtml(r.user_id, isFollowing, r.is_own_resource)}
+                    </div>
+
+                    <div class="footer-stats">
+                        <span class="resource-views" data-views="${r.id}" title="Views">
+                            <i class="fas fa-eye"></i> ${formatCount(views)} views
+                        </span>
+
+                        ${likeButtonHtml(r.id, isLiked, likes)}
+                    </div>
+                </div>
             </div>
         </div>
     `;
+}
+
+/* Shared markup for the uploader's avatar image. Kept as its own helper
+   (same pattern as followerCountHtml/followButtonHtml below) so the grid
+   card and the preview modal always render it identically and stay in
+   sync if this ever changes again.
+
+   event.stopPropagation() matters here because the WHOLE card has its
+   own onclick="previewResource(...)" — without stopping propagation,
+   tapping the avatar would both navigate to the profile AND pop open
+   the preview modal underneath it. The follow/like buttons already do
+   the same thing for the same reason. */
+function avatarHtml(uploaderId, uploaderName, uploaderAvatar) {
+    if (!uploaderId) {
+        return `<img class="uploader-avatar" src="${uploaderAvatar}" alt="${uploaderName}">`;
+    }
+
+    return `
+        <img
+            class="uploader-avatar clickable-avatar"
+            src="${uploaderAvatar}"
+            alt="${uploaderName}"
+            title="View ${uploaderName}'s profile"
+            onclick="event.stopPropagation(); goToProfile(${uploaderId})"
+        >`;
+}
+
+/* Adjust this if your app's real profile route isn't /profile/<id> —
+   e.g. change it to `/profile?user=${userId}` or `/u/${userId}` to
+   match whatever route actually renders profile.html. */
+function goToProfile(userId) {
+    window.location.href = `/profile/${userId}`;
+}
+
+/* Shared markup for the small follower-count line under the uploader's
+   name. Keyed by the UPLOADER's user id (data-follower-count), same as
+   the follow button, so every card + the modal update together. */
+function followerCountHtml(uploaderId, followers) {
+    if (!uploaderId) return "";
+    return `<span class="uploader-follower-count" data-follower-count="${uploaderId}">${formatCount(followers)} follower${followers === 1 ? "" : "s"}</span>`;
+}
+
+/* Shared markup for the follow button — keyed by the UPLOADER's user id
+   (not the resource id), since the same uploader can appear on many
+   resource cards at once and they should all stay in sync together.
+   Hidden entirely on your own uploads (you can't follow yourself). */
+function followButtonHtml(uploaderId, isFollowing, isOwnResource) {
+    if (!uploaderId || isOwnResource) return "";
+
+    return `
+        <button
+            class="follow-btn ${isFollowing ? "following" : ""}"
+            data-follow-btn="${uploaderId}"
+            data-following="${isFollowing}"
+            onclick="event.stopPropagation(); toggleFollow(${uploaderId})"
+        >${isFollowing ? "Following" : "Follow"}</button>
+    `;
+}
+
+/* Shared markup for the like button so the card and modal
+   copies never drift out of sync with each other. */
+function likeButtonHtml(id, isLiked, likes) {
+    return `
+        <button
+            class="like-btn ${isLiked ? "liked" : ""}"
+            data-like-btn="${id}"
+            data-liked="${isLiked}"
+            onclick="event.stopPropagation(); toggleLike(${id})"
+            title="${isLiked ? "Unlike" : "Like"}"
+        >
+            <span class="like-burst"></span>
+            <i class="${isLiked ? "fas" : "far"} fa-heart"></i>
+            <span class="like-count" data-like-count="${id}">${formatCount(likes)}</span>
+        </button>
+    `;
+}
+
+/* =====================================================
+   LIKE / UNLIKE  ✅ Talks to the real backend:
+   POST   /api/resources/<id>/like   -> like
+   DELETE /api/resources/<id>/like   -> unlike
+   The server enforces one like per person (unique
+   resource_id+user_id row), so this can't be inflated
+   by spamming the button or reloading the page.
+
+   UI updates instantly (optimistic), plays the tap
+   animation immediately on click — not after the network
+   round-trip — and every matching button/count on the
+   page (card + modal) is kept in sync via data attributes.
+===================================================== */
+async function toggleLike(id) {
+    const resource = allResources.find(r => r.id === id);
+    if (!resource) return;
+
+    const wasLiked = !!resource.liked_by_current_user;
+    const newLiked = !wasLiked;
+    const optimisticCount = Math.max(0, (resource.likes_count ?? resource.likes ?? 0) + (wasLiked ? -1 : 1));
+
+    resource.liked_by_current_user = newLiked;
+    resource.likes_count = optimisticCount;
+    resource.likes = optimisticCount;
+
+    // Update the UI and play the animation immediately — don't wait on the network
+    applyLikeUI(id, newLiked, optimisticCount, { animate: true });
+    setButtonsDisabled(id, true);
+
+    try {
+        const res = await fetch(`/api/resources/${id}/like`, {
+            method: wasLiked ? "DELETE" : "POST"
+        });
+
+        if (res.status === 401) {
+            window.location.href = "/Login";
+            return;
+        }
+
+        if (!res.ok) throw new Error(`Like request failed (${res.status})`);
+
+        const data = await res.json();
+        const finalCount = data.likes_count ?? data.likes ?? optimisticCount;
+        const finalLiked = typeof data.liked === "boolean" ? data.liked : newLiked;
+
+        resource.liked_by_current_user = finalLiked;
+        resource.likes_count = finalCount;
+        resource.likes = finalCount;
+
+        // Reconcile silently (no re-animation) if the server disagreed slightly
+        applyLikeUI(id, finalLiked, finalCount, { animate: false });
+    } catch (err) {
+        console.error("Failed to toggle like:", err);
+        const rolledBackCount = Math.max(0, (resource.likes_count ?? 0) + (wasLiked ? 1 : -1));
+        resource.liked_by_current_user = wasLiked;
+        resource.likes_count = rolledBackCount;
+        resource.likes = rolledBackCount;
+        applyLikeUI(id, wasLiked, rolledBackCount, { animate: false });
+    } finally {
+        setButtonsDisabled(id, false);
+    }
+}
+
+function setButtonsDisabled(id, disabled) {
+    document.querySelectorAll(`[data-like-btn="${id}"]`).forEach(btn => {
+        btn.disabled = disabled;
+    });
+}
+
+function applyLikeUI(id, liked, count, { animate = false } = {}) {
+    document.querySelectorAll(`[data-like-btn="${id}"]`).forEach(btn => {
+        btn.classList.toggle("liked", liked);
+        btn.dataset.liked = liked;
+        btn.title = liked ? "Unlike" : "Like";
+
+        const icon = btn.querySelector("i");
+        if (icon) icon.className = liked ? "fas fa-heart" : "far fa-heart";
+
+        if (animate) {
+            // Restart the animation even if it's already mid-flight from a rapid tap
+            btn.classList.remove("pop");
+            // eslint-disable-next-line no-unused-expressions
+            void btn.offsetWidth; // force reflow so the class removal registers
+            btn.classList.add("pop");
+            setTimeout(() => btn.classList.remove("pop"), 400);
+        }
+    });
+
+    document.querySelectorAll(`[data-like-count="${id}"]`).forEach(el => {
+        el.textContent = formatCount(count);
+    });
+}
+
+/* =====================================================
+   FOLLOW / UNFOLLOW  ✅ Talks to the real backend:
+   POST   /api/users/<id>/follow   -> follow
+   DELETE /api/users/<id>/follow   -> unfollow
+   The server enforces one follow per person (unique
+   follower_id+following_id row) and is expected to
+   return the uploader's up-to-date follower count in
+   the response body, e.g. { "following": true,
+   "followers_count": 1079 }. That count (not just a
+   +1/-1 guess) is what gets painted back into the UI,
+   so it stays correct even if you had a stale count
+   cached, or someone else followed/unfollowed the same
+   uploader in another tab.
+
+   Keyed by the UPLOADER's user id rather than a resource
+   id — if the same uploader has several resources on
+   screen, following them from one card updates the
+   follow button AND follower count on every card (and
+   the modal) at once.
+===================================================== */
+async function toggleFollow(uploaderId) {
+    // Any resource by this uploader tells us the current state
+    const sample = allResources.find(r => r.user_id === uploaderId);
+    const wasFollowing = sample
+        ? !!sample.following_uploader
+        : document.querySelector(`[data-follow-btn="${uploaderId}"]`)?.dataset.following === "true";
+    const newFollowing = !wasFollowing;
+
+    const currentFollowers = sample
+        ? (sample.uploader_followers_count ?? sample.uploader_followers ?? 0)
+        : 0;
+    const optimisticFollowers = Math.max(0, currentFollowers + (wasFollowing ? -1 : 1));
+
+    allResources.forEach(r => {
+        if (r.user_id === uploaderId) {
+            r.following_uploader = newFollowing;
+            r.uploader_followers_count = optimisticFollowers;
+            r.uploader_followers = optimisticFollowers;
+        }
+    });
+
+    applyFollowUI(uploaderId, newFollowing, optimisticFollowers, { animate: true });
+    setFollowButtonsDisabled(uploaderId, true);
+
+    let res;
+    try {
+        res = await fetch(`/api/users/${uploaderId}/follow`, {
+            method: wasFollowing ? "DELETE" : "POST"
+        });
+    } catch (networkErr) {
+        // Couldn't reach the server at all (offline, CORS, backend down).
+        // Keep the optimistic UI as-is rather than snapping it back —
+        // there's nothing more informative to reconcile against.
+        console.warn(`[follow] request for uploader ${uploaderId} didn't reach the server; keeping local state.`, networkErr);
+        setFollowButtonsDisabled(uploaderId, false);
+        return;
+    }
+
+    if (res.status === 401) {
+        window.location.href = "/Login";
+        return;
+    }
+
+    if (res.status === 404 || res.status === 405) {
+        // The follow endpoint isn't wired up on the backend yet. Don't
+        // roll back what the user just did — just leave the optimistic
+        // count/button as the "current" state until the real route
+        // exists, same as settings.html does for its own routes.
+        console.warn(`[follow] "/api/users/${uploaderId}/follow" isn't available yet (${res.status}); keeping local state.`);
+        setFollowButtonsDisabled(uploaderId, false);
+        return;
+    }
+
+    try {
+        if (!res.ok) throw new Error(`Follow request failed (${res.status})`);
+
+        const data = await res.json();
+        const finalFollowing = typeof data.following === "boolean" ? data.following : newFollowing;
+        const finalFollowers = typeof data.followers_count === "number" ? data.followers_count : optimisticFollowers;
+
+        allResources.forEach(r => {
+            if (r.user_id === uploaderId) {
+                r.following_uploader = finalFollowing;
+                r.uploader_followers_count = finalFollowers;
+                r.uploader_followers = finalFollowers;
+            }
+        });
+        // Reconcile silently against the server's real count (no re-animation
+        // needed here — the optimistic update already played it).
+        applyFollowUI(uploaderId, finalFollowing, finalFollowers, { animate: false });
+    } catch (err) {
+        // A genuine server-side error (400/500/bad JSON) — this is the one
+        // case where rolling back is actually correct, since the server
+        // told us the follow didn't take.
+        console.error("Failed to toggle follow:", err);
+        allResources.forEach(r => {
+            if (r.user_id === uploaderId) {
+                r.following_uploader = wasFollowing;
+                r.uploader_followers_count = currentFollowers;
+                r.uploader_followers = currentFollowers;
+            }
+        });
+        applyFollowUI(uploaderId, wasFollowing, currentFollowers, { animate: false });
+    } finally {
+        setFollowButtonsDisabled(uploaderId, false);
+    }
+}
+
+function setFollowButtonsDisabled(uploaderId, disabled) {
+    document.querySelectorAll(`[data-follow-btn="${uploaderId}"]`).forEach(btn => {
+        btn.disabled = disabled;
+    });
+}
+
+function applyFollowUI(uploaderId, following, followersCount, { animate = false } = {}) {
+    document.querySelectorAll(`[data-follow-btn="${uploaderId}"]`).forEach(btn => {
+        btn.classList.toggle("following", following);
+        btn.dataset.following = following;
+        btn.textContent = following ? "Following" : "Follow";
+    });
+
+    document.querySelectorAll(`[data-follower-count="${uploaderId}"]`).forEach(el => {
+        el.textContent = `${formatCount(followersCount)} follower${followersCount === 1 ? "" : "s"}`;
+
+        if (animate) {
+            el.classList.remove("pop");
+            void el.offsetWidth; // force reflow so the class removal registers
+            el.classList.add("pop");
+            setTimeout(() => el.classList.remove("pop"), 300);
+        }
+    });
+}
+
+/* =====================================================
+   TRACK VIEW  ✅ POST /api/resources/<id>/view.
+   The server only increments once per (resource, user)
+   thanks to a UNIQUE constraint — opening the same
+   resource again returns counted:false and the same
+   total, so the view never gets double-counted.
+===================================================== */
+async function trackView(id) {
+    try {
+        const res = await fetch(`/api/resources/${id}/view`, { method: "POST" });
+        if (res.status === 401) return; // not logged in — silently skip
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const views = data.views_count ?? data.views;
+        if (typeof views !== "number") return;
+
+        const resource = allResources.find(r => r.id === id);
+        if (resource) {
+            resource.views_count = views;
+            resource.views = views;
+        }
+        applyViewUI(id, views);
+    } catch (err) {
+        console.error("Failed to track view:", err);
+    }
+}
+
+function applyViewUI(id, count) {
+    document.querySelectorAll(`[data-views="${id}"]`).forEach(el => {
+        el.innerHTML = `<i class="fas fa-eye"></i> ${formatCount(count)} views`;
+    });
 }
 
 /* =====================================================
@@ -220,15 +964,12 @@ function resolveCategory(r) {
 
     if (known.includes(raw)) return raw;
 
-    // Try to salvage known categories from odd values like
-    // "application/pdf" or "video/mp4"
     if (raw.includes("pdf")) return "pdf";
     if (raw.includes("video")) return "video";
     if (raw.includes("audio")) return "audio";
     if (raw.includes("image")) return "image";
     if (raw.includes("word") || raw.includes("doc")) return "doc";
 
-    // Fall back to sniffing the file extension from the URL/filename
     const source = (r.file_url || r.filename || r.title || "").toLowerCase();
     const ext = source.split("?")[0].split(".").pop();
 
@@ -244,7 +985,9 @@ function resolveCategory(r) {
 }
 
 /* =====================================================
-   PREVIEW RESOURCE  ✅ FIXED: handles pdf/doc/other types
+   PREVIEW RESOURCE  ✅ Uploader/views/like row now
+   renders AFTER the media, at the bottom of the preview.
+   Also fires the unique-view tracker on open.
 ===================================================== */
 async function previewResource(id) {
     try {
@@ -262,9 +1005,6 @@ async function previewResource(id) {
         const modal = document.getElementById("previewModal");
         const content = document.getElementById("previewContent");
 
-        // Debug: check the browser console to see exactly what the API
-        // returned. If file_category doesn't match what you expect, or
-        // file_url is missing/empty, that's the root cause.
         console.log("Preview resource data:", r);
 
         const category = resolveCategory(r);
@@ -299,7 +1039,6 @@ async function previewResource(id) {
                 </div>`;
         }
         else if (category === "pdf") {
-            // PDFs can be embedded directly in-browser via an iframe.
             media = `
                 <div class="preview-media-wrapper preview-doc-wrapper">
                     <iframe src="${r.file_url}" style="width:100%; height:70vh; border:none;"
@@ -318,8 +1057,6 @@ async function previewResource(id) {
             const plainTextExts = ["txt", "md", "rtf"];
 
             if (plainTextExts.includes(ext)) {
-                // These render fine natively in the browser via iframe,
-                // since the backend serves them with a text/* mimetype.
                 media = `
                     <div class="preview-media-wrapper preview-doc-wrapper">
                         <iframe src="${r.file_url}" style="width:100%; height:70vh; border:1px solid #ddd;"
@@ -327,9 +1064,6 @@ async function previewResource(id) {
                         </iframe>
                     </div>`;
             } else {
-                // True binary formats (.doc, .docx, .odt, .epub) can't be
-                // rendered in-browser without server-side conversion.
-                // Offer a direct download instead.
                 media = `
                     <div class="preview-media-wrapper preview-doc-wrapper">
                         <p>Inline preview isn't available for .${ext} files. You can still download it below.</p>
@@ -342,8 +1076,6 @@ async function previewResource(id) {
             }
         }
         else {
-            // Unknown/other file types: still give the user a way to
-            // access the file instead of a dead-end message.
             media = `
                 <div class="preview-media-wrapper preview-doc-wrapper">
                     <p>No inline preview is available for this file type.</p>
@@ -355,16 +1087,40 @@ async function previewResource(id) {
                 </div>`;
         }
 
+        const uploaderName = r.uploader_username || "Unknown";
+        const uploaderAvatar = r.uploader_avatar_url || getDefaultAvatar(uploaderName);
+        const views = r.views_count ?? r.views ?? 0;
+        const likes = r.likes_count ?? r.likes ?? 0;
+        const followers = r.uploader_followers_count ?? r.uploader_followers ?? 0;
+        const isLiked = !!r.liked_by_current_user;
+        const isFollowing = !!r.following_uploader;
+
+        // Order: header -> media -> uploader/follow/views/like footer (bottom)
         content.innerHTML = `
             <div class="preview-header">
                 <h2>${r.title}</h2>
                 <button onclick="closePreview()">✕</button>
             </div>
             <div class="preview-body">${media}</div>
+            <div class="preview-uploader-row">
+                ${avatarHtml(r.user_id, uploaderName, uploaderAvatar)}
+                <div class="uploader-name-group">
+                    <span class="uploader-name">${uploaderName}</span>
+                    ${followerCountHtml(r.user_id, followers)}
+                </div>
+                ${followButtonHtml(r.user_id, isFollowing, r.is_own_resource)}
+                <span class="resource-views" data-views="${r.id}" title="Views">
+                    <i class="fas fa-eye"></i> ${formatCount(views)} views
+                </span>
+                ${likeButtonHtml(r.id, isLiked, likes)}
+            </div>
         `;
 
         modal.style.display = "block";
         document.body.style.overflow = "hidden";
+
+        // Count the view once per user for this resource.
+        trackView(id);
     } catch (err) {
         console.error("Failed to load resource preview:", err);
     }
@@ -390,13 +1146,6 @@ function closePreview() {
 }
 
 /* =====================================================
-   REFRESH
-===================================================== */
-function refreshResources() {
-    loadAllResources();
-}
-
-/* =====================================================
    UTIL
 ===================================================== */
 function getFileTypeText(type) {
@@ -411,6 +1160,18 @@ function getFileTypeText(type) {
 
 function getDefaultThumbnail() {
     return "https://source.unsplash.com/600x400/?file";
+}
+
+function getDefaultAvatar(name) {
+    const label = encodeURIComponent(name || "User");
+    return `https://ui-avatars.com/api/?name=${label}&background=random`;
+}
+
+function formatCount(n) {
+    n = n || 0;
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+    return n.toString();
 }
 </script>
 

@@ -1,151 +1,653 @@
 {% extends "fronten.html" %}
 {% block content %}
-<body>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='aboutus.css') }}">
-<div class="wel">
-<div class="wel-left">
- <h1 class="welc">Welcome to Eschool</h1>
- <h1 class="bred">Making quality education<br> accessible to every learner,<br> everywhere.</h1>
-       <p class="welcm">
-        At Eschool we provide high-quality video lessons,
-         concise <br>subject notes, and career resources that
-          empower <br>students and reward teachers.Our platform
-           is designed <br>to be simple, friendly, and effective —
-            perfect for learners<br> studying from home or on the go.
-        </p>
+<style>
+  :root{
+    --primary:#2563EB;
+    --secondary:#3B82F6;
+    --accent:#14B8A6;
+    --highlight:#F59E0B;
+    --bg:#F8FAFC;
+    --dark:#0F172A;
+    --gray:#64748B;
+    --radius-lg:28px;
+    --radius-md:18px;
+    --radius-sm:12px;
+    --shadow:0 20px 50px -20px rgba(15,23,42,.18);
+    --glass:rgba(255,255,255,.7);
+    --glass-border:rgba(255,255,255,.55);
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--dark); font-family:'Inter',system-ui,sans-serif; overflow-x:hidden; }
+  .container{ max-width:1180px; margin:0 auto; padding:0 24px; }
+  section{ position:relative; padding:100px 0; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--primary); background:rgba(37,99,235,.08); padding:7px 16px; border-radius:999px; margin-bottom:18px;
+  }
+  h1,h2,h3,h4{ font-family:'Manrope',sans-serif; font-weight:800; letter-spacing:-.02em; margin:0; }
+  .sec-title{ font-size:36px; margin-bottom:14px; }
+  .sec-sub{ font-size:16px; color:var(--gray); max-width:560px; line-height:1.6; margin-bottom:52px; }
+  .center{ text-align:center; margin-left:auto; margin-right:auto; }
+  a{ color:inherit; }
+
+  /* ---------- reveal-on-scroll ---------- */
+  .reveal{ opacity:0; transform:translateY(26px); transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+  .reveal.left{ transform:translateX(-30px); }
+  .reveal.left.in{ transform:translateX(0); }
+  .reveal.right{ transform:translateX(30px); }
+  .reveal.right.in{ transform:translateX(0); }
+
+  /* ---------- dot grid (global, subtle) ---------- */
+  .dotgrid{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:radial-gradient(rgba(15,23,42,.06) 1px, transparent 1px);
+    background-size:26px 26px;
+    mask-image:radial-gradient(ellipse 70% 50% at 50% 0%, black, transparent 80%);
+  }
+
+  /* ============ HERO ============ */
+  .hero{ padding:150px 0 110px; overflow:hidden; }
+  .hero-blobs{ position:absolute; inset:0; z-index:0; overflow:hidden; }
+  .blob{ position:absolute; border-radius:50%; filter:blur(80px); opacity:.5; animation:drift 24s ease-in-out infinite alternate; }
+  .blob.b1{ width:480px; height:480px; top:-160px; right:-120px; background:radial-gradient(circle, var(--primary), transparent 70%); }
+  .blob.b2{ width:380px; height:380px; bottom:-140px; left:-100px; background:radial-gradient(circle, var(--accent), transparent 70%); animation-duration:30s; animation-delay:-8s; }
+  @keyframes drift{ to{ transform:translate(36px,-40px) scale(1.08); } }
+
+  .hero-grid{ position:relative; z-index:1; display:grid; grid-template-columns:1.1fr .9fr; gap:60px; align-items:center; }
+  .hero h1{ font-size:46px; line-height:1.12; margin-bottom:20px; }
+  .hero h1 .grad{ background:linear-gradient(90deg,var(--primary),var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero p.lead{ font-size:16.5px; color:var(--gray); line-height:1.7; max-width:520px; margin-bottom:32px; }
+  .btn-row{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:48px; }
+  .btn{
+    position:relative; overflow:hidden; display:inline-flex; align-items:center; gap:8px;
+    padding:14px 26px; border-radius:999px; font-weight:700; font-size:14.5px; cursor:pointer; border:none;
+    font-family:'Manrope',sans-serif; text-decoration:none; transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .btn-primary{ background:linear-gradient(90deg,var(--primary),var(--secondary)); color:#fff; box-shadow:0 14px 30px -10px rgba(37,99,235,.55); }
+  .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 18px 36px -8px rgba(37,99,235,.65); }
+  .btn-primary::before{
+    content:''; position:absolute; top:0; left:-60%; width:35%; height:100%;
+    background:linear-gradient(115deg, transparent, rgba(255,255,255,.45), transparent); transform:skewX(-20deg);
+    animation:shine 3.4s ease-in-out infinite;
+  }
+  @keyframes shine{ 0%{left:-60%;} 45%{left:130%;} 100%{left:130%;} }
+  .btn-ghost{ background:rgba(255,255,255,.7); border:1.5px solid rgba(15,23,42,.12); color:var(--dark); backdrop-filter:blur(8px); }
+  .btn-ghost:hover{ border-color:var(--primary); color:var(--primary); transform:translateY(-2px); }
+  .btn .ripple{ position:absolute; border-radius:50%; background:rgba(255,255,255,.5); transform:scale(0); animation:rip .6s ease-out forwards; pointer-events:none; }
+  @keyframes rip{ to{ transform:scale(3.2); opacity:0; } }
+
+  .stat-row{ display:flex; gap:38px; flex-wrap:wrap; }
+  .stat-row .stat b{ display:block; font-family:'Manrope',sans-serif; font-weight:800; font-size:26px; color:var(--dark); }
+  .stat-row .stat span{ font-size:12.5px; color:var(--gray); }
+
+  .hero-visual{ position:relative; height:420px; }
+  .shape{ position:absolute; border-radius:32px; animation:float 7s ease-in-out infinite; }
+  .shape.s1{ width:220px; height:220px; top:10px; right:40px; background:linear-gradient(135deg, var(--primary), var(--secondary)); opacity:.16; border-radius:50%; animation-duration:8s; }
+  .shape.s2{ width:150px; height:150px; bottom:40px; right:120px; background:linear-gradient(135deg, var(--accent), var(--secondary)); opacity:.9; transform:rotate(18deg); animation-duration:6.5s; animation-delay:-2s; }
+  .shape.s3{ width:110px; height:110px; top:120px; right:230px; border-radius:50%; border:3px solid var(--highlight); opacity:.8; animation-duration:9s; animation-delay:-4s; }
+  .shape.s4{ width:80px; height:80px; bottom:110px; right:20px; background:var(--highlight); opacity:.85; border-radius:22px; animation-duration:5.5s; animation-delay:-1s; }
+  .shape .glyph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; }
+  .shape .glyph svg{ width:44%; height:44%; }
+  @keyframes float{ 0%,100%{ transform:translateY(0) rotate(var(--r,0deg)); } 50%{ transform:translateY(-18px) rotate(var(--r,0deg)); } }
+
+  /* ============ WHO WE ARE / VALUE CARD GRID ============ */
+  .grid-4{ display:grid; grid-template-columns:repeat(4,1fr); gap:22px; }
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+  .grid-6{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+  .grid-8{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+
+  .card{
+    position:relative; background:var(--glass); backdrop-filter:blur(14px); border-radius:var(--radius-md);
+    padding:30px 26px; border:1px solid rgba(15,23,42,.06); box-shadow:var(--shadow);
+    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  }
+  .card:hover{ transform:translateY(-6px); box-shadow:0 30px 60px -20px rgba(37,99,235,.25); border-color:rgba(37,99,235,.25); }
+  .card .ic{
+    width:50px; height:50px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:16px;
+    background:linear-gradient(135deg, var(--primary), var(--accent)); color:#fff;
+  }
+  .card .ic svg{ width:24px; height:24px; }
+  .card h4{ font-size:16.5px; margin-bottom:8px; }
+  .card p{ font-size:13.5px; color:var(--gray); line-height:1.65; margin:0; }
+
+  /* ============ OUR STORY / TIMELINE ============ */
+  .story{ background:linear-gradient(180deg, #fff, var(--bg)); }
+  .story-grid{ display:grid; grid-template-columns:1fr 1fr; gap:70px; align-items:start; }
+  .story p.body-text{ font-size:15px; color:var(--gray); line-height:1.85; margin-bottom:16px; }
+
+  .timeline{ position:relative; padding-left:34px; }
+  .timeline::before{
+    content:''; position:absolute; left:9px; top:6px; bottom:6px; width:2px;
+    background:rgba(15,23,42,.1);
+  }
+  .timeline .fill-line{
+    position:absolute; left:9px; top:6px; width:2px; height:0%;
+    background:linear-gradient(180deg, var(--primary), var(--accent));
+    transition:height 1.4s cubic-bezier(.16,1,.3,1);
+  }
+  .timeline.in .fill-line{ height:100%; }
+  .t-item{ position:relative; padding-bottom:38px; }
+  .t-item:last-child{ padding-bottom:0; }
+  .t-item::before{
+    content:''; position:absolute; left:-34px; top:2px; width:20px; height:20px; border-radius:50%;
+    background:#fff; border:3px solid var(--primary); z-index:1;
+  }
+  .t-item .yr{ font-family:'Manrope',sans-serif; font-weight:800; font-size:13px; color:var(--primary); margin-bottom:4px; }
+  .t-item h4{ font-size:15.5px; margin-bottom:4px; }
+  .t-item p{ font-size:13px; color:var(--gray); margin:0; line-height:1.55; }
+
+  /* ============ MISSION / VISION ============ */
+  .mv-grid{ display:grid; grid-template-columns:1fr 1fr; gap:26px; }
+  .mv-card{
+    position:relative; border-radius:var(--radius-lg); padding:44px 38px; overflow:hidden;
+    color:#fff; box-shadow:0 30px 60px -22px rgba(15,23,42,.35);
+    transition:transform .25s ease;
+  }
+  .mv-card:hover{ transform:translateY(-6px); }
+  .mv-card.mission{ background:linear-gradient(135deg, var(--primary), #1e40af); }
+  .mv-card.vision{ background:linear-gradient(135deg, var(--accent), #0d9488); }
+  .mv-card .ic{ width:58px; height:58px; border-radius:16px; background:rgba(255,255,255,.18); display:flex; align-items:center; justify-content:center; margin-bottom:20px; }
+  .mv-card .ic svg{ width:28px; height:28px; }
+  .mv-card h3{ font-size:24px; margin-bottom:12px; }
+  .mv-card p{ font-size:14px; line-height:1.75; opacity:.92; margin:0; }
+  .mv-card::after{
+    content:''; position:absolute; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,.12);
+    top:-90px; right:-90px;
+  }
+
+  /* ============ WHY CHOOSE ============ */
+  .why-item{
+    display:flex; align-items:center; gap:12px; background:#fff; border-radius:var(--radius-sm);
+    padding:16px 18px; border:1px solid rgba(15,23,42,.06); box-shadow:0 10px 24px -16px rgba(15,23,42,.15);
+    transition:transform .2s ease, border-color .2s ease;
+  }
+  .why-item:hover{ transform:translateY(-3px); border-color:var(--accent); }
+  .why-item .tick{
+    width:26px; height:26px; min-width:26px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--primary));
+    display:flex; align-items:center; justify-content:center; color:#fff;
+  }
+  .why-item .tick svg{ width:13px; height:13px; }
+  .why-item span{ font-size:13.5px; font-weight:600; }
+
+  /* ============ STATS ============ */
+  .stats-sec{ background:linear-gradient(135deg, var(--dark), #1e293b); color:#fff; border-radius:var(--radius-lg); margin:0 24px; padding:70px 40px; }
+  .stats-inner{ max-width:1100px; margin:0 auto; }
+  .stats-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:20px; text-align:center; }
+  .stat-card{ padding:20px; }
+  .stat-card b{ display:block; font-family:'Manrope',sans-serif; font-weight:800; font-size:40px;
+    background:linear-gradient(90deg,#fff, #bfdbfe); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .stat-card span{ font-size:13px; color:#94a3b8; }
+
+  /* ============ LEARNING JOURNEY ============ */
+  .journey{ display:grid; grid-template-columns:repeat(5,1fr); gap:16px; position:relative; }
+  .journey::before{ content:''; position:absolute; top:26px; left:8%; right:8%; height:2px; background:rgba(15,23,42,.1); z-index:0; }
+  .j-step{ position:relative; z-index:1; text-align:center; }
+  .j-step .num{
+    width:54px; height:54px; border-radius:50%; margin:0 auto 14px; display:flex; align-items:center; justify-content:center;
+    background:#fff; border:2px solid var(--primary); color:var(--primary); font-family:'Manrope',sans-serif; font-weight:800; font-size:16px;
+    transition:all .3s ease;
+  }
+  .j-step.in .num{ background:linear-gradient(135deg,var(--primary),var(--accent)); color:#fff; border-color:transparent; }
+  .j-step h4{ font-size:13.5px; margin-bottom:5px; }
+  .j-step p{ font-size:11.5px; color:var(--gray); margin:0; }
+
+  /* ============ TEAM ============ */
+  .team-card{ text-align:center; padding:34px 20px; }
+  .avatar{
+    width:76px; height:76px; border-radius:50%; margin:0 auto 16px; display:flex; align-items:center; justify-content:center;
+    font-family:'Manrope',sans-serif; font-weight:800; font-size:22px; color:#fff;
+    background:linear-gradient(135deg, var(--primary), var(--accent));
+  }
+  .team-card h4{ font-size:15px; margin-bottom:3px; }
+  .team-card span{ font-size:12px; color:var(--gray); }
+
+  /* ============ TESTIMONIALS ============ */
+  .testi-card{ padding:30px 26px; }
+  .testi-top{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .testi-top .avatar{ width:46px; height:46px; font-size:14px; margin:0; }
+  .testi-name{ font-size:14px; font-weight:700; }
+  .testi-loc{ font-size:11.5px; color:var(--gray); }
+  .stars{ display:flex; gap:2px; margin-bottom:10px; color:var(--highlight); }
+  .stars svg{ width:14px; height:14px; }
+  .testi-card p{ font-size:13.5px; color:var(--gray); line-height:1.7; margin:0; }
+
+  /* ============ CTA ============ */
+  .cta{
+    position:relative; overflow:hidden; border-radius:var(--radius-lg); margin:0 24px;
+    background:linear-gradient(120deg, var(--primary), var(--accent)); padding:80px 40px; text-align:center; color:#fff;
+  }
+  .cta .blob{ opacity:.25; }
+  .cta h2{ font-size:32px; margin-bottom:14px; position:relative; z-index:1; }
+  .cta p{ font-size:15px; opacity:.92; max-width:520px; margin:0 auto 30px; position:relative; z-index:1; }
+  .cta .btn-row{ justify-content:center; position:relative; z-index:1; margin-bottom:0; }
+  .cta .btn-primary{ background:#fff; color:var(--primary); box-shadow:0 14px 30px -10px rgba(0,0,0,.3); }
+  .cta .btn-ghost{ background:rgba(255,255,255,.14); color:#fff; border-color:rgba(255,255,255,.4); }
+
+  /* ============ FOOTER ============ */
+  footer.site-foot{ background:linear-gradient(180deg, var(--dark), #060b16); color:#fff; padding:70px 0 26px; margin-top:20px; }
+  .foot-grid{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1.2fr; gap:40px; margin-bottom:44px; }
+  .foot-brand{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .foot-brand span{ font-family:'Manrope',sans-serif; font-weight:800; font-size:18px; }
+  .foot-col p{ font-size:13px; color:#94a3b8; line-height:1.7; }
+  .foot-col h5{ font-family:'Manrope',sans-serif; font-size:13.5px; margin-bottom:16px; color:#e2e8f0; }
+  .foot-col ul{ list-style:none; margin:0; padding:0; }
+  .foot-col ul li{ margin-bottom:10px; }
+  .foot-col ul a{ color:#94a3b8; text-decoration:none; font-size:13px; transition:color .2s ease; }
+  .foot-col ul a:hover{ color:#fff; }
+  .social-row{ display:flex; gap:10px; margin-top:16px; }
+  .social-row a{
+    width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,.06); display:flex; align-items:center; justify-content:center;
+    color:#94a3b8; transition:all .2s ease;
+  }
+  .social-row a:hover{ background:var(--primary); color:#fff; transform:translateY(-2px); }
+  .social-row svg{ width:15px; height:15px; }
+  .newsletter{ display:flex; gap:8px; margin-top:6px; }
+  .newsletter input{
+    flex:1; height:42px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06);
+    color:#fff; padding:0 14px; font-size:12.5px; outline:none;
+  }
+  .newsletter input::placeholder{ color:#64748B; }
+  .newsletter button{
+    height:42px; padding:0 16px; border-radius:10px; border:none; background:var(--primary); color:#fff; font-weight:700; font-size:12.5px; cursor:pointer;
+  }
+  .newsletter-msg{ font-size:11.5px; color:var(--accent); margin-top:8px; min-height:14px; }
+  .copyright{ text-align:center; padding-top:26px; border-top:1px solid rgba(255,255,255,.08); color:#64748B; font-size:12px; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width:980px){
+    .hero-grid, .story-grid, .mv-grid{ grid-template-columns:1fr; }
+    .hero-visual{ height:260px; }
+    .grid-4, .grid-8{ grid-template-columns:repeat(2,1fr); }
+    .grid-3, .grid-6{ grid-template-columns:repeat(2,1fr); }
+    .stats-grid{ grid-template-columns:repeat(2,1fr); }
+    .journey{ grid-template-columns:1fr; gap:26px; }
+    .journey::before{ display:none; }
+    .foot-grid{ grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width:620px){
+    section{ padding:70px 0; }
+    .hero{ padding:120px 0 70px; }
+    .hero h1{ font-size:32px; }
+    .grid-4, .grid-3, .grid-6, .grid-8{ grid-template-columns:1fr; }
+    .stats-grid{ grid-template-columns:1fr 1fr; }
+    .foot-grid{ grid-template-columns:1fr; }
+    .stats-sec, .cta{ margin:0 14px; padding:50px 22px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+
+<div class="dotgrid"></div>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-blobs"><div class="blob b1"></div><div class="blob b2"></div></div>
+  <div class="container hero-grid">
+    <div class="reveal in">
+      <span class="eyebrow">About us</span>
+      <h1>Empowering Every Learner to <span class="grad">Reach Their Full Potential</span></h1>
+      <p class="lead">Eschool is a modern digital learning platform built to make high-quality education accessible to every learner, everywhere — with video lessons, structured notes, and career resources that help students grow and reward teachers for sharing what they know.</p>
+      <div class="btn-row">
+        <a href="/courses" class="btn btn-primary" data-ripple>Explore Courses</a>
+        <a href="/contact" class="btn btn-ghost" data-ripple>Contact Us</a>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><b data-count="15000" data-suffix="+">0</b><span>Students</span></div>
+        <div class="stat"><b data-count="350" data-suffix="+">0</b><span>Courses</span></div>
+        <div class="stat"><b data-count="120" data-suffix="+">0</b><span>Teachers</span></div>
+        <div class="stat"><b data-count="98" data-suffix="%">0</b><span>Satisfaction</span></div>
+      </div>
+    </div>
+    <div class="hero-visual reveal right in">
+      <div class="shape s1"></div>
+      <div class="shape s2"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg></span></div>
+      <div class="shape s3"></div>
+      <div class="shape s4"><span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OUR STORY ============ -->
+<section class="story">
+  <div class="container story-grid">
+    <div class="reveal left">
+      <span class="eyebrow">Our Story</span>
+      <h2 class="sec-title">How Eschool came to be</h2>
+      <p class="body-text">Eschool was founded after watching students struggle with the same barriers again and again — study materials that were hard to find, access to good teachers limited by geography, and a real need for learning that could bend around real life instead of the other way round.</p>
+      <p class="body-text">We built Eschool to close that gap: one platform where clear video lessons, well-structured notes, and career guidance live side by side, and where teachers can turn their knowledge into a livelihood. What started as a small idea is now a growing community of learners and educators working toward the same goal — making quality education a right, not a privilege.</p>
+    </div>
+    <div class="timeline reveal right" id="timeline">
+      <div class="fill-line"></div>
+      <div class="t-item"><div class="yr">2025</div><h4>Eschool Founded</h4><p>Built on a simple idea: education should reach everyone.</p></div>
+      <div class="t-item"><div class="yr">Next</div><h4>Platform Development</h4><p>Designing a simple, friendly, and effective learning experience.</p></div>
+      <div class="t-item"><div class="yr">Then</div><h4>First Online Courses</h4><p>Launching lessons, notes, and resources across core subjects.</p></div>
+      <div class="t-item"><div class="yr">Growing</div><h4>Growing Community</h4><p>Welcoming learners and teachers from every background.</p></div>
+      <div class="t-item"><div class="yr">Ahead</div><h4>Future Expansion</h4><p>Reaching further, with more courses, tools, and support.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHO WE ARE ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">Who We Are</span>
+      <h2 class="sec-title">A team built around one belief</h2>
+      <p class="sec-sub center">Eschool brings together educators, developers, and innovators who understand the power of knowledge — and the importance of making it available to anyone who seeks it.</p>
+    </div>
+    <div class="grid-4">
+      <div class="card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg></div>
+        <h4>Education</h4><p>We believe quality education should be accessible to every learner, everywhere.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a6 6 0 0 0-4 10.4c.6.6 1 1.3 1 2.1V16h6v-1.5c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 2z"/></svg></div>
+        <h4>Innovation</h4><p>Modern technology and thoughtful design make learning simpler and smarter.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <h4>Community</h4><p>Students and teachers grow together in a supportive, connected space.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V6l-8-4z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <h4>Excellence</h4><p>We keep improving everything we build, one release at a time.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MISSION & VISION ============ -->
+<section>
+  <div class="container mv-grid">
+    <div class="mv-card mission reveal left">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+      <h3>Our Mission</h3>
+      <p>To provide accessible, affordable, and high-quality education to every learner, regardless of background or location — with easy-to-understand materials, flexible schedules, and real opportunities for teachers to grow their careers.</p>
+    </div>
+    <div class="mv-card vision reveal right">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></div>
+      <h3>Our Vision</h3>
+      <p>To become a global leader in online education — bridging the gap between privileged and underprivileged learners, empowering educators, and building a world where quality education reaches every corner of society.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CORE VALUES ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">Core Values</span>
+      <h2 class="sec-title">What guides everything we build</h2>
+    </div>
+    <div class="grid-6" style="margin-top:52px;">
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V6l-8-4z"/></svg></div><h4>Integrity</h4><p>We do right by our learners, always — clear, honest, and accountable.</p></div>
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a6 6 0 0 0-4 10.4c.6.6 1 1.3 1 2.1V16h6v-1.5c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 2z"/></svg></div><h4>Innovation</h4><p>We keep looking for better, simpler ways to help people learn.</p></div>
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg></div><h4>Accessibility</h4><p>Distance, cost, and background should never decide who gets to learn.</p></div>
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V6l-8-4z"/><path d="m9 12 2 2 4-4"/></svg></div><h4>Excellence</h4><p>Good enough isn't — we hold our work to a high standard.</p></div>
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></div><h4>Creativity</h4><p>We look for fresh, human ways to explain difficult ideas.</p></div>
+      <div class="card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><h4>Collaboration</h4><p>Learners and teachers succeed faster when they grow together.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHY CHOOSE ESCHOOL ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">Why Eschool</span>
+      <h2 class="sec-title">Everything you need to learn well</h2>
+    </div>
+    <div class="grid-8" style="margin-top:44px;">
+      <div class="why-item reveal"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>High-quality video lessons</span></div>
+      <div class="why-item reveal"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Interactive learning</span></div>
+      <div class="why-item reveal"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Expert teachers</span></div>
+      <div class="why-item reveal"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Career guidance</span></div>
+      <div class="why-item reveal"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Progress tracking</span></div>
+      <div class="why-item reveal"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Certificates</span></div>
+      <div class="why-item reveal"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Flexible learning</span></div>
+      <div class="why-item reveal"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Mobile-friendly platform</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PLATFORM STATISTICS ============ -->
+<section>
+  <div class="stats-sec reveal">
+    <div class="stats-inner">
+      <div class="center" style="margin-bottom:40px;">
+        <span class="eyebrow" style="background:rgba(255,255,255,.1); color:#93c5fd;">By the Numbers</span>
+        <h2 class="sec-title" style="color:#fff;">Eschool at a glance</h2>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><b data-count="15000" data-suffix="+">0</b><span>Students</span></div>
+        <div class="stat-card"><b data-count="350" data-suffix="+">0</b><span>Courses</span></div>
+        <div class="stat-card"><b data-count="120" data-suffix="+">0</b><span>Teachers</span></div>
+        <div class="stat-card"><b data-count="98" data-suffix="%">0</b><span>Completion Rate</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LEARNING JOURNEY ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">Learning Journey</span>
+      <h2 class="sec-title">Five steps from sign-up to certificate</h2>
+    </div>
+    <div class="journey" style="margin-top:50px;">
+      <div class="j-step reveal"><div class="num">1</div><h4>Create Account</h4><p>Sign up in under a minute.</p></div>
+      <div class="j-step reveal"><div class="num">2</div><h4>Choose Course</h4><p>Pick from hundreds of subjects.</p></div>
+      <div class="j-step reveal"><div class="num">3</div><h4>Learn Anywhere</h4><p>Study on any device, any time.</p></div>
+      <div class="j-step reveal"><div class="num">4</div><h4>Complete Assessments</h4><p>Test what you've learned.</p></div>
+      <div class="j-step reveal"><div class="num">5</div><h4>Earn Certificate</h4><p>Show off what you've achieved.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MEET OUR VISION (TEAM) ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">The People Behind Eschool</span>
+      <h2 class="sec-title">Meet our vision</h2>
+    </div>
+    <div class="grid-4" style="margin-top:44px;">
+      <div class="card team-card reveal"><div class="avatar">F</div><h4>Founder</h4><span>Sets the direction and purpose</span></div>
+      <div class="card team-card reveal"><div class="avatar">L</div><h4>Lead Developer</h4><span>Builds and ships the platform</span></div>
+      <div class="card team-card reveal"><div class="avatar">E</div><h4>Education Specialist</h4><span>Shapes how learners learn best</span></div>
+      <div class="card team-card reveal"><div class="avatar">C</div><h4>Content Creator</h4><span>Turns knowledge into lessons</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TESTIMONIALS ============ -->
+<section>
+  <div class="container">
+    <div class="center reveal">
+      <span class="eyebrow">Testimonials</span>
+      <h2 class="sec-title">Loved by learners everywhere</h2>
+    </div>
+    <div class="grid-3" style="margin-top:44px;">
+      <div class="card testi-card reveal">
+        <div class="testi-top"><div class="avatar">A</div><div><div class="testi-name">Amara O.</div><div class="testi-loc">Nigeria</div></div></div>
+        <div class="stars">★★★★★</div>
+        <p>"Eschool made it possible for me to study on my own schedule, around work. The notes are the clearest I've used."</p>
+      </div>
+      <div class="card testi-card reveal">
+        <div class="testi-top"><div class="avatar">R</div><div><div class="testi-name">Ravi K.</div><div class="testi-loc">India</div></div></div>
+        <div class="stars">★★★★★</div>
+        <p>"The video lessons break down hard topics really well. I finally feel confident going into my exams."</p>
+      </div>
+      <div class="card testi-card reveal">
+        <div class="testi-top"><div class="avatar">S</div><div><div class="testi-name">Sofia M.</div><div class="testi-loc">Philippines</div></div></div>
+        <div class="stars">★★★★★</div>
+        <p>"Between the career resources and the certificates, Eschool has genuinely helped my job search."</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section>
+  <div class="cta reveal">
+    <div class="hero-blobs"><div class="blob b1"></div><div class="blob b2"></div></div>
+    <h2>Start Your Learning Journey Today</h2>
+    <p>Join thousands of learners already building real skills with Eschool — sign up free and pick your first course in minutes.</p>
+    <div class="btn-row">
+      <a href="/register" class="btn btn-primary" data-ripple>Register Now</a>
+      <a href="/courses" class="btn btn-ghost" data-ripple>Browse Courses</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-foot">
+  <div class="container">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <div class="foot-brand">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3L1 8l11 5 9-4.09V17h2V8L12 3z" fill="url(#fg1)"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="url(#fg1)" opacity=".7"/><defs><linearGradient id="fg1" x1="1" y1="3" x2="23" y2="21"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#14B8A6"/></linearGradient></defs></svg>
+          <span>Eschool</span>
         </div>
-        <img src="static/image.png" class="wel-img">
+        <p>The all-in-one platform for modern, accessible online learning.</p>
+        <div class="social-row">
+          <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg></a>
+          <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 5.9c-.7.3-1.5.6-2.3.7.8-.5 1.5-1.3 1.8-2.3-.8.5-1.7.8-2.6 1a4.1 4.1 0 0 0-7 3.7A11.6 11.6 0 0 1 3.4 4.6a4.1 4.1 0 0 0 1.3 5.5c-.7 0-1.3-.2-1.9-.5v.1c0 2 1.4 3.6 3.3 4a4.1 4.1 0 0 1-1.8.1 4.1 4.1 0 0 0 3.8 2.9A8.3 8.3 0 0 1 2 18.4a11.6 11.6 0 0 0 6.3 1.8c7.5 0 11.7-6.3 11.7-11.7v-.5c.8-.6 1.5-1.3 2-2.1z"/></svg></a>
+          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.1c.5-1 1.9-2 3.8-2 4 0 4.8 2.6 4.8 6V21h-4v-5.3c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V21H9z"/></svg></a>
+          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.7 0 3 0 4.1.06 1.1.05 1.8.22 2.4.46.7.28 1.2.6 1.7 1.1.5.5.9 1 1.1 1.7.25.6.42 1.4.46 2.4.06 1.1.06 1.5.06 4.1s0 3-.06 4.1c-.04 1.1-.2 1.8-.46 2.4-.28.7-.6 1.2-1.1 1.7-.5.5-1 .8-1.7 1.1-.6.24-1.3.4-2.4.46-1.1.06-1.4.06-4.1.06s-3 0-4.1-.06c-1.1-.06-1.8-.22-2.4-.46-.7-.3-1.2-.6-1.7-1.1-.5-.5-.8-1-1.1-1.7-.24-.6-.4-1.3-.46-2.4C2 15 2 14.7 2 12s0-3 .06-4.1c.06-1.1.22-1.8.46-2.4.3-.7.6-1.2 1.1-1.7.5-.5 1-.8 1.7-1.1.6-.24 1.3-.41 2.4-.46C9 2 9.3 2 12 2zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zm5.2-8.4a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z"/></svg></a>
         </div>
-<div class="lucid" >
-<div class="about-text">
-<h1 class="ofa">About Eschool</h1>
-<p class="manyw">This is a modern, innovative, and inclusive<br> digital learning platform 
-    built with one mission<br> in mind to make high-quality education <br>accessible
-    to every learner, everywhere.At<br> Eschool, we believe that education is not
-    just<br> a privilege but a fundamental right. Our <br>platform was created after 
-    observing the<br> challenges many students face — lack of quality<br> study materials,
-     limited access to good teachers,<br> and the growing need for flexible,easy-to-<br>understand
-      learning resources. We exist to solve<br> these problems and create a space where<br> learning
-       becomes simpler, smarter, and more<br> enjoyable.</p>
-       </div>
-       </div>
-<div class="third">
-<h1 class="hthird">Who we are</h1>
-<p class="pthird">Eschool is a dedicated educational hub that
-     brings together students, teachers, and lifelong
-      learners under one digital roof. We are a team
-       of passionate educators, developers, and innovators
-        who understand the power of knowledge and the importance
-         of making it available to anyone who seeks it.
-We specialize in providing:<br>
+      </div>
+      <div class="foot-col">
+        <h5>Quick Links</h5>
+        <ul>
+          <li><a href="/courses">Courses</a></li>
+          <li><a href="/aboutus">About</a></li>
+          <li><a href="/contact">Contact</a></li>
+          <li><a href="/help">Help Center</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h5>Legal</h5>
+        <ul>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+      <div class="foot-col">
+        <h5>Stay Updated</h5>
+        <p style="margin-bottom:12px;">Get new courses and learning tips in your inbox.</p>
+        <form class="newsletter" id="newsForm">
+          <input type="email" placeholder="Your email" required>
+          <button type="submit">Subscribe</button>
+        </form>
+        <div class="newsletter-msg" id="newsMsg"></div>
+      </div>
+    </div>
+    <div class="copyright">&copy; 2025 Eschool. All rights reserved.</div>
+  </div>
+</footer>
 
-✓.High-quality educational videos that break down complex concepts.<br>
+<script>
+(function(){
+  // ---- scroll reveal ----
+  var revealEls = document.querySelectorAll('.reveal');
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry, i){
+      if (entry.isIntersecting){
+        entry.target.classList.add('in');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: .15 });
+  revealEls.forEach(function(el, i){
+    el.style.transitionDelay = (Math.min(i % 6, 5) * 70) + 'ms';
+    io.observe(el);
+  });
 
-✓.Well-structured subject notes crafted for clarity and understanding.<br>
+  // ---- timeline draw ----
+  var tl = document.getElementById('timeline');
+  if (tl){
+    var tlIO = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if (e.isIntersecting){ tl.classList.add('in'); tlIO.unobserve(tl); } });
+    }, { threshold:.25 });
+    tlIO.observe(tl);
+  }
 
-✓.Career-building resources for learners who want to grow professionally.<br>
+  // ---- journey steps stagger-in ----
+  document.querySelectorAll('.j-step').forEach(function(step, i){
+    var jIO = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){
+          setTimeout(function(){ step.classList.add('in'); }, i * 120);
+          jIO.unobserve(step);
+        }
+      });
+    }, { threshold:.4 });
+    jIO.observe(step);
+  });
 
-✓.A platform for teachers to earn by sharing their valuable knowledge.<br>
+  // ---- animated counters ----
+  document.querySelectorAll('[data-count]').forEach(function(el){
+    var target = parseInt(el.dataset.count, 10);
+    var suffix = el.dataset.suffix || '';
+    var cIO = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (!e.isIntersecting) return;
+        cIO.unobserve(el);
+        var start = 0, duration = 1400, startTime = null;
+        function step(ts){
+          if (!startTime) startTime = ts;
+          var progress = Math.min((ts - startTime) / duration, 1);
+          var eased = 1 - Math.pow(1 - progress, 3);
+          var val = Math.floor(eased * target);
+          el.textContent = val.toLocaleString() + suffix;
+          if (progress < 1) requestAnimationFrame(step);
+          else el.textContent = target.toLocaleString() + suffix;
+        }
+        requestAnimationFrame(step);
+      });
+    }, { threshold:.5 });
+    cIO.observe(el);
+  });
 
-✓.Our commitment is to build a safe, reliable, and user-friendly environment where both learners and educators can thrive.<br>
-</p>
-</div>
-<div class="mv">
-    <div>
-    <h1 class="miss"> Our Mission</h1>
+  // ---- ripple on buttons ----
+  document.querySelectorAll('[data-ripple]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      var rect = btn.getBoundingClientRect();
+      var span = document.createElement('span');
+      span.className = 'ripple';
+      var size = Math.max(rect.width, rect.height);
+      span.style.width = span.style.height = size + 'px';
+      span.style.left = (e.clientX - rect.left - size/2) + 'px';
+      span.style.top = (e.clientY - rect.top - size/2) + 'px';
+      btn.appendChild(span);
+      setTimeout(function(){ span.remove(); }, 650);
+    });
+  });
 
-<p class="mmiss">
-Our mission is simple but powerful:
-To provide accessible, affordable, and high-quality education to all learners, regardless of their background or location.
+  // ---- newsletter (front-end only placeholder) ----
+  var newsForm = document.getElementById('newsForm');
+  if (newsForm){
+    newsForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      document.getElementById('newsMsg').textContent = "Thanks — you're on the list!";
+      newsForm.reset();
+    });
+  }
 
-We want to remove the barriers that hold students back by providing:<br>
-
-✓.Easy-to-understand learning materials<br>
-
-✓.A flexible learning schedule<br>
-
-✓.A comfortable platform for studying from home<br>
-
-✓.Opportunities for teachers to develop their careers<br>
-
-✓.A supportive digital community<br>
-
-We aim to impact millions of learners worldwide by shaping a future where education is not limited by distance, cost, or opportunity.
-</p>
-</div>
-<div>
-    <h1 class="vis">Our Vision</h1>
-
-<p class="mvis">Our vision is to become a global leader in online education by:<br>
-
-✓.Bridging the educational gap between privileged and underprivileged learners<br>
-
-✓.Encouraging innovation in teaching<br>
-
-✓.Empowering content creators and educators<br>
-
-✓.Supporting students every step of the way<br>
-
-✓.Building a world where quality education reaches every corner of society<br>
-
-We aspire to create a future where every learner has the tools, knowledge, and confidence they need to succeed academically and professionally.
-</p>
-</div>
-</div>
-
-<footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-column">
-                    <h3>Eschool</h3>
-                    <p style="color: #a0aec0; margin-bottom: 20px;">The all-in-one platform for modern and online learning.</p>
-                    <div style="display: flex; gap: 15px;">
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-facebook"></i></a>
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-twitter"></i></a>
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" style="color: #a0aec0; font-size: 1.2rem;"><i class="fab fa-instagram"></i></a>
-                    </div>
-                </div>
-                
-                <div class="footer-column">
-                    <h3>Product</h3>
-                    <ul>
-                        <li><a href="#">Features</a></li>
-                        <li><a href="#">Solutions</a></li>
-                        <li><a href="#">Pricing</a></li>
-                        <li><a href="#">Integrations</a></li>
-                        <li><a href="#">Updates</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-column">
-                    <h3>Resources</h3>
-                    <ul>
-                        <li><a href="#">Blog</a></li>
-                        <li><a href="#">Help Center</a></li>
-                        <li><a href="#">Community</a></li>
-                        <li><a href="#">Events</a></li>
-                        <li><a href="#">Partners</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-column">
-                    <h3>Company</h3>
-                    <ul>
-                        <li><a href="#">About Us</a></li>
-                        <li><a href="#">Careers</a></li>
-                        <li><a href="#">Contact</a></li>
-                        <li><a href="#">Legal</a></li>
-                        <li><a href="#">Privacy Policy</a></li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="copyright">
-                &copy; 2025 Eschool. All rights reserved.
-            </div>
-        </div>
-    </footer>
-</body>
+  // ---- subtle hero parallax ----
+  var visual = document.querySelector('.hero-visual');
+  if (visual && matchMedia('(prefers-reduced-motion: no-preference)').matches){
+    document.querySelector('.hero').addEventListener('mousemove', function(e){
+      var x = (e.clientX / window.innerWidth - .5) * 14;
+      var y = (e.clientY / window.innerHeight - .5) * 14;
+      visual.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+    });
+  }
+})();
+</script>
 {% endblock %}
