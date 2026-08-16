@@ -7,10 +7,49 @@ import random
 import hashlib
 from datetime import datetime
 from werkzeug.utils import secure_filename
+from authlib.integrations.flask_client import OAuth
+from flask_mail import Mail, Message
 import math
 
 app = Flask(__name__)
-app.secret_key = "super_secret_key_123"
+
+# Secret key now comes from an environment variable instead of being
+# hardcoded in source. Falls back to the old value only so local dev
+# doesn't break if the env var isn't set yet — set FLASK_SECRET_KEY
+# before deploying anywhere real.
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "super_secret_key_123")
+
+# ============ GOOGLE OAUTH ============
+# Requires: pip install Authlib
+# Requires env vars: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+# Redirect URI to register in Google Cloud Console:
+#   http://localhost:5000/login/google/callback  (add your prod URL too)
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.environ.get("GOOGLE_CLIENT_ID"),
+    client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'},
+)
+
+# ============ EMAIL (contact form) ============
+# Requires: pip install Flask-Mail
+# Requires env vars: MAIL_USERNAME (a real Gmail address) and
+# MAIL_PASSWORD (a 16-character Gmail "App Password" — Google Account ->
+# Security -> 2-Step Verification -> App Passwords — NOT your normal
+# Gmail login password).
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
+app.config['MAIL_DEFAULT_SENDER'] = app.config['MAIL_USERNAME']
+
+mail = Mail(app)
+
+# Every contact-form submission is emailed to this inbox.
+CONTACT_RECEIVER_EMAIL = 'kibetdan4114@gmail.com'
 
 # Configuration for file uploads
 UPLOAD_FOLDER = 'static/uploads'
@@ -22,6 +61,11 @@ ALLOWED_EXTENSIONS = {
 }
 MAX_CONTENT_LENGTH = 2 * 1024 * 1024 * 1024  # 2GB max file size
 CHUNK_SIZE = 10 * 1024 * 1024  # 10MB chunks
+
+# Image extensions allowed specifically for a custom thumbnail upload
+# (kept separate from ALLOWED_EXTENSIONS since a thumbnail must always
+# be a displayable image, regardless of what the main file itself is)
+THUMBNAIL_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 # ============ QUOTES ============
 QUOTES = [
@@ -376,6 +420,12 @@ def init_db():
     except sqlite3.OperationalError:
         pass  # column already exists
 
+    # Add a country column so the header can show the user's flag/country
+    try:
+        cursor.execute('ALTER TABLE users ADD COLUMN country TEXT')
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
     # Add a role column so we can tell admins apart from regular users.
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'student'")
@@ -611,7 +661,11 @@ def learn():
 
 @app.route('/Login', methods=['GET', 'POST'])
 def login():
-    message = ""
+    # Support a message passed either from the POST form-handling below,
+    # or via a redirect query string (e.g. redirect(url_for('login',
+    # message='...')) from the Google OAuth callback on failure).
+    message = request.args.get('message', '')
+
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
@@ -620,7 +674,7 @@ def login():
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT id, firstname, lastname, email, role
+            SELECT id, firstname, lastname, email, role, country
             FROM users 
             WHERE email = ? AND password = ?
         """, (email, password))
@@ -635,6 +689,7 @@ def login():
             session['lastname'] = user[2]
             session['email'] = user[3]
             session['role'] = user[4] or 'student'
+            session['country'] = user[5]
             
             # Store a quote for this user session
             quote = get_random_quote()
@@ -650,6 +705,78 @@ def login():
 
     return render_template('Login.html', message=message)
 
+
+# ============ GOOGLE OAUTH ROUTES ============
+
+@app.route('/login/google')
+def google_login():
+    """Kicks off the Google OAuth flow. This is what the 'Continue with
+    Google' button on Login.html links to via url_for('google_login')."""
+    redirect_uri = url_for('google_callback', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+
+@app.route('/login/google/callback')
+def google_callback():
+    """Google redirects back here after the user approves access. We
+    exchange the auth code for a token, pull the user's email/name out
+    of it, and either log them into their existing account (matched by
+    email) or create a new one on the fly."""
+    try:
+        token = google.authorize_access_token()
+    except Exception as e:
+        print(f"Google OAuth error: {str(e)}")
+        return redirect(url_for('login', message='Google sign-in failed. Please try again.'))
+
+    userinfo = token.get('userinfo')
+    if not userinfo:
+        try:
+            userinfo = google.parse_id_token(token, nonce=None)
+        except Exception:
+            userinfo = None
+
+    if not userinfo or not userinfo.get('email'):
+        return redirect(url_for('login', message='Google sign-in failed. Please try again.'))
+
+    email = userinfo.get('email')
+    firstname = userinfo.get('given_name', '') or ''
+    lastname = userinfo.get('family_name', '') or ''
+
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id, firstname, lastname, email, role, country FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        # First time signing in with this Google account — create an
+        # account for them. password stays NULL so this account can
+        # never be logged into via the normal email/password form.
+        cursor.execute('''
+            INSERT INTO users (firstname, lastname, email, password, role)
+            VALUES (?, ?, ?, NULL, ?)
+        ''', (firstname, lastname, email, 'student'))
+        conn.commit()
+        user_id = cursor.lastrowid
+        user = (user_id, firstname, lastname, email, 'student', None)
+
+    conn.close()
+
+    session['user_id'] = user[0]
+    session['firstname'] = user[1]
+    session['lastname'] = user[2]
+    session['email'] = user[3]
+    session['role'] = user[4] or 'student'
+    session['country'] = user[5]
+
+    quote = get_random_quote()
+    session['quote_text'] = quote['text']
+    session['quote_author'] = quote['author']
+
+    if session['role'] == 'admin':
+        return redirect(url_for('admin_dashboard'))
+    return redirect(url_for('dashboard'))
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -663,12 +790,19 @@ def dashboard():
         session['quote_text'] = quote['text']
         session['quote_author'] = quote['author']
 
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    followers_count, following_count = get_follow_counts_for_user(cursor, session['user_id'])
+    conn.close()
+
     return render_template(
         'dashboard.html',
         firstname=session['firstname'],
         lastname=session['lastname'],
         quote_text=session.get('quote_text'),
-        quote_author=session.get('quote_author')
+        quote_author=session.get('quote_author'),
+        followers_count=followers_count,
+        following_count=following_count
     )
 
 @app.route('/admin-dashboard')
@@ -734,9 +868,48 @@ def aboutus():
 def services():
     return render_template('services.html')
 
-@app.route('/contact')
+@app.route('/contact', methods=['GET', 'POST'])
 def contact():
-    return render_template('contact.html')
+    """GET renders the contact page (unchanged). POST is the new AJAX
+    endpoint contact.html's form submits to — it emails the message
+    straight to CONTACT_RECEIVER_EMAIL and never touches the database."""
+    if request.method == 'GET':
+        return render_template('contact.html')
+
+    data = request.get_json(silent=True) or {}
+
+    full_name = (data.get('fullName') or '').strip()
+    email = (data.get('email') or '').strip()
+    phone = (data.get('phone') or '').strip()
+    subject = (data.get('subject') or '').strip()
+    country = (data.get('country') or '').strip()
+    message_body = (data.get('message') or '').strip()
+
+    if not full_name or not email or not subject or not message_body:
+        return jsonify({'success': False, 'message': 'Please fill in all required fields'}), 400
+
+    if not app.config['MAIL_USERNAME'] or not app.config['MAIL_PASSWORD']:
+        print("Contact form error: MAIL_USERNAME / MAIL_PASSWORD are not set")
+        return jsonify({'success': False, 'message': 'Email is not configured on the server'}), 500
+
+    try:
+        msg = Message(
+            subject=f"New contact form message: {subject}",
+            recipients=[CONTACT_RECEIVER_EMAIL],
+            reply_to=email,
+            body=(
+                f"From: {full_name} <{email}>\n"
+                f"Phone: {phone or 'N/A'}\n"
+                f"Country: {country or 'N/A'}\n\n"
+                f"{message_body}"
+            )
+        )
+        mail.send(msg)
+    except Exception as e:
+        print(f"Contact form email error: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to send message. Please try again later.'}), 500
+
+    return jsonify({'success': True, 'message': 'Message sent successfully'})
 
 @app.route('/help')
 def help():
@@ -749,14 +922,15 @@ def register():
         lastname = request.form['lastname']
         email = request.form['email']
         password = request.form['password']
+        country = request.form.get('country')  # 'KE' or 'US', from the select field
 
         conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO users (firstname, lastname, email, password, role)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (firstname, lastname, email, password, 'student'))
+            INSERT INTO users (firstname, lastname, email, password, role, country)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (firstname, lastname, email, password, 'student', country))
 
         conn.commit()
         conn.close()
@@ -782,6 +956,7 @@ def inject_user():
         lastname=session.get('lastname'),
         user_id=session.get('user_id'),
         role=session.get('role'),
+        country=session.get('country'),
         avatar_url=avatar_url,
         quote_text=session.get('quote_text'),
         quote_author=session.get('quote_author')
@@ -1607,8 +1782,39 @@ def upload_file():
         
         file_size = os.path.getsize(file_path)
         file_category = get_file_category(original_filename)
-        thumbnail_url = get_thumbnail_url(file_category, category)
-        
+
+        # ---- Thumbnail resolution ----
+        # Priority order:
+        #   1. An explicit "thumbnail" image sent alongside the upload
+        #      (e.g. a poster frame picked for a video, or a cover image
+        #      for a document) — upload.html sends this as a second file
+        #      field named "thumbnail".
+        #   2. If the uploaded file is itself an image, use the file's
+        #      own served URL — no reason to show a stock photo instead
+        #      of the actual picture that was uploaded.
+        #   3. Otherwise, fall back to the generic category/course stock
+        #      thumbnail exactly as before.
+        thumbnail_url = None
+
+        thumb_file = request.files.get('thumbnail')
+        if thumb_file and thumb_file.filename:
+            thumb_ext = thumb_file.filename.rsplit('.', 1)[-1].lower() if '.' in thumb_file.filename else ''
+            if thumb_ext in THUMBNAIL_EXTENSIONS:
+                thumb_original = secure_filename(thumb_file.filename)
+                thumb_filename = f"{uuid.uuid4().hex}_thumb_{thumb_original}"
+                thumb_path = os.path.join(user_dir, thumb_filename)
+                thumb_file.save(thumb_path)
+                thumbnail_url = url_for('serve_file', user_id=str(user_id), filename=thumb_filename)
+            # An invalid thumbnail extension is silently ignored rather than
+            # failing the whole upload — it just falls through to the next
+            # thumbnail option below.
+
+        if not thumbnail_url and file_category == 'image':
+            thumbnail_url = url_for('serve_file', user_id=str(user_id), filename=unique_filename)
+
+        if not thumbnail_url:
+            thumbnail_url = get_thumbnail_url(file_category, category)
+
         duration = None
         if file_category == 'video':
             duration = '15:30'
@@ -2214,6 +2420,54 @@ def track_resource_view(resource_id):
     except Exception as e:
         print(f"Error tracking view: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/users/suggestions', methods=['GET'])
+def get_follow_suggestions():
+    """A short list of other real users the logged-in user isn't already
+    following yet, for the dashboard's 'People You May Know' card."""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+    my_id = session['user_id']
+
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+
+    following_ids = get_following_ids(cursor, my_id)
+    exclude_ids = following_ids | {my_id}
+
+    placeholders = ','.join('?' for _ in exclude_ids)
+    cursor.execute(f'''
+        SELECT id, firstname, lastname, avatar_filename, country
+        FROM users
+        WHERE id NOT IN ({placeholders})
+        ORDER BY id DESC
+        LIMIT 5
+    ''', tuple(exclude_ids))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    country_labels = {'KE': '🇰🇪 Kenya', 'US': '🇺🇸 United States'}
+
+    suggestions = []
+    for row in rows:
+        user_id, firstname, lastname, avatar_filename, country = row
+        firstname = (firstname or '').strip()
+        lastname = (lastname or '').strip()
+        full_name = f"{firstname} {lastname}".strip() or 'eSchool User'
+        initials = (f"{firstname[:1]}{lastname[:1]}" or 'ES').upper()
+
+        suggestions.append({
+            'id': user_id,
+            'name': full_name,
+            'initials': initials,
+            'avatar_url': get_avatar_url(user_id, avatar_filename),
+            'country_label': country_labels.get(country, 'Learner')
+        })
+
+    return jsonify({'success': True, 'suggestions': suggestions})
 
 
 @app.route('/api/users/<int:target_user_id>/follow', methods=['POST', 'DELETE'])

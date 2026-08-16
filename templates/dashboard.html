@@ -1112,12 +1112,12 @@
                 <div class="follow-stats">
                     <div class="follow-stat followers" onclick="viewFollowers()">
                         <span class="stat-icon-display"><i class="fas fa-user-friends"></i></span>
-                        <div class="stat-number" id="followersCount">0</div>
+                        <div class="stat-number" id="followersCount">{{ followers_count or 0 }}</div>
                         <div class="stat-label">Followers</div>
                     </div>
                     <div class="follow-stat following" onclick="viewFollowing()">
                         <span class="stat-icon-display"><i class="fas fa-user-plus"></i></span>
-                        <div class="stat-number" id="followingCount">0</div>
+                        <div class="stat-number" id="followingCount">{{ following_count or 0 }}</div>
                         <div class="stat-label">Following</div>
                     </div>
                 </div>
@@ -1127,30 +1127,6 @@
                     <span style="font-size: 0.85rem; font-weight: 600; color: var(--gray-500);">People You May Know</span>
                 </div>
                 <div class="follow-suggestions" id="followSuggestions">
-                    <div class="suggestion-item" data-user="1">
-                        <div class="suggestion-avatar" style="background: linear-gradient(135deg, #4361ee, #3a0ca3);">JD</div>
-                        <div class="suggestion-info">
-                            <div class="suggestion-name">John Doe</div>
-                            <div class="suggestion-role">Software Engineer</div>
-                        </div>
-                        <button class="suggestion-follow-btn" onclick="toggleFollow(this)">Follow</button>
-                    </div>
-                    <div class="suggestion-item" data-user="2">
-                        <div class="suggestion-avatar" style="background: linear-gradient(135deg, #f72585, #b5179e);">SM</div>
-                        <div class="suggestion-info">
-                            <div class="suggestion-name">Sarah Mitchell</div>
-                            <div class="suggestion-role">UX Designer</div>
-                        </div>
-                        <button class="suggestion-follow-btn" onclick="toggleFollow(this)">Follow</button>
-                    </div>
-                    <div class="suggestion-item" data-user="3">
-                        <div class="suggestion-avatar" style="background: linear-gradient(135deg, #10b981, #059669);">AK</div>
-                        <div class="suggestion-info">
-                            <div class="suggestion-name">Alex Kim</div>
-                            <div class="suggestion-role">Data Scientist</div>
-                        </div>
-                        <button class="suggestion-follow-btn" onclick="toggleFollow(this)">Follow</button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1158,91 +1134,86 @@
 </div>
 
 <script>
-// ========== FOLLOWERS & FOLLOWING DATA ==========
-function getFollowDataKey() {
-    const email = {{ session.get('email', 'default_user') | tojson }};
-    return `followData_${email}`;
-}
-
-function loadFollowData() {
-    const key = getFollowDataKey();
-    const stored = localStorage.getItem(key);
-    if (stored) {
-        try {
-            return JSON.parse(stored);
-        } catch (e) {
-            // fall through
-        }
-    }
-    // Default data
-    const defaultData = {
-        followers: 156,
-        following: 89,
-        suggestions: [
-            { id: 1, name: 'John Doe', role: 'Software Engineer', initials: 'JD', color: '#4361ee', followed: false },
-            { id: 2, name: 'Sarah Mitchell', role: 'UX Designer', initials: 'SM', color: '#f72585', followed: false },
-            { id: 3, name: 'Alex Kim', role: 'Data Scientist', initials: 'AK', color: '#10b981', followed: false },
-            { id: 4, name: 'Emily Chen', role: 'Product Manager', initials: 'EC', color: '#f59e0b', followed: false },
-            { id: 5, name: 'Michael Brown', role: 'DevOps Engineer', initials: 'MB', color: '#4cc9f0', followed: false }
-        ]
-    };
-    localStorage.setItem(key, JSON.stringify(defaultData));
-    return defaultData;
-}
-
-function saveFollowData(data) {
-    const key = getFollowDataKey();
-    localStorage.setItem(key, JSON.stringify(data));
-}
-
+// ========== FOLLOWERS & FOLLOWING (real backend data) ==========
 function updateFollowStats() {
-    const data = loadFollowData();
-    document.getElementById('followersCount').textContent = data.followers || 0;
-    document.getElementById('followingCount').textContent = data.following || 0;
+    // Counts are rendered server-side on load ({{ followers_count }} /
+    // {{ following_count }}). This just re-syncs them after a
+    // follow/unfollow action, using the counts the API hands back.
 }
 
 function renderSuggestions() {
-    const data = loadFollowData();
     const container = document.getElementById('followSuggestions');
     if (!container) return;
-    
-    // Show only top 3 suggestions
-    const suggestions = data.suggestions.slice(0, 3);
-    
-    container.innerHTML = suggestions.map(s => `
-        <div class="suggestion-item" data-user="${s.id}">
-            <div class="suggestion-avatar" style="background: ${s.color};">${s.initials}</div>
-            <div class="suggestion-info">
-                <div class="suggestion-name">${s.name}</div>
-                <div class="suggestion-role">${s.role}</div>
-            </div>
-            <button class="suggestion-follow-btn ${s.followed ? 'following' : ''}" onclick="toggleFollow(this, ${s.id})">
-                ${s.followed ? 'Following' : 'Follow'}
-            </button>
-        </div>
-    `).join('');
+
+    fetch('/api/users/suggestions')
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success || !data.suggestions || data.suggestions.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding: 10px; color: var(--gray-500); font-size: 0.85rem;">
+                        No suggestions right now.
+                    </div>
+                `;
+                return;
+            }
+
+            const colors = ['#4361ee', '#f72585', '#10b981', '#f59e0b', '#4cc9f0'];
+
+            container.innerHTML = data.suggestions.map((s, i) => `
+                <div class="suggestion-item" data-user="${s.id}">
+                    <div class="suggestion-avatar" style="background: ${colors[i % colors.length]}; overflow:hidden;">
+                        ${s.avatar_url
+                            ? `<img src="${s.avatar_url}" alt="${s.name}" style="width:100%;height:100%;object-fit:cover;">`
+                            : s.initials}
+                    </div>
+                    <div class="suggestion-info">
+                        <div class="suggestion-name">${s.name}</div>
+                        <div class="suggestion-role">${s.country_label}</div>
+                    </div>
+                    <button class="suggestion-follow-btn" onclick="toggleFollow(this, ${s.id})">Follow</button>
+                </div>
+            `).join('');
+        })
+        .catch(err => {
+            console.error('Error loading suggestions:', err);
+            container.innerHTML = `
+                <div style="text-align:center; padding: 10px; color: var(--gray-500); font-size: 0.85rem;">
+                    Couldn't load suggestions.
+                </div>
+            `;
+        });
 }
 
 function toggleFollow(btn, userId) {
-    const data = loadFollowData();
-    const suggestion = data.suggestions.find(s => s.id === userId);
-    
-    if (suggestion) {
-        suggestion.followed = !suggestion.followed;
-        
-        if (suggestion.followed) {
-            data.following += 1;
-            btn.textContent = 'Following';
-            btn.classList.add('following');
-        } else {
-            data.following -= 1;
-            btn.textContent = 'Follow';
-            btn.classList.remove('following');
-        }
-        
-        saveFollowData(data);
-        updateFollowStats();
-    }
+    const isFollowing = btn.classList.contains('following');
+    const method = isFollowing ? 'DELETE' : 'POST';
+
+    btn.disabled = true;
+
+    fetch(`/api/users/${userId}/follow`, { method })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            if (!data.success) {
+                alert(data.message || 'Something went wrong.');
+                return;
+            }
+
+            btn.textContent = data.following ? 'Following' : 'Follow';
+            btn.classList.toggle('following', data.following);
+
+            // The API returns the target's live followers_count. Our own
+            // "Following" count comes back as viewer_following_count.
+            const followingCountEl = document.getElementById('followingCount');
+            if (followingCountEl && typeof data.viewer_following_count === 'number') {
+                followingCountEl.textContent = data.viewer_following_count;
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            console.error('Error toggling follow:', err);
+            alert('Something went wrong. Please try again.');
+        });
 }
 
 function viewFollowers() {

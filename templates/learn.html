@@ -266,6 +266,51 @@
 .cta-actions .btn-secondary:hover{ border-color: white; box-shadow: none; }
 
 @media (max-width: 480px){ .cta-actions{ flex-direction: column; } .cta-actions .btn-primary, .cta-actions .btn-secondary{ width: 100%; justify-content: center; } }
+
+/* ============================================================
+   FOOTER  (new — appended only, nothing above this rule changed)
+   ============================================================ */
+.eschool-page footer.site-foot{
+    background: linear-gradient(180deg, #0F172A, #060b16);
+    color: #fff;
+    padding: 70px 24px 26px;
+    margin-top: 20px;
+}
+.eschool-page footer.site-foot .foot-grid{
+    display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap: 40px; margin-bottom: 44px;
+}
+.eschool-page footer.site-foot .foot-brand{ display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.eschool-page footer.site-foot .foot-brand span{ font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+.eschool-page footer.site-foot .foot-col p{ font-size: 13px; color: #94a3b8; line-height: 1.7; font-family: var(--font-body); }
+.eschool-page footer.site-foot .foot-col h5{ font-family: var(--font-display); font-size: 13.5px; margin: 0 0 16px; color: #e2e8f0; }
+.eschool-page footer.site-foot .foot-col ul{ list-style: none; margin: 0; padding: 0; }
+.eschool-page footer.site-foot .foot-col ul li{ margin-bottom: 10px; }
+.eschool-page footer.site-foot .foot-col ul a{ color: #94a3b8; text-decoration: none; font-size: 13px; font-family: var(--font-body); transition: color 0.2s ease; }
+.eschool-page footer.site-foot .foot-col ul a:hover{ color: #fff; }
+.eschool-page footer.site-foot .social-row{ display: flex; gap: 10px; margin-top: 16px; }
+.eschool-page footer.site-foot .social-row a{
+    width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center; color: #94a3b8; transition: all 0.2s ease;
+}
+.eschool-page footer.site-foot .social-row a:hover{ background: var(--primary); color: #fff; transform: translateY(-2px); }
+.eschool-page footer.site-foot .social-row svg{ width: 15px; height: 15px; }
+.eschool-page footer.site-foot .newsletter{ display: flex; gap: 8px; margin-top: 6px; }
+.eschool-page footer.site-foot .newsletter input{
+    flex: 1; height: 42px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06); color: #fff; padding: 0 14px; font-size: 12.5px; outline: none;
+    font-family: var(--font-body);
+}
+.eschool-page footer.site-foot .newsletter input::placeholder{ color: #64748B; }
+.eschool-page footer.site-foot .newsletter button{
+    height: 42px; padding: 0 16px; border-radius: 10px; border: none; background: var(--primary);
+    color: #fff; font-weight: 700; font-size: 12.5px; cursor: pointer; font-family: var(--font-display);
+}
+.eschool-page footer.site-foot .newsletter-msg{ font-size: 11.5px; color: var(--accent); margin-top: 8px; min-height: 14px; }
+.eschool-page footer.site-foot .copyright{
+    text-align: center; padding-top: 26px; border-top: 1px solid rgba(255,255,255,0.08); color: #64748B; font-size: 12px;
+}
+@media (max-width: 900px){ .eschool-page footer.site-foot .foot-grid{ grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px){ .eschool-page footer.site-foot .foot-grid{ grid-template-columns: 1fr; } }
 </style>
 
 <div class="eschool-page">
@@ -315,8 +360,8 @@
             </div>
             <div class="feature-card reveal fade-up" style="transition-delay:0.16s">
                 <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.5.4.6 1 .6 1.6v.1h6v-.1c0-.6.1-1.2.6-1.6A6 6 0 0 0 12 3Z"/></svg></div>
-                <h3>Extra knowledge</h3>
-                <p>Curated resources that go beyond the syllabus, so curiosity always has somewhere to go.</p>
+                <h3>Excellent notes</h3>
+                <p>Curated notes that go in detailed to the syllabus, so to always expand and grow your learning.</p>
             </div>
         </div>
     </div>
@@ -356,9 +401,9 @@
                 ('Science', 'Physics, chemistry, and biology — with real experiments.', 'M9 2h6M10 2v6L4.5 18a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 8V2'),
                 ('History', 'Understand the past and how it shapes the world today.', 'M12 21a9 9 0 1 0-9-9M3 12H1m11-5v5l3 2'),
                 ('English', 'Reading, writing, and communication that actually lands.', 'M4 19.5V6a2 2 0 0 1 2-2h12v15.5M4 19.5A2 2 0 0 0 6 21h13M8 7h8M8 11h5'),
-                ('Programming', 'Learn to build software from your very first line of code.', 'm8 9-4 3 4 3m8-6 4 3-4 3M13 6l-2 12'),
+                ('Physics', 'Learn the study of matter, energy and their interactions.', 'm8 9-4 3 4 3m8-6 4 3-4 3M13 6l-2 12'),
                 ('Business', 'Strategy, finance, and management for the real world.', 'M4 21V9l8-6 8 6v12M9 21v-6h6v6'),
-                ('Artificial Intelligence', 'Machine learning and AI, taught from the ground up.', 'M12 2a5 5 0 0 1 5 5c0 2.5-2 3.5-2 6h-6c0-2.5-2-3.5-2-6a5 5 0 0 1 5-5ZM9 20h6'),
+                ('Biology', 'Learn the scientific study of life and living organism.', 'M12 2a5 5 0 0 1 5 5c0 2.5-2 3.5-2 6h-6c0-2.5-2-3.5-2-6a5 5 0 0 1 5-5ZM9 20h6'),
                 ('Computer Studies', 'Core computing concepts every learner should know.', 'M4 4h16v12H4zM8 20h8M10 16v4M14 16v4'),
             ] %}
             {% for name, desc, path in categories %}
@@ -380,7 +425,7 @@
             <span class="eyebrow">Why Eschool</span>
             <h2 class="section-title" style="text-align:left; margin-bottom: 28px;">Built for learners who mean it</h2>
             <ul class="checklist">
-                {% for item in ['Flexible learning', 'Expert teachers', 'Practical projects', 'Certificates', 'Career guidance', 'Affordable education'] %}
+                {% for item in ['Flexible learning', 'Video lessons', 'Practical projects', 'Certificates', 'Career guidance', 'Affordable education'] %}
                 <li>
                     <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
                     {{ item }}
@@ -392,7 +437,7 @@
         <div class="why-right reveal slide-right">
             <div class="info-card ic1"><h4>Live progress</h4><p>Track every course, module, and milestone in real time.</p></div>
             <div class="info-card ic2"><h4>Verified certificates</h4><p>Share proof of what you've learned, backed by Eschool.</p></div>
-            <div class="info-card ic3"><h4>1:1 mentorship</h4><p>Get unstuck fast with guidance from real instructors.</p></div>
+            <div class="info-card ic3"><h4>Career building</h4><p>Build your future careers here and now at Eschool.</p></div>
         </div>
     </div>
 </section>
@@ -400,7 +445,7 @@
 <!-- ============ TESTIMONIALS ============ -->
 <section style="background:var(--surface);">
     <div class="container">
-        <h2 class="section-title reveal fade-up">What learners say</h2>
+        <h2 class="section-title reveal fade-up">What people say</h2>
         <p class="section-sub reveal fade-up">A few words from people who've been through it.</p>
 
         <div class="testi-grid">
@@ -425,7 +470,7 @@
                 <p class="quote">As a teacher myself, I was picky. Eschool's course quality and structure won me over quickly.</p>
                 <div class="testi-person">
                     <div class="testi-avatar">RN</div>
-                    <div><h4>Ruth N.</h4><span>Educator</span></div>
+                    <div><h4>Ruth N.</h4><span>Teacher</span></div>
                 </div>
             </div>
         </div>
@@ -474,6 +519,54 @@
         </div>
     </div>
 </section>
+
+<!-- ============ FOOTER (new) ============ -->
+<footer class="site-foot">
+    <div class="container foot-grid">
+        <div class="foot-col">
+            <div class="foot-brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3L1 8l11 5 9-4.09V17h2V8L12 3z" fill="url(#lfg1)"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="url(#lfg1)" opacity=".7"/><defs><linearGradient id="lfg1" x1="1" y1="3" x2="23" y2="21"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#14B8A6"/></linearGradient></defs></svg>
+                <span>Eschool</span>
+            </div>
+            <p>Premium online learning built around real skills, clear video lessons, and a path that actually gets you somewhere.</p>
+            <div class="social-row">
+                <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg></a>
+                <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 5.9c-.7.3-1.5.6-2.3.7.8-.5 1.5-1.3 1.8-2.3-.8.5-1.7.8-2.6 1a4.1 4.1 0 0 0-7 3.7A11.6 11.6 0 0 1 3.4 4.6a4.1 4.1 0 0 0 1.3 5.5c-.7 0-1.3-.2-1.9-.5v.1c0 2 1.4 3.6 3.3 4a4.1 4.1 0 0 1-1.8.1 4.1 4.1 0 0 0 3.8 2.9A8.3 8.3 0 0 1 2 18.4a11.6 11.6 0 0 0 6.3 1.8c7.5 0 11.7-6.3 11.7-11.7v-.5c.8-.6 1.5-1.3 2-2.1z"/></svg></a>
+                <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.1c.5-1 1.9-2 3.8-2 4 0 4.8 2.6 4.8 6V21h-4v-5.3c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V21H9z"/></svg></a>
+                <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.7 0 3 0 4.1.06 1.1.05 1.8.22 2.4.46.7.28 1.2.6 1.7 1.1.5.5.9 1 1.1 1.7.25.6.42 1.4.46 2.4.06 1.1.06 1.5.06 4.1s0 3-.06 4.1c-.04 1.1-.2 1.8-.46 2.4-.28.7-.6 1.2-1.1 1.7-.5.5-1 .8-1.7 1.1-.6.24-1.3.4-2.4.46-1.1.06-1.4.06-4.1.06s-3 0-4.1-.06c-1.1-.06-1.8-.22-2.4-.46-.7-.3-1.2-.6-1.7-1.1-.5-.5-.8-1-1.1-1.7-.24-.6-.4-1.3-.46-2.4C2 15 2 14.7 2 12s0-3 .06-4.1c.06-1.1.22-1.8.46-2.4.3-.7.6-1.2 1.1-1.7.5-.5 1-.8 1.7-1.1.6-.24 1.3-.41 2.4-.46C9 2 9.3 2 12 2zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zm5.2-8.4a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z"/></svg></a>
+            </div>
+        </div>
+        <div class="foot-col">
+            <h5>Quick Links</h5>
+            <ul>
+                <li><a href="#categories">Courses</a></li>
+                <li><a href="/aboutus">About</a></li>
+                <li><a href="/services">Services</a></li>
+                <li><a href="/contact">Contact</a></li>
+            </ul>
+        </div>
+        <div class="foot-col">
+            <h5>Support</h5>
+            <ul>
+                <li><a href="/help">Help Center</a></li>
+                <li><a href="#">Privacy Policy</a></li>
+                <li><a href="#">Terms of Service</a></li>
+            </ul>
+        </div>
+        <div class="foot-col">
+            <h5>Stay Updated</h5>
+            <p style="margin-bottom:12px;">Get new courses and learning tips in your inbox.</p>
+            <form class="newsletter" id="footNewsForm">
+                <input type="email" placeholder="Your email" required>
+                <button type="submit">Subscribe</button>
+            </form>
+            <div class="newsletter-msg" id="footNewsMsg"></div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="copyright">&copy; 2025 Eschool. All rights reserved.</div>
+    </div>
+</footer>
 
 </div>
 
@@ -545,6 +638,21 @@
             heroArt.querySelectorAll('.glass-card').forEach(card => { card.style.transform = ''; });
         });
     }
+})();
+</script>
+
+<script>
+// Footer newsletter — kept in its own script tag so the block above
+// (and everything it wires up) is left completely untouched.
+(function () {
+    const form = document.getElementById('footNewsForm');
+    const msg = document.getElementById('footNewsMsg');
+    if (!form) return;
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        msg.textContent = "Thanks — you're on the list!";
+        form.reset();
+    });
 })();
 </script>
 

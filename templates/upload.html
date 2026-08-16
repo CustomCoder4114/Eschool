@@ -105,7 +105,7 @@
         .upload-area {
             border: 3px dashed #ddd;
             border-radius: 10px;
-            padding: 60px 20px;
+            padding: 17px 20px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -141,6 +141,7 @@
             display: inline-flex;
             align-items: center;
             gap: 10px;
+            margin: 20px;
         }
 
         .upload-btn:hover {
@@ -318,6 +319,8 @@
             justify-content: center;
             color: white;
             font-size: 1.2rem;
+            flex-shrink: 0;
+            overflow: hidden;
         }
 
         .preview-info {
@@ -736,6 +739,95 @@
             border-radius: 4px;
             color: #0369a1;
         }
+
+        /* ===== THUMBNAIL UPLOAD (NEW) ===== */
+        .thumbnail-upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 18px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .thumbnail-upload-area:hover {
+            border-color: #4361ee;
+            background: #f8f9ff;
+        }
+
+        .thumbnail-upload-area.dragover {
+            border-color: #4361ee;
+            background: #eef1ff;
+        }
+
+        .thumbnail-preview-box {
+            width: 90px;
+            height: 90px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f0f1f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 2px solid #e5e7eb;
+        }
+
+        .thumbnail-preview-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .thumbnail-preview-box i {
+            font-size: 1.8rem;
+            color: #bbb;
+        }
+
+        .thumbnail-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .thumbnail-buttons-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .thumbnail-remove-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .thumbnail-remove-btn:hover {
+            background: #dc2626;
+        }
+
+        .thumbnail-hint {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .preview-thumbnail-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -788,10 +880,12 @@
                     <h3>Drag & Drop Files Here</h3>
                     <p>or click to browse files</p>
                     <p class="file-types">All file types are supported - No restrictions!</p>
+                    <!--
                     <div class="size-warning">
                         <i class="fas fa-info-circle"></i>
-                        <span>Files are stored on server in: <code>/static/uploads/{{ user_id }}/</code></span>
+                        <span>Files are stored on server in: <code>/static/uploads/{{ user_id }}/</code></span> 
                     </div>
+                    -->
                     <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
                         <i class="fas fa-folder-open"></i> Browse All Files
                     </button>
@@ -812,19 +906,40 @@
                     </div>
                 </div>
 
+                <!-- ===== THUMBNAIL UPLOAD (NEW) ===== -->
+                <div class="form-group">
+                    <label for="thumbnailInput"><i class="fas fa-image"></i> Thumbnail Image (optional)</label>
+                    <div class="thumbnail-upload-area" id="thumbnailDropArea">
+                        <div class="thumbnail-preview-box" id="thumbnailPreviewBox">
+                            <i class="fas fa-image"></i>
+                        </div>
+                        <div class="thumbnail-actions">
+                            <div class="thumbnail-buttons-row">
+                                <button type="button" class="upload-btn" onclick="document.getElementById('thumbnailInput').click()">
+                                    <i class="fas fa-image"></i> Choose Thumbnail
+                                </button>
+                                <button type="button" class="thumbnail-remove-btn" id="thumbnailRemoveBtn" onclick="removeThumbnail(event)">
+                                    <i class="fas fa-times"></i> Remove
+                                </button>
+                            </div>
+                            <span class="thumbnail-hint">JPG, PNG, GIF or WEBP · max 5MB · shown as the preview image for this resource</span>
+                        </div>
+                        <input type="file" id="thumbnailInput" class="file-input" accept="image/*">
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="course"><i class="fas fa-book"></i> Select Course/Category</label>
                     <select id="course" class="select-control">
                         <option value="">Choose a category...</option>
                         <option value="mathematics">Mathematics</option>
-                        <option value="science">Science</option>
-                        <option value="programming">Programming</option>
+                        <option value="science">Physics</option>
                         <option value="business">Business</option>
-                        <option value="arts">Arts & Humanities</option>
-                        <option value="languages">Languages</option>
+                        <option value="arts">Chemistry</option>
+                        <option value="languages">French</option>
                         <option value="general">General</option>
-                        <option value="projects">Projects</option>
-                        <option value="assignments">Assignments</option>
+                        <option value="projects">English</option>
+                        <option value="assignments">Biology</option>
                     </select>
                 </div>
 
@@ -833,13 +948,8 @@
                     <select id="resourceType" class="select-control">
                         <option value="document">Document</option>
                         <option value="video">Video</option>
-                        <option value="note">Study Notes</option>
-                        <option value="presentation">Presentation</option>
-                        <option value="code">Code Files</option>
                         <option value="image">Images</option>
                         <option value="audio">Audio</option>
-                        <option value="archive">Archive/Zip</option>
-                        <option value="other">Other</option>
                     </select>
                 </div>
 
@@ -854,12 +964,21 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="difficulty"><i class="fas fa-chart-line"></i> Difficulty Level</label>
+                    <label for="difficulty"><i class="fas fa-graduation-cap"></i> Grade</label>
                     <select id="difficulty" class="select-control">
-                        <option value="beginner">Beginner</option>
-                        <option value="intermediate">Intermediate</option>
-                        <option value="advanced">Advanced</option>
-                        <option value="all">All Levels</option>
+                        <option value="grade-1">Grade 1</option>
+                        <option value="grade-2">Grade 2</option>
+                        <option value="grade-3">Grade 3</option>
+                        <option value="grade-4">Grade 4</option>
+                        <option value="grade-5">Grade 5</option>
+                        <option value="grade-6">Grade 6</option>
+                        <option value="grade-7">Grade 7</option>
+                        <option value="grade-8">Grade 8</option>
+                        <option value="grade-9">Grade 9</option>
+                        <option value="grade-10">Grade 10</option>
+                        <option value="grade-11">Grade 11</option>
+                        <option value="grade-12">Grade 12</option>
+                        <option value="all">All Grades</option>
                     </select>
                 </div>
 
@@ -981,6 +1100,7 @@
                         <li>Files are stored on the server in your personal folder</li>
                         <li><strong>Maximum file size: 2GB</strong></li>
                         <li>Large files (>10MB) are uploaded in chunks for reliability</li>
+                        <li>You can attach an optional thumbnail image (max 5MB) so your resource stands out in the list</li>
                         <li>Make sure files don't contain sensitive personal information</li>
                         <li>All uploaded files are visible to everyone by default (unless marked as private)</li>
                     </ul>
@@ -1024,9 +1144,19 @@
         ========================= */
         let filesToUpload = [];
         const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB max
-        const currentUser = "{{ firstname }} {{ lastname }}" || "John Doe";
-        const currentUserInitials = "{{ firstname[0] }}{{ lastname[0] }}" || "JD";
-        const userId = "{{ user_id }}" || "anonymous";
+
+        // Thumbnail state (NEW)
+        let thumbnailFile = null;
+        const MAX_THUMBNAIL_SIZE = 5 * 1024 * 1024; // 5MB max
+
+        // FIX: use |tojson so these are safely encoded as JS string
+        // literals. The previous version manually wrapped the Jinja
+        // expressions in quotes ("{{ firstname }} {{ lastname }}"), which
+        // would silently break the script (or allow injection) if a name
+        // ever contained a quote character.
+        const currentUser = {{ (firstname ~ ' ' ~ lastname) | default('John Doe', true) | tojson }};
+        const currentUserInitials = {{ ((firstname[0] if firstname else '') ~ (lastname[0] if lastname else '')) | default('JD', true) | tojson }};
+        const userId = {{ user_id | default('anonymous', true) | tojson }};
         
         // For delete functionality
         let resourceToDelete = null;
@@ -1054,8 +1184,14 @@
         const deleteMessage = document.getElementById("deleteMessage");
         const userStats = document.getElementById("userStats");
 
+        // Thumbnail DOM elements (NEW)
+        const thumbnailDropArea = document.getElementById("thumbnailDropArea");
+        const thumbnailInput = document.getElementById("thumbnailInput");
+        const thumbnailPreviewBox = document.getElementById("thumbnailPreviewBox");
+        const thumbnailRemoveBtn = document.getElementById("thumbnailRemoveBtn");
+
         /* =========================
-           SECURITY UTILITIES - NEW
+           SECURITY UTILITIES
         ========================= */
         
         /**
@@ -1123,6 +1259,39 @@
             dropArea.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
             dropArea.addEventListener("click", () => fileInput.click());
             fileInput.addEventListener("change", e => handleFiles(e.target.files));
+
+            // ===== THUMBNAIL UPLOAD LISTENERS (NEW) =====
+            ["dragenter", "dragover", "dragleave", "drop"].forEach(eventName => {
+                thumbnailDropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            ["dragenter", "dragover"].forEach(eventName => {
+                thumbnailDropArea.addEventListener(eventName, () => thumbnailDropArea.classList.add("dragover"));
+            });
+
+            ["dragleave", "drop"].forEach(eventName => {
+                thumbnailDropArea.addEventListener(eventName, () => thumbnailDropArea.classList.remove("dragover"));
+            });
+
+            thumbnailDropArea.addEventListener("drop", e => {
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleThumbnailFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            // Clicking anywhere in the thumbnail drop area opens the file
+            // picker, except when the click landed on a button inside it
+            // (Choose/Remove already have their own handlers).
+            thumbnailDropArea.addEventListener("click", (e) => {
+                if (e.target.closest('button')) return;
+                thumbnailInput.click();
+            });
+
+            thumbnailInput.addEventListener("change", e => {
+                if (e.target.files && e.target.files[0]) {
+                    handleThumbnailFile(e.target.files[0]);
+                }
+            });
             
             // Add event delegation for delete buttons
             myUploadsList.addEventListener('click', handleResourceAction);
@@ -1145,6 +1314,42 @@
         function preventDefaults(e) {
             e.preventDefault();
             e.stopPropagation();
+        }
+
+        /* =========================
+           THUMBNAIL HANDLING (NEW)
+        ========================= */
+        function handleThumbnailFile(file) {
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                showError('Thumbnail must be an image file (JPG, PNG, GIF, or WEBP).');
+                return;
+            }
+
+            if (file.size > MAX_THUMBNAIL_SIZE) {
+                showError(`Thumbnail image is too large (${formatFileSize(file.size)}). Maximum size is 5MB.`);
+                return;
+            }
+
+            thumbnailFile = file;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                thumbnailPreviewBox.innerHTML = `<img src="${e.target.result}" alt="Thumbnail preview">`;
+            };
+            reader.readAsDataURL(file);
+
+            thumbnailRemoveBtn.style.display = 'inline-flex';
+        }
+
+        function removeThumbnail(event) {
+            if (event) event.stopPropagation();
+
+            thumbnailFile = null;
+            thumbnailInput.value = '';
+            thumbnailPreviewBox.innerHTML = '<i class="fas fa-image"></i>';
+            thumbnailRemoveBtn.style.display = 'none';
         }
 
         /* =========================
@@ -1292,6 +1497,12 @@
                     formData.append('difficulty', difficulty);
                     formData.append('privacy', 'public');
 
+                    // Attach the shared thumbnail (if one was chosen) to
+                    // every file in this batch. (NEW)
+                    if (thumbnailFile) {
+                        formData.append('thumbnail', thumbnailFile);
+                    }
+
                     // Send to server
                     const response = await fetch('/api/upload', {
                         method: 'POST',
@@ -1345,7 +1556,7 @@
                 // IMPORTANT: Redirect with success parameter to trigger resource reload
                 // This ensures uploaded files appear immediately in Resources page
                 setTimeout(() => {
-                    window.location.href = '/resources?upload=success';
+                    window.location.href = '/resourses';
                 }, 1500);
             }
             
@@ -1359,6 +1570,7 @@
             document.getElementById("title").value = "";
             document.getElementById("description").value = "";
             sizeWarning.style.display = "none";
+            removeThumbnail(); // (NEW) clear the chosen thumbnail too
 
             // Reset button
             setTimeout(() => {
@@ -1461,6 +1673,12 @@
                 const icon = getFileIcon(resource.file_category || 'other');
                 const fileTypeBadge = getFileTypeText(resource.file_category || 'other');
                 const badgeClass = `badge-${resource.file_category || 'other'}`;
+
+                // (NEW) Show the resource's thumbnail image if it has one,
+                // otherwise fall back to the file-type icon as before.
+                const previewIconHtml = resource.thumbnail_url
+                    ? `<img src="${escapeHtmlAttr(resource.thumbnail_url)}" alt="${escapeHtmlAttr(resource.title)} thumbnail" class="preview-thumbnail-img">`
+                    : `<i class="fas ${icon}"></i>`;
                 
                 const previewItem = document.createElement("div");
                 previewItem.className = "preview-item";
@@ -1469,7 +1687,7 @@
                 // Use data attributes instead of unsafe onclick
                 previewItem.innerHTML = `
                     <div class="preview-icon">
-                        <i class="fas ${icon}"></i>
+                        ${previewIconHtml}
                     </div>
                     <div class="preview-info">
                         <h4>${escapeHtml(resource.title)}</h4>

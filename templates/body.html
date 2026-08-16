@@ -7,6 +7,15 @@
     <title>Eschool</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <!--
+        This base template expects a `country` variable from your Flask
+        route (e.g. render_template('dashboard.html', ..., country=user.country)),
+        same "KE" / "US" / None value the profile page's country dropdown
+        reads and writes via /api/users/<id>/country. Wherever this template
+        previously showed the static text "Learner" (top-right user menu and
+        the mobile sidebar header), it now shows the user's country instead,
+        falling back to "Learner" if country hasn't been set yet.
+    -->
     <style>
         :root {
             --primary-color: #4361ee;
@@ -1254,7 +1263,7 @@
                         </div>
                         <div class="user-info">
                             <div class="user-name">{{ firstname }} {{ lastname }}</div>
-                            <div class="user-role">Learner</div>
+                            <div class="user-role">{% if country == 'KE' %}🇰🇪 Kenya{% elif country == 'US' %}🇺🇸 United States{% else %}Learner{% endif %}</div>
                         </div>
                         <i class="fas fa-chevron-down dropdown-arrow"></i>
                     </div>
@@ -1306,7 +1315,7 @@
                         
                         <div class="dropdown-divider"></div>
                         
-                        <a href="/" class="dropdown-item logout-item">
+                        <a href="/Login" class="dropdown-item logout-item">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Log Out</span>
                         </a>
@@ -1333,7 +1342,7 @@
                 </div>
                 <div>
                     <div class="user-name-sm">{{ firstname }} {{ lastname }}</div>
-                    <div class="user-role-sm">Learner</div>
+                    <div class="user-role-sm">{% if country == 'KE' %}🇰🇪 Kenya{% elif country == 'US' %}🇺🇸 United States{% else %}Learner{% endif %}</div>
                 </div>
             </div>
         </div>
@@ -1352,7 +1361,7 @@
                 <span>Schedule</span>
             </a>
             <a href="/careerD" class="nav-item">
-                <i class="fas fa-tasks"></i>
+                <i class="fa-solid fa-briefcase"></i>
                 <span>Career growth</span>
             </a>
             <a href="/progres" class="nav-item">
@@ -1363,15 +1372,15 @@
             <div class="nav-divider"></div>
             
             <a href="/resourses" class="nav-item">
-                <i class="fas fa-file-alt"></i>
+                <i class="fas fa-book"></i>
                 <span>Resources</span>
             </a>
             <a href="/skills" class="nav-item">
-                <i class="fas fa-file-alt"></i>
+                <i class="fas fa-brain"></i>
                 <span>Skills growth</span>
             </a>
             <a href="/strategies" class="nav-item">
-                <i class="fas fa-question-circle"></i>
+                <i class="fa-solid fa-lightbulb"></i>
                 <span>Strategies</span>
             </a>
             <a href="/messages" class="nav-item">
@@ -1393,7 +1402,7 @@
 
         <div class="nav-divider"></div>
         
-        <a href="/" class="nav-item logout-item">
+        <a href="/Login" class="nav-item logout-item">
             <i class="fas fa-sign-out-alt"></i>
             <span>Log Out</span>
         </a>
@@ -1418,7 +1427,7 @@
                 <span>Schedule</span>
             </a>
             <a href="/careerD" class="nav-item">
-                <i class="fas fa-tasks"></i>
+                <i class="fa-solid fa-briefcase"></i>
                 <span>Career growth</span>
             </a>
             <a href="/progres" class="nav-item">
@@ -1429,15 +1438,15 @@
             <div class="nav-divider"></div>
             
             <a href="/resourses" class="nav-item">
-                <i class="fas fa-file-alt"></i>
+                <i class="fas fa-book"></i>
                 <span>Resources</span>
             </a>
             <a href="/skills" class="nav-item">
-                <i class="fas fa-file-alt"></i>
+                <i class="fas fa-brain"></i>
                 <span>Skills growth</span>
             </a>
             <a href="/strategies" class="nav-item">
-                <i class="fas fa-book"></i>
+                <i class="fa-solid fa-lightbulb"></i>
                 <span>Strategies</span>
             </a>
             <a href="/messages" class="nav-item">
@@ -1914,8 +1923,17 @@
     <!-- SITE-WIDE STUDY TIME TRACKING -->
     <script>
     (function () {
+        // Uses the tojson filter so this is a safely-encoded JS string
+        // literal - a plain quoted Jinja interpolation here would
+        // silently break (or allow injection) if the email ever
+        // contained a quote character, same class of bug already fixed
+        // elsewhere on this site (e.g. the messages.html / settings.html
+        // storage keys). Note: this comment intentionally avoids writing
+        // double-curly-brace syntax as plain text, because Jinja parses
+        // it even inside JS comments - that is exactly what caused the
+        // previous TemplateSyntaxError.
         function getStudyTimeKey() {
-            const email = '{{ session.get('email', 'default_user') }}';
+            const email = {{ session.get('email', 'default_user') | tojson }};
             return `studyTimeData_${email}`;
         }
 
@@ -2055,6 +2073,7 @@
 
         document.addEventListener('DOMContentLoaded', initSiteWideTracking);
     })();
+    
     </script>
 </body>
 </html>

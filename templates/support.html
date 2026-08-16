@@ -668,45 +668,44 @@
         <div id="faq-tab" class="tab-content">
             <div class="faq-container">
                 <div class="faq-category">
-                    <h3><i class="fas fa-globe"></i> Web Development FAQs</h3>
+                    <h3><i class="fas fa-graduation-cap"></i> About Eschool FAQs</h3>
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFAQ(this)">
-                            How do I get started with web development?
+                            What is Eschool?
                             <i class="fas fa-chevron-down"></i>
                         </div>
                         <div class="faq-answer">
-                            Start with HTML for structure, then CSS for styling, and JavaScript for interactivity. Practice by building small projects and use online resources like MDN Web Docs and freeCodeCamp.
+                         Eschool is a modern digital learning platform built to make high-quality education accessible to every learner, everywhere                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            Is Eschool Free?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Yes! Eschool offers free courses, resources, career development and skills learning. You can upgrade to unlock unlimited features and free Ad learning.
                         </div>
                     </div>
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFAQ(this)">
-                            What's the difference between frontend and backend?
+                            Does it work on mobile devices?
                             <i class="fas fa-chevron-down"></i>
                         </div>
                         <div class="faq-answer">
-                            Frontend deals with what users see and interact with (HTML, CSS, JavaScript). Backend handles server-side operations, databases, and application logic (Python, Node.js, PHP, etc.).
-                        </div>
-                    </div>
-                    <div class="faq-item">
-                        <div class="faq-question" onclick="toggleFAQ(this)">
-                            How do I debug JavaScript code?
-                            <i class="fas fa-chevron-down"></i>
-                        </div>
-                        <div class="faq-answer">
-                            Use browser developer tools (F12), console.log() statements, breakpoints, and debugging tools like Chrome DevTools. Also consider using linters and error tracking tools.
+                            Yes, Eschool works seamlessly across all devices- phones, tablets and Laptop. Eschool ensures you can study anywhere, anytime.
                         </div>
                     </div>
                 </div>
 
                 <div class="faq-category">
-                    <h3><i class="fas fa-graduation-cap"></i> Learning & Courses</h3>
+                    <h3><i class="fas fa-book-open"></i> Learning & Courses</h3>
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFAQ(this)">
                             How do I track my course progress?
                             <i class="fas fa-chevron-down"></i>
                         </div>
                         <div class="faq-answer">
-                            Your progress is automatically saved as you complete modules and exercises. Check the "My Learning" tab to see your overall progress and completed modules for each course.
+                            Your progress is automatically saved as you complete modules and exercises. Check the "Progress" tab to see your overall progress and completed modules for each course.
                         </div>
                     </div>
                     <div class="faq-item">
@@ -715,7 +714,7 @@
                             <i class="fas fa-chevron-down"></i>
                         </div>
                         <div class="faq-answer">
-                            Yes! You can retake quizzes and exercises as many times as you want to improve your score and understanding. Practice makes perfect!
+                            Yes! You can retake exercises only as many times as you want to improve your score and understanding. Quizes are taken daily and you should keep your quiz streak!
                         </div>
                     </div>
                     <div class="faq-item">
@@ -733,11 +732,11 @@
                     <h3><i class="fas fa-cog"></i> Technical Issues</h3>
                     <div class="faq-item">
                         <div class="faq-question" onclick="toggleFAQ(this)">
-                            The code editor isn't working properly. What should I do?
+                            The uploaded resource is taking long to upload?
                             <i class="fas fa-chevron-down"></i>
                         </div>
                         <div class="faq-answer">
-                            Try refreshing the page, clearing your browser cache, or using a different browser (Chrome, Firefox, or Edge are recommended). If the issue persists, submit a support ticket.
+                            This is actualy normal and if you are uploading a file with a very big storage this is very normal. Just wait and don't close that window.
                         </div>
                     </div>
                     <div class="faq-item">
@@ -824,7 +823,7 @@
             <div class="chat-messages" id="chatMessages">
                 <div class="chat-message support">
                     <div class="message-bubble">
-                        Hi! 👋 I'm your support assistant. How can I help you today?
+                        Hi! 👋 This support assistant is not available right now. Try reaching out through our ticket.
                     </div>
                 </div>
             </div>
@@ -860,45 +859,39 @@
         const knowledgeBase = [
             {
                 id: 1,
-                title: "Getting Started with Web Development",
-                description: "A beginner's guide to HTML, CSS, and JavaScript fundamentals.",
-                icon: "fa-rocket",
-                content: "Start with the basics of HTML for structure, CSS for styling, and JavaScript for interactivity..."
+                title: "Getting Started with the courses",
+                description: "Make sure to stay consistent to get a certificate.",
+                icon: "fas fa-book-open",
             },
             {
                 id: 2,
-                title: "Debugging JavaScript Errors",
-                description: "Learn how to find and fix common JavaScript errors.",
-                icon: "fa-bug",
-                content: "Use console.log(), browser dev tools, and error handling techniques..."
+                title: "Advancing Your Learning Skills",
+                description: "Advance daily in any course and learn atleast one skill.",
+                icon: "fa-brain",
             },
             {
                 id: 3,
-                title: "Understanding CSS Flexbox",
-                description: "Master CSS Flexbox for responsive layouts.",
-                icon: "fa-arrows-alt",
-                content: "Flexbox provides a powerful way to create flexible layouts..."
+                title: "Tracking Your academic Progress",
+                description: "Visit the progress page and view all your progress.",
+                icon: "fa-chart-line",
             },
             {
                 id: 4,
-                title: "Python Best Practices",
-                description: "Write cleaner, more efficient Python code.",
-                icon: "fa-python",
-                content: "Follow PEP 8, use meaningful variable names, and write documentation..."
+                title: "Finishing the Modules",
+                description: "Pass all tests to unlock the next level to have a good GPA.",
+                icon: "fa-star",
             },
             {
                 id: 5,
-                title: "Database Design Basics",
-                description: "Learn how to design efficient database schemas.",
-                icon: "fa-database",
-                content: "Understand normalization, relationships, and indexing strategies..."
+                title: "Setting Up Your Study Plan",
+                description: "Visit the schedule page and plan your studies.",
+                icon: "fa-bullseye",
             },
             {
                 id: 6,
-                title: "API Integration Guide",
-                description: "How to connect your apps to external APIs.",
-                icon: "fa-plug",
-                content: "Learn about REST APIs, authentication, and handling responses..."
+                title: "Unlocking New achievements",
+                description: "view what it needs to be done inorder to achieve the achievement.",
+                icon: "fa-trophy",
             }
         ];
 
@@ -1038,12 +1031,7 @@
             `).join('');
         }
 
-        function viewArticle(id) {
-            const article = knowledgeBase.find(a => a.id === id);
-            if (article) {
-                alert(`${article.title}\n\n${article.content}\n\nCheck the full article in our documentation for more details!`);
-            }
-        }
+        
 
         // ============================================
         // NEW TICKET FORM — POSTs to /api/complaints
@@ -1091,9 +1079,7 @@
                         created_at: savedTicket.created_at
                     }).catch(err => console.error('EmailJS alert failed (ticket still saved):', err));
 
-                    document.getElementById('ticketForm').reset();
-                    alert(`✅ Ticket submitted successfully!\n\nYour ticket ID: #${savedTicket.id}\n\nOur team will respond within 24 hours.`);
-
+                    
                     loadTickets();
                     switchTab('tickets');
                 })
@@ -1152,24 +1138,7 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        function getSupportResponse(message) {
-            const lowerMessage = message.toLowerCase();
-            
-            if (lowerMessage.includes('course') || lowerMessage.includes('learn')) {
-                return "I'd be happy to help with courses! Check out our interactive tutorials in the Browse Courses tab. Is there a specific course you're interested in?";
-            }
-            if (lowerMessage.includes('error') || lowerMessage.includes('bug')) {
-                return "I understand you're experiencing an issue. Please submit a support ticket with the error details, and our technical team will investigate immediately.";
-            }
-            if (lowerMessage.includes('progress') || lowerMessage.includes('complete')) {
-                return "Your progress is automatically saved! Check the My Learning tab to see your completed modules and overall progress.";
-            }
-            if (lowerMessage.includes('thanks') || lowerMessage.includes('thank')) {
-                return "You're welcome! 😊 Is there anything else I can help you with?";
-            }
-            
-            return "Thanks for reaching out! I'll help you find the right resources. Could you please provide more details about what you need help with? You can also submit a support ticket for complex issues.";
-        }
+        
 
         // Tab switching
         function switchTab(tabName) {

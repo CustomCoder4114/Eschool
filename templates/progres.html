@@ -206,6 +206,7 @@
             gap: 15px;
             flex-wrap: wrap;
             align-items: center;
+            padding-bottom: 20px;
         }
 
         .search-box { flex: 1; min-width: 250px; }
@@ -781,24 +782,11 @@
             <button class="tab-btn" data-tab="time" onclick="switchTab('time')"><i class="fas fa-clock"></i> Time Tracking</button>
         </div>
 
-        <div class="filter-bar">
+        
             <div class="filter-group">
-                <div class="search-box">
-                    <input type="text" id="searchProgress" class="form-control" placeholder="Search progress items...">
-                </div>
-                <select id="timeFilter" class="select-control">
-                    <option value="all">All Time</option>
-                    <option value="week">This Week</option>
-                    <option value="month" selected>This Month</option>
-                    <option value="quarter">This Quarter</option>
-                    <option value="year">This Year</option>
-                </select>
-                <select id="courseFilter" class="select-control">
-                    <option value="">All Courses</option>
-                </select>
                 <button class="btn btn-primary" onclick="exportProgress()"><i class="fas fa-download"></i> Export Report</button>
             </div>
-        </div>
+       
 
         <div id="overview-tab" class="tab-content active">
             <div class="charts-container">
@@ -822,9 +810,7 @@
             <div class="progress-section">
                 <div class="section-header">
                     <h3 class="section-title">📝 Grade Summary</h3>
-                    <button class="btn btn-outline" onclick="requestGradeReview()">
-                        <i class="fas fa-question-circle"></i> Request Review
-                    </button>
+                    
                 </div>
                 <div id="gradesContainer"></div>
             </div>
@@ -863,7 +849,7 @@
                 <div class="chart-header">
                     <h3 class="chart-title">📈 Weekly Study Activity</h3>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 0.8rem; color: var(--gray-500);">⏱️ Tracking in real-time</span>
+                        <span style="font-size: 0.8rem; color: var(--gray-500);" id="timezoneNote">⏱️ Tracking in real-time</span>
                     </div>
                 </div>
                 <div class="time-chart" id="timeChart">
@@ -874,6 +860,63 @@
     </div>
 
     <script>
+        // =========================
+        // TIMEZONE CONFIG
+        // =========================
+        // All "day" boundaries for study-time tracking are pinned to this
+        // IANA timezone, regardless of what timezone the visitor's device
+        // is set to. This keeps "today" consistent for every user of the
+        // school (Kenya) rather than drifting with each device's clock/
+        // timezone settings, and fixes the old bug where UTC-based day
+        // keys (via toISOString()) misfiled the first few hours of each
+        // Nairobi day (UTC+3) under the previous day.
+        const APP_TIMEZONE = 'Africa/Nairobi';
+
+        // Cached formatters (constructing an Intl.DateTimeFormat is not
+        // free, and these run on every tick of the activity/interval
+        // timers).
+        const _dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: APP_TIMEZONE,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }); // en-CA formats as YYYY-MM-DD
+        const _weekdayFormatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: APP_TIMEZONE,
+            weekday: 'short'
+        });
+        const _clockFormatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: APP_TIMEZONE,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        // "2026-08-15" for the given instant, evaluated in APP_TIMEZONE —
+        // not the browser's local timezone and not UTC.
+        function getLocalDateKey(date) {
+            return _dateKeyFormatter.format(date || new Date());
+        }
+
+        // 3-letter weekday ("Mon", "Tue", ...) for a "YYYY-MM-DD" key,
+        // evaluated in APP_TIMEZONE. Parsing "YYYY-MM-DD" via `new
+        // Date(string)` treats it as UTC midnight, which can land on the
+        // wrong calendar day once shifted into APP_TIMEZONE — so this
+        // builds the date from a real timestamp at local noon first to
+        // stay safely inside the intended calendar day before formatting.
+        function weekdayFromDateKey(dateKey) {
+            const [y, m, d] = dateKey.split('-').map(Number);
+            const safeNoonUTC = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+            return _weekdayFormatter.format(safeNoonUTC);
+        }
+
+        // Current wall-clock time in APP_TIMEZONE, e.g. "2:45 PM" —
+        // available for any UI that wants to show "current time in
+        // Kenya" rather than the visitor's own device time.
+        function getAppTimezoneClock(date) {
+            return _clockFormatter.format(date || new Date());
+        }
+
         // =========================
         // STORAGE FUNCTIONS
         // =========================
@@ -972,8 +1015,10 @@
                     // Update total time
                     data.totalSeconds += elapsedSeconds;
                     
-                    // Record daily session
-                    const today = new Date().toISOString().split('T')[0];
+                    // Record daily session — day boundary pinned to
+                    // APP_TIMEZONE (see getLocalDateKey above), not the
+                    // visitor's device timezone and not UTC.
+                    const today = getLocalDateKey();
                     if (!data.dailySessions[today]) {
                         data.dailySessions[today] = 0;
                     }
@@ -999,7 +1044,7 @@
                     const elapsedSeconds = (Date.now() - data.sessionStart) / 1000;
                     if (elapsedSeconds > 5) {
                         data.totalSeconds += elapsedSeconds;
-                        const today = new Date().toISOString().split('T')[0];
+                        const today = getLocalDateKey();
                         if (!data.dailySessions[today]) {
                             data.dailySessions[today] = 0;
                         }
@@ -1041,15 +1086,14 @@
         function updateTimeDisplay() {
             const data = loadStudyTime();
             const totalSeconds = data.totalSeconds || 0;
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             
-            // Calculate average daily time (last 7 days)
+            // Calculate average daily time (last 7 days, in APP_TIMEZONE)
             let totalWeekSeconds = 0;
             let daysWithActivity = 0;
             for (let i = 0; i < 7; i++) {
                 const d = new Date();
                 d.setDate(d.getDate() - i);
-                const dateKey = d.toISOString().split('T')[0];
+                const dateKey = getLocalDateKey(d);
                 const daySeconds = data.dailySessions[dateKey] || 0;
                 totalWeekSeconds += daySeconds;
                 if (daySeconds > 60) { // More than 1 minute counts as active
@@ -1059,14 +1103,14 @@
             
             const avgDailySeconds = totalWeekSeconds / 7;
             
-            // Find peak day
+            // Find peak day — weekday name resolved in APP_TIMEZONE so it
+            // matches the same calendar day the seconds were logged under.
             let maxDay = '--';
             let maxSeconds = 0;
             for (const [dateKey, seconds] of Object.entries(data.dailySessions)) {
                 if (seconds > maxSeconds) {
                     maxSeconds = seconds;
-                    const d = new Date(dateKey);
-                    maxDay = dayNames[d.getDay()] || '--';
+                    maxDay = weekdayFromDateKey(dateKey);
                 }
             }
             
@@ -1078,6 +1122,12 @@
             
             // Update overview stat
             document.getElementById('studyTime').textContent = formatTime(totalSeconds);
+
+            // Show the current time in APP_TIMEZONE next to the weekly chart
+            const tzNote = document.getElementById('timezoneNote');
+            if (tzNote) {
+                tzNote.textContent = `⏱️ Tracking in real-time — Nairobi time: ${getAppTimezoneClock()}`;
+            }
             
             // Update chart
             updateTimeChart(data);
@@ -1087,19 +1137,27 @@
             const chart = document.getElementById('timeChart');
             if (!chart) return;
             
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const today = new Date();
-            const startOfWeek = new Date(today);
-            startOfWeek.setDate(today.getDate() - today.getDay());
-            
+            // Start of the current week (Sunday), evaluated in
+            // APP_TIMEZONE — built from date-key math rather than the
+            // device's local getDay()/setDate(), so the week boundary
+            // matches the same timezone the daily keys are stored under.
+            const todayKey = getLocalDateKey();
+            const [ty, tm, td] = todayKey.split('-').map(Number);
+            const todayNoonUTC = new Date(Date.UTC(ty, tm - 1, td, 12, 0, 0));
+            const todayWeekdayIndex = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                .indexOf(_weekdayFormatter.format(todayNoonUTC));
+
             let dayData = [];
+            let dayKeys = [];
             let maxSeconds = 0;
             for (let i = 0; i < 7; i++) {
-                const d = new Date(startOfWeek);
-                d.setDate(startOfWeek.getDate() + i);
-                const dateKey = d.toISOString().split('T')[0];
+                const offsetDays = i - todayWeekdayIndex; // negative = earlier in the week
+                const d = new Date(todayNoonUTC);
+                d.setUTCDate(d.getUTCDate() + offsetDays);
+                const dateKey = getLocalDateKey(d);
                 const seconds = data.dailySessions[dateKey] || 0;
                 dayData.push(seconds);
+                dayKeys.push(dateKey);
                 if (seconds > maxSeconds) maxSeconds = seconds;
             }
             
@@ -1119,9 +1177,9 @@
             for (let i = 0; i < 7; i++) {
                 const seconds = dayData[i];
                 const height = Math.max(5, (seconds / maxSeconds) * 100);
-                const dayName = dayNames[i];
-                const date = new Date(startOfWeek);
-                date.setDate(startOfWeek.getDate() + i);
+                const dateKey = dayKeys[i];
+                const dayName = weekdayFromDateKey(dateKey);
+                const dayOfMonth = Number(dateKey.split('-')[2]);
                 const displayTime = formatTimeShort(seconds);
                 html += `
                     <div class="chart-bar-wrapper">
@@ -1131,7 +1189,7 @@
                         </div>
                         <div class="chart-label">
                             <span class="day">${dayName}</span>
-                            <span class="hours">${date.getDate()}</span>
+                            <span class="hours">${dayOfMonth}</span>
                         </div>
                     </div>
                 `;
@@ -1346,27 +1404,9 @@
                 return;
             }
 
-            // FIX: the "This Week / This Month / This Quarter / This Year"
-            // dropdown in the filter bar was rendered but never read
-            // anywhere in the script, so it had no effect. It now filters
-            // which grade rows are shown in the table below.
-            const timeFilterEl = document.getElementById('timeFilter');
-            const timeFilterValue = timeFilterEl ? timeFilterEl.value : 'all';
-            const cutoff = getTimeFilterCutoff(timeFilterValue);
-            const visibleGrades = cutoff
-                ? gradeData.grades.filter(g => new Date(g.date) >= cutoff)
-                : gradeData.grades;
-
-            if (visibleGrades.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon"><i class="fas fa-calendar-times"></i></div>
-                        <h3 class="empty-title">No Grades In This Period</h3>
-                        <p class="empty-text">There are no graded assignments in the selected time range. Try choosing "All Time" from the filter above.</p>
-                    </div>
-                `;
-                return;
-            }
+            // Time-range filtering was removed along with the #timeFilter
+            // dropdown — the grades table now always shows every grade.
+            const visibleGrades = gradeData.grades;
             
             let gpaHTML = `
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 25px;">
@@ -1435,31 +1475,6 @@
             `;
             
             container.innerHTML = gpaHTML + tableHTML + legendHTML;
-        }
-
-        // =========================
-        // TIME FILTER HELPER
-        // =========================
-        // FIX: new helper backing the previously-dead #timeFilter dropdown.
-        function getTimeFilterCutoff(filterValue) {
-            const now = new Date();
-            const cutoff = new Date(now);
-            switch (filterValue) {
-                case 'week':
-                    cutoff.setDate(cutoff.getDate() - 7);
-                    return cutoff;
-                case 'month':
-                    cutoff.setMonth(cutoff.getMonth() - 1);
-                    return cutoff;
-                case 'quarter':
-                    cutoff.setMonth(cutoff.getMonth() - 3);
-                    return cutoff;
-                case 'year':
-                    cutoff.setFullYear(cutoff.getFullYear() - 1);
-                    return cutoff;
-                default:
-                    return null; // 'all'
-            }
         }
 
         // =========================
@@ -1777,40 +1792,11 @@
             document.getElementById('studyStreak').textContent = totalModulesCompleted;
             document.getElementById('avgGrade').textContent = totalQuizzesPassed;
             
-            // FIX: remember the currently selected course filter before
-            // rebuilding the <option> list, and restore it afterwards.
-            // Previously this dropdown silently reset to "All Courses"
-            // every single time a tab was switched (since switchTab calls
-            // loadAllData()), discarding the user's selection.
-            const courseFilter = document.getElementById('courseFilter');
-            const previouslySelected = courseFilter.value;
-            courseFilter.innerHTML = '<option value="">All Courses</option>';
-            enrolled.forEach(enr => {
-                const course = getCourse(enr.courseId);
-                if (course) {
-                    const option = document.createElement('option');
-                    option.value = enr.courseId;
-                    option.textContent = course.name;
-                    courseFilter.appendChild(option);
-                }
-            });
-            if ([...courseFilter.options].some(o => o.value === previouslySelected)) {
-                courseFilter.value = previouslySelected;
-            }
-            
             renderProgressDistribution(enrolled);
             renderCourseStatus(enrolled);
             renderGrades(enrolled);
             loadCourseCards(enrolled);
             loadAchievements(enrolled);
-
-            // Re-apply the course filter selection (if any) to the freshly
-            // rendered cards, since loadCourseCards() just replaced them.
-            if (courseFilter.value) {
-                document.querySelectorAll('.course-card').forEach(card => {
-                    card.style.display = card.dataset.courseId === courseFilter.value ? '' : 'none';
-                });
-            }
             
             // Update time display (preserved across refreshes)
             updateTimeDisplay();
@@ -1972,7 +1958,8 @@
         function exportProgress() {
             const enrolled = loadMyCourses();
             let report = '📊 Progress Report\n';
-            report += `Generated: ${new Date().toLocaleString()}\n`;
+            report += `Generated: ${new Date().toLocaleString()} (device time)\n`;
+            report += `Nairobi time: ${getAppTimezoneClock()} on ${getLocalDateKey()}\n`;
             report += `${'='.repeat(50)}\n\n`;
             
             let totalProgress = 0;
@@ -1997,7 +1984,7 @@
             });
             
             const studyData = loadStudyTime();
-            report += `\n⏱️ Study Time Tracking\n`;
+            report += `\n⏱️ Study Time Tracking (days recorded in Nairobi time)\n`;
             report += `Total Study Time: ${formatTime(studyData.totalSeconds || 0)}\n`;
             report += `Total Sessions: ${studyData.totalSessions || 0}\n`;
             
@@ -2005,7 +1992,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `progress_report_${new Date().toISOString().split('T')[0]}.txt`;
+            a.download = `progress_report_${getLocalDateKey()}.txt`;
             a.click();
             URL.revokeObjectURL(url);
             
@@ -2013,29 +2000,9 @@
         }
 
         function setupEventListeners() {
-            document.getElementById('searchProgress').addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase();
-                const cards = document.querySelectorAll('.course-card');
-                cards.forEach(card => {
-                    const title = card.querySelector('.course-title')?.textContent?.toLowerCase() || '';
-                    card.style.display = title.includes(searchTerm) ? '' : 'none';
-                });
-            });
-            
-            document.getElementById('courseFilter').addEventListener('change', function() {
-                const filterValue = this.value;
-                const cards = document.querySelectorAll('.course-card');
-                cards.forEach(card => {
-                    const courseId = card.dataset.courseId || '';
-                    card.style.display = !filterValue || courseId === filterValue ? '' : 'none';
-                });
-            });
-
-            // FIX: wire up the previously-unused #timeFilter dropdown so it
-            // actually re-renders the grades table with the chosen range.
-            document.getElementById('timeFilter').addEventListener('change', function() {
-                renderGrades(loadMyCourses());
-            });
+            // The search box and the time/course filter dropdowns were
+            // removed from the filter bar, so there's nothing left to
+            // wire up here.
         }
 
         // FIX: switchTab now matches buttons via the data-tab attribute

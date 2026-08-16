@@ -2,6 +2,11 @@
 
 {% block allcontent %}
 <link rel="stylesheet" href="{{ url_for('static', filename='resourses.css') }}">
+<!-- PDF.js — used to render PDFs page-by-page onto canvases so we get real
+     scrolling, pinch-zoom, and page navigation on mobile instead of an
+     embedded iframe (iframes can't be gesture-controlled from the parent
+     page, which was the root cause of the old "can't scroll/zoom" bugs). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
 /* =====================================================
@@ -15,6 +20,83 @@
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 28px 16px;
     padding: 8px 0 32px;
+}
+
+/* =====================================================
+   TAB BAR — squeeze onto a single line
+   Previously set to wrap; now the ask is the opposite —
+   keep every tab (including Saved) on one row with no
+   horizontal scroll, by letting tabs shrink evenly and
+   collapsing their labels to icon-only once space is tight.
+===================================================== */
+.main-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: hidden !important;
+    white-space: normal !important;
+    gap: 6px;
+    height: 50px;
+}
+
+.main-tab-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 6px !important;
+    font-size: clamp(11px, 2.2vw, 14px) !important;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.main-tab-btn .tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Below this width, keep every tab at a readable, natural size and let
+   the row scroll horizontally instead of squeezing to icon-only —
+   that's the mobile behavior being asked for here, distinct from the
+   desktop squeeze-to-fit above. */
+@media (max-width: 560px) {
+    .main-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+        justify-content: flex-start;
+    }
+    .main-tabs::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+
+    .main-tab-btn {
+        flex: 0 0 auto;
+        min-width: max-content;
+        padding: 10px 14px !important;
+        font-size: 14px !important;
+    }
+    .main-tab-btn .tab-label {
+        display: inline !important;
+        overflow: visible;
+        text-overflow: unset;
+    }
+}
+
+/* ---- Upload button, pinned below the tab row ---- */
+.upload-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin: 12px 0 4px;
+    margin-top: -15px;
+    margin-bottom: 10px;
+}
+
+.upload-bar .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .resource-card {
@@ -81,7 +163,6 @@
     overflow: hidden;
 }
 
-/* Pushed to the bottom of the card no matter how tall the title is */
 .resource-footer {
     margin-top: auto;
     padding-top: 10px;
@@ -104,21 +185,13 @@
     background: #ddd;
 }
 
-/* Avatars that link to a profile get a pointer + a subtle hover cue,
-   distinct from the card's own pointer cursor, so it's clear the
-   avatar itself is a separate tap target. */
 .uploader-avatar.clickable-avatar {
     cursor: pointer;
     transition: opacity 0.15s ease, transform 0.1s ease;
 }
 
-.uploader-avatar.clickable-avatar:hover {
-    opacity: 0.85;
-}
-
-.uploader-avatar.clickable-avatar:active {
-    transform: scale(0.94);
-}
+.uploader-avatar.clickable-avatar:hover { opacity: 0.85; }
+.uploader-avatar.clickable-avatar:active { transform: scale(0.94); }
 
 .uploader-name-group {
     flex: 1;
@@ -137,17 +210,12 @@
     text-overflow: ellipsis;
 }
 
-/* Small follower count under the uploader's name — keyed by uploader id
-   via data-follower-count so it stays in sync with the modal copy. */
 .uploader-follower-count {
     font-size: 11px;
     color: #909090;
     white-space: nowrap;
 }
 
-/* In the card footer, the name/follower-count block fills whatever space
-   is left so the follow button always lands flush against the right
-   edge, right next to the avatar row rather than floating on its own line. */
 .footer-uploader .uploader-name-group {
     flex: 1;
     min-width: 0;
@@ -168,31 +236,12 @@
     transition: background 0.15s ease, transform 0.1s ease;
 }
 
-.follow-btn:hover {
-    background: #272727;
-}
-
-.follow-btn:active {
-    transform: scale(0.94);
-}
-
-.follow-btn.following {
-    background: #f0f0f0;
-    color: #0f0f0f;
-}
-
-.follow-btn.following:hover {
-    background: #e2e2e2;
-}
-
-.follow-btn:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-
-.preview-uploader-row .follow-btn {
-    margin-left: 6px;
-}
+.follow-btn:hover { background: #272727; }
+.follow-btn:active { transform: scale(0.94); }
+.follow-btn.following { background: #f0f0f0; color: #0f0f0f; }
+.follow-btn.following:hover { background: #e2e2e2; }
+.follow-btn:disabled { opacity: 0.6; cursor: default; }
+.preview-uploader-row .follow-btn { margin-left: 6px; }
 
 .footer-stats {
     display: flex;
@@ -223,43 +272,21 @@
     padding: 3px 9px;
     border-radius: 16px;
     transition: background 0.15s ease, color 0.15s ease;
+    position: relative;
 }
 
-.like-btn:hover {
-    background: #f0f0f0;
-    color: #0f0f0f;
-}
+.like-btn:hover { background: #f0f0f0; color: #0f0f0f; }
+.like-btn.liked { color: #ff0033; }
+.like-btn i { font-size: 13px; display: inline-block; }
+.like-btn:disabled { opacity: 0.6; cursor: default; }
 
-.like-btn.liked {
-    color: #ff0033;
-}
-
-.like-btn i {
-    font-size: 13px;
-    display: inline-block;
-}
-
-.like-btn:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-
-/* Heart pops on every tap, whether liking or unliking */
 @keyframes heartPop {
     0%   { transform: scale(1); }
     35%  { transform: scale(1.5); }
     60%  { transform: scale(0.85); }
     100% { transform: scale(1); }
 }
-
-.like-btn.pop i {
-    animation: heartPop 0.35s ease;
-}
-
-/* Little red burst behind the heart the moment it gets liked */
-.like-btn {
-    position: relative;
-}
+.like-btn.pop i { animation: heartPop 0.35s ease; }
 
 .like-btn .like-burst {
     position: absolute;
@@ -273,31 +300,56 @@
     transform: scale(0);
     pointer-events: none;
 }
-
-.like-btn.pop.liked .like-burst {
-    animation: likeBurst 0.4s ease-out;
-}
+.like-btn.pop.liked .like-burst { animation: likeBurst 0.4s ease-out; }
 
 @keyframes likeBurst {
     0%   { transform: scale(0.2); opacity: 0.8; }
     100% { transform: scale(1.8); opacity: 0; }
 }
 
-/* Follower count pops too, same treatment as the like count */
 @keyframes countPop {
     0%   { transform: scale(1); }
     40%  { transform: scale(1.25); }
     100% { transform: scale(1); }
 }
-
 .uploader-follower-count.pop,
-.preview-uploader-row .uploader-follower-count.pop {
-    animation: countPop 0.3s ease;
+.preview-uploader-row .uploader-follower-count.pop { animation: countPop 0.3s ease; }
+
+/* ---- Save (bookmark) button — same interaction pattern as like-btn,
+   its own accent color so it reads as a distinct action. ---- */
+.save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #606060;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 16px;
+    transition: background 0.15s ease, color 0.15s ease;
 }
+.save-btn:hover { background: #f0f0f0; color: #0f0f0f; }
+.save-btn.saved { color: #0a66ff; }
+.save-btn i { font-size: 13px; display: inline-block; }
+.save-btn:disabled { opacity: 0.6; cursor: default; }
+.save-btn.pop i { animation: heartPop 0.35s ease; }
+
+.preview-uploader-row .save-btn {
+    font-size: 14px;
+    padding: 6px 14px;
+    background: #f0f0f0;
+}
+.preview-uploader-row .save-btn:hover { background: #e2e2e2; }
+#previewModal .preview-uploader-row .save-btn { background: rgba(255, 255, 255, 0.08); color: #eaeaea; }
+#previewModal .preview-uploader-row .save-btn:hover { background: rgba(255, 255, 255, 0.16); }
+#previewModal .preview-uploader-row .save-btn.saved { color: #4d94ff; }
 
 /* =====================================================
-   PREVIEW MODAL — uploader/like/view row now sits at
-   the BOTTOM of the preview, below the media.
+   PREVIEW MODAL — uploader/like/view row sits at the
+   BOTTOM of the preview, below the media.
 ===================================================== */
 .preview-uploader-row {
     display: flex;
@@ -314,31 +366,439 @@
     flex-direction: column;
     line-height: 1.3;
 }
+.preview-uploader-row .uploader-name { font-size: 14px; font-weight: 600; color: #0f0f0f; }
+.preview-uploader-row .uploader-follower-count { font-size: 12px; }
+.preview-uploader-row .resource-views { font-size: 13px; color: #606060; }
+.preview-uploader-row .like-btn { margin-left: auto; font-size: 14px; padding: 6px 14px; background: #f0f0f0; }
+.preview-uploader-row .like-btn:hover { background: #e2e2e2; }
 
-.preview-uploader-row .uploader-name {
-    font-size: 14px;
+/* =====================================================
+   FULLSCREEN PREVIEW MODAL
+   Bug fix: width was 200vw (double the viewport), which
+   caused horizontal overflow/rubber-banding on mobile.
+   inset:0 already pins all four edges, so width/height
+   just need to match the viewport — using dvh/dvw where
+   supported keeps this correct when mobile browser chrome
+   (address bar) shows/hides and changes the visual viewport.
+===================================================== */
+#previewModal.preview-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    width: 100dvw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: rgba(10, 10, 10, 0.96);
+    z-index: 4000;
+    overscroll-behavior: contain;
+}
+
+#previewModal .preview-content {
+    width: 100vw !important;
+    width: 100dvw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: #0f0f0f;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: none;
+    animation: previewFullscreenIn 0.22s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #previewModal .preview-content { animation: none; }
+}
+
+@keyframes previewFullscreenIn {
+    from { opacity: 0; transform: scale(0.985); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+#previewModal .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 32px;
+    background: #161616;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    z-index: 2;
+}
+
+#previewModal .preview-header h2 {
+    color: #fff;
+    font-size: 18px;
     font-weight: 600;
-    color: #0f0f0f;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.preview-uploader-row .uploader-follower-count {
+#previewModal .preview-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+#previewModal .preview-header button {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: #fff;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+#previewModal .preview-header button:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: scale(1.06);
+}
+
+#previewModal .preview-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    background: #0f0f0f;
+    position: relative;
+}
+
+#previewModal .preview-media-wrapper {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+#previewModal .preview-media-wrapper img { max-width: 100%; }
+#previewModal .preview-media-wrapper video,
+#previewModal .preview-media-wrapper iframe {
+    max-width: 100%;
+    max-height: 78vh;
+    border-radius: 12px;
+    background: #000;
+    display: block;
+}
+
+/* =====================================================
+   MOBILE DOCUMENT VIEWER
+   Replaces the old raw <iframe> for PDFs with a real
+   scroll/zoom-capable viewer built on PDF.js canvases.
+   Office formats (doc/ppt/xls) still route through
+   Google's viewer (browsers can't render them natively),
+   but get the same scroll-container treatment so at least
+   scrolling/zooming inside the frame stops fighting the
+   page behind it.
+===================================================== */
+.docviewer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #262626;
+    border-radius: 10px;
+    overflow: hidden;
+    touch-action: none; /* we own pinch/pan gestures ourselves for PDFs */
+}
+
+.docviewer.docviewer-iframe-mode {
+    touch-action: auto; /* let the embedded iframe manage its own gestures */
+}
+
+/* The element that actually scrolls. overscroll-behavior:contain is the
+   key fix for "background page scrolls instead of the document" — it
+   stops scroll chaining from bubbling up to the modal/body once this
+   container hits its own scroll boundary. */
+.docviewer-scroll {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.docviewer-iframe-mode .docviewer-scroll {
+    touch-action: auto;
+}
+
+/* Pinch/pan/double-tap zoom is applied as a CSS transform on this wrapper
+   rather than re-rendering at a new resolution on every gesture frame —
+   that keeps zooming smooth (hardware accelerated) even on low-end
+   Android devices. Pages are re-rendered at higher resolution only when
+   the gesture ends, so text stays crisp once you stop pinching. */
+.docviewer-zoom {
+    transform-origin: 0 0;
+    will-change: transform;
+    padding: 16px 0 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    min-height: 100%;
+    box-sizing: border-box;
+}
+
+.docviewer-page {
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+    position: relative;
+    line-height: 0;
+}
+
+.docviewer-page canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.docviewer-page .docviewer-page-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
     font-size: 12px;
+    background: repeating-linear-gradient(135deg, #f4f4f4, #f4f4f4 10px, #ececec 10px, #ececec 20px);
 }
 
-.preview-uploader-row .resource-views {
-    font-size: 13px;
-    color: #606060;
+.docviewer-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #fff;
+    display: block;
 }
 
-.preview-uploader-row .like-btn {
-    margin-left: auto;
+.docviewer-status {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #ccc;
     font-size: 14px;
-    padding: 6px 14px;
-    background: #f0f0f0;
+    text-align: center;
+    padding: 24px;
 }
 
-.preview-uploader-row .like-btn:hover {
-    background: #e2e2e2;
+.docviewer-status .spinner {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top-color: #fff;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- Floating controls (auto-hide) ---- */
+.docviewer-floating {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 3;
+    opacity: 1;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.docviewer-floating.hidden {
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+}
+
+.docviewer-fab {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(20, 20, 20, 0.85);
+    color: #fff;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px);
+}
+.docviewer-fab:active { transform: scale(0.92); }
+.docviewer-fab:disabled { opacity: 0.4; cursor: default; }
+
+/* ---- Bottom page-nav bar (PDFs only) ---- */
+.docviewer-pagenav {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    z-index: 3;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.docviewer-pagenav.hidden {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+    pointer-events: none;
+}
+.docviewer-pagenav button {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.docviewer-pagenav button:disabled { opacity: 0.35; cursor: default; }
+.docviewer-pagenav .docviewer-pageindicator { min-width: 58px; text-align: center; }
+
+/* =====================================================
+   DOCUMENT / PDF PREVIEW — outer wrapper sizing
+===================================================== */
+#previewModal .preview-doc-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: block;
+    background: #1a1a1a;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#previewModal .preview-body {
+    touch-action: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* When a document is open, let the doc wrapper own the full body — no
+   forced padding fighting the viewer's own internal layout. */
+#previewModal .preview-body.has-docviewer {
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+}
+#previewModal .preview-body.has-docviewer .preview-media-wrapper {
+    max-width: none;
+    height: 100%;
+}
+
+@media (max-width: 700px) {
+    #previewModal .preview-doc-wrapper { border-radius: 0; }
+}
+
+/* Uploader / follow / views / like footer bar */
+#previewModal .preview-uploader-row {
+    flex-shrink: 0;
+    margin-top: 0;
+    padding: 16px 32px;
+    background: #161616;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+#previewModal .preview-uploader-row .uploader-avatar { width: 44px; height: 44px; }
+#previewModal .preview-uploader-row .uploader-name { color: #fff; font-size: 15px; }
+#previewModal .preview-uploader-row .uploader-follower-count { color: #9a9a9a; }
+#previewModal .preview-uploader-row .resource-views { color: #b5b5b5; }
+#previewModal .preview-uploader-row .like-btn { background: rgba(255, 255, 255, 0.08); color: #eaeaea; }
+#previewModal .preview-uploader-row .like-btn:hover { background: rgba(255, 255, 255, 0.16); }
+#previewModal .preview-uploader-row .like-btn.liked { color: #ff3355; }
+#previewModal .preview-uploader-row .follow-btn { background: #fff; color: #0f0f0f; }
+#previewModal .preview-uploader-row .follow-btn:hover { background: #e2e2e2; }
+#previewModal .preview-uploader-row .follow-btn.following { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+/* "Reading mode": header + footer chrome collapse to maximize the
+   document area, matching Drive/Acrobat-style immersive reading.
+   Toggled by tapping the document (see JS). Only applies once a
+   document viewer is active, and never on desktop where space isn't
+   at a premium. */
+@media (max-width: 700px) {
+    #previewModal.chrome-hidden .preview-header {
+        transform: translateY(-100%);
+        opacity: 0;
+        pointer-events: none;
+    }
+    #previewModal.chrome-hidden .preview-uploader-row {
+        transform: translateY(100%);
+        opacity: 0;
+        pointer-events: none;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+    }
+}
+
+@media (max-width: 700px) {
+    #previewModal .preview-media-wrapper video,
+    #previewModal .preview-media-wrapper img { max-height: 100%; }
+
+    #previewModal .preview-header { padding: 10px 12px; }
+    #previewModal .preview-header h2 { font-size: 14px; }
+    #previewModal .preview-header button { width: 34px; height: 34px; font-size: 14px; }
+
+    #previewModal .preview-body { padding: 0; }
+
+    #previewModal .preview-uploader-row {
+        padding: 10px 14px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    #previewModal .preview-uploader-row .uploader-avatar { width: 34px; height: 34px; }
+    #previewModal .preview-uploader-row .uploader-name { font-size: 13px; }
+    #previewModal .preview-uploader-row .uploader-follower-count { font-size: 11px; }
+    #previewModal .preview-uploader-row .uploader-name-group { flex: 1 1 auto; min-width: 0; }
+    #previewModal .preview-uploader-row .resource-views { order: 3; font-size: 12px; }
+    #previewModal .preview-uploader-row .like-btn { order: 4; margin-left: auto; font-size: 12px; padding: 5px 10px; }
+    #previewModal .preview-uploader-row .save-btn { order: 5; font-size: 12px; padding: 5px 10px; }
+    #previewModal .preview-uploader-row .follow-btn { font-size: 11px; padding: 4px 10px; }
+
+    .docviewer-floating { right: 8px; bottom: 8px; }
+    .docviewer-fab { width: 44px; height: 44px; } /* keep >=44px touch target */
+    .docviewer-pagenav { bottom: 10px; font-size: 12px; }
+}
+
+/* Respect system font scaling / high-contrast where the browser exposes it;
+   we avoid fixed px on anything the user might zoom via OS text size. */
+@media (prefers-contrast: more) {
+    .docviewer-fab, .docviewer-pagenav { background: #000; border: 1px solid #fff; }
 }
 </style>
 
@@ -356,19 +816,28 @@
     <!-- Main Tabs -->
     <div class="main-tabs">
         <button class="main-tab-btn active" onclick="switchTab('all', this)" data-tab="all">
-            <i class="fas fa-th-large"></i> All Resources
+            <i class="fas fa-th-large"></i><span class="tab-label"> All Resources</span>
         </button>
         <button class="main-tab-btn" onclick="switchTab('videos', this)" data-tab="videos">
-            <i class="fas fa-play-circle"></i> Videos
+            <i class="fas fa-play-circle"></i><span class="tab-label"> Videos</span>
         </button>
         <button class="main-tab-btn" onclick="switchTab('documents', this)" data-tab="documents">
-            <i class="fas fa-file-alt"></i> Notes
+            <i class="fas fa-file-alt"></i><span class="tab-label"> Documents</span>
         </button>
         <button class="main-tab-btn" onclick="switchTab('images', this)" data-tab="images">
-            <i class="fas fa-image"></i> Images
+            <i class="fas fa-image"></i><span class="tab-label"> Images</span>
         </button>
         <button class="main-tab-btn" onclick="switchTab('audio', this)" data-tab="audio">
-            <i class="fas fa-music"></i> Audio
+            <i class="fas fa-music"></i><span class="tab-label"> Audio</span>
+        </button>
+        <button class="main-tab-btn" onclick="switchTab('saved', this)" data-tab="saved">
+            <i class="fas fa-bookmark"></i><span class="tab-label"> Saved</span>
+        </button>
+    </div>
+
+    <div class="upload-bar">
+        <button class="btn btn-primary" onclick="window.location.href='/upload'">
+            <i class="fas fa-cloud-upload-alt"></i> Upload
         </button>
     </div>
 
@@ -427,7 +896,7 @@
     </div>
 
     <!-- File Preview Modal -->
-    <div class="preview-modal" id="previewModal">
+    <div class="preview-modal" id="previewModal" role="dialog" aria-modal="true" aria-label="Resource preview">
         <div class="preview-content" id="previewContent">
             <!-- Preview content will be loaded here -->
         </div>
@@ -442,6 +911,49 @@ let allResources = [];
 let currentPreviewResource = null;
 
 /* =====================================================
+   SAVED RESOURCES — local persistence
+   The backend save endpoint may not have a matching "list
+   my saved resources" filter wired up yet, so the Saved tab
+   can't fully depend on it. localStorage is kept as the
+   source of truth for "is this saved" on this device/browser
+   — a click on Save is guaranteed to show up in the Saved
+   tab immediately, and the backend call underneath is still
+   made best-effort so the save persists server-side too.
+===================================================== */
+function loadSavedIdsFromStorage() {
+    try {
+        const raw = localStorage.getItem("savedResourceIds");
+        return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch (err) {
+        console.warn("Couldn't read saved resources from storage:", err);
+        return new Set();
+    }
+}
+
+function persistSavedIds(set) {
+    try {
+        localStorage.setItem("savedResourceIds", JSON.stringify(Array.from(set)));
+    } catch (err) {
+        console.warn("Couldn't persist saved resources to storage:", err);
+    }
+}
+
+let savedResourceIds = loadSavedIdsFromStorage();
+
+function isResourceSaved(r) {
+    return savedResourceIds.has(r.id) || !!r.saved_by_current_user;
+}
+
+/* Active PDF.js document viewer instance (destroyed/rebuilt each time a
+   PDF is opened, so nothing leaks between preview opens). */
+let activeDocViewer = null;
+
+if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+
+/* =====================================================
    INIT
 ===================================================== */
 document.addEventListener("DOMContentLoaded", () => {
@@ -451,9 +963,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /* =====================================================
    EVENT LISTENERS
-   Search is debounced (fires 350ms after the user stops
-   typing) so every keystroke doesn't trigger a request;
-   the dropdowns re-fetch immediately on change.
 ===================================================== */
 let searchDebounceTimer = null;
 
@@ -481,45 +990,87 @@ function setupEventListeners() {
     }
 
     document.addEventListener("keydown", e => {
-        if (e.key === "Escape") closePreview();
+        if (e.key === "Escape") { closePreview(); return; }
+        // Arrow-key page navigation when a PDF viewer is open (accessibility)
+        if (activeDocViewer && (e.key === "ArrowDown" || e.key === "PageDown")) {
+            activeDocViewer.nextPage();
+        } else if (activeDocViewer && (e.key === "ArrowUp" || e.key === "PageUp")) {
+            activeDocViewer.prevPage();
+        }
     });
+
+    // Keep the modal's real viewport-based sizing correct across
+    // orientation changes and mobile browser chrome show/hide, without
+    // resetting scroll position or zoom.
+    const vv = window.visualViewport;
+    if (vv) {
+        vv.addEventListener("resize", handleViewportResize);
+        vv.addEventListener("scroll", handleViewportResize);
+    } else {
+        window.addEventListener("resize", handleViewportResize);
+    }
+    window.addEventListener("orientationchange", () => {
+        // Give the browser a tick to settle the new viewport before we
+        // recompute layout / re-render at the right scale.
+        setTimeout(handleViewportResize, 50);
+    });
+}
+
+/* Handles both device rotation and the on-screen keyboard opening.
+   When the keyboard shows, visualViewport.height shrinks — we shrink the
+   preview-body to match so whatever's focused stays visible instead of
+   being hidden behind the keyboard, and we DON'T touch the doc viewer's
+   scroll or zoom state, so the reading position survives rotation. */
+function handleViewportResize() {
+    const modal = document.getElementById("previewModal");
+    if (!modal || modal.style.display !== "block") return;
+
+    const vv = window.visualViewport;
+    const body = document.querySelector("#previewModal .preview-body");
+    if (vv && body) {
+        body.style.height = vv.height + "px";
+    }
+
+    if (activeDocViewer) activeDocViewer.onContainerResize();
 }
 
 /* =====================================================
    LOAD RESOURCES
-   Every active filter — search text, course/category,
-   sort order, grade (difficulty), and the active tab —
-   is sent to the backend as a query param, so the list
-   that comes back is already exactly what should be
-   shown. The backend already supported category/search/
-   sort/type; difficulty (grade) filtering was added
-   alongside this change.
 ===================================================== */
 async function loadAllResources() {
     const grid = document.getElementById("resourcesGrid");
     if (grid) grid.innerHTML = "<p style='padding:20px; color:#606060;'>Loading...</p>";
 
+    const tab = getActiveTab();
+
     try {
-        const params = new URLSearchParams();
+        if (tab === "saved") {
+            allResources = await loadSavedResources();
+        } else {
+            const params = new URLSearchParams();
 
-        const search = document.getElementById("searchInput")?.value.trim();
-        if (search) params.set("search", search);
+            const search = document.getElementById("searchInput")?.value.trim();
+            if (search) params.set("search", search);
 
-        const category = document.getElementById("courseFilter")?.value;
-        if (category) params.set("category", category);
+            const category = document.getElementById("courseFilter")?.value;
+            if (category) params.set("category", category);
 
-        const sort = document.getElementById("sortFilter")?.value;
-        if (sort) params.set("sort", sort);
+            const sort = document.getElementById("sortFilter")?.value;
+            if (sort) params.set("sort", sort);
 
-        const grade = document.getElementById("gradeFilter")?.value;
-        if (grade) params.set("difficulty", grade);
+            const grade = document.getElementById("gradeFilter")?.value;
+            if (grade) params.set("difficulty", grade);
 
-        const tab = getActiveTab();
-        if (tab !== "all") params.set("type", tab);
+            if (tab !== "all") params.set("type", tab);
 
-        const res = await fetch(`/api/resources?${params.toString()}`);
-        const data = await res.json();
-        allResources = data.resources || [];
+            const res = await fetch(`/api/resources?${params.toString()}`);
+            const data = await res.json();
+            allResources = data.resources || [];
+        }
+
+        // Local save state always wins over whatever the backend sent
+        // back, so the bookmark icon is correct everywhere immediately.
+        allResources.forEach(r => { r.saved_by_current_user = isResourceSaved(r); });
         renderResources();
     } catch (err) {
         console.error("Failed to load resources:", err);
@@ -528,12 +1079,66 @@ async function loadAllResources() {
     }
 }
 
+/* Fetches the full record for every locally-saved id (reusing the same
+   single-resource endpoint the preview modal already uses), then applies
+   whatever search/category/sort/grade filters are currently selected
+   client-side — since this bypasses the paginated list endpoint, it's
+   the one path that can't rely on the backend to do that filtering. */
+async function loadSavedResources() {
+    const ids = Array.from(savedResourceIds);
+    if (!ids.length) return [];
+
+    const fetched = await Promise.all(ids.map(async id => {
+        try {
+            const res = await fetch(`/api/resources/${id}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.resource || null;
+        } catch (err) {
+            console.warn(`Couldn't load saved resource ${id}:`, err);
+            return null;
+        }
+    }));
+
+    let list = fetched.filter(Boolean);
+
+    const search = document.getElementById("searchInput")?.value.trim().toLowerCase();
+    if (search) {
+        list = list.filter(r =>
+            (r.title || "").toLowerCase().includes(search) ||
+            (r.description || "").toLowerCase().includes(search) ||
+            (r.uploader_username || "").toLowerCase().includes(search)
+        );
+    }
+
+    const category = document.getElementById("courseFilter")?.value;
+    if (category) {
+        list = list.filter(r => (r.category || r.course || "").toLowerCase() === category.toLowerCase());
+    }
+
+    const grade = document.getElementById("gradeFilter")?.value;
+    if (grade) {
+        list = list.filter(r => (r.difficulty || r.grade || "").toLowerCase() === grade.toLowerCase());
+    }
+
+    const sort = document.getElementById("sortFilter")?.value;
+    if (sort === "oldest") {
+        list.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    } else if (sort === "largest") {
+        list.sort((a, b) => (b.file_size || 0) - (a.file_size || 0));
+    } else if (sort === "smallest") {
+        list.sort((a, b) => (a.file_size || 0) - (b.file_size || 0));
+    } else if (sort === "popular") {
+        list.sort((a, b) => (b.views_count ?? b.views ?? 0) - (a.views_count ?? a.views ?? 0));
+    } else {
+        list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)); // newest first, default
+    }
+
+    return list;
+}
+
 /* =====================================================
    TABS
-   Switching tabs re-fetches from the backend with
-   type=<tab> instead of filtering an already-loaded
-   list, so it combines correctly with search/category/
-   sort/grade instead of ignoring them.
 ===================================================== */
 function getActiveTab() {
     const active = document.querySelector(".main-tab-btn.active");
@@ -548,9 +1153,6 @@ function switchTab(tab, btn) {
 
 /* =====================================================
    RENDER GRID
-   Filtering already happened server-side in
-   loadAllResources() — this just paints whatever came
-   back.
 ===================================================== */
 function renderResources() {
     const grid = document.getElementById("resourcesGrid");
@@ -561,21 +1163,6 @@ function renderResources() {
         : "<p style='padding:20px'>No resources found</p>";
 }
 
-/* =====================================================
-   CARD  ✅ Title at top, uploader/views/like footer
-   pinned to the BOTTOM of the card.
-
-   IMPORTANT: like button & views span use data-* attributes
-   (data-like-btn / data-views) instead of relying solely on
-   a single id, because the SAME resource can be rendered
-   twice at once — once in the grid card, once in the preview
-   modal. Two elements sharing one id meant getElementById()
-   only ever found the card's copy, so tapping like inside
-   the modal silently updated the (invisible) card behind it
-   instead of the button you were actually looking at. Using
-   querySelectorAll on the data attribute updates every
-   matching instance, wherever it is on the page.
-===================================================== */
 function createResourceCard(r) {
     const uploaderName = r.uploader_username || "Unknown";
     const uploaderAvatar = r.uploader_avatar_url || getDefaultAvatar(uploaderName);
@@ -618,21 +1205,10 @@ function createResourceCard(r) {
     `;
 }
 
-/* Shared markup for the uploader's avatar image. Kept as its own helper
-   (same pattern as followerCountHtml/followButtonHtml below) so the grid
-   card and the preview modal always render it identically and stay in
-   sync if this ever changes again.
-
-   event.stopPropagation() matters here because the WHOLE card has its
-   own onclick="previewResource(...)" — without stopping propagation,
-   tapping the avatar would both navigate to the profile AND pop open
-   the preview modal underneath it. The follow/like buttons already do
-   the same thing for the same reason. */
 function avatarHtml(uploaderId, uploaderName, uploaderAvatar) {
     if (!uploaderId) {
         return `<img class="uploader-avatar" src="${uploaderAvatar}" alt="${uploaderName}">`;
     }
-
     return `
         <img
             class="uploader-avatar clickable-avatar"
@@ -643,28 +1219,17 @@ function avatarHtml(uploaderId, uploaderName, uploaderAvatar) {
         >`;
 }
 
-/* Adjust this if your app's real profile route isn't /profile/<id> —
-   e.g. change it to `/profile?user=${userId}` or `/u/${userId}` to
-   match whatever route actually renders profile.html. */
 function goToProfile(userId) {
     window.location.href = `/profile/${userId}`;
 }
 
-/* Shared markup for the small follower-count line under the uploader's
-   name. Keyed by the UPLOADER's user id (data-follower-count), same as
-   the follow button, so every card + the modal update together. */
 function followerCountHtml(uploaderId, followers) {
     if (!uploaderId) return "";
     return `<span class="uploader-follower-count" data-follower-count="${uploaderId}">${formatCount(followers)} follower${followers === 1 ? "" : "s"}</span>`;
 }
 
-/* Shared markup for the follow button — keyed by the UPLOADER's user id
-   (not the resource id), since the same uploader can appear on many
-   resource cards at once and they should all stay in sync together.
-   Hidden entirely on your own uploads (you can't follow yourself). */
 function followButtonHtml(uploaderId, isFollowing, isOwnResource) {
     if (!uploaderId || isOwnResource) return "";
-
     return `
         <button
             class="follow-btn ${isFollowing ? "following" : ""}"
@@ -675,8 +1240,6 @@ function followButtonHtml(uploaderId, isFollowing, isOwnResource) {
     `;
 }
 
-/* Shared markup for the like button so the card and modal
-   copies never drift out of sync with each other. */
 function likeButtonHtml(id, isLiked, likes) {
     return `
         <button
@@ -693,18 +1256,25 @@ function likeButtonHtml(id, isLiked, likes) {
     `;
 }
 
-/* =====================================================
-   LIKE / UNLIKE  ✅ Talks to the real backend:
-   POST   /api/resources/<id>/like   -> like
-   DELETE /api/resources/<id>/like   -> unlike
-   The server enforces one like per person (unique
-   resource_id+user_id row), so this can't be inflated
-   by spamming the button or reloading the page.
+/* Shared markup for the save (bookmark) button — same pattern as
+   likeButtonHtml, kept in its own function so the card and every
+   preview type render it identically. */
+function saveButtonHtml(id, isSaved) {
+    return `
+        <button
+            class="save-btn ${isSaved ? "saved" : ""}"
+            data-save-btn="${id}"
+            data-saved="${isSaved}"
+            onclick="event.stopPropagation(); toggleSave(${id})"
+            title="${isSaved ? "Remove from saved" : "Save"}"
+        >
+            <i class="${isSaved ? "fas" : "far"} fa-bookmark"></i>
+        </button>
+    `;
+}
 
-   UI updates instantly (optimistic), plays the tap
-   animation immediately on click — not after the network
-   round-trip — and every matching button/count on the
-   page (card + modal) is kept in sync via data attributes.
+/* =====================================================
+   LIKE / UNLIKE
 ===================================================== */
 async function toggleLike(id) {
     const resource = allResources.find(r => r.id === id);
@@ -718,7 +1288,6 @@ async function toggleLike(id) {
     resource.likes_count = optimisticCount;
     resource.likes = optimisticCount;
 
-    // Update the UI and play the animation immediately — don't wait on the network
     applyLikeUI(id, newLiked, optimisticCount, { animate: true });
     setButtonsDisabled(id, true);
 
@@ -742,7 +1311,6 @@ async function toggleLike(id) {
         resource.likes_count = finalCount;
         resource.likes = finalCount;
 
-        // Reconcile silently (no re-animation) if the server disagreed slightly
         applyLikeUI(id, finalLiked, finalCount, { animate: false });
     } catch (err) {
         console.error("Failed to toggle like:", err);
@@ -762,6 +1330,88 @@ function setButtonsDisabled(id, disabled) {
     });
 }
 
+/* =====================================================
+   SAVE / UNSAVE  — talks to the real backend:
+   POST   /api/resources/<id>/save   -> save
+   DELETE /api/resources/<id>/save   -> unsave
+   Same optimistic-update + rollback pattern as toggleLike,
+   and updates every matching button on the page (card +
+   modal) via data-save-btn, same as the like button does.
+===================================================== */
+async function toggleSave(id) {
+    const resource = allResources.find(r => r.id === id);
+    const wasSaved = savedResourceIds.has(id);
+    const newSaved = !wasSaved;
+
+    // Local storage is updated first and is what the UI trusts — this is
+    // what guarantees a click on Save shows up in the Saved tab right
+    // away, regardless of whether the backend call below succeeds.
+    if (newSaved) savedResourceIds.add(id); else savedResourceIds.delete(id);
+    persistSavedIds(savedResourceIds);
+    if (resource) resource.saved_by_current_user = newSaved;
+
+    applySaveUI(id, newSaved, { animate: true });
+    setSaveButtonsDisabled(id, true);
+
+    try {
+        const res = await fetch(`/api/resources/${id}/save`, {
+            method: wasSaved ? "DELETE" : "POST"
+        });
+
+        if (res.status === 401) {
+            window.location.href = "/Login";
+            return;
+        }
+
+        if (res.ok) {
+            const data = await res.json().catch(() => null);
+            if (data && typeof data.saved === "boolean" && data.saved !== newSaved) {
+                // Server has a different idea of the saved state — trust it.
+                if (data.saved) savedResourceIds.add(id); else savedResourceIds.delete(id);
+                persistSavedIds(savedResourceIds);
+                if (resource) resource.saved_by_current_user = data.saved;
+                applySaveUI(id, data.saved, { animate: false });
+            }
+        } else if (res.status !== 404 && res.status !== 405) {
+            console.warn(`[save] server rejected the save request for resource ${id} (${res.status}); keeping local state.`);
+        }
+        // 404/405 (endpoint not wired up yet) and any other non-ok status
+        // intentionally don't roll back — see comment above toggleSave.
+    } catch (err) {
+        console.warn(`[save] request for resource ${id} didn't reach the server; keeping local state.`, err);
+    } finally {
+        setSaveButtonsDisabled(id, false);
+        // If we're already looking at the Saved tab, reflect the change
+        // (an unsave should drop the card immediately) without losing
+        // the currently selected filters.
+        if (getActiveTab() === "saved") loadAllResources();
+    }
+}
+
+function setSaveButtonsDisabled(id, disabled) {
+    document.querySelectorAll(`[data-save-btn="${id}"]`).forEach(btn => {
+        btn.disabled = disabled;
+    });
+}
+
+function applySaveUI(id, saved, { animate = false } = {}) {
+    document.querySelectorAll(`[data-save-btn="${id}"]`).forEach(btn => {
+        btn.classList.toggle("saved", saved);
+        btn.dataset.saved = saved;
+        btn.title = saved ? "Remove from saved" : "Save";
+
+        const icon = btn.querySelector("i");
+        if (icon) icon.className = saved ? "fas fa-bookmark" : "far fa-bookmark";
+
+        if (animate) {
+            btn.classList.remove("pop");
+            void btn.offsetWidth;
+            btn.classList.add("pop");
+            setTimeout(() => btn.classList.remove("pop"), 400);
+        }
+    });
+}
+
 function applyLikeUI(id, liked, count, { animate = false } = {}) {
     document.querySelectorAll(`[data-like-btn="${id}"]`).forEach(btn => {
         btn.classList.toggle("liked", liked);
@@ -772,10 +1422,8 @@ function applyLikeUI(id, liked, count, { animate = false } = {}) {
         if (icon) icon.className = liked ? "fas fa-heart" : "far fa-heart";
 
         if (animate) {
-            // Restart the animation even if it's already mid-flight from a rapid tap
             btn.classList.remove("pop");
-            // eslint-disable-next-line no-unused-expressions
-            void btn.offsetWidth; // force reflow so the class removal registers
+            void btn.offsetWidth;
             btn.classList.add("pop");
             setTimeout(() => btn.classList.remove("pop"), 400);
         }
@@ -787,27 +1435,9 @@ function applyLikeUI(id, liked, count, { animate = false } = {}) {
 }
 
 /* =====================================================
-   FOLLOW / UNFOLLOW  ✅ Talks to the real backend:
-   POST   /api/users/<id>/follow   -> follow
-   DELETE /api/users/<id>/follow   -> unfollow
-   The server enforces one follow per person (unique
-   follower_id+following_id row) and is expected to
-   return the uploader's up-to-date follower count in
-   the response body, e.g. { "following": true,
-   "followers_count": 1079 }. That count (not just a
-   +1/-1 guess) is what gets painted back into the UI,
-   so it stays correct even if you had a stale count
-   cached, or someone else followed/unfollowed the same
-   uploader in another tab.
-
-   Keyed by the UPLOADER's user id rather than a resource
-   id — if the same uploader has several resources on
-   screen, following them from one card updates the
-   follow button AND follower count on every card (and
-   the modal) at once.
+   FOLLOW / UNFOLLOW
 ===================================================== */
 async function toggleFollow(uploaderId) {
-    // Any resource by this uploader tells us the current state
     const sample = allResources.find(r => r.user_id === uploaderId);
     const wasFollowing = sample
         ? !!sample.following_uploader
@@ -836,9 +1466,6 @@ async function toggleFollow(uploaderId) {
             method: wasFollowing ? "DELETE" : "POST"
         });
     } catch (networkErr) {
-        // Couldn't reach the server at all (offline, CORS, backend down).
-        // Keep the optimistic UI as-is rather than snapping it back —
-        // there's nothing more informative to reconcile against.
         console.warn(`[follow] request for uploader ${uploaderId} didn't reach the server; keeping local state.`, networkErr);
         setFollowButtonsDisabled(uploaderId, false);
         return;
@@ -850,10 +1477,6 @@ async function toggleFollow(uploaderId) {
     }
 
     if (res.status === 404 || res.status === 405) {
-        // The follow endpoint isn't wired up on the backend yet. Don't
-        // roll back what the user just did — just leave the optimistic
-        // count/button as the "current" state until the real route
-        // exists, same as settings.html does for its own routes.
         console.warn(`[follow] "/api/users/${uploaderId}/follow" isn't available yet (${res.status}); keeping local state.`);
         setFollowButtonsDisabled(uploaderId, false);
         return;
@@ -873,13 +1496,8 @@ async function toggleFollow(uploaderId) {
                 r.uploader_followers = finalFollowers;
             }
         });
-        // Reconcile silently against the server's real count (no re-animation
-        // needed here — the optimistic update already played it).
         applyFollowUI(uploaderId, finalFollowing, finalFollowers, { animate: false });
     } catch (err) {
-        // A genuine server-side error (400/500/bad JSON) — this is the one
-        // case where rolling back is actually correct, since the server
-        // told us the follow didn't take.
         console.error("Failed to toggle follow:", err);
         allResources.forEach(r => {
             if (r.user_id === uploaderId) {
@@ -909,10 +1527,9 @@ function applyFollowUI(uploaderId, following, followersCount, { animate = false 
 
     document.querySelectorAll(`[data-follower-count="${uploaderId}"]`).forEach(el => {
         el.textContent = `${formatCount(followersCount)} follower${followersCount === 1 ? "" : "s"}`;
-
         if (animate) {
             el.classList.remove("pop");
-            void el.offsetWidth; // force reflow so the class removal registers
+            void el.offsetWidth;
             el.classList.add("pop");
             setTimeout(() => el.classList.remove("pop"), 300);
         }
@@ -920,16 +1537,12 @@ function applyFollowUI(uploaderId, following, followersCount, { animate = false 
 }
 
 /* =====================================================
-   TRACK VIEW  ✅ POST /api/resources/<id>/view.
-   The server only increments once per (resource, user)
-   thanks to a UNIQUE constraint — opening the same
-   resource again returns counted:false and the same
-   total, so the view never gets double-counted.
+   TRACK VIEW
 ===================================================== */
 async function trackView(id) {
     try {
         const res = await fetch(`/api/resources/${id}/view`, { method: "POST" });
-        if (res.status === 401) return; // not logged in — silently skip
+        if (res.status === 401) return;
         if (!res.ok) return;
 
         const data = await res.json();
@@ -954,16 +1567,14 @@ function applyViewUI(id, count) {
 }
 
 /* =====================================================
-   RESOLVE CATEGORY  ✅ Falls back to file extension if
-   file_category is missing, null, or in an unexpected
-   format (e.g. "application/pdf" instead of "pdf")
+   RESOLVE CATEGORY
 ===================================================== */
 function resolveCategory(r) {
     const known = ["video", "audio", "image", "pdf", "doc"];
     const raw = (r.file_category || "").toString().toLowerCase().trim();
 
     if (known.includes(raw)) return raw;
-
+    if (raw === "presentation" || raw === "spreadsheet") return "doc";
     if (raw.includes("pdf")) return "pdf";
     if (raw.includes("video")) return "video";
     if (raw.includes("audio")) return "audio";
@@ -978,16 +1589,334 @@ function resolveCategory(r) {
         mp3: "audio", wav: "audio", ogg: "audio", m4a: "audio",
         jpg: "image", jpeg: "image", png: "image", gif: "image", webp: "image", svg: "image",
         pdf: "pdf",
-        doc: "doc", docx: "doc", odt: "doc", rtf: "doc", txt: "doc"
+        doc: "doc", docx: "doc", odt: "doc", rtf: "doc", txt: "doc",
+        ppt: "doc", pptx: "doc", odp: "doc",
+        xls: "doc", xlsx: "doc", ods: "doc"
     };
 
     return extMap[ext] || "other";
 }
 
 /* =====================================================
-   PREVIEW RESOURCE  ✅ Uploader/views/like row now
-   renders AFTER the media, at the bottom of the preview.
-   Also fires the unique-view tracker on open.
+   MOBILE DOCUMENT VIEWER (PDF.js powered)
+   Handles: real scroll, pinch/double-tap zoom, page
+   navigation, lazy page rendering + caching, auto-hiding
+   floating controls.
+===================================================== */
+function createPdfViewer({ url, title, mount }) {
+    const state = {
+        pdf: null,
+        scale: 1,
+        minScale: 0.5,
+        maxScale: 5,
+        baseViewportWidth: 0,
+        currentPage: 1,
+        pageCount: 0,
+        pageEls: [],          // { wrapper, canvas, rendered, rendering, viewport }
+        observer: null,
+        hideTimer: null,
+        pointers: new Map(),  // active touch pointers for pinch
+        pinchStartDist: 0,
+        pinchStartScale: 1,
+        lastTapTime: 0,
+        destroyed: false,
+    };
+
+    mount.innerHTML = `
+        <div class="docviewer" aria-label="${title} document viewer">
+            <div class="docviewer-scroll" tabindex="0">
+                <div class="docviewer-zoom"></div>
+            </div>
+            <div class="docviewer-status" style="display:none;">
+                <div class="spinner"></div>
+                <span>Loading document…</span>
+            </div>
+            <div class="docviewer-floating">
+                <button class="docviewer-fab" data-action="zoom-in" aria-label="Zoom in" title="Zoom in">＋</button>
+                <button class="docviewer-fab" data-action="zoom-out" aria-label="Zoom out" title="Zoom out">－</button>
+                <button class="docviewer-fab" data-action="fullscreen" aria-label="Toggle reading mode" title="Toggle reading mode"><i class="fas fa-expand"></i></button>
+            </div>
+            <div class="docviewer-pagenav">
+                <button data-action="prev-page" aria-label="Previous page">‹</button>
+                <span class="docviewer-pageindicator">Page 1</span>
+                <button data-action="next-page" aria-label="Next page">›</button>
+            </div>
+        </div>
+    `;
+
+    const root = mount.querySelector(".docviewer");
+    const scrollEl = mount.querySelector(".docviewer-scroll");
+    const zoomEl = mount.querySelector(".docviewer-zoom");
+    const statusEl = mount.querySelector(".docviewer-status");
+    const floatingEl = mount.querySelector(".docviewer-floating");
+    const pagenavEl = mount.querySelector(".docviewer-pagenav");
+    const pageIndicatorEl = mount.querySelector(".docviewer-pageindicator");
+
+    function showStatus(msg) {
+        statusEl.style.display = "flex";
+        statusEl.querySelector("span").textContent = msg;
+    }
+    function hideStatus() { statusEl.style.display = "none"; }
+
+    function applyTransform() {
+        zoomEl.style.transform = `scale(${state.scale})`;
+    }
+
+    function setScale(newScale, focalPoint) {
+        newScale = Math.min(state.maxScale, Math.max(state.minScale, newScale));
+        if (focalPoint) {
+            // Keep the point under the fingers/cursor stable while scaling.
+            const rect = scrollEl.getBoundingClientRect();
+            const x = focalPoint.x - rect.left + scrollEl.scrollLeft;
+            const y = focalPoint.y - rect.top + scrollEl.scrollTop;
+            const ratio = newScale / state.scale;
+            scrollEl.scrollLeft = x * ratio - (focalPoint.x - rect.left);
+            scrollEl.scrollTop = y * ratio - (focalPoint.y - rect.top);
+        }
+        state.scale = newScale;
+        applyTransform();
+    }
+
+    /* ---- Lazy rendering: reserve correctly-sized placeholders for every
+       page up front (so scroll height/position is stable and jump-free),
+       then render each page's canvas only once it's near the viewport,
+       via IntersectionObserver. Rendered canvases are kept (cached) so
+       scrolling back up doesn't re-render. ---- */
+    async function buildPages() {
+        const containerWidth = scrollEl.clientWidth - 32; // minus horizontal padding room
+        state.pageEls = [];
+
+        for (let num = 1; num <= state.pageCount; num++) {
+            const page = await state.pdf.getPage(num);
+            const unscaledViewport = page.getViewport({ scale: 1 });
+            const fitScale = containerWidth / unscaledViewport.width;
+            const viewport = page.getViewport({ scale: fitScale });
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "docviewer-page";
+            wrapper.style.width = viewport.width + "px";
+            wrapper.style.height = viewport.height + "px";
+            wrapper.dataset.pageNum = String(num);
+
+            const placeholder = document.createElement("div");
+            placeholder.className = "docviewer-page-loading";
+            placeholder.textContent = `Page ${num}`;
+            wrapper.appendChild(placeholder);
+
+            zoomEl.appendChild(wrapper);
+            state.pageEls.push({ wrapper, canvas: null, rendered: false, rendering: false, viewport, pageNum: num });
+        }
+
+        state.observer = new IntersectionObserver(onIntersect, {
+            root: scrollEl,
+            rootMargin: "800px 0px", // pre-render one screen ahead/behind for smooth scroll
+        });
+        state.pageEls.forEach(p => state.observer.observe(p.wrapper));
+    }
+
+    function onIntersect(entries) {
+        entries.forEach(entry => {
+            const num = Number(entry.target.dataset.pageNum);
+            const pageInfo = state.pageEls[num - 1];
+            if (entry.isIntersecting && pageInfo && !pageInfo.rendered && !pageInfo.rendering) {
+                renderPage(pageInfo);
+            }
+            if (entry.isIntersecting) updateCurrentPage(num);
+        });
+    }
+
+    async function renderPage(pageInfo) {
+        pageInfo.rendering = true;
+        try {
+            const page = await state.pdf.getPage(pageInfo.pageNum);
+            const canvas = document.createElement("canvas");
+            // Render at devicePixelRatio for crisp text on high-DPI phones.
+            const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+            canvas.width = pageInfo.viewport.width * dpr;
+            canvas.height = pageInfo.viewport.height * dpr;
+            const ctx = canvas.getContext("2d");
+            ctx.scale(dpr, dpr);
+
+            await page.render({ canvasContext: ctx, viewport: pageInfo.viewport }).promise;
+
+            pageInfo.wrapper.innerHTML = "";
+            pageInfo.wrapper.appendChild(canvas);
+            pageInfo.canvas = canvas;
+            pageInfo.rendered = true;
+        } catch (err) {
+            console.error("Failed to render PDF page", pageInfo.pageNum, err);
+        } finally {
+            pageInfo.rendering = false;
+        }
+    }
+
+    function updateCurrentPage(num) {
+        if (num === state.currentPage) return;
+        state.currentPage = num;
+        pageIndicatorEl.textContent = `Page ${num} / ${state.pageCount}`;
+        document.querySelectorAll(`[data-action="prev-page"]`).forEach(b => b.disabled = num <= 1);
+        document.querySelectorAll(`[data-action="next-page"]`).forEach(b => b.disabled = num >= state.pageCount);
+    }
+
+    function scrollToPage(num) {
+        num = Math.min(state.pageCount, Math.max(1, num));
+        const pageInfo = state.pageEls[num - 1];
+        if (pageInfo) {
+            pageInfo.wrapper.scrollIntoView({ block: "start", behavior: "smooth" });
+        }
+    }
+
+    /* ---- Auto-hiding chrome ---- */
+    function showChrome() {
+        floatingEl.classList.remove("hidden");
+        pagenavEl.classList.remove("hidden");
+        clearTimeout(state.hideTimer);
+        state.hideTimer = setTimeout(() => {
+            floatingEl.classList.add("hidden");
+            pagenavEl.classList.add("hidden");
+        }, 3000);
+    }
+
+    /* ---- Gestures: pinch-zoom, double-tap zoom, single-finger scroll
+       (native, since touch-action:none only applies to the wrapper —
+       the scrollEl itself still receives the browser's native pan once
+       we're not mid-pinch). ---- */
+    root.addEventListener("touchstart", e => {
+        showChrome();
+        for (const t of e.changedTouches) state.pointers.set(t.identifier, t);
+
+        if (state.pointers.size === 2) {
+            const pts = Array.from(state.pointers.values());
+            state.pinchStartDist = distance(pts[0], pts[1]);
+            state.pinchStartScale = state.scale;
+        } else if (state.pointers.size === 1) {
+            const now = Date.now();
+            if (now - state.lastTapTime < 300) {
+                // Double tap: toggle between fit-scale and 2x zoom
+                const t = e.changedTouches[0];
+                const target = state.scale > state.minScale + 0.2 ? state.minScale : Math.min(2, state.maxScale);
+                setScale(target, { x: t.clientX, y: t.clientY });
+            }
+            state.lastTapTime = now;
+        }
+    }, { passive: true });
+
+    root.addEventListener("touchmove", e => {
+        for (const t of e.changedTouches) state.pointers.set(t.identifier, t);
+        if (state.pointers.size === 2) {
+            e.preventDefault(); // we're handling pinch ourselves
+            const pts = Array.from(state.pointers.values());
+            const dist = distance(pts[0], pts[1]);
+            const mid = midpoint(pts[0], pts[1]);
+            const ratio = dist / (state.pinchStartDist || dist);
+            setScale(state.pinchStartScale * ratio, mid);
+        }
+        // single-finger moves are left to native scrolling on scrollEl
+    }, { passive: false });
+
+    root.addEventListener("touchend", e => {
+        for (const t of e.changedTouches) state.pointers.delete(t.identifier);
+    }, { passive: true });
+
+    scrollEl.addEventListener("scroll", () => { showChrome(); }, { passive: true });
+    root.addEventListener("click", () => {
+        // tapping the document (not a control) toggles reading-mode chrome
+        showChrome();
+    });
+
+    function distance(a, b) {
+        return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    }
+    function midpoint(a, b) {
+        return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+    }
+
+    /* ---- Floating control buttons ---- */
+    floatingEl.addEventListener("click", e => {
+        const btn = e.target.closest("button[data-action]");
+        if (!btn) return;
+        showChrome();
+        if (btn.dataset.action === "zoom-in") setScale(state.scale + 0.25);
+        if (btn.dataset.action === "zoom-out") setScale(state.scale - 0.25);
+        if (btn.dataset.action === "fullscreen") {
+            document.getElementById("previewModal").classList.toggle("chrome-hidden");
+        }
+    });
+
+    pagenavEl.addEventListener("click", e => {
+        const btn = e.target.closest("button[data-action]");
+        if (!btn) return;
+        showChrome();
+        if (btn.dataset.action === "prev-page") scrollToPage(state.currentPage - 1);
+        if (btn.dataset.action === "next-page") scrollToPage(state.currentPage + 1);
+    });
+
+    /* ---- Public API ---- */
+    const api = {
+        async load() {
+            showStatus("Loading document…");
+            try {
+                const loadingTask = pdfjsLib.getDocument(url);
+                state.pdf = await loadingTask.promise;
+                state.pageCount = state.pdf.numPages;
+                pageIndicatorEl.textContent = `Page 1 / ${state.pageCount}`;
+                document.querySelectorAll(`[data-action="prev-page"]`).forEach(b => b.disabled = true);
+                document.querySelectorAll(`[data-action="next-page"]`).forEach(b => b.disabled = state.pageCount <= 1);
+                await buildPages();
+                hideStatus();
+                showChrome();
+            } catch (err) {
+                console.error("Failed to load PDF:", err);
+                showStatus("Couldn't load this document.");
+            }
+        },
+        nextPage() { scrollToPage(state.currentPage + 1); },
+        prevPage() { scrollToPage(state.currentPage - 1); },
+        onContainerResize() {
+            // Re-fit page widths to the (possibly rotated) container without
+            // losing the current page — rebuild placeholders at the new
+            // width, then jump back to where the reader was.
+            if (!state.pdf) return;
+            const keepPage = state.currentPage;
+            const keepScale = state.scale;
+            if (state.observer) state.observer.disconnect();
+            zoomEl.innerHTML = "";
+            state.scale = 1;
+            buildPages().then(() => {
+                setScale(keepScale);
+                scrollToPage(keepPage);
+            });
+        },
+        destroy() {
+            state.destroyed = true;
+            if (state.observer) state.observer.disconnect();
+            clearTimeout(state.hideTimer);
+            if (state.pdf) state.pdf.destroy();
+        }
+    };
+
+    return api;
+}
+
+/* Office formats (doc/ppt/xls) still can't be rendered natively by the
+   browser, so we keep routing them through Google's viewer — but inside
+   the same scroll container treatment, and we don't fight the iframe's
+   own internal scrolling with our gesture handlers. */
+function createIframeDocViewer({ viewerUrl, title, mount }) {
+    mount.innerHTML = `
+        <div class="docviewer docviewer-iframe-mode">
+            <div class="docviewer-scroll">
+                <iframe class="docviewer-iframe" src="${viewerUrl}" title="${title}">
+                    <p>Your browser can't display this document inline.</p>
+                </iframe>
+            </div>
+        </div>
+    `;
+    return { destroy() {}, onContainerResize() {}, nextPage() {}, prevPage() {} };
+}
+
+/* =====================================================
+   PREVIEW RESOURCE
 ===================================================== */
 async function previewResource(id) {
     try {
@@ -1004,20 +1933,20 @@ async function previewResource(id) {
 
         const modal = document.getElementById("previewModal");
         const content = document.getElementById("previewContent");
-
-        console.log("Preview resource data:", r);
+        modal.classList.remove("chrome-hidden");
 
         const category = resolveCategory(r);
 
         let media = "";
+        let isDocViewer = false;
 
         if (!r.file_url) {
-            media = `<p>This resource has no file attached, or the file URL is missing from the server response.</p>`;
+            media = `<p style="color:#ccc; padding:24px;">This resource has no file attached, or the file URL is missing from the server response.</p>`;
         }
         else if (category === "video") {
             media = `
                 <div class="preview-media-wrapper">
-                    <video id="previewMedia" controls autoplay>
+                    <video id="previewMedia" controls autoplay playsinline>
                         <source src="${r.file_url}">
                         Your browser does not support video playback.
                     </video>
@@ -1039,52 +1968,30 @@ async function previewResource(id) {
                 </div>`;
         }
         else if (category === "pdf") {
-            media = `
-                <div class="preview-media-wrapper preview-doc-wrapper">
-                    <iframe src="${r.file_url}" style="width:100%; height:70vh; border:none;"
-                        title="${r.title}">
-                        <p>Your browser can't display this PDF inline.</p>
-                    </iframe>
-                    <div class="preview-doc-actions">
-                        <a class="btn btn-secondary" href="${r.file_url}" download>
-                            <i class="fas fa-download"></i> Download
-                        </a>
-                    </div>
-                </div>`;
+            isDocViewer = true;
+            media = `<div class="preview-media-wrapper preview-doc-wrapper" id="docViewerMount"></div>`;
         }
         else if (category === "doc") {
             const ext = (r.file_extension || r.file_url.split(".").pop() || "").toLowerCase();
             const plainTextExts = ["txt", "md", "rtf"];
+            const officeExts = ["doc", "docx", "ppt", "pptx", "xls", "xlsx", "odt", "odp", "ods"];
 
             if (plainTextExts.includes(ext)) {
-                media = `
-                    <div class="preview-media-wrapper preview-doc-wrapper">
-                        <iframe src="${r.file_url}" style="width:100%; height:70vh; border:1px solid #ddd;"
-                            title="${r.title}">
-                        </iframe>
-                    </div>`;
+                isDocViewer = true;
+                media = `<div class="preview-media-wrapper preview-doc-wrapper" id="docViewerMount"></div>`;
+            } else if (officeExts.includes(ext)) {
+                isDocViewer = true;
+                media = `<div class="preview-media-wrapper preview-doc-wrapper" id="docViewerMount"></div>`;
             } else {
-                media = `
-                    <div class="preview-media-wrapper preview-doc-wrapper">
-                        <p>Inline preview isn't available for .${ext} files. You can still download it below.</p>
-                        <div class="preview-doc-actions">
-                            <a class="btn btn-secondary" href="/api/resources/${r.id}/download">
-                                <i class="fas fa-download"></i> Download
-                            </a>
-                        </div>
-                    </div>`;
+                media = `<div class="preview-media-wrapper preview-doc-wrapper">
+                    <p style="color:#ccc; padding:24px;">Inline preview isn't available for .${ext} files.</p>
+                </div>`;
             }
         }
         else {
-            media = `
-                <div class="preview-media-wrapper preview-doc-wrapper">
-                    <p>No inline preview is available for this file type.</p>
-                    <div class="preview-doc-actions">
-                        <a class="btn btn-secondary" href="${r.file_url}" download>
-                            <i class="fas fa-download"></i> Download
-                        </a>
-                    </div>
-                </div>`;
+            media = `<div class="preview-media-wrapper preview-doc-wrapper">
+                <p style="color:#ccc; padding:24px;">No inline preview is available for this file type.</p>
+            </div>`;
         }
 
         const uploaderName = r.uploader_username || "Unknown";
@@ -1094,14 +2001,16 @@ async function previewResource(id) {
         const followers = r.uploader_followers_count ?? r.uploader_followers ?? 0;
         const isLiked = !!r.liked_by_current_user;
         const isFollowing = !!r.following_uploader;
+        const isSaved = isResourceSaved(r);
 
-        // Order: header -> media -> uploader/follow/views/like footer (bottom)
         content.innerHTML = `
             <div class="preview-header">
                 <h2>${r.title}</h2>
-                <button onclick="closePreview()">✕</button>
+                <div class="preview-header-actions">
+                    <button onclick="closePreview()" aria-label="Close preview">✕</button>
+                </div>
             </div>
-            <div class="preview-body">${media}</div>
+            <div class="preview-body${isDocViewer ? " has-docviewer" : ""}">${media}</div>
             <div class="preview-uploader-row">
                 ${avatarHtml(r.user_id, uploaderName, uploaderAvatar)}
                 <div class="uploader-name-group">
@@ -1113,13 +2022,41 @@ async function previewResource(id) {
                     <i class="fas fa-eye"></i> ${formatCount(views)} views
                 </span>
                 ${likeButtonHtml(r.id, isLiked, likes)}
+                ${saveButtonHtml(r.id, isSaved)}
             </div>
         `;
 
         modal.style.display = "block";
         document.body.style.overflow = "hidden";
+        // Keep the close button focused for screen-reader/keyboard users
+        // entering the modal.
+        content.querySelector(".preview-header-actions button")?.focus();
 
-        // Count the view once per user for this resource.
+        // Give the layout a frame to settle before measuring container
+        // width for page-fit rendering.
+        if (isDocViewer) {
+            requestAnimationFrame(() => {
+                const mount = document.getElementById("docViewerMount");
+                if (!mount) return;
+
+                const ext = (r.file_extension || r.file_url.split(".").pop() || "").toLowerCase();
+
+                if (category === "pdf" && window.pdfjsLib) {
+                    activeDocViewer = createPdfViewer({ url: r.file_url, title: r.title, mount });
+                    activeDocViewer.load();
+                } else if (["txt", "md", "rtf"].includes(ext)) {
+                    activeDocViewer = createIframeDocViewer({ viewerUrl: r.file_url, title: r.title, mount });
+                } else {
+                    const absoluteFileUrl = new URL(r.file_url, window.location.origin).href;
+                    const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteFileUrl)}&embedded=true`;
+                    activeDocViewer = createIframeDocViewer({ viewerUrl, title: r.title, mount });
+                }
+            });
+        } else {
+            activeDocViewer = null;
+        }
+
+        handleViewportResize();
         trackView(id);
     } catch (err) {
         console.error("Failed to load resource preview:", err);
@@ -1127,7 +2064,7 @@ async function previewResource(id) {
 }
 
 /* =====================================================
-   CLOSE PREVIEW  ✅ STOPS AUDIO/VIDEO
+   CLOSE PREVIEW
 ===================================================== */
 function closePreview() {
     const modal = document.getElementById("previewModal");
@@ -1139,8 +2076,16 @@ function closePreview() {
         m.load();
     });
 
+    if (activeDocViewer) {
+        activeDocViewer.destroy();
+        activeDocViewer = null;
+    }
+
     modal.style.display = "none";
+    modal.classList.remove("chrome-hidden");
     document.body.style.overflow = "";
+    const body = modal.querySelector(".preview-body");
+    if (body) body.style.height = "";
     currentPreviewResource = null;
     loadAllResources();
 }

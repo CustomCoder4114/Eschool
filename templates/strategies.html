@@ -380,6 +380,16 @@
             transform: translateY(-2px);
         }
 
+        .btn-outline.liked {
+            background: var(--danger-color);
+            color: white;
+            border-color: var(--danger-color);
+        }
+
+        .btn-outline.liked:hover {
+            background: #dc2626;
+        }
+
         /* Opinion Space */
         .opinion-space {
             background: white;
@@ -836,7 +846,7 @@
                     "Use the Feynman Technique: explain it simply"
                 ],
                 views: 15234,
-                likes: 2341
+                likes: 0
             },
             {
                 id: 2,
@@ -862,7 +872,7 @@
                     "Use breaks to stretch and move around"
                 ],
                 views: 23456,
-                likes: 3452
+                likes: 0
             },
             {
                 id: 3,
@@ -888,7 +898,7 @@
                     "Review within 24 hours for best retention"
                 ],
                 views: 18765,
-                likes: 2156
+                likes: 0
             },
             {
                 id: 4,
@@ -914,7 +924,7 @@
                     "Create multiple palaces for different subjects"
                 ],
                 views: 12345,
-                likes: 1876
+                likes: 0
             },
             {
                 id: 5,
@@ -941,7 +951,7 @@
                     "Keep sessions short but consistent"
                 ],
                 views: 19876,
-                likes: 2678
+                likes: 0
             },
             {
                 id: 6,
@@ -967,7 +977,7 @@
                     "Use drawings and diagrams"
                 ],
                 views: 16543,
-                likes: 2345
+                likes: 0
             },
             {
                 id: 7,
@@ -993,7 +1003,7 @@
                     "Adjust speed based on material difficulty"
                 ],
                 views: 9876,
-                likes: 1234
+                likes: 0
             },
             {
                 id: 8,
@@ -1019,7 +1029,7 @@
                     "Use digital tools like MindMeister"
                 ],
                 views: 14321,
-                likes: 1876
+                likes: 0
             }
         ];
 
@@ -1027,6 +1037,32 @@
         let opinions = JSON.parse(localStorage.getItem('learningOpinions')) || [];
 
         let currentUser = "{{ firstname }} {{ lastname }}" || "Anonymous Learner";
+
+        // Tracks which strategy ids the current user has already liked, so
+        // liking is a toggle (like -> unlike) instead of stacking likes on
+        // every click. Persisted the same way opinions are.
+        let likedStrategyIds = new Set(JSON.parse(localStorage.getItem('likedStrategyIds')) || []);
+
+        // Tracks the actual like count per strategy id. The `strategies`
+        // array above is redefined fresh on every page load (likes always
+        // start at 0), so without this the count would reset on refresh
+        // even though likedStrategyIds still remembered it was liked.
+        let strategyLikeCounts = JSON.parse(localStorage.getItem('strategyLikeCounts')) || {};
+
+        // Apply any saved counts onto the in-memory strategies before first render.
+        strategies.forEach(s => {
+            if (strategyLikeCounts[s.id] !== undefined) {
+                s.likes = strategyLikeCounts[s.id];
+            }
+        });
+
+        function persistLikedStrategyIds() {
+            localStorage.setItem('likedStrategyIds', JSON.stringify(Array.from(likedStrategyIds)));
+        }
+
+        function persistStrategyLikeCounts() {
+            localStorage.setItem('strategyLikeCounts', JSON.stringify(strategyLikeCounts));
+        }
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', () => {
@@ -1057,6 +1093,7 @@
 
         function createStrategyCard(strategy) {
             const difficultyClass = `difficulty-${strategy.difficulty}`;
+            const isLiked = likedStrategyIds.has(strategy.id);
             
             return `
                 <div class="strategy-card" onclick="showStrategyDetails(${strategy.id})">
@@ -1092,8 +1129,8 @@
                             <button class="btn btn-primary" onclick="event.stopPropagation(); showStrategyDetails(${strategy.id})">
                                 <i class="fas fa-eye"></i> Learn More
                             </button>
-                            <button class="btn btn-outline" onclick="event.stopPropagation(); likeStrategy(${strategy.id})">
-                                <i class="fas fa-heart"></i> Like (${strategy.likes})
+                            <button class="btn btn-outline ${isLiked ? 'liked' : ''}" data-strategy-like="${strategy.id}" onclick="event.stopPropagation(); likeStrategy(${strategy.id})">
+                                <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> ${isLiked ? 'Liked' : 'Like'} (${strategy.likes})
                             </button>
                         </div>
                     </div>
@@ -1171,13 +1208,28 @@
 
         function likeStrategy(id) {
             const strategy = strategies.find(s => s.id === id);
-            if (strategy) {
+            if (!strategy) return;
+
+            const alreadyLiked = likedStrategyIds.has(id);
+
+            if (alreadyLiked) {
+                // Unlike: remove from the liked set and roll back the count.
+                likedStrategyIds.delete(id);
+                strategy.likes = Math.max(0, strategy.likes - 1);
+            } else {
+                // Like: add to the liked set so a repeat click unlikes instead.
+                likedStrategyIds.add(id);
                 strategy.likes++;
-                loadStrategies('all');
-                loadStrategies('reading');
-                loadStrategies('memorization');
-                loadStrategies('mastery');
             }
+
+            strategyLikeCounts[id] = strategy.likes;
+            persistStrategyLikeCounts();
+            persistLikedStrategyIds();
+
+            loadStrategies('all');
+            loadStrategies('reading');
+            loadStrategies('memorization');
+            loadStrategies('mastery');
         }
 
         function tryStrategy(title) {
