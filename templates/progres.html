@@ -129,6 +129,7 @@
         .stat-card.streak::before { background: linear-gradient(135deg, #ff6b6b, #ff8e8e); }
         .stat-card.time::before { background: linear-gradient(135deg, #1dd1a1, #10b981); }
         .stat-card.grade::before { background: linear-gradient(135deg, #feca57, #ff9f43); }
+        .stat-card.qstreak::before { background: linear-gradient(135deg, #f97316, #fb923c); }
 
         .stat-icon {
             width: 70px;
@@ -146,6 +147,7 @@
         .stat-icon.streak { background: linear-gradient(135deg, #ff6b6b, #ff8e8e); }
         .stat-icon.time { background: linear-gradient(135deg, #1dd1a1, #10b981); }
         .stat-icon.grade { background: linear-gradient(135deg, #feca57, #ff9f43); }
+        .stat-icon.qstreak { background: linear-gradient(135deg, #f97316, #fb923c); }
 
         .stat-info { flex: 1; }
         .stat-number { font-family: 'Poppins', sans-serif; font-size: 2.2rem; font-weight: 600; margin-bottom: 5px; line-height: 1; }
@@ -768,6 +770,14 @@
                     <div class="stat-trend trend-up"><i class="fas fa-arrow-up"></i><span>Keep testing yourself!</span></div>
                 </div>
             </div>
+            <div class="stat-card qstreak">
+                <div class="stat-icon qstreak"><i class="fas fa-fire-flame-curved"></i></div>
+                <div class="stat-info">
+                    <div class="stat-number" id="quizStreakCount">0</div>
+                    <div class="stat-label">Quiz Streak</div>
+                    <div class="stat-trend trend-up"><i class="fas fa-arrow-up"></i><span id="quizStreakTrend">Best: 0</span></div>
+                </div>
+            </div>
         </div>
 
         <!-- FIX: added data-tab attributes so switchTab() can match tabs reliably
@@ -925,6 +935,12 @@
         // expression in single quotes, which would silently break the
         // script (or allow injection) if the email ever contained a quote
         // character or was None.
+        //
+        // NOTE: this must resolve to the exact same key string the courses
+        // page (courses.html) uses via its own getStorageKey(), since both
+        // pages read/write the same `myCoursesData_<email>` localStorage
+        // record. tojson vs. the courses page's manual quoting produce the
+        // same string for a normal email address, so the two stay in sync.
         function getStorageKey() {
             const email = {{ session.get('email', 'default_user') | tojson }};
             return `myCoursesData_${email}`;
@@ -942,13 +958,79 @@
                         currentModule: enr.currentModule || 0,
                         exercisesCompleted: enr.exercisesCompleted || 0,
                         quizzesPassed: enr.quizzesPassed || 0,
-                        progress: enr.progress || 0
+                        progress: enr.progress || 0,
+                        // Written by the courses page (courses.html) once a
+                        // quiz is finished there — quizFinished means
+                        // "attempted at all" (pass or fail), quizPassed is
+                        // the outcome, quizScore/quizScoreTotal are the exact
+                        // score when available (older saved data may not
+                        // have them, hence the null fallback below).
+                        quizFinished: enr.quizFinished || false,
+                        quizPassed: enr.quizPassed || false,
+                        quizScore: typeof enr.quizScore === 'number' ? enr.quizScore : null,
+                        quizScoreTotal: typeof enr.quizScoreTotal === 'number' ? enr.quizScoreTotal : null
                     }));
                 } catch (e) {
                     console.warn('Failed to parse stored course data');
                 }
             }
             return [];
+        }
+
+        // =========================
+        // QUIZ STREAK (read-only here)
+        // =========================
+        // The streak itself is recorded on the courses page (courses.html)
+        // at the moment a quiz attempt finishes — finishing any quiz (pass
+        // or fail) counts as that day's requirement met, once per day. Both
+        // pages read/write the same `quizStreakData_<email>` localStorage
+        // record, so this page just reads it to display.
+        function getQuizStreakKey() {
+            const email = {{ session.get('email', 'default_user') | tojson }};
+            return `quizStreakData_${email}`;
+        }
+
+        function loadQuizStreak() {
+            const key = getQuizStreakKey();
+            const stored = localStorage.getItem(key);
+            if (stored) {
+                try { return JSON.parse(stored); } catch (e) { /* fall through */ }
+            }
+            return { currentStreak: 0, bestStreak: 0, lastCompletedDate: null };
+        }
+
+        // Integer number of calendar days between two "YYYY-MM-DD" keys
+        // (both already normalized to APP_TIMEZONE), so this is pure date
+        // arithmetic — no timezone conversion needed at this point.
+        function daysBetweenDateKeys(dateKeyA, dateKeyB) {
+            const [ay, am, ad] = dateKeyA.split('-').map(Number);
+            const [by, bm, bd] = dateKeyB.split('-').map(Number);
+            const utcA = Date.UTC(ay, am - 1, ad);
+            const utcB = Date.UTC(by, bm - 1, bd);
+            return Math.round((utcB - utcA) / 86400000);
+        }
+
+        // The streak is daily: finishing at least one quiz on a given day
+        // (Nairobi time) keeps it alive; a full day passing with no quiz
+        // finished breaks it. `lastCompletedDate` of today or yesterday
+        // still counts as "alive" here — today because the day hasn't
+        // ended yet, yesterday because today's chance to extend it hasn't
+        // passed yet. Anything older means an entire day went by with
+        // nothing completed, so the streak is reconciled back to 0 (and
+        // that reset is persisted so future reads don't need to
+        // recompute it). The actual recording of "a quiz was finished
+        // today" happens on the courses page (courses.html), which shares
+        // this same `quizStreakData_<email>` record.
+        function reconcileQuizStreak() {
+            const data = loadQuizStreak();
+            if (!data.lastCompletedDate) return data;
+            const todayKey = getLocalDateKey();
+            const daysSince = daysBetweenDateKeys(data.lastCompletedDate, todayKey);
+            if (daysSince > 1 && data.currentStreak !== 0) {
+                data.currentStreak = 0;
+                localStorage.setItem(getQuizStreakKey(), JSON.stringify(data));
+            }
+            return data;
         }
 
         // =========================
@@ -1285,12 +1367,12 @@
                     const color = course.color || '#4361ee';
                     const totalModules = course.modules.length;
                     const completed = enr.completed ? enr.completed.length : 0;
-                    // FIX: use the course's iconType (fab for brand icons like
-                    // html5/css3/js/python/react, fas for solid icons like
-                    // database) instead of always hardcoding "fab". Font
-                    // Awesome's fa-database icon is a solid icon, not a
-                    // brand icon, so the SQL course icon never rendered.
-                    const iconClass = course.iconType || 'fab';
+                    // Icon family (fab = brand logos, fas = solid glyphs) now
+                    // comes from `iconStyle`, matching the field name used by
+                    // the courses page's course data (courses.html). All
+                    // current subjects (Math, CSL, English, Kiswahili) use
+                    // 'fas' solid icons.
+                    const iconClass = course.iconStyle || 'fab';
                     
                     html += `
                         <div class="progress-item">
@@ -1445,6 +1527,13 @@
                 const gradeClass = getGradeColor(g.grade);
                 let scoreDisplay = g.percentage !== undefined ? `${g.percentage}%` : g.detail || '—';
                 let typeIcon = g.type === 'quizzes' ? '📝' : g.type === 'exercises' ? '✏️' : '📊';
+                // A quiz row can now legitimately be "not passed" — show that
+                // with a red ❌ instead of always rendering a green
+                // checkmark regardless of the actual outcome.
+                const isPositiveStatus = g.status === 'completed';
+                const statusColor = isPositiveStatus ? 'var(--success-color)' : 'var(--danger-color)';
+                const statusIcon = isPositiveStatus ? '✅' : '❌';
+                const statusLabel = isPositiveStatus ? 'Completed' : 'Not Passed';
                 
                 tableHTML += `
                     <tr>
@@ -1454,7 +1543,7 @@
                         <td>${scoreDisplay}</td>
                         <td>${g.weight}%</td>
                         <td>${new Date(g.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                        <td><span style="color: var(--success-color); font-weight: 500;">✅ ${g.status}</span></td>
+                        <td><span style="color: ${statusColor}; font-weight: 500;">${statusIcon} ${statusLabel}</span></td>
                     </tr>
                 `;
             });
@@ -1468,7 +1557,7 @@
                 <div style="margin-top: 15px; padding: 15px; background: var(--gray-50); border-radius: var(--border-radius-sm);">
                     <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.85rem; color: var(--gray-600);">
                         <span><span style="font-weight: 600;">✏️</span> Exercise Grades (70% of overall)</span>
-                        <span><span style="font-weight: 600;">📝</span> Quiz Grades (30% of overall)</span>
+                        <span><span style="font-weight: 600;">📝</span> Quiz Grade (30% of overall)</span>
                         <span><span style="font-weight: 600;">📊</span> Overall Course Performance</span>
                     </div>
                 </div>
@@ -1480,28 +1569,37 @@
         // =========================
         // GRADE CALCULATION
         // =========================
-        // FIX (round 2): the previous version still couldn't tell "never
-        // attempted a quiz" apart from "attempted and failed every quiz" —
-        // both showed up as quizzesPassed === 0, so hasQuizWork was false
-        // in either case and the quiz component was dropped entirely
-        // rather than scored as 0%. That let a student fail every quiz
-        // they actually took and still walk away with an A built purely
-        // from completed-exercise credit.
+        // Each course now has module-level exercises (multiple-choice
+        // questions inside each module, graded as "done" once a module is
+        // submitted) PLUS exactly one consolidated course-level quiz
+        // (course.quizQuestions on the courses page), rather than one quiz
+        // per module.
         //
-        // Now this takes quizzesAttempted directly (computed in
-        // generateGradesFromExercisesAndQuizzes below from completed
-        // quiz-bearing modules, since that's the only attempt signal this
-        // app stores) and scores the quiz component as passed ÷ attempted.
-        // Failing quizzes you actually took now pulls the grade down
-        // instead of being invisible to it.
-        function calculateGrade(exercisesCompleted, quizzesPassed, quizzesAttempted) {
+        // The courses page (courses.html) now locks a quiz after its FIRST
+        // completed attempt, whether it was passed or failed, and persists
+        // both outcomes (`enrolled.quizFinished` / `enrolled.quizPassed`),
+        // along with the exact score (`enrolled.quizScore` /
+        // `enrolled.quizScoreTotal`) when available. So a failed quiz is no
+        // longer invisible here — it shows up as its own graded row (with a
+        // real, usually sub-passing percentage) and pulls the course's
+        // overall grade down accordingly, the same as any other real
+        // result would.
+        function calculateGrade(exercisesCompleted, quizResult) {
             const hasExerciseWork = exercisesCompleted > 0;
-            const hasQuizWork = quizzesAttempted > 0;
+            // quizResult is null when the quiz hasn't been finished yet;
+            // otherwise { passed, percentage } from the real attempt.
+            const hasQuizWork = !!quizResult;
 
             if (!hasExerciseWork && !hasQuizWork) return { grade: 'N/A', gradePoint: 0, percentage: 0 };
 
             const exerciseScore = hasExerciseWork ? 100 : 0;
-            const quizScore = hasQuizWork ? Math.min(100, (quizzesPassed / quizzesAttempted) * 100) : 0;
+            // Use the quiz's real percentage when we have it (score/total
+            // from the finished attempt); fall back to a pass/fail
+            // approximation only for older saved data that predates
+            // quizScore/quizScoreTotal being recorded.
+            const quizScore = hasQuizWork
+                ? (typeof quizResult.percentage === 'number' ? quizResult.percentage : (quizResult.passed ? 100 : 0))
+                : 0;
             
             let weightedScore;
             if (hasExerciseWork && hasQuizWork) {
@@ -1549,22 +1647,10 @@
                 
                 let totalExercisesCompleted = 0;
                 let totalExercisesAvailable = 0;
-                // FIX: quizzesAttempted approximates "quizzes the student
-                // actually took" as the number of completed modules that
-                // carry a quiz — there's no separate attempt-tracking
-                // field in the stored enrollment data, so completing a
-                // quiz-bearing module is the closest available signal that
-                // its quiz was attempted. This replaces the old
-                // totalQuizzesAvailable (every quiz the whole course has,
-                // whether or not the student ever reached it), which is
-                // what let quiz performance get diluted or, once
-                // calculateGrade only checked quizzesPassed > 0, dropped
-                // outright when the student failed every quiz they took.
-                let quizzesAttempted = 0;
                 let moduleGrades = [];
 
                 // Precomputed once per course instead of inside the module
-                // loop below (previously recomputed on every iteration).
+                // loop below.
                 const courseTotalExercises = course.modules.reduce((sum, m) => sum + m.exercises, 0);
                 
                 course.modules.forEach((module, index) => {
@@ -1573,11 +1659,8 @@
                     
                     if (enr.completed && enr.completed.includes(index)) {
                         totalExercisesCompleted += moduleExercises;
-                        if (module.quiz === true) {
-                            quizzesAttempted += 1;
-                        }
                         
-                        const modGrade = calculateGrade(moduleExercises, 0, 0);
+                        const modGrade = calculateGrade(moduleExercises, null);
                         const date = new Date();
                         date.setDate(date.getDate() - (index * 2));
                         moduleGrades.push({
@@ -1594,51 +1677,59 @@
                     }
                 });
                 
-                const quizzesPassed = enr.quizzesPassed || 0;
+                // Single consolidated course-level quiz (course.quizQuestions
+                // on the courses page), not one quiz per module. quizFinished
+                // means the quiz was taken at all (courses.html locks it
+                // after one attempt, pass or fail) — that's what determines
+                // whether a quiz row/credit shows up here at all. quizPassed
+                // is just the outcome of that attempt, shown honestly either
+                // way.
+                const quizFinished = !!enr.quizFinished;
+                const quizPassedFlag = !!enr.quizPassed;
+                const quizPercentage = (typeof enr.quizScore === 'number' && typeof enr.quizScoreTotal === 'number' && enr.quizScoreTotal > 0)
+                    ? Math.round((enr.quizScore / enr.quizScoreTotal) * 100)
+                    : null;
+                const quizResult = quizFinished ? { passed: quizPassedFlag, percentage: quizPercentage } : null;
 
-                // FIX: show and grade quiz performance whenever the student
-                // has actually attempted a quiz, not only once they've
-                // passed one. Previously "0 quizzes passed" was
-                // indistinguishable from "no quizzes attempted", so a
-                // student who failed every quiz they took got no row and
-                // no penalty at all.
-                if (quizzesAttempted > 0) {
-                    const quizGrade = calculateGrade(0, quizzesPassed, quizzesAttempted);
+                if (course.hasQuiz && quizFinished) {
+                    const quizGrade = calculateGrade(0, quizResult);
                     const date = new Date();
                     date.setDate(date.getDate() - 3);
                     moduleGrades.push({
                         course: course.name,
-                        assignment: `${course.code} - Quizzes Performance`,
+                        assignment: `${course.code} - Course Quiz`,
                         grade: quizGrade.grade,
                         gradePoint: quizGrade.gradePoint,
                         percentage: quizGrade.percentage,
-                        weight: Math.round((quizzesAttempted / (quizzesAttempted + 1)) * 30),
+                        weight: 30,
                         date: date.toISOString().split('T')[0],
-                        status: 'completed',
+                        status: quizPassedFlag ? 'completed' : 'not passed',
                         type: 'quizzes',
-                        detail: `${quizzesPassed}/${quizzesAttempted} passed`
+                        detail: quizPassedFlag ? 'Passed' : 'Not Passed'
                     });
                 }
                 
                 moduleGrades.forEach(g => allGrades.push(g));
                 
-                // FIX: only produce an "Overall Performance" row (and count
-                // it toward the GPA) once the student has actually done
-                // something in this course. This now correctly includes a
-                // course where the student attempted quizzes but passed
-                // none (quizzesAttempted > 0), not just quizzesPassed > 0.
-                if (totalExercisesCompleted > 0 || quizzesAttempted > 0) {
-                    const courseGrade = calculateGrade(totalExercisesCompleted, quizzesPassed, quizzesAttempted);
+                // Only produce an "Overall Performance" row (and count it
+                // toward the GPA) once the student has actually done
+                // something in this course — completed at least one
+                // module's exercises, or finished the course quiz (pass or
+                // fail — a failed attempt is still a real result and should
+                // factor into the overall grade, not be treated the same as
+                // never having taken it).
+                if (totalExercisesCompleted > 0 || quizFinished) {
+                    const courseGrade = calculateGrade(totalExercisesCompleted, quizResult);
                     const date = new Date();
                     date.setDate(date.getDate() - 1);
                     
                     let detailText = '';
-                    if (totalExercisesCompleted > 0 && quizzesAttempted > 0) {
-                        detailText = `${totalExercisesCompleted}/${totalExercisesAvailable} exercises, ${quizzesPassed}/${quizzesAttempted} quizzes`;
+                    if (totalExercisesCompleted > 0 && quizFinished) {
+                        detailText = `${totalExercisesCompleted}/${totalExercisesAvailable} exercises, quiz ${quizPassedFlag ? 'passed' : 'not passed'}`;
                     } else if (totalExercisesCompleted > 0) {
                         detailText = `${totalExercisesCompleted}/${totalExercisesAvailable} exercises`;
                     } else {
-                        detailText = `${quizzesPassed}/${quizzesAttempted} quizzes`;
+                        detailText = quizPassedFlag ? 'quiz passed' : 'quiz not passed';
                     }
                     
                     allGrades.push({
@@ -1654,13 +1745,12 @@
                         detail: detailText
                     });
                     
-                    // FIX: previously skipped adding to the GPA total
-                    // whenever gradePoint was 0, which meant a genuinely
-                    // earned F (gradePoint 0.0) was silently excluded from
-                    // the GPA instead of pulling it down. Since we only
-                    // reach this point when the student has actually done
-                    // exercises or attempted quizzes, the grade is always
-                    // real (never the "N/A" case) and should count.
+                    // A genuinely earned F (gradePoint 0.0) still counts
+                    // toward the GPA — we only reach this branch once the
+                    // student has actually done exercises or finished the
+                    // quiz, so the grade here is always real (never the
+                    // "N/A" case) and should count, whether that's a pass
+                    // or a fail.
                     totalGradePoints += courseGrade.gradePoint * (course.modules.length / 10);
                     totalWeightedCredits += (course.modules.length / 10);
                 }
@@ -1680,91 +1770,79 @@
         }
 
         // =========================
-        // COURSE DEFINITIONS
+        // COURSE (SUBJECT) DEFINITIONS
         // =========================
-        // FIX: added `iconType` per course. Font Awesome splits icons across
-        // families (fab = brand logos, fas = solid glyphs). All of these
-        // course icons are brand logos EXCEPT SQL's "fa-database", which is
-        // a solid icon — it was previously rendered as `fab fa-database`,
-        // which does not exist and rendered as a blank icon.
+        // Mirrors the `courses` array on the courses page (courses.html),
+        // trimmed to only what this page needs: module names (for "Next
+        // Module" labels) and per-module exercise counts (for exercise
+        // weighting/grading). The heavy per-question data (mcQuestions,
+        // quizQuestions, longDescription, stats.learners, etc.) lives only
+        // on the courses page and isn't duplicated here.
+        //
+        // `iconStyle` matches the field name used on the courses page
+        // ('fas' for solid Font Awesome icons, 'fab' for brand logos).
+        // `hasQuiz` marks whether the course has a consolidated course-level
+        // quiz (course.quizQuestions on the courses page) — used for the
+        // "Quizzes Passed X/Y" stats and grade weighting below, since each
+        // course now has exactly one quiz rather than one per module.
+        //
+        // Keep the ids, names, module lists, and per-module exercise counts
+        // in sync with courses.html — if a module's mcQuestions count
+        // changes there, update the matching `exercises` value here.
         const courseDefinitions = [
-            { id:'html', name:'HTML Tutorial', code:'HTML5', level:'beginner', icon:'fa-html5', color:'#e44d26', iconType:'fab',
+            { id:'math', name:'Grade 10 Mathematics', code:'MAT 101', level:'grade-10', icon:'fa-calculator', color:'#7c3aed', iconStyle:'fas', hasQuiz:true,
               modules: [
-                  { name:'HTML Introduction', duration:'10 min', exercises:5, quiz:true },
-                  { name:'HTML Elements', duration:'15 min', exercises:8, quiz:true },
-                  { name:'HTML Attributes', duration:'12 min', exercises:6, quiz:true },
-                  { name:'HTML Headings', duration:'8 min', exercises:4, quiz:true },
-                  { name:'HTML Paragraphs', duration:'10 min', exercises:5, quiz:true },
-                  { name:'HTML Styles', duration:'15 min', exercises:7, quiz:true },
-                  { name:'HTML Formatting', duration:'12 min', exercises:6, quiz:true },
-                  { name:'HTML Quotations', duration:'10 min', exercises:4, quiz:true },
-                  { name:'HTML Comments', duration:'8 min', exercises:3, quiz:true },
-                  { name:'HTML Colors', duration:'15 min', exercises:6, quiz:true }
+                  { name:'1.1 Real Numbers', exercises:5 },
+                  { name:'1.2 Indices and Logarithms', exercises:5 },
+                  { name:'1.3 Quadratic Expressions and Equations', exercises:5 },
+                  { name:'2.1 Geometry and Transformations', exercises:5 },
+                  { name:'2.2 Trigonometry and Area', exercises:5 },
+                  { name:'2.3 Solid Mensuration and Motion', exercises:5 },
+                  { name:'3.1 Statistics I', exercises:5 },
+                  { name:'3.2 Probability I', exercises:5 }
               ]},
-            { id:'css', name:'CSS Tutorial', code:'CSS3', level:'beginner', icon:'fa-css3-alt', color:'#264de4', iconType:'fab',
+            { id:'csl', name:'Grade 10 Community Service Learning (CSL)', code:'CSL 101', level:'grade-10', icon:'fa-hands-helping', color:'#2e7d32', iconStyle:'fas', hasQuiz:true,
               modules: [
-                  { name:'CSS Introduction', duration:'10 min', exercises:4, quiz:true },
-                  { name:'CSS Syntax', duration:'12 min', exercises:5, quiz:true },
-                  { name:'CSS Selectors', duration:'20 min', exercises:10, quiz:true },
-                  { name:'CSS Colors', duration:'15 min', exercises:6, quiz:true },
-                  { name:'CSS Backgrounds', duration:'12 min', exercises:5, quiz:true },
-                  { name:'CSS Borders', duration:'15 min', exercises:7, quiz:true },
-                  { name:'CSS Margins', duration:'12 min', exercises:5, quiz:true },
-                  { name:'CSS Padding', duration:'12 min', exercises:5, quiz:true },
-                  { name:'CSS Box Model', duration:'15 min', exercises:8, quiz:true },
-                  { name:'CSS Flexbox', duration:'25 min', exercises:12, quiz:true }
+                  { name:'1.1 Concept of Community Service Learning', exercises:4 },
+                  { name:'1.2 Community Needs', exercises:4 },
+                  { name:'1.3 Leadership Qualities', exercises:4 },
+                  { name:'1.4 Intercultural Competence', exercises:3 },
+                  { name:'2.1 Community Self-awareness', exercises:3 },
+                  { name:'2.2 Conflict Resolution', exercises:3 },
+                  { name:'2.3 Responsible Decision-making', exercises:3 },
+                  { name:'3.1 Foundations of Research', exercises:4 },
+                  { name:'3.2 Problem Identification', exercises:4 },
+                  { name:'3.3 Intervention Implementation', exercises:4 },
+                  { name:'3.4 Reporting and Presentation', exercises:3 },
+                  { name:'4.1 Introduction to Social Entrepreneurship', exercises:3 },
+                  { name:'4.2 Opportunity Identification', exercises:3 },
+                  { name:'4.3 Social Enterprise Planning', exercises:4 },
+                  { name:'4.4 Resource Mobilisation', exercises:3 }
               ]},
-            { id:'javascript', name:'JavaScript Tutorial', code:'JS', level:'intermediate', icon:'fa-js', color:'#f7df1e', iconType:'fab',
+            { id:'english', name:'Grade 10 English', code:'ENG 101', level:'grade-10', icon:'fa-book-open', color:'#0a2e5c', iconStyle:'fas', hasQuiz:true,
               modules: [
-                  { name:'JS Introduction', duration:'15 min', exercises:5, quiz:true },
-                  { name:'JS Variables', duration:'20 min', exercises:8, quiz:true },
-                  { name:'JS Data Types', duration:'18 min', exercises:7, quiz:true },
-                  { name:'JS Functions', duration:'25 min', exercises:10, quiz:true },
-                  { name:'JS Objects', duration:'22 min', exercises:9, quiz:true },
-                  { name:'JS Events', duration:'20 min', exercises:8, quiz:true },
-                  { name:'JS Strings', duration:'18 min', exercises:7, quiz:true },
-                  { name:'JS Arrays', duration:'22 min', exercises:9, quiz:true },
-                  { name:'JS Loops', duration:'20 min', exercises:8, quiz:true },
-                  { name:'JS DOM', duration:'30 min', exercises:12, quiz:true }
+                  { name:'1.1 Speaking Etiquette', exercises:3 },
+                  { name:'1.2 Listening – Intensive and Critical', exercises:3 },
+                  { name:'1.3 Sound Systems (Phonology)', exercises:3 },
+                  { name:'2.1 Reading Fluency', exercises:3 },
+                  { name:'2.2 Reading Comprehension', exercises:4 },
+                  { name:'2.3 Information Literacy', exercises:3 },
+                  { name:'3.1 Word Classes', exercises:4 },
+                  { name:'3.2 Phrases and Clauses', exercises:3 },
+                  { name:'3.3 Sentence Structures', exercises:4 },
+                  { name:'4.1 Functional Writing', exercises:4 },
+                  { name:'4.2 Creative and Essay Writing', exercises:4 },
+                  { name:'5.0 Oral Literature – Narratives, Poems & Short Forms', exercises:4 },
+                  { name:'6.0 Poetry – Structure and Stylistic Devices', exercises:4 },
+                  { name:'7.0 Prose Fiction – Plot and Characterization', exercises:4 },
+                  { name:'8.0 Drama – Play Text Analysis', exercises:3 }
               ]},
-            { id:'python', name:'Python Tutorial', code:'PY3', level:'beginner', icon:'fa-python', color:'#306998', iconType:'fab',
+            { id:'kiswahili', name:'Grade 10 Kiswahili', code:'KSL Grade 10', level:'grade-10', icon:'fa-language', color:'#16a34a', iconStyle:'fas', hasQuiz:true,
               modules: [
-                  { name:'Python Intro', duration:'12 min', exercises:4, quiz:true },
-                  { name:'Python Syntax', duration:'15 min', exercises:5, quiz:true },
-                  { name:'Python Variables', duration:'15 min', exercises:6, quiz:true },
-                  { name:'Python Data Types', duration:'20 min', exercises:8, quiz:true },
-                  { name:'Python Lists', duration:'18 min', exercises:7, quiz:true },
-                  { name:'Python Tuples', duration:'15 min', exercises:5, quiz:true },
-                  { name:'Python Dictionaries', duration:'18 min', exercises:6, quiz:true },
-                  { name:'Python If...Else', duration:'16 min', exercises:6, quiz:true },
-                  { name:'Python Loops', duration:'18 min', exercises:7, quiz:true },
-                  { name:'Python Functions', duration:'22 min', exercises:8, quiz:true }
-              ]},
-            { id:'sql', name:'SQL Tutorial', code:'SQL', level:'intermediate', icon:'fa-database', color:'#00758f', iconType:'fas',
-              modules: [
-                  { name:'SQL Intro', duration:'10 min', exercises:3, quiz:true },
-                  { name:'SQL Syntax', duration:'12 min', exercises:4, quiz:true },
-                  { name:'SQL SELECT', duration:'18 min', exercises:6, quiz:true },
-                  { name:'SQL WHERE', duration:'15 min', exercises:5, quiz:true },
-                  { name:'SQL AND/OR', duration:'12 min', exercises:4, quiz:true },
-                  { name:'SQL ORDER BY', duration:'12 min', exercises:4, quiz:true },
-                  { name:'SQL INSERT INTO', duration:'15 min', exercises:5, quiz:true },
-                  { name:'SQL UPDATE', duration:'12 min', exercises:4, quiz:true },
-                  { name:'SQL DELETE', duration:'10 min', exercises:3, quiz:true },
-                  { name:'SQL JOIN', duration:'25 min', exercises:8, quiz:true }
-              ]},
-            { id:'react', name:'React Tutorial', code:'REACT', level:'advanced', icon:'fa-react', color:'#61dafb', iconType:'fab',
-              modules: [
-                  { name:'React Intro', duration:'15 min', exercises:4, quiz:true },
-                  { name:'React ES6', duration:'20 min', exercises:6, quiz:true },
-                  { name:'React JSX', duration:'18 min', exercises:5, quiz:true },
-                  { name:'React Components', duration:'22 min', exercises:7, quiz:true },
-                  { name:'React Props', duration:'18 min', exercises:6, quiz:true },
-                  { name:'React State', duration:'20 min', exercises:7, quiz:true },
-                  { name:'React Hooks', duration:'25 min', exercises:8, quiz:true },
-                  { name:'React Forms', duration:'18 min', exercises:6, quiz:true },
-                  { name:'React Router', duration:'22 min', exercises:7, quiz:true },
-                  { name:'React API Calls', duration:'20 min', exercises:6, quiz:true }
+                  { name:'Moduli 1: Kuwasiliana na Fursa (Mikondo ya Fursa za Ajira)', exercises:5 },
+                  { name:'Moduli 2: Kukabiliana na Shinikizorika', exercises:5 },
+                  { name:'Moduli 3: Utambuzi wa Uwezo na Vipaji', exercises:4 },
+                  { name:'Moduli 4: Usalama Barabarani', exercises:5 }
               ]}
         ];
 
@@ -1791,6 +1869,17 @@
             document.getElementById('overallProgress').textContent = `${avgProgress}%`;
             document.getElementById('studyStreak').textContent = totalModulesCompleted;
             document.getElementById('avgGrade').textContent = totalQuizzesPassed;
+
+            // Quiz Streak stat — recorded on the courses page each time a
+            // quiz is finished; this reconciles it against the current
+            // date (in case a full day passed with nothing completed)
+            // before displaying it.
+            const quizStreakData = reconcileQuizStreak();
+            document.getElementById('quizStreakCount').textContent = quizStreakData.currentStreak || 0;
+            const quizStreakTrendEl = document.getElementById('quizStreakTrend');
+            if (quizStreakTrendEl) {
+                quizStreakTrendEl.textContent = `Best: ${quizStreakData.bestStreak || 0}`;
+            }
             
             renderProgressDistribution(enrolled);
             renderCourseStatus(enrolled);
@@ -1830,9 +1919,12 @@
                 const progress = enr.progress || 0;
                 const totalModules = course.modules.length;
                 const completedModules = enr.completed ? enr.completed.length : 0;
-                const totalQuizzes = course.modules.filter(m => m.quiz === true).length;
-                // FIX: same iconType fix as renderProgressDistribution above.
-                const iconClass = course.iconType || 'fab';
+                // Each course now has exactly one consolidated quiz (see the
+                // GRADE CALCULATION notes above), so "total quizzes" for this
+                // course is 1 if it has one, 0 otherwise — not a per-module
+                // count.
+                const totalQuizzes = course.hasQuiz ? 1 : 0;
+                const iconClass = course.iconStyle || 'fab';
                 
                 cardsHTML += `
                     <div class="course-card" data-course-id="${enr.courseId}">
@@ -1936,7 +2028,8 @@
             
             const totalModules = course.modules.length;
             const completedModules = enrolled.completed ? enrolled.completed.length : 0;
-            const totalQuizzes = course.modules.filter(m => m.quiz === true).length;
+            // One consolidated quiz per course (see GRADE CALCULATION notes above).
+            const totalQuizzes = course.hasQuiz ? 1 : 0;
             
             alert(`📊 Course Details: ${course.name}\n\n` +
                   `Progress: ${enrolled.progress || 0}%\n` +
@@ -1969,12 +2062,15 @@
             report += `📈 Overall Progress: ${avgProgress}%\n`;
             report += `📚 Total Modules: ${enrolled.reduce((sum, e) => sum + (e.completed ? e.completed.length : 0), 0)}\n`;
             report += `📝 Total Exercises: ${enrolled.reduce((sum, e) => sum + (e.exercisesCompleted || 0), 0)}\n`;
-            report += `🎯 Quizzes Passed: ${enrolled.reduce((sum, e) => sum + (e.quizzesPassed || 0), 0)}\n\n`;
+            report += `🎯 Quizzes Passed: ${enrolled.reduce((sum, e) => sum + (e.quizzesPassed || 0), 0)}\n`;
+            const streakForReport = reconcileQuizStreak();
+            report += `🔥 Quiz Streak: ${streakForReport.currentStreak || 0} (best: ${streakForReport.bestStreak || 0})\n\n`;
             
             enrolled.forEach(enr => {
                 const course = getCourse(enr.courseId);
                 if (course) {
-                    const totalQuizzes = course.modules.filter(m => m.quiz === true).length;
+                    // One consolidated quiz per course (see GRADE CALCULATION notes above).
+                    const totalQuizzes = course.hasQuiz ? 1 : 0;
                     report += `📖 ${course.name} (${course.code})\n`;
                     report += `   Progress: ${enr.progress || 0}%\n`;
                     report += `   Modules: ${enr.completed ? enr.completed.length : 0}/${course.modules.length}\n`;

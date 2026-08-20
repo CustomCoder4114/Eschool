@@ -408,6 +408,23 @@ def init_db():
         )
     ''')
 
+    # Per-user like tracking for the Learning Strategies Hub (strategies.html).
+    # Strategies themselves are static, defined in that page's JavaScript —
+    # only the like relationship needs to persist server-side so likes are
+    # shared across devices/browsers instead of living in localStorage.
+    # strategy_id here refers to the numeric id each strategy already has
+    # in strategies.html's JS array (1, 2, 3, ...).
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS strategy_likes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            strategy_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(strategy_id, user_id),
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
     # Add priority column if the table pre-dates this feature
     try:
         cursor.execute("ALTER TABLE complaints ADD COLUMN priority TEXT DEFAULT 'medium'")
@@ -624,6 +641,27 @@ def build_profile_context(target_user_id):
         bio_lines=None,
         posts=posts
     )
+
+
+# ============ STRATEGY LIKES (Learning Strategies Hub) ============
+# strategies.html defines each learning strategy statically in its own
+# JavaScript (title, steps, tips, etc. never touch the database) — only
+# the *like relationship* needs a server-side home, so likes survive a
+# cleared browser and are visible from any device the person logs into,
+# instead of only living in that one browser's localStorage.
+
+def get_liked_strategy_ids(cursor, user_id):
+    """Set of strategy ids (as numbered in strategies.html) the given user has liked."""
+    if not user_id:
+        return set()
+    cursor.execute('SELECT strategy_id FROM strategy_likes WHERE user_id = ?', (user_id,))
+    return {row[0] for row in cursor.fetchall()}
+
+
+def get_strategy_like_counts(cursor):
+    """Map of strategy_id -> like count, for every strategy with at least one like."""
+    cursor.execute('SELECT strategy_id, COUNT(*) FROM strategy_likes GROUP BY strategy_id')
+    return {row[0]: row[1] for row in cursor.fetchall()}
 
 # ============ EXISTING ROUTES ===============
 
@@ -2422,6 +2460,82 @@ def track_resource_view(resource_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@app.route('/api/strategies/likes', methods=['GET'])
+def get_strategy_likes():
+    """
+    Batch endpoint the Learning Strategies Hub calls once on page load:
+    hands back every strategy's current like count, plus (only if the
+    person is logged in) which strategy ids they've personally liked —
+    so likes render correctly from the database instead of localStorage,
+    the same way they'd render on a different browser or device.
+    """
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+
+    counts = get_strategy_like_counts(cursor)
+    liked_ids = list(get_liked_strategy_ids(cursor, session.get('user_id')))
+
+    conn.close()
+
+    return jsonify({
+        'success': True,
+        'counts': counts,
+        'liked': liked_ids
+    })
+
+
+@app.route('/api/strategies/<int:strategy_id>/like', methods=['POST', 'DELETE'])
+def toggle_strategy_like(strategy_id):
+    """
+    POST   -> like a learning strategy (idempotent: liking twice stays liked)
+    DELETE -> unlike it
+
+    Mirrors toggle_resource_like above: tracked in strategy_likes keyed
+    by (strategy_id, user_id) with a UNIQUE constraint, so a like can
+    only ever be counted once per person no matter how many times the
+    heart button gets clicked.
+    """
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+        user_id = session['user_id']
+
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+
+        if request.method == 'DELETE':
+            cursor.execute('''
+                DELETE FROM strategy_likes WHERE strategy_id = ? AND user_id = ?
+            ''', (strategy_id, user_id))
+            conn.commit()
+            liked = False
+        else:
+            try:
+                cursor.execute('''
+                    INSERT INTO strategy_likes (strategy_id, user_id)
+                    VALUES (?, ?)
+                ''', (strategy_id, user_id))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                conn.rollback()  # already liked by this user — no-op, stays liked
+            liked = True
+
+        cursor.execute('SELECT COUNT(*) FROM strategy_likes WHERE strategy_id = ?', (strategy_id,))
+        likes_count = cursor.fetchone()[0]
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'liked': liked,
+            'likes': likes_count
+        })
+
+    except Exception as e:
+        print(f"Error toggling strategy like: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @app.route('/api/users/suggestions', methods=['GET'])
 def get_follow_suggestions():
     """A short list of other real users the logged-in user isn't already
@@ -2696,6 +2810,9 @@ def admin_delete_user(user_id):
     # Delete user's like/view tracking rows
     cursor.execute('DELETE FROM resource_likes WHERE user_id = ?', (user_id,))
     cursor.execute('DELETE FROM resource_views WHERE user_id = ?', (user_id,))
+
+    # Delete strategy like tracking rows
+    cursor.execute('DELETE FROM strategy_likes WHERE user_id = ?', (user_id,))
 
     # Delete follow relationships in both directions
     cursor.execute('DELETE FROM follows WHERE follower_id = ? OR following_id = ?', (user_id, user_id))

@@ -1921,6 +1921,7 @@
     </script>
 
     <!-- SITE-WIDE STUDY TIME TRACKING -->
+    <!-- SITE-WIDE STUDY TIME TRACKING -->
     <script>
     (function () {
         // Uses the tojson filter so this is a safely-encoded JS string
@@ -1935,6 +1936,27 @@
         function getStudyTimeKey() {
             const email = {{ session.get('email', 'default_user') | tojson }};
             return `studyTimeData_${email}`;
+        }
+
+        // FIX: day boundaries must match progress.html's Africa/Nairobi
+        // day-key logic exactly, or time logged on this page (dashboard,
+        // courses, etc.) can land on a different calendar day than time
+        // logged on the Progress page itself. The previous version used
+        // `new Date().toISOString().split('T')[0]`, which is always UTC —
+        // for the first 3 hours of each Nairobi day (Nairobi is UTC+3),
+        // that silently misfiled activity under "yesterday" relative to
+        // what progress.html would have recorded for the same moment.
+        const APP_TIMEZONE = 'Africa/Nairobi';
+
+        const _dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: APP_TIMEZONE,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }); // en-CA formats as YYYY-MM-DD
+
+        function getLocalDateKey(date) {
+            return _dateKeyFormatter.format(date || new Date());
         }
 
         function createFreshStudyData() {
@@ -1986,7 +2008,8 @@
                 if (elapsedSeconds > 5) {
                     data.totalSeconds += elapsedSeconds;
 
-                    const today = new Date().toISOString().split('T')[0];
+                    // FIX: was new Date().toISOString().split('T')[0] (UTC).
+                    const today = getLocalDateKey();
                     if (!data.dailySessions[today]) {
                         data.dailySessions[today] = 0;
                     }
@@ -2008,7 +2031,8 @@
                     const elapsedSeconds = (Date.now() - data.sessionStart) / 1000;
                     if (elapsedSeconds > 5) {
                         data.totalSeconds += elapsedSeconds;
-                        const today = new Date().toISOString().split('T')[0];
+                        // FIX: was new Date().toISOString().split('T')[0] (UTC).
+                        const today = getLocalDateKey();
                         if (!data.dailySessions[today]) {
                             data.dailySessions[today] = 0;
                         }
@@ -2073,7 +2097,6 @@
 
         document.addEventListener('DOMContentLoaded', initSiteWideTracking);
     })();
-    
     </script>
 </body>
 </html>

@@ -1207,6 +1207,75 @@
     .modal-btn.confirm.danger:hover:not(:disabled) {
         background: #dc2626;
     }
+
+    /* -----------------------------------------------------------
+       NEW: Legal (Privacy Policy / Terms) tab content.
+       Added as a standalone block so nothing above is touched.
+    ----------------------------------------------------------- */
+    .legal-content {
+        max-height: 480px;
+        overflow-y: auto;
+        padding-right: 8px;
+        color: #475569;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    body.dark-mode .legal-content {
+        color: #cbd5e1;
+    }
+
+    .legal-content h4 {
+        color: #1e293b;
+        font-size: 15px;
+        font-weight: 600;
+        margin: 18px 0 8px;
+    }
+
+    .legal-content h4:first-child {
+        margin-top: 0;
+    }
+
+    body.dark-mode .legal-content h4 {
+        color: #f1f5f9;
+    }
+
+    .legal-content p {
+        margin-bottom: 10px;
+    }
+
+    .legal-content ul {
+        margin: 0 0 10px 20px;
+        padding: 0;
+    }
+
+    .legal-content li {
+        margin-bottom: 6px;
+    }
+
+    .legal-updated {
+        display: inline-block;
+        font-size: 12px;
+        color: #94a3b8;
+        background: #f1f5f9;
+        padding: 4px 10px;
+        border-radius: 20px;
+        margin-bottom: 15px;
+    }
+
+    body.dark-mode .legal-updated {
+        background: #0f172a;
+        color: #64748b;
+    }
+
+    .legal-content::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .legal-content::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 20px;
+    }
 </style>
 
 <div class="settings-container">
@@ -1244,6 +1313,16 @@
         <button class="settings-tab" data-section="appearance" title="Appearance">
             <i class="fas fa-palette"></i>
             <span>Appearance</span>
+        </button>
+        <!-- NEW: Privacy Policy tab -->
+        <button class="settings-tab" data-section="privacy-policy" title="Privacy Policy">
+            <i class="fas fa-user-shield"></i>
+            <span>Privacy Policy</span>
+        </button>
+        <!-- NEW: Terms tab -->
+        <button class="settings-tab" data-section="terms" title="Terms">
+            <i class="fas fa-file-contract"></i>
+            <span>Terms</span>
         </button>
     </div>
 
@@ -1600,6 +1679,88 @@
                 </div>
             </div>
         </section>
+
+        <!-- NEW: Privacy Policy (read-only reference tab) -->
+        <section class="settings-section" id="privacy-policy">
+            <div class="settings-card" style="flex: 1 1 100%;">
+                <div class="card-header">
+                    <i class="fas fa-user-shield"></i>
+                    <h3>Privacy Policy</h3>
+                </div>
+
+                <span class="legal-updated">Last updated: August 19, 2026</span>
+
+                <div class="legal-content">
+                    <h4>1. Information We Collect</h4>
+                    <p>We collect information you provide directly, such as your name, email address, phone number, and profile photo, as well as information generated through your use of the platform, including course activity, login timestamps, and device/session data shown under Account &amp; Security.</p>
+
+                    <h4>2. How We Use Your Information</h4>
+                    <ul>
+                        <li>To provide, maintain, and improve the platform</li>
+                        <li>To send course announcements, deadline reminders, and account notifications you've opted into</li>
+                        <li>To secure your account (e.g. two-factor authentication, login alerts, session timeouts)</li>
+                        <li>To personalize your experience, such as theme and display preferences</li>
+                    </ul>
+
+                    <h4>3. How We Share Information</h4>
+                    <p>We do not sell your personal information. Information may be visible to other users according to the choices you make in the Privacy tab (for example, profile visibility, online status, and who can see your activity).</p>
+
+                    <h4>4. Data Retention</h4>
+                    <p>We retain your information for as long as your account is active. If you deactivate your account, your profile is hidden but retained in case you return. If you permanently delete your account, associated personal data is removed except where retention is required by law.</p>
+
+                    <h4>5. Your Choices</h4>
+                    <p>You can review and update most of your data directly from these settings, including notification preferences, visibility settings, and your profile information. You may also request a copy of your data or its deletion by contacting support.</p>
+
+                    <h4>6. Security</h4>
+                    <p>We use reasonable technical and organizational measures to protect your data, including optional two-factor authentication and login notifications. No method of transmission or storage is completely secure.</p>
+
+                    <h4>7. Contact Us</h4>
+                    <p>Questions about this policy can be directed to our support team through the help section of the platform.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEW: Terms of Service (read-only reference tab) -->
+        <section class="settings-section" id="terms">
+            <div class="settings-card" style="flex: 1 1 100%;">
+                <div class="card-header">
+                    <i class="fas fa-file-contract"></i>
+                    <h3>Terms of Service</h3>
+                </div>
+
+                <span class="legal-updated">Last updated: August 19, 2026</span>
+
+                <div class="legal-content">
+                    <h4>1. Acceptance of Terms</h4>
+                    <p>By creating an account and using this platform, you agree to be bound by these Terms of Service and our Privacy Policy.</p>
+
+                    <h4>2. Your Account</h4>
+                    <p>You are responsible for maintaining the confidentiality of your login credentials and for all activity that occurs under your account. Notify us immediately if you suspect unauthorized access.</p>
+
+                    <h4>3. Acceptable Use</h4>
+                    <ul>
+                        <li>Do not misuse the platform, attempt to bypass security features, or interfere with other users' access</li>
+                        <li>Do not upload content that is unlawful, infringing, or violates others' privacy</li>
+                        <li>Course materials and platform content may not be redistributed without permission</li>
+                    </ul>
+
+                    <h4>4. Account Suspension &amp; Termination</h4>
+                    <p>We may suspend or terminate accounts that violate these terms. You may deactivate or permanently delete your own account at any time from the Account &amp; Security tab.</p>
+
+                    <h4>5. Disclaimers</h4>
+                    <p>The platform is provided "as is" without warranties of any kind. We do not guarantee uninterrupted or error-free service.</p>
+
+                    <h4>6. Limitation of Liability</h4>
+                    <p>To the extent permitted by law, we are not liable for indirect, incidental, or consequential damages arising from your use of the platform.</p>
+
+                    <h4>7. Changes to These Terms</h4>
+                    <p>We may update these terms from time to time. Continued use of the platform after changes take effect constitutes acceptance of the revised terms.</p>
+
+                    <h4>8. Contact Us</h4>
+                    <p>Questions about these terms can be directed to our support team through the help section of the platform.</p>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 
@@ -1785,7 +1946,9 @@
         account: { title: 'Account & Security', description: 'Secure your account and manage login settings' },
         notifications: { title: 'Notification Settings', description: 'Control how and when you receive notifications' },
         privacy: { title: 'Privacy Settings', description: 'Manage your privacy and data sharing preferences' },
-        appearance: { title: 'Appearance Settings', description: 'Customize the look and feel of the interface' }
+        appearance: { title: 'Appearance Settings', description: 'Customize the look and feel of the interface' },
+        'privacy-policy': { title: 'Privacy Policy', description: 'Review how we collect, use, and protect your data' },
+        terms: { title: 'Terms of Service', description: 'The terms that govern your use of the platform' }
     };
 
     settingsTabs.forEach(tab => {

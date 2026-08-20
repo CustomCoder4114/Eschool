@@ -390,6 +390,12 @@
             background: #dc2626;
         }
 
+        .btn-outline:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         /* Opinion Space */
         .opinion-space {
             background: white;
@@ -1038,34 +1044,45 @@
 
         let currentUser = "{{ firstname }} {{ lastname }}" || "Anonymous Learner";
 
-        // Tracks which strategy ids the current user has already liked, so
-        // liking is a toggle (like -> unlike) instead of stacking likes on
-        // every click. Persisted the same way opinions are.
-        let likedStrategyIds = new Set(JSON.parse(localStorage.getItem('likedStrategyIds')) || []);
+        // Strategy likes now live in the database (strategy_likes table),
+        // not localStorage — this set is just an in-memory cache of what
+        // the backend told us on load, kept in sync as the user clicks.
+        let likedStrategyIds = new Set();
+        let strategyLikesLoaded = false;
 
-        // Tracks the actual like count per strategy id. The `strategies`
-        // array above is redefined fresh on every page load (likes always
-        // start at 0), so without this the count would reset on refresh
-        // even though likedStrategyIds still remembered it was liked.
-        let strategyLikeCounts = JSON.parse(localStorage.getItem('strategyLikeCounts')) || {};
+        // Fetch every strategy's like count plus (if logged in) which
+        // ones this user has liked, from the backend. Called once on
+        // page load before the cards render, so counts and heart state
+        // are correct from the very first paint — and again after any
+        // like/unlike so the UI reflects the server's response exactly.
+        async function loadStrategyLikes() {
+            try {
+                const response = await fetch('/api/strategies/likes');
+                const result = await response.json();
 
-        // Apply any saved counts onto the in-memory strategies before first render.
-        strategies.forEach(s => {
-            if (strategyLikeCounts[s.id] !== undefined) {
-                s.likes = strategyLikeCounts[s.id];
+                if (result.success) {
+                    likedStrategyIds = new Set((result.liked || []).map(Number));
+                    strategies.forEach(s => {
+                        if (result.counts && result.counts[s.id] !== undefined) {
+                            s.likes = result.counts[s.id];
+                        } else {
+                            s.likes = 0;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading strategy likes:', error);
+                // Leave strategies.likes at their defaults (0) — the page
+                // still works, it just starts from an unliked, zero-count
+                // state until the next successful load.
+            } finally {
+                strategyLikesLoaded = true;
             }
-        });
-
-        function persistLikedStrategyIds() {
-            localStorage.setItem('likedStrategyIds', JSON.stringify(Array.from(likedStrategyIds)));
-        }
-
-        function persistStrategyLikeCounts() {
-            localStorage.setItem('strategyLikeCounts', JSON.stringify(strategyLikeCounts));
         }
 
         // Initialize page
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadStrategyLikes();
             loadStrategies('all');
             loadOpinions();
             setupEventListeners();
@@ -1206,30 +1223,55 @@
             strategy.views++;
         }
 
-        function likeStrategy(id) {
+        // Toggles a like/unlike against the backend (strategy_likes
+        // table), then re-renders from the server's response — so the
+        // count shown is always what's actually stored, not a local
+        // guess, and stays correct across devices/browsers.
+        async function likeStrategy(id) {
             const strategy = strategies.find(s => s.id === id);
             if (!strategy) return;
 
             const alreadyLiked = likedStrategyIds.has(id);
 
-            if (alreadyLiked) {
-                // Unlike: remove from the liked set and roll back the count.
-                likedStrategyIds.delete(id);
-                strategy.likes = Math.max(0, strategy.likes - 1);
-            } else {
-                // Like: add to the liked set so a repeat click unlikes instead.
-                likedStrategyIds.add(id);
-                strategy.likes++;
+            // Disable just this strategy's like button while the request
+            // is in flight, so a rapid double-click can't fire twice.
+            const likeButtons = document.querySelectorAll(`[data-strategy-like="${id}"]`);
+            likeButtons.forEach(btn => btn.disabled = true);
+
+            try {
+                const response = await fetch(`/api/strategies/${id}/like`, {
+                    method: alreadyLiked ? 'DELETE' : 'POST'
+                });
+
+                if (response.status === 401) {
+                    alert('Please log in to like a strategy.');
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    alert(result.message || 'Something went wrong. Please try again.');
+                    return;
+                }
+
+                if (result.liked) {
+                    likedStrategyIds.add(id);
+                } else {
+                    likedStrategyIds.delete(id);
+                }
+                strategy.likes = result.likes;
+
+                loadStrategies('all');
+                loadStrategies('reading');
+                loadStrategies('memorization');
+                loadStrategies('mastery');
+            } catch (error) {
+                console.error('Error toggling strategy like:', error);
+                alert('Network error — please try again.');
+            } finally {
+                document.querySelectorAll(`[data-strategy-like="${id}"]`).forEach(btn => btn.disabled = false);
             }
-
-            strategyLikeCounts[id] = strategy.likes;
-            persistStrategyLikeCounts();
-            persistLikedStrategyIds();
-
-            loadStrategies('all');
-            loadStrategies('reading');
-            loadStrategies('memorization');
-            loadStrategies('mastery');
         }
 
         function tryStrategy(title) {

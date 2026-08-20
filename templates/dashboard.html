@@ -1226,83 +1226,59 @@ function viewFollowing() {
 
 // ========== COURSE DEFINITIONS ==========
 const courseDefinitions = [
-    { id:'html', name:'HTML Tutorial', code:'HTML5', level:'beginner', icon:'fa-html5', color:'#e44d26',
+    { id:'math', name:'Grade 10 Mathematics', code:'MAT 101', level:'grade-10', icon:'fa-calculator', iconStyle:'fas', color:'#7c3aed',
       modules: [
-          { name:'HTML Introduction', duration:'10 min', exercises:5, quiz:true },
-          { name:'HTML Elements', duration:'15 min', exercises:8, quiz:true },
-          { name:'HTML Attributes', duration:'12 min', exercises:6, quiz:true },
-          { name:'HTML Headings', duration:'8 min', exercises:4, quiz:true },
-          { name:'HTML Paragraphs', duration:'10 min', exercises:5, quiz:true },
-          { name:'HTML Styles', duration:'15 min', exercises:7, quiz:true },
-          { name:'HTML Formatting', duration:'12 min', exercises:6, quiz:true },
-          { name:'HTML Quotations', duration:'10 min', exercises:4, quiz:true },
-          { name:'HTML Comments', duration:'8 min', exercises:3, quiz:true },
-          { name:'HTML Colors', duration:'15 min', exercises:6, quiz:true }
+          { name:'1.1 Real Numbers', duration:'25 min', exercises:5, quiz:true },
+          { name:'1.2 Indices and Logarithms', duration:'25 min', exercises:5, quiz:true },
+          { name:'1.3 Quadratic Expressions and Equations', duration:'30 min', exercises:5, quiz:true },
+          { name:'2.1 Geometry and Transformations', duration:'25 min', exercises:5, quiz:true },
+          { name:'2.2 Trigonometry and Area', duration:'30 min', exercises:5, quiz:true },
+          { name:'2.3 Solid Mensuration and Motion', duration:'30 min', exercises:5, quiz:true },
+          { name:'3.1 Statistics I', duration:'25 min', exercises:5, quiz:true },
+          { name:'3.2 Probability I', duration:'25 min', exercises:5, quiz:true }
       ]},
-    { id:'css', name:'CSS Tutorial', code:'CSS3', level:'beginner', icon:'fa-css3-alt', color:'#264de4',
+    { id:'csl', name:'Grade 10 Community Service Learning (CSL)', code:'CSL 101', level:'grade-10', icon:'fa-hands-helping', iconStyle:'fas', color:'#2e7d32',
       modules: [
-          { name:'CSS Introduction', duration:'10 min', exercises:4, quiz:true },
-          { name:'CSS Syntax', duration:'12 min', exercises:5, quiz:true },
-          { name:'CSS Selectors', duration:'20 min', exercises:10, quiz:true },
-          { name:'CSS Colors', duration:'15 min', exercises:6, quiz:true },
-          { name:'CSS Backgrounds', duration:'12 min', exercises:5, quiz:true },
-          { name:'CSS Borders', duration:'15 min', exercises:7, quiz:true },
-          { name:'CSS Margins', duration:'12 min', exercises:5, quiz:true },
-          { name:'CSS Padding', duration:'12 min', exercises:5, quiz:true },
-          { name:'CSS Box Model', duration:'15 min', exercises:8, quiz:true },
-          { name:'CSS Flexbox', duration:'25 min', exercises:12, quiz:true }
+          { name:'1.1 Concept of Community Service Learning', duration:'25 min', exercises:4, quiz:true },
+          { name:'1.2 Community Needs', duration:'25 min', exercises:4, quiz:true },
+          { name:'1.3 Leadership Qualities', duration:'25 min', exercises:4, quiz:true },
+          { name:'1.4 Intercultural Competence', duration:'20 min', exercises:3, quiz:true },
+          { name:'2.1 Community Self-awareness', duration:'20 min', exercises:3, quiz:true },
+          { name:'2.2 Conflict Resolution', duration:'20 min', exercises:3, quiz:true },
+          { name:'2.3 Responsible Decision-making', duration:'20 min', exercises:3, quiz:true },
+          { name:'3.1 Foundations of Research', duration:'25 min', exercises:4, quiz:true },
+          { name:'3.2 Problem Identification', duration:'25 min', exercises:4, quiz:true },
+          { name:'3.3 Intervention Implementation', duration:'25 min', exercises:4, quiz:true },
+          { name:'3.4 Reporting and Presentation', duration:'20 min', exercises:3, quiz:true },
+          { name:'4.1 Introduction to Social Entrepreneurship', duration:'20 min', exercises:3, quiz:true },
+          { name:'4.2 Opportunity Identification', duration:'20 min', exercises:3, quiz:true },
+          { name:'4.3 Social Enterprise Planning', duration:'25 min', exercises:4, quiz:true },
+          { name:'4.4 Resource Mobilisation', duration:'20 min', exercises:3, quiz:true }
       ]},
-    { id:'javascript', name:'JavaScript Tutorial', code:'JS', level:'intermediate', icon:'fa-js', color:'#f7df1e',
+    { id:'english', name:'Grade 10 English', code:'ENG 101', level:'grade-10', icon:'fa-book-open', iconStyle:'fas', color:'#0a2e5c',
       modules: [
-          { name:'JS Introduction', duration:'15 min', exercises:5, quiz:true },
-          { name:'JS Variables', duration:'20 min', exercises:8, quiz:true },
-          { name:'JS Data Types', duration:'18 min', exercises:7, quiz:true },
-          { name:'JS Functions', duration:'25 min', exercises:10, quiz:true },
-          { name:'JS Objects', duration:'22 min', exercises:9, quiz:true },
-          { name:'JS Events', duration:'20 min', exercises:8, quiz:true },
-          { name:'JS Strings', duration:'18 min', exercises:7, quiz:true },
-          { name:'JS Arrays', duration:'22 min', exercises:9, quiz:true },
-          { name:'JS Loops', duration:'20 min', exercises:8, quiz:true },
-          { name:'JS DOM', duration:'30 min', exercises:12, quiz:true }
+          { name:'1.1 Speaking Etiquette', duration:'20 min', exercises:3, quiz:true },
+          { name:'1.2 Listening – Intensive and Critical', duration:'20 min', exercises:3, quiz:true },
+          { name:'1.3 Sound Systems (Phonology)', duration:'20 min', exercises:3, quiz:true },
+          { name:'2.1 Reading Fluency', duration:'20 min', exercises:3, quiz:true },
+          { name:'2.2 Reading Comprehension', duration:'25 min', exercises:4, quiz:true },
+          { name:'2.3 Information Literacy', duration:'20 min', exercises:3, quiz:true },
+          { name:'3.1 Word Classes', duration:'25 min', exercises:4, quiz:true },
+          { name:'3.2 Phrases and Clauses', duration:'20 min', exercises:3, quiz:true },
+          { name:'3.3 Sentence Structures', duration:'25 min', exercises:4, quiz:true },
+          { name:'4.1 Functional Writing', duration:'25 min', exercises:4, quiz:true },
+          { name:'4.2 Creative and Essay Writing', duration:'25 min', exercises:4, quiz:true },
+          { name:'5.0 Oral Literature – Narratives, Poems & Short Forms', duration:'25 min', exercises:4, quiz:true },
+          { name:'6.0 Poetry – Structure and Stylistic Devices', duration:'25 min', exercises:4, quiz:true },
+          { name:'7.0 Prose Fiction – Plot and Characterization', duration:'25 min', exercises:4, quiz:true },
+          { name:'8.0 Drama – Play Text Analysis', duration:'20 min', exercises:3, quiz:true }
       ]},
-    { id:'python', name:'Python Tutorial', code:'PY3', level:'beginner', icon:'fa-python', color:'#306998',
+    { id:'kiswahili', name:'Grade 10 Kiswahili', code:'KSL Grade 10', level:'grade-10', icon:'fa-language', iconStyle:'fas', color:'#16a34a',
       modules: [
-          { name:'Python Intro', duration:'12 min', exercises:4, quiz:true },
-          { name:'Python Syntax', duration:'15 min', exercises:5, quiz:true },
-          { name:'Python Variables', duration:'15 min', exercises:6, quiz:true },
-          { name:'Python Data Types', duration:'20 min', exercises:8, quiz:true },
-          { name:'Python Lists', duration:'18 min', exercises:7, quiz:true },
-          { name:'Python Tuples', duration:'15 min', exercises:5, quiz:true },
-          { name:'Python Dictionaries', duration:'18 min', exercises:6, quiz:true },
-          { name:'Python If...Else', duration:'16 min', exercises:6, quiz:true },
-          { name:'Python Loops', duration:'18 min', exercises:7, quiz:true },
-          { name:'Python Functions', duration:'22 min', exercises:8, quiz:true }
-      ]},
-    { id:'sql', name:'SQL Tutorial', code:'SQL', level:'intermediate', icon:'fa-database', color:'#00758f',
-      modules: [
-          { name:'SQL Intro', duration:'10 min', exercises:3, quiz:true },
-          { name:'SQL Syntax', duration:'12 min', exercises:4, quiz:true },
-          { name:'SQL SELECT', duration:'18 min', exercises:6, quiz:true },
-          { name:'SQL WHERE', duration:'15 min', exercises:5, quiz:true },
-          { name:'SQL AND/OR', duration:'12 min', exercises:4, quiz:true },
-          { name:'SQL ORDER BY', duration:'12 min', exercises:4, quiz:true },
-          { name:'SQL INSERT INTO', duration:'15 min', exercises:5, quiz:true },
-          { name:'SQL UPDATE', duration:'12 min', exercises:4, quiz:true },
-          { name:'SQL DELETE', duration:'10 min', exercises:3, quiz:true },
-          { name:'SQL JOIN', duration:'25 min', exercises:8, quiz:true }
-      ]},
-    { id:'react', name:'React Tutorial', code:'REACT', level:'advanced', icon:'fa-react', color:'#61dafb',
-      modules: [
-          { name:'React Intro', duration:'15 min', exercises:4, quiz:true },
-          { name:'React ES6', duration:'20 min', exercises:6, quiz:true },
-          { name:'React JSX', duration:'18 min', exercises:5, quiz:true },
-          { name:'React Components', duration:'22 min', exercises:7, quiz:true },
-          { name:'React Props', duration:'18 min', exercises:6, quiz:true },
-          { name:'React State', duration:'20 min', exercises:7, quiz:true },
-          { name:'React Hooks', duration:'25 min', exercises:8, quiz:true },
-          { name:'React Forms', duration:'18 min', exercises:6, quiz:true },
-          { name:'React Router', duration:'22 min', exercises:7, quiz:true },
-          { name:'React API Calls', duration:'20 min', exercises:6, quiz:true }
+          { name:'Moduli 1: Kuwasiliana na Fursa (Mikondo ya Fursa za Ajira)', duration:'30 min', exercises:5, quiz:true },
+          { name:'Moduli 2: Kukabiliana na Shinikizorika', duration:'30 min', exercises:5, quiz:true },
+          { name:'Moduli 3: Utambuzi wa Uwezo na Vipaji', duration:'25 min', exercises:4, quiz:true },
+          { name:'Moduli 4: Usalama Barabarani', duration:'30 min', exercises:5, quiz:true }
       ]}
 ];
 
@@ -1481,9 +1457,11 @@ function getStorageKey() {
 
 const courseNameMap = {};
 const courseIconMap = {};
+const courseIconStyleMap = {};
 courseDefinitions.forEach(c => {
     courseNameMap[c.id] = c.name;
     courseIconMap[c.id] = c.icon;
+    courseIconStyleMap[c.id] = c.iconStyle || 'fas';
 });
 
 function loadMyCourses() {
@@ -1492,14 +1470,22 @@ function loadMyCourses() {
     if (stored) {
         try {
             const parsed = JSON.parse(stored);
-            return parsed.map(enr => ({
-                ...enr,
-                completed: enr.completed || [],
-                currentModule: enr.currentModule || 0,
-                exercisesCompleted: enr.exercisesCompleted || 0,
-                quizzesPassed: enr.quizzesPassed || 0,
-                progress: enr.progress || 0
-            }));
+            // Drop any enrollment whose courseId doesn't match a course that
+            // currently exists (e.g. leftover localStorage entries from an
+            // earlier version of the course catalog, like the old HTML/CSS/
+            // JS/Python/SQL/React lineup). Without this, orphaned entries
+            // display as generic "Course <id>" placeholders forever, since
+            // there's no real course left to look their name up against.
+            return parsed
+                .filter(enr => getCourse(enr.courseId))
+                .map(enr => ({
+                    ...enr,
+                    completed: enr.completed || [],
+                    currentModule: enr.currentModule || 0,
+                    exercisesCompleted: enr.exercisesCompleted || 0,
+                    quizzesPassed: enr.quizzesPassed || 0,
+                    progress: enr.progress || 0
+                }));
         } catch (e) {
             console.warn('Failed to parse stored course data');
         }
@@ -1523,15 +1509,23 @@ function getCourseIconFromMaster(course) {
     const slug = course.courseId || course.id;
     if (slug && courseIconMap[slug]) return courseIconMap[slug];
     const fallbackIcons = {
-        'html': 'fa-html5', 'css': 'fa-css3-alt', 'javascript': 'fa-js-square',
-        'python': 'fa-python', 'sql': 'fa-database', 'react': 'fa-react',
-        'default': 'fa-book-open'
+        'math': 'fa-calculator', 'csl': 'fa-hands-helping', 'english': 'fa-book-open',
+        'kiswahili': 'fa-language', 'default': 'fa-book-open'
     };
     const courseName = getCourseName(course).toLowerCase();
     for (const [key, icon] of Object.entries(fallbackIcons)) {
         if (courseName.includes(key)) return icon;
     }
     return fallbackIcons.default;
+}
+
+// Matches the icon style (fas/fab) to the icon above, so subject icons
+// (which are Font Awesome "solid" icons, not "brand" icons) actually render
+// instead of showing up as empty squares.
+function getCourseIconStyle(course) {
+    const slug = course.courseId || course.id;
+    if (slug && courseIconStyleMap[slug]) return courseIconStyleMap[slug];
+    return 'fas';
 }
 
 function getStatusBadge(progress) {
@@ -1546,8 +1540,16 @@ function renderMyCourses() {
     const noMessage = document.getElementById('noCoursesMessage');
     
     if (!container) return;
-    const items = container.querySelectorAll('.course-item');
-    items.forEach(el => el.remove());
+    // FIX: this used to only remove .course-item rows before re-rendering.
+    // The "View all N courses" link appended below was never tagged with a
+    // class, so it was invisible to this cleanup step — and since
+    // renderMyCourses() runs on every refresh (every 5s, on tab focus, and
+    // on storage events; see refreshDashboardData()), each call appended
+    // ANOTHER "View all" link on top of the ones already there instead of
+    // replacing it. That's what produced a growing stack of duplicate
+    // "View all 4 courses" links. Tagging it with .view-all-courses and
+    // clearing that alongside .course-item fixes it.
+    container.querySelectorAll('.course-item, .view-all-courses').forEach(el => el.remove());
     
     if (courses.length === 0) {
         if (noMessage) noMessage.style.display = 'block';
@@ -1562,6 +1564,7 @@ function renderMyCourses() {
         const progress = course.progress || 0;
         const courseName = getCourseName(course);
         const icon = getCourseIconFromMaster(course);
+        const iconStyle = getCourseIconStyle(course);
         const statusBadge = getStatusBadge(progress);
         const courseId = course.courseId || course.id || courseName;
         
@@ -1569,7 +1572,7 @@ function renderMyCourses() {
         courseItem.className = 'course-item';
         courseItem.style.animationDelay = `${index * 0.1}s`;
         courseItem.innerHTML = `
-            <div class="course-icon"><i class="fab ${icon}"></i></div>
+            <div class="course-icon"><i class="${iconStyle} ${icon}"></i></div>
             <div class="course-info">
                 <div class="course-title">${courseName}</div>
                 <div class="course-progress">
@@ -1587,6 +1590,7 @@ function renderMyCourses() {
     
     if (courses.length > 3) {
         const viewAll = document.createElement('div');
+        viewAll.className = 'view-all-courses';
         viewAll.style.cssText = 'text-align: center; margin-top: 10px;';
         viewAll.innerHTML = `<a href="/courses" class="card-link">View all ${courses.length} courses <i class="fas fa-arrow-right"></i></a>`;
         container.appendChild(viewAll);
@@ -1650,7 +1654,18 @@ function loadRecentActivity() {
     const key = getActivityStorageKey();
     const stored = localStorage.getItem(key);
     if (stored) {
-        try { return JSON.parse(stored); } catch (e) { console.warn('Failed to parse activity data'); }
+        try {
+            const activity = JSON.parse(stored);
+            // Same self-healing as loadMyCourses(): drop log entries for
+            // courses that no longer exist in the catalog (e.g. "Grade 10
+            // Biology" or "CSL Tutorial" from an earlier catalog version),
+            // so the Recent Activity card doesn't keep showing history for
+            // courses that were never re-added under the current lineup.
+            const knownNames = new Set(courseDefinitions.map(c => c.name));
+            return activity.filter(a => knownNames.has(a.courseName));
+        } catch (e) {
+            console.warn('Failed to parse activity data');
+        }
     }
     return [];
 }

@@ -496,6 +496,124 @@
             padding: 30px;
         }
 
+        /* Overview / longDescription formatting */
+        .overview-block {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: var(--gray-700);
+            margin-bottom: 25px;
+        }
+
+        .overview-block p {
+            margin-bottom: 16px;
+        }
+
+        .overview-block h4 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.1rem;
+            color: var(--dark-color);
+            margin: 22px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .overview-block h4 i {
+            color: var(--primary-color);
+        }
+
+        .overview-block ul {
+            list-style: none;
+            margin: 0 0 6px;
+        }
+
+        .overview-block ul li {
+            padding: 7px 0 7px 26px;
+            position: relative;
+            color: var(--gray-600);
+        }
+
+        .overview-block ul li::before {
+            content: "\f105";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            color: var(--accent-color);
+            position: absolute;
+            left: 4px;
+        }
+
+        .overview-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 6px 0 4px;
+        }
+
+        .overview-chip {
+            padding: 5px 12px;
+            background: var(--gray-100);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        .overview-path {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0 4px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+
+        .overview-path .step {
+            padding: 6px 14px;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 20px;
+        }
+
+        .overview-path i {
+            color: var(--gray-400);
+            font-size: 0.8rem;
+        }
+
+        .overview-callout {
+            background: linear-gradient(135deg, rgba(67,97,238,0.07), rgba(114,9,183,0.07));
+            border-left: 3px solid var(--primary-color);
+            border-radius: 0 12px 12px 0;
+            padding: 14px 18px;
+            font-size: 0.95rem;
+            color: var(--gray-700);
+            margin: 10px 0 18px;
+        }
+
+        .overview-callout b { color: var(--primary-dark); }
+
+        .overview-two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 700px) {
+            .overview-two-col { grid-template-columns: 1fr; }
+        }
+
+        .overview-two-col h5 {
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .overview-two-col.pros h5 { color: var(--success-color); }
+        .overview-two-col.cons h5 { color: var(--danger-color); }
+
         /* Chart Container */
         .chart-container {
             background: white;
@@ -868,7 +986,7 @@
             <div class="test-container">
                 <div class="test-header">
                     <h2><i class="fas fa-brain"></i> Career Aptitude Test</h2>
-                    <p>Answer 5 questions to discover your ideal career path based on your interests, skills, and personality</p>
+                    <p>Answer 15 in-depth questions to discover your ideal career path based on your interests, work style, values, and personality</p>
                 </div>
                 
                 <div id="testArea">
@@ -954,7 +1072,156 @@
                 category: "technology",
                 icon: "fa-code",
                 description: "Design, develop, and maintain software applications and systems. Work with cutting-edge technologies to solve complex problems.",
-                longDescription: "Software engineers are in high demand across all industries. They create everything from mobile apps to enterprise systems, using programming languages like Python, Java, and JavaScript.",
+longDescription: `
+<p>Software Engineering is the professional discipline of designing, building, testing, deploying, and maintaining software systems that solve real-world problems. Software engineers create everything from websites, mobile applications, desktop software, video games, cloud platforms, artificial intelligence systems, financial software, and cybersecurity tools &mdash; combining programming knowledge, mathematics, logical thinking, and engineering principles to build reliable, efficient, and secure software.</p>
+
+<h4><i class="fas fa-list-check"></i> Daily Responsibilities</h4>
+<ul>
+  <li>Designing software architecture and planning how applications will work</li>
+  <li>Writing clean, efficient, and maintainable code</li>
+  <li>Testing applications to identify and fix bugs and errors</li>
+  <li>Collaborating with designers, product managers, and other developers</li>
+  <li>Maintaining and improving existing software systems</li>
+  <li>Creating APIs and integrating third-party services</li>
+  <li>Writing technical documentation for future maintenance</li>
+  <li>Monitoring application performance and improving speed, security, and scalability</li>
+  <li>Participating in code reviews and team meetings</li>
+  <li>Learning new technologies to stay current with industry trends</li>
+</ul>
+
+<h4><i class="fas fa-diagram-project"></i> Career Specializations</h4>
+<p>Software engineering branches into many focused paths:</p>
+<div class="overview-chip-row">
+  <span class="overview-chip">Frontend Developer</span>
+  <span class="overview-chip">Backend Developer</span>
+  <span class="overview-chip">Full Stack Developer</span>
+  <span class="overview-chip">Mobile App Developer</span>
+  <span class="overview-chip">AI &amp; ML Engineer</span>
+  <span class="overview-chip">Game Developer</span>
+  <span class="overview-chip">DevOps Engineer</span>
+  <span class="overview-chip">Cybersecurity Engineer</span>
+  <span class="overview-chip">Cloud Engineer</span>
+  <span class="overview-chip">Embedded Systems Engineer</span>
+</div>
+
+<h4><i class="fas fa-toolbox"></i> Skills You'll Need</h4>
+<p><strong>Technical:</strong></p>
+<div class="overview-chip-row">
+  <span class="overview-chip">Python / JavaScript / Java / C++ / C# / Go</span>
+  <span class="overview-chip">HTML &amp; CSS</span>
+  <span class="overview-chip">Databases (MySQL, PostgreSQL, MongoDB)</span>
+  <span class="overview-chip">Git &amp; GitHub</span>
+  <span class="overview-chip">REST APIs</span>
+  <span class="overview-chip">Data Structures &amp; Algorithms</span>
+  <span class="overview-chip">OOP</span>
+  <span class="overview-chip">Software Testing</span>
+  <span class="overview-chip">Cloud Computing</span>
+  <span class="overview-chip">Linux</span>
+  <span class="overview-chip">Networking Basics</span>
+  <span class="overview-chip">Cybersecurity Fundamentals</span>
+</div>
+<p style="margin-top:14px;"><strong>Soft skills:</strong></p>
+<div class="overview-chip-row">
+  <span class="overview-chip">Critical Thinking</span>
+  <span class="overview-chip">Problem Solving</span>
+  <span class="overview-chip">Creativity</span>
+  <span class="overview-chip">Communication</span>
+  <span class="overview-chip">Teamwork</span>
+  <span class="overview-chip">Time Management</span>
+  <span class="overview-chip">Leadership</span>
+  <span class="overview-chip">Adaptability</span>
+  <span class="overview-chip">Continuous Learning</span>
+</div>
+
+<h4><i class="fas fa-graduation-cap"></i> Education Path</h4>
+<ul>
+  <li>Bachelor's Degree in Computer Science or Software Engineering</li>
+  <li>Diploma in Information Technology</li>
+  <li>Coding Bootcamps</li>
+  <li>Online Certifications</li>
+  <li>Self-learning with a strong portfolio and GitHub projects</li>
+</ul>
+<div class="overview-callout"><b>Reality check:</b> a degree still helps at large, traditional employers, but a solid portfolio of shipped projects is often what hiring managers look at first.</div>
+
+<h4><i class="fas fa-certificate"></i> Useful Certifications</h4>
+<div class="overview-chip-row">
+  <span class="overview-chip">AWS Certified Developer</span>
+  <span class="overview-chip">Microsoft Azure Developer Associate</span>
+  <span class="overview-chip">Google Associate Cloud Engineer</span>
+  <span class="overview-chip">Meta Front-End Developer Certificate</span>
+  <span class="overview-chip">IBM Full Stack Software Developer</span>
+  <span class="overview-chip">Oracle Java Certification</span>
+  <span class="overview-chip">Cisco DevNet Associate</span>
+</div>
+
+<h4><i class="fas fa-stairs"></i> Career Progression</h4>
+<div class="overview-path">
+  <span class="step">Junior Software Engineer</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Software Engineer</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Senior Software Engineer</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Lead Software Engineer</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Architect / Engineering Manager</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Director of Engineering</span><i class="fas fa-arrow-right"></i>
+  <span class="step">CTO</span>
+</div>
+
+<h4><i class="fas fa-building"></i> Industries That Hire Software Engineers</h4>
+<div class="overview-chip-row">
+  <span class="overview-chip">Technology</span>
+  <span class="overview-chip">Banking &amp; Finance</span>
+  <span class="overview-chip">Healthcare</span>
+  <span class="overview-chip">Government</span>
+  <span class="overview-chip">Education</span>
+  <span class="overview-chip">Telecommunications</span>
+  <span class="overview-chip">Manufacturing</span>
+  <span class="overview-chip">Automotive</span>
+  <span class="overview-chip">E-commerce</span>
+  <span class="overview-chip">Artificial Intelligence</span>
+  <span class="overview-chip">Gaming</span>
+  <span class="overview-chip">Cybersecurity</span>
+  <span class="overview-chip">Startups</span>
+</div>
+
+<h4><i class="fas fa-scale-balanced"></i> Advantages &amp; Challenges</h4>
+<div class="overview-two-col">
+  <div class="pros">
+    <h5><i class="fas fa-circle-check"></i> Advantages</h5>
+    <ul>
+      <li>High salary potential</li>
+      <li>Excellent job security</li>
+      <li>Work remotely from anywhere</li>
+      <li>Continuous learning opportunities</li>
+      <li>High global demand</li>
+      <li>Ability to build your own products or startup</li>
+      <li>Opportunity to freelance</li>
+      <li>Applicable across almost every industry</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h5><i class="fas fa-circle-exclamation"></i> Challenges</h5>
+    <ul>
+      <li>Continuous learning is required</li>
+      <li>Deadlines can sometimes be demanding</li>
+      <li>Long hours of coding may cause eye strain</li>
+      <li>Complex debugging and problem solving</li>
+      <li>Rapidly changing technologies</li>
+    </ul>
+  </div>
+</div>
+
+<h4><i class="fas fa-chart-line"></i> Future Outlook</h4>
+<p>Software engineering remains one of the fastest-growing careers globally. The US Bureau of Labor Statistics projects roughly <strong>15% job growth from 2024&ndash;2034</strong> &mdash; much faster than the average occupation &mdash; with AI/ML, Cloud Computing, Cybersecurity, Robotics, and Data Science continuing to open new opportunities as companies increasingly depend on software to run their businesses. Entry-level base pay in the US typically runs <strong>$70,000&ndash;$110,000</strong>, mid-level <strong>$110,000&ndash;$150,000</strong>, and senior/staff engineers often earn <strong>$150,000&ndash;$220,000+</strong>, with AI/ML specialization currently commanding the biggest premium over general software engineering roles.</p>
+
+<h4><i class="fas fa-user-check"></i> Who Should Choose This Career?</h4>
+<ul>
+  <li>Enjoys solving problems</li>
+  <li>Likes mathematics and logical thinking</li>
+  <li>Loves technology and computers</li>
+  <li>Is curious and enjoys learning new things</li>
+  <li>Wants a career with strong growth and international opportunities</li>
+  <li>Dreams of building apps, websites, AI systems, or even starting a technology company</li>
+</ul>
+`,
                 salary: "$110,000 - $160,000",
                 growth: "22%",
                 demand: "Very High",
@@ -965,169 +1232,1235 @@
                 matchScore: 0
             },
             {
-                id: 2,
-                title: "Data Scientist",
-                category: "technology",
-                icon: "fa-chart-line",
-                description: "Analyze complex data to help organizations make better decisions. Use machine learning and statistical analysis.",
-                longDescription: "Data scientists are the detectives of the digital age, uncovering insights from data to drive business strategy and innovation.",
-                salary: "$120,000 - $180,000",
-                growth: "28%",
-                demand: "Very High",
-                skills: ["Python", "Machine Learning", "Statistics", "SQL", "Data Visualization"],
-                education: ["Master's in Data Science", "PhD in Statistics"],
-                topCompanies: ["Netflix", "Spotify", "Uber", "Airbnb"],
-                views: 12456,
-                matchScore: 0
-            },
+    id: 2,
+    title: "Data Analyst",
+    category: "technology",
+    icon: "fa-chart-bar",
+    description: "Collect, clean, analyze, and visualize data to help organizations make informed business decisions. Transform raw data into valuable insights that drive growth and efficiency.",
+    longDescription: `
+<p>Data Analysis is the professional discipline of collecting, cleaning, organizing, analyzing, and interpreting data to uncover meaningful patterns, trends, and insights that support better decision-making. Data Analysts transform raw information into valuable business intelligence by using statistics, databases, programming, and visualization tools. Their work helps organizations improve performance, understand customer behavior, reduce costs, predict future trends, and solve complex business problems. Today, data analysts play a critical role across nearly every industry, including technology, healthcare, banking, retail, education, manufacturing, government, sports, and entertainment.</p>
+
+<h4><i class="fas fa-list-check"></i> Daily Responsibilities</h4>
+<ul>
+  <li>Collecting data from multiple sources such as databases, APIs, surveys, and spreadsheets</li>
+  <li>Cleaning and organizing raw data by removing duplicates, correcting errors, and handling missing values</li>
+  <li>Analyzing datasets using statistical techniques to identify trends and patterns</li>
+  <li>Creating dashboards, charts, and interactive reports for decision-makers</li>
+  <li>Writing SQL queries to retrieve and manipulate large datasets</li>
+  <li>Preparing reports that explain findings in simple business language</li>
+  <li>Collaborating with managers, software engineers, and business teams</li>
+  <li>Monitoring key performance indicators (KPIs) and business metrics</li>
+  <li>Identifying opportunities to improve business processes through data insights</li>
+  <li>Presenting recommendations to executives and stakeholders</li>
+</ul>
+
+<h4><i class="fas fa-diagram-project"></i> Career Specializations</h4>
+<p>Data Analysis offers many exciting career paths depending on your interests and industry.</p>
+
+<div class="overview-chip-row">
+  <span class="overview-chip">Business Analyst</span>
+  <span class="overview-chip">Financial Analyst</span>
+  <span class="overview-chip">Marketing Analyst</span>
+  <span class="overview-chip">Healthcare Data Analyst</span>
+  <span class="overview-chip">Operations Analyst</span>
+  <span class="overview-chip">Product Analyst</span>
+  <span class="overview-chip">Risk Analyst</span>
+  <span class="overview-chip">Data Visualization Specialist</span>
+  <span class="overview-chip">Research Analyst</span>
+  <span class="overview-chip">Sports Data Analyst</span>
+</div>
+
+<h4><i class="fas fa-toolbox"></i> Skills You'll Need</h4>
+
+<p><strong>Technical Skills:</strong></p>
+
+<div class="overview-chip-row">
+  <span class="overview-chip">Microsoft Excel</span>
+  <span class="overview-chip">SQL</span>
+  <span class="overview-chip">Python</span>
+  <span class="overview-chip">R Programming</span>
+  <span class="overview-chip">Power BI</span>
+  <span class="overview-chip">Tableau</span>
+  <span class="overview-chip">Google Looker Studio</span>
+  <span class="overview-chip">Statistics</span>
+  <span class="overview-chip">Data Cleaning</span>
+  <span class="overview-chip">Data Visualization</span>
+  <span class="overview-chip">Machine Learning Basics</span>
+  <span class="overview-chip">Database Management</span>
+</div>
+
+<p style="margin-top:14px;"><strong>Soft Skills:</strong></p>
+
+<div class="overview-chip-row">
+  <span class="overview-chip">Critical Thinking</span>
+  <span class="overview-chip">Analytical Thinking</span>
+  <span class="overview-chip">Problem Solving</span>
+  <span class="overview-chip">Communication</span>
+  <span class="overview-chip">Presentation Skills</span>
+  <span class="overview-chip">Business Understanding</span>
+  <span class="overview-chip">Attention to Detail</span>
+  <span class="overview-chip">Time Management</span>
+  <span class="overview-chip">Curiosity</span>
+  <span class="overview-chip">Decision Making</span>
+</div>
+
+<h4><i class="fas fa-graduation-cap"></i> Education Path</h4>
+
+<ul>
+  <li>Bachelor's Degree in Data Science</li>
+  <li>Bachelor's Degree in Statistics</li>
+  <li>Bachelor's Degree in Computer Science</li>
+  <li>Bachelor's Degree in Mathematics</li>
+  <li>Business Analytics Degree</li>
+  <li>Online Professional Certifications</li>
+  <li>Self-learning combined with real-world portfolio projects</li>
+</ul>
+
+<div class="overview-callout">
+<b>Reality check:</b> Many companies hire data analysts based on practical skills rather than degrees alone. A strong portfolio containing dashboards, SQL projects, Python notebooks, and real business analyses can significantly improve your chances of getting hired.
+</div>
+
+<h4><i class="fas fa-certificate"></i> Useful Certifications</h4>
+
+<div class="overview-chip-row">
+  <span class="overview-chip">Google Data Analytics Professional Certificate</span>
+  <span class="overview-chip">IBM Data Analyst Professional Certificate</span>
+  <span class="overview-chip">Microsoft Power BI Data Analyst Associate</span>
+  <span class="overview-chip">Tableau Desktop Specialist</span>
+  <span class="overview-chip">Microsoft Excel Expert</span>
+  <span class="overview-chip">AWS Data Analytics Certification</span>
+  <span class="overview-chip">Oracle SQL Certification</span>
+</div>
+
+<h4><i class="fas fa-stairs"></i> Career Progression</h4>
+
+<div class="overview-path">
+  <span class="step">Junior Data Analyst</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Data Analyst</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Senior Data Analyst</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Lead Data Analyst</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Analytics Manager</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Head of Analytics</span><i class="fas fa-arrow-right"></i>
+  <span class="step">Chief Data Officer (CDO)</span>
+</div>
+
+<h4><i class="fas fa-building"></i> Industries That Hire Data Analysts</h4>
+
+<div class="overview-chip-row">
+  <span class="overview-chip">Technology</span>
+  <span class="overview-chip">Banking</span>
+  <span class="overview-chip">Healthcare</span>
+  <span class="overview-chip">Government</span>
+  <span class="overview-chip">Education</span>
+  <span class="overview-chip">Retail</span>
+  <span class="overview-chip">Manufacturing</span>
+  <span class="overview-chip">Telecommunications</span>
+  <span class="overview-chip">Insurance</span>
+  <span class="overview-chip">Logistics</span>
+  <span class="overview-chip">E-commerce</span>
+  <span class="overview-chip">Sports Analytics</span>
+  <span class="overview-chip">Consulting</span>
+</div>
+
+<h4><i class="fas fa-scale-balanced"></i> Advantages & Challenges</h4>
+
+<div class="overview-two-col">
+
+<div class="pros">
+<h5><i class="fas fa-circle-check"></i> Advantages</h5>
+
+<ul>
+<li>Excellent salary potential</li>
+<li>High demand across many industries</li>
+<li>Opportunity to work remotely</li>
+<li>Strong career growth opportunities</li>
+<li>Every day involves solving interesting business problems</li>
+<li>Can transition into Data Science, AI, or Business Intelligence</li>
+<li>Work with modern technologies and analytics tools</li>
+<li>Helps organizations make impactful decisions</li>
+</ul>
+
+</div>
+
+<div class="cons">
+
+<h5><i class="fas fa-circle-exclamation"></i> Challenges</h5>
+
+<ul>
+<li>Cleaning messy data can be time-consuming</li>
+<li>Requires continuous learning as tools evolve</li>
+<li>May involve working with very large datasets</li>
+<li>Need to explain technical findings to non-technical audiences</li>
+<li>Deadlines can sometimes be demanding</li>
+</ul>
+
+</div>
+
+</div>
+
+<h4><i class="fas fa-chart-line"></i> Future Outlook</h4>
+
+<p>Data Analysis continues to be one of the fastest-growing technology careers as organizations increasingly rely on data-driven decision-making. Businesses generate enormous amounts of information every day, creating a growing demand for professionals who can transform that information into actionable insights. Advances in Artificial Intelligence, Business Intelligence, Big Data, Cloud Computing, and Automation have made skilled data analysts even more valuable. Entry-level analysts typically earn between <strong>$60,000–$90,000</strong>, experienced analysts earn around <strong>$90,000–$130,000</strong>, while senior analysts, analytics managers, and specialists in finance or technology often earn <strong>$130,000–$180,000+</strong> depending on experience, location, and industry.</p>
+
+<h4><i class="fas fa-user-check"></i> Who Should Choose This Career?</h4>
+
+<ul>
+<li>Enjoys solving logical problems</li>
+<li>Likes working with numbers and statistics</li>
+<li>Has strong attention to detail</li>
+<li>Enjoys discovering hidden patterns</li>
+<li>Interested in business and technology</li>
+<li>Likes using Excel, SQL, or programming tools</li>
+<li>Enjoys making decisions based on evidence rather than guesswork</li>
+<li>Wants a career with excellent job security and global opportunities</li>
+<li>Dreams of working in Artificial Intelligence, Business Intelligence, or Data Science in the future</li>
+</ul>
+`,
+    salary: "$75,000 - $130,000",
+    growth: "25%",
+    demand: "Very High",
+    skills: [
+        "SQL",
+        "Python",
+        "Excel",
+        "Power BI",
+        "Tableau"
+    ],
+    education: [
+        "Bachelor's in Data Science",
+        "Statistics",
+        "Computer Science",
+        "Business Analytics"
+    ],
+    topCompanies: [
+        "Google",
+        "Microsoft",
+        "Amazon",
+        "Meta",
+        "Netflix"
+    ],
+    views: 13245,
+    matchScore: 0
+},
             {
-                id: 3,
-                title: "UX/UI Designer",
-                category: "creative",
-                icon: "fa-paintbrush",
-                description: "Create intuitive and beautiful user experiences for digital products. Combine psychology with design.",
-                longDescription: "UX/UI designers make technology accessible and enjoyable. They research user needs and design interfaces that are both functional and beautiful.",
-                salary: "$85,000 - $130,000",
-                growth: "18%",
-                demand: "High",
-                skills: ["Figma", "User Research", "Prototyping", "Visual Design", "HTML/CSS"],
-                education: ["Bachelor's in Design", "UX Certification"],
-                topCompanies: ["Apple", "Google", "Adobe", "Figma"],
-                views: 9876,
-                matchScore: 0
-            },
+    id: 3,
+    title: "UX/UI Designer",
+    category: "creative",
+    icon: "fa-paintbrush",
+    description: "Design intuitive, attractive, and user-friendly digital experiences for websites, mobile apps, and software products. Combine creativity, psychology, and technology to improve how people interact with digital products.",
+    longDescription: `
+<p>UX/UI Design is the professional discipline of creating digital products that are visually appealing, easy to use, and enjoyable for users. UX (User Experience) focuses on understanding users, solving their problems, and designing smooth experiences, while UI (User Interface) focuses on the visual appearance, layout, colors, typography, buttons, icons, and interactive elements users see on the screen. UX/UI Designers combine creativity, psychology, research, and technology to design websites, mobile applications, software platforms, games, and other digital products that are both functional and beautiful.</p>
+
+<h4><i class="fas fa-list-check"></i> Daily Responsibilities</h4>
+
+<ul>
+<li>Researching user needs through interviews, surveys, and usability testing</li>
+<li>Creating user personas and customer journey maps</li>
+<li>Designing wireframes and interactive prototypes</li>
+<li>Building attractive user interfaces for websites and mobile apps</li>
+<li>Choosing color palettes, typography, icons, and visual styles</li>
+<li>Collaborating with software developers, product managers, and marketing teams</li>
+<li>Testing designs with real users and improving them based on feedback</li>
+<li>Ensuring products are accessible to users with different abilities</li>
+<li>Maintaining consistent design systems across products</li>
+<li>Keeping up with the latest design trends and technologies</li>
+</ul>
+
+<h4><i class="fas fa-diagram-project"></i> Career Specializations</h4>
+
+<p>UX/UI Design offers numerous exciting specialization opportunities depending on your interests.</p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">UX Designer</span>
+<span class="overview-chip">UI Designer</span>
+<span class="overview-chip">Product Designer</span>
+<span class="overview-chip">Interaction Designer</span>
+<span class="overview-chip">Visual Designer</span>
+<span class="overview-chip">Mobile App Designer</span>
+<span class="overview-chip">Web Designer</span>
+<span class="overview-chip">UX Researcher</span>
+<span class="overview-chip">Information Architect</span>
+<span class="overview-chip">Design System Designer</span>
+</div>
+
+<h4><i class="fas fa-toolbox"></i> Skills You'll Need</h4>
+
+<p><strong>Technical Skills:</strong></p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Figma</span>
+<span class="overview-chip">Adobe XD</span>
+<span class="overview-chip">Sketch</span>
+<span class="overview-chip">Adobe Photoshop</span>
+<span class="overview-chip">Adobe Illustrator</span>
+<span class="overview-chip">Wireframing</span>
+<span class="overview-chip">Prototyping</span>
+<span class="overview-chip">User Research</span>
+<span class="overview-chip">Usability Testing</span>
+<span class="overview-chip">Design Systems</span>
+<span class="overview-chip">HTML & CSS Basics</span>
+<span class="overview-chip">Responsive Design</span>
+</div>
+
+<p style="margin-top:14px;"><strong>Soft Skills:</strong></p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Creativity</span>
+<span class="overview-chip">Empathy</span>
+<span class="overview-chip">Communication</span>
+<span class="overview-chip">Problem Solving</span>
+<span class="overview-chip">Attention to Detail</span>
+<span class="overview-chip">Critical Thinking</span>
+<span class="overview-chip">Collaboration</span>
+<span class="overview-chip">Time Management</span>
+<span class="overview-chip">Presentation Skills</span>
+<span class="overview-chip">Adaptability</span>
+</div>
+
+<h4><i class="fas fa-graduation-cap"></i> Education Path</h4>
+
+<ul>
+<li>Bachelor's Degree in Graphic Design</li>
+<li>Bachelor's Degree in Human-Computer Interaction (HCI)</li>
+<li>Bachelor's Degree in Computer Science</li>
+<li>Bachelor's Degree in Multimedia Design</li>
+<li>UX/UI Design Bootcamps</li>
+<li>Professional Online Certifications</li>
+<li>Self-learning with a strong design portfolio</li>
+</ul>
+
+<div class="overview-callout">
+<b>Reality check:</b> Employers often care more about your design portfolio than your degree. A collection of well-designed websites, mobile apps, case studies, and prototypes can significantly improve your chances of getting hired.
+</div>
+
+<h4><i class="fas fa-certificate"></i> Useful Certifications</h4>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Google UX Design Professional Certificate</span>
+<span class="overview-chip">IBM UI/UX Designer Certificate</span>
+<span class="overview-chip">Adobe Certified Professional</span>
+<span class="overview-chip">Interaction Design Foundation (IxDF)</span>
+<span class="overview-chip">Nielsen Norman Group UX Certification</span>
+<span class="overview-chip">Coursera UX/UI Specialization</span>
+<span class="overview-chip">Meta Front-End Developer Certificate</span>
+</div>
+
+<h4><i class="fas fa-stairs"></i> Career Progression</h4>
+
+<div class="overview-path">
+<span class="step">Junior UX/UI Designer</span><i class="fas fa-arrow-right"></i>
+<span class="step">UX/UI Designer</span><i class="fas fa-arrow-right"></i>
+<span class="step">Senior UX/UI Designer</span><i class="fas fa-arrow-right"></i>
+<span class="step">Lead Product Designer</span><i class="fas fa-arrow-right"></i>
+<span class="step">Design Manager</span><i class="fas fa-arrow-right"></i>
+<span class="step">Head of Design</span><i class="fas fa-arrow-right"></i>
+<span class="step">Chief Design Officer (CDO)</span>
+</div>
+
+<h4><i class="fas fa-building"></i> Industries That Hire UX/UI Designers</h4>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Technology</span>
+<span class="overview-chip">Software Development</span>
+<span class="overview-chip">Banking & Finance</span>
+<span class="overview-chip">Healthcare</span>
+<span class="overview-chip">Education</span>
+<span class="overview-chip">Gaming</span>
+<span class="overview-chip">E-commerce</span>
+<span class="overview-chip">Telecommunications</span>
+<span class="overview-chip">Government</span>
+<span class="overview-chip">Digital Agencies</span>
+<span class="overview-chip">Media & Entertainment</span>
+<span class="overview-chip">Startups</span>
+<span class="overview-chip">Artificial Intelligence</span>
+</div>
+
+<h4><i class="fas fa-scale-balanced"></i> Advantages & Challenges</h4>
+
+<div class="overview-two-col">
+
+<div class="pros">
+
+<h5><i class="fas fa-circle-check"></i> Advantages</h5>
+
+<ul>
+<li>Highly creative and rewarding career</li>
+<li>Excellent salary opportunities</li>
+<li>Strong global demand</li>
+<li>Ability to work remotely</li>
+<li>Opportunity to freelance</li>
+<li>Work on exciting apps and digital products</li>
+<li>Directly improve users' lives through better experiences</li>
+<li>Can transition into Product Design or Product Management</li>
+</ul>
+
+</div>
+
+<div class="cons">
+
+<h5><i class="fas fa-circle-exclamation"></i> Challenges</h5>
+
+<ul>
+<li>Design revisions can be frequent</li>
+<li>Balancing user needs with business goals</li>
+<li>Requires continuous learning of new design tools</li>
+<li>Deadlines may be demanding</li>
+<li>Receiving and implementing design feedback can be challenging</li>
+</ul>
+
+</div>
+
+</div>
+
+<h4><i class="fas fa-chart-line"></i> Future Outlook</h4>
+
+<p>UX/UI Design continues to experience strong global growth as businesses increasingly invest in digital products and customer experiences. Every website, mobile application, software platform, wearable device, and smart product requires designers who understand how users think and interact with technology. Emerging technologies such as Artificial Intelligence, Virtual Reality (VR), Augmented Reality (AR), and Voice Interfaces are creating even more opportunities for UX/UI professionals. Entry-level UX/UI Designers typically earn between <strong>$65,000–$90,000</strong>, experienced designers earn around <strong>$90,000–$130,000</strong>, while senior product designers, design managers, and specialists at major technology companies often earn <strong>$130,000–$190,000+</strong>.</p>
+
+<h4><i class="fas fa-user-check"></i> Who Should Choose This Career?</h4>
+
+<ul>
+<li>Enjoys creativity and artistic design</li>
+<li>Likes solving user problems</li>
+<li>Interested in psychology and human behavior</li>
+<li>Enjoys designing websites and mobile applications</li>
+<li>Has good attention to detail</li>
+<li>Likes working with colors, typography, and layouts</li>
+<li>Enjoys collaborating with developers and product teams</li>
+<li>Wants a technology career that combines creativity with problem-solving</li>
+<li>Dreams of designing products used by millions of people worldwide</li>
+</ul>
+`,
+    salary: "$85,000 - $130,000",
+    growth: "18%",
+    demand: "High",
+    skills: [
+        "Figma",
+        "User Research",
+        "Wireframing",
+        "Prototyping",
+        "Visual Design"
+    ],
+    education: [
+        "Bachelor's in Graphic Design",
+        "Human-Computer Interaction",
+        "UX/UI Certification"
+    ],
+    topCompanies: [
+        "Google",
+        "Apple",
+        "Adobe",
+        "Microsoft",
+        "Figma"
+    ],
+    views: 9876,
+    matchScore: 0
+},
             {
-                id: 4,
-                title: "Digital Marketing Manager",
-                category: "business",
-                icon: "fa-chart-simple",
-                description: "Lead marketing strategies across digital channels. Drive brand awareness and customer acquisition.",
-                longDescription: "Digital marketing managers orchestrate online campaigns across social media, email, SEO, and paid advertising to grow businesses.",
-                salary: "$75,000 - $120,000",
-                growth: "15%",
-                demand: "High",
-                skills: ["SEO/SEM", "Social Media", "Analytics", "Content Strategy", "Email Marketing"],
-                education: ["Bachelor's in Marketing", "Digital Marketing Certificate"],
-                topCompanies: ["HubSpot", "Salesforce", "Adobe", "Google"],
-                views: 8234,
-                matchScore: 0
-            },
+    id: 4,
+    title: "Digital Marketing Manager",
+    category: "business",
+    icon: "fa-chart-simple",
+    description: "Plan, execute, and optimize digital marketing campaigns across multiple online channels to increase brand awareness, generate leads, and drive business growth through data-driven strategies.",
+    longDescription: `
+<p>Digital Marketing Management is the professional discipline of promoting businesses, products, and services through digital channels such as search engines, social media, websites, email, online advertising, and mobile applications. Digital Marketing Managers develop marketing strategies that help organizations attract customers, increase sales, strengthen brand recognition, and build long-term relationships with their audiences. By combining creativity, business knowledge, technology, analytics, and communication skills, they ensure companies remain competitive in today's fast-changing digital world.</p>
+
+<h4><i class="fas fa-list-check"></i> Daily Responsibilities</h4>
+
+<ul>
+<li>Developing digital marketing strategies aligned with business goals</li>
+<li>Managing advertising campaigns across Google Ads, Facebook, Instagram, LinkedIn, TikTok, and other platforms</li>
+<li>Planning and creating engaging marketing content</li>
+<li>Monitoring website traffic and user behavior using analytics tools</li>
+<li>Managing Search Engine Optimization (SEO) and Search Engine Marketing (SEM)</li>
+<li>Running email marketing campaigns to nurture customers</li>
+<li>Managing company social media accounts and online communities</li>
+<li>Analyzing campaign performance and preparing marketing reports</li>
+<li>Working closely with designers, developers, and sales teams</li>
+<li>Researching competitors and identifying new digital marketing opportunities</li>
+</ul>
+
+<h4><i class="fas fa-diagram-project"></i> Career Specializations</h4>
+
+<p>Digital Marketing is a broad field with many exciting areas of specialization.</p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">SEO Specialist</span>
+<span class="overview-chip">Content Marketing Manager</span>
+<span class="overview-chip">Social Media Manager</span>
+<span class="overview-chip">Email Marketing Specialist</span>
+<span class="overview-chip">PPC Advertising Manager</span>
+<span class="overview-chip">Brand Manager</span>
+<span class="overview-chip">Growth Marketing Manager</span>
+<span class="overview-chip">Affiliate Marketing Manager</span>
+<span class="overview-chip">Marketing Analytics Specialist</span>
+<span class="overview-chip">E-commerce Marketing Manager</span>
+</div>
+
+<h4><i class="fas fa-toolbox"></i> Skills You'll Need</h4>
+
+<p><strong>Technical Skills:</strong></p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">SEO</span>
+<span class="overview-chip">Google Ads</span>
+<span class="overview-chip">Google Analytics</span>
+<span class="overview-chip">Meta Ads Manager</span>
+<span class="overview-chip">Email Marketing</span>
+<span class="overview-chip">Content Marketing</span>
+<span class="overview-chip">Social Media Marketing</span>
+<span class="overview-chip">Keyword Research</span>
+<span class="overview-chip">Marketing Automation</span>
+<span class="overview-chip">Canva</span>
+<span class="overview-chip">WordPress</span>
+<span class="overview-chip">CRM Software</span>
+</div>
+
+<p style="margin-top:14px;"><strong>Soft Skills:</strong></p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Creativity</span>
+<span class="overview-chip">Communication</span>
+<span class="overview-chip">Leadership</span>
+<span class="overview-chip">Critical Thinking</span>
+<span class="overview-chip">Problem Solving</span>
+<span class="overview-chip">Time Management</span>
+<span class="overview-chip">Adaptability</span>
+<span class="overview-chip">Negotiation</span>
+<span class="overview-chip">Decision Making</span>
+<span class="overview-chip">Customer Focus</span>
+</div>
+
+<h4><i class="fas fa-graduation-cap"></i> Education Path</h4>
+
+<ul>
+<li>Bachelor's Degree in Marketing</li>
+<li>Bachelor's Degree in Business Administration</li>
+<li>Bachelor's Degree in Communications</li>
+<li>Bachelor's Degree in Digital Media</li>
+<li>Digital Marketing Bootcamps</li>
+<li>Professional Online Certifications</li>
+<li>Self-learning combined with practical marketing projects</li>
+</ul>
+
+<div class="overview-callout">
+<b>Reality check:</b> Employers value practical experience just as much as education. Building successful marketing campaigns, managing social media accounts, running online advertisements, or growing your own website or YouTube channel can make your portfolio stand out.
+</div>
+
+<h4><i class="fas fa-certificate"></i> Useful Certifications</h4>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Google Digital Marketing & E-commerce Certificate</span>
+<span class="overview-chip">Google Ads Certification</span>
+<span class="overview-chip">Google Analytics Certification</span>
+<span class="overview-chip">Meta Certified Digital Marketing Associate</span>
+<span class="overview-chip">HubSpot Content Marketing Certification</span>
+<span class="overview-chip">HubSpot Email Marketing Certification</span>
+<span class="overview-chip">Semrush SEO Certification</span>
+</div>
+
+<h4><i class="fas fa-stairs"></i> Career Progression</h4>
+
+<div class="overview-path">
+<span class="step">Marketing Assistant</span><i class="fas fa-arrow-right"></i>
+<span class="step">Digital Marketing Specialist</span><i class="fas fa-arrow-right"></i>
+<span class="step">Digital Marketing Manager</span><i class="fas fa-arrow-right"></i>
+<span class="step">Senior Marketing Manager</span><i class="fas fa-arrow-right"></i>
+<span class="step">Marketing Director</span><i class="fas fa-arrow-right"></i>
+<span class="step">Vice President of Marketing</span><i class="fas fa-arrow-right"></i>
+<span class="step">Chief Marketing Officer (CMO)</span>
+</div>
+
+<h4><i class="fas fa-building"></i> Industries That Hire Digital Marketing Managers</h4>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Technology</span>
+<span class="overview-chip">E-commerce</span>
+<span class="overview-chip">Healthcare</span>
+<span class="overview-chip">Education</span>
+<span class="overview-chip">Banking & Finance</span>
+<span class="overview-chip">Retail</span>
+<span class="overview-chip">Hospitality</span>
+<span class="overview-chip">Travel & Tourism</span>
+<span class="overview-chip">Media</span>
+<span class="overview-chip">Entertainment</span>
+<span class="overview-chip">Government</span>
+<span class="overview-chip">Marketing Agencies</span>
+<span class="overview-chip">Startups</span>
+</div>
+
+<h4><i class="fas fa-scale-balanced"></i> Advantages & Challenges</h4>
+
+<div class="overview-two-col">
+
+<div class="pros">
+
+<h5><i class="fas fa-circle-check"></i> Advantages</h5>
+
+<ul>
+<li>High demand across nearly every industry</li>
+<li>Opportunity to work remotely</li>
+<li>Creative and dynamic work environment</li>
+<li>Ability to freelance or start your own agency</li>
+<li>Continuous learning with new technologies</li>
+<li>Excellent career growth opportunities</li>
+<li>Strong earning potential with experience</li>
+<li>Ability to directly influence business growth</li>
+</ul>
+
+</div>
+
+<div class="cons">
+
+<h5><i class="fas fa-circle-exclamation"></i> Challenges</h5>
+
+<ul>
+<li>Digital platforms change frequently</li>
+<li>Requires continuous learning and skill updates</li>
+<li>Marketing campaigns do not always succeed</li>
+<li>Can involve tight deadlines and multiple projects</li>
+<li>Keeping up with competitors can be demanding</li>
+</ul>
+
+</div>
+
+</div>
+
+<h4><i class="fas fa-chart-line"></i> Future Outlook</h4>
+
+<p>Digital Marketing continues to be one of the fastest-growing business careers as organizations increasingly shift their advertising budgets toward online platforms. Businesses rely on digital marketers to reach customers through search engines, social media, mobile apps, video platforms, and emerging technologies powered by Artificial Intelligence. As AI-powered advertising, personalized marketing, automation, influencer marketing, and e-commerce continue to expand, skilled Digital Marketing Managers will remain highly valuable. Entry-level professionals typically earn between <strong>$55,000–$75,000</strong>, experienced managers earn around <strong>$75,000–$120,000</strong>, while senior marketing leaders and Chief Marketing Officers often earn <strong>$120,000–$200,000+</strong> depending on company size and industry.</p>
+
+<h4><i class="fas fa-user-check"></i> Who Should Choose This Career?</h4>
+
+<ul>
+<li>Enjoys creativity and storytelling</li>
+<li>Interested in business, branding, and advertising</li>
+<li>Likes using social media and digital technologies</li>
+<li>Enjoys analyzing data and marketing performance</li>
+<li>Has strong communication skills</li>
+<li>Enjoys solving business challenges</li>
+<li>Interested in consumer psychology and customer behavior</li>
+<li>Wants a career with flexibility and entrepreneurial opportunities</li>
+<li>Dreams of helping businesses grow through innovative digital strategies</li>
+</ul>
+`,
+    salary: "$75,000 - $120,000",
+    growth: "15%",
+    demand: "High",
+    skills: [
+        "SEO",
+        "Google Ads",
+        "Social Media Marketing",
+        "Content Strategy",
+        "Google Analytics"
+    ],
+    education: [
+        "Bachelor's in Marketing",
+        "Business Administration",
+        "Digital Marketing Certification"
+    ],
+    topCompanies: [
+        "Google",
+        "HubSpot",
+        "Adobe",
+        "Salesforce",
+        "Amazon"
+    ],
+    views: 8234,
+    matchScore: 0
+},
             {
-                id: 5,
-                title: "Medical Doctor",
-                category: "healthcare",
-                icon: "fa-heartbeat",
-                description: "Diagnose and treat illnesses, promote health and wellness. Make a direct impact on people's lives.",
-                longDescription: "Physicians are at the forefront of healthcare, providing essential medical care and improving patient outcomes.",
-                salary: "$180,000 - $300,000",
-                growth: "7%",
-                demand: "Very High",
-                skills: ["Medical Knowledge", "Patient Care", "Diagnosis", "Communication", "Empathy"],
-                education: ["Medical Degree (MD)", "Residency Program"],
-                topCompanies: ["Mayo Clinic", "Cleveland Clinic", "Johns Hopkins"],
-                views: 14567,
-                matchScore: 0
-            },
+    id: 5,
+    title: "Medical Doctor",
+    category: "healthcare",
+    icon: "fa-user-doctor",
+    description: "Diagnose, treat, and prevent diseases while improving the health and well-being of patients through medical knowledge, clinical skills, and compassionate care.",
+    longDescription: `
+<p>Medicine is the professional discipline of diagnosing, treating, preventing, and managing diseases, injuries, and other health conditions. Medical Doctors (MDs) are highly trained healthcare professionals who combine scientific knowledge, clinical expertise, and compassionate patient care to improve and save lives. They examine patients, order and interpret medical tests, prescribe medications, perform medical procedures, educate patients about healthy lifestyles, and work alongside nurses, pharmacists, surgeons, and other healthcare professionals. Medicine is one of the world's most respected and rewarding careers, requiring lifelong learning, dedication, and a strong commitment to serving humanity.</p>
+
+<h4><i class="fas fa-list-check"></i> Daily Responsibilities</h4>
+
+<ul>
+<li>Examining patients and assessing their symptoms</li>
+<li>Diagnosing illnesses, injuries, and medical conditions</li>
+<li>Ordering and interpreting laboratory tests, X-rays, CT scans, and MRIs</li>
+<li>Prescribing medications and treatment plans</li>
+<li>Performing medical procedures and minor surgeries</li>
+<li>Educating patients on disease prevention and healthy living</li>
+<li>Monitoring patient recovery and adjusting treatments when necessary</li>
+<li>Maintaining accurate patient medical records</li>
+<li>Collaborating with nurses, pharmacists, surgeons, and specialists</li>
+<li>Responding to medical emergencies and providing urgent care</li>
+</ul>
+
+<h4><i class="fas fa-diagram-project"></i> Medical Specializations</h4>
+
+<p>After completing medical school, doctors can specialize in various fields depending on their interests.</p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">General Practitioner (GP)</span>
+<span class="overview-chip">Surgeon</span>
+<span class="overview-chip">Pediatrician</span>
+<span class="overview-chip">Cardiologist</span>
+<span class="overview-chip">Neurologist</span>
+<span class="overview-chip">Dermatologist</span>
+<span class="overview-chip">Psychiatrist</span>
+<span class="overview-chip">Obstetrician & Gynecologist</span>
+<span class="overview-chip">Orthopedic Surgeon</span>
+<span class="overview-chip">Emergency Medicine Physician</span>
+<span class="overview-chip">Radiologist</span>
+<span class="overview-chip">Anesthesiologist</span>
+</div>
+
+<h4><i class="fas fa-toolbox"></i> Skills You'll Need</h4>
+
+<p><strong>Medical & Technical Skills:</strong></p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Clinical Diagnosis</span>
+<span class="overview-chip">Patient Examination</span>
+<span class="overview-chip">Medical Procedures</span>
+<span class="overview-chip">Emergency Care</span>
+<span class="overview-chip">Pharmacology</span>
+<span class="overview-chip">Anatomy</span>
+<span class="overview-chip">Physiology</span>
+<span class="overview-chip">Medical Imaging Interpretation</span>
+<span class="overview-chip">Laboratory Analysis</span>
+<span class="overview-chip">Evidence-Based Medicine</span>
+<span class="overview-chip">Electronic Medical Records</span>
+<span class="overview-chip">Medical Ethics</span>
+</div>
+
+<p style="margin-top:14px;"><strong>Soft Skills:</strong></p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Compassion</span>
+<span class="overview-chip">Communication</span>
+<span class="overview-chip">Critical Thinking</span>
+<span class="overview-chip">Problem Solving</span>
+<span class="overview-chip">Leadership</span>
+<span class="overview-chip">Decision Making</span>
+<span class="overview-chip">Attention to Detail</span>
+<span class="overview-chip">Teamwork</span>
+<span class="overview-chip">Patience</span>
+<span class="overview-chip">Emotional Resilience</span>
+</div>
+
+<h4><i class="fas fa-graduation-cap"></i> Education Path</h4>
+
+<ul>
+<li>Strong performance in Biology, Chemistry, Physics, and Mathematics during secondary school</li>
+<li>Bachelor of Medicine and Bachelor of Surgery (MBBS or MBChB)</li>
+<li>Clinical internships and supervised hospital rotations</li>
+<li>Medical licensing examinations</li>
+<li>Residency training in a chosen specialty</li>
+<li>Optional fellowship for advanced specialization</li>
+<li>Continuing Professional Development (CPD) throughout your career</li>
+</ul>
+
+<div class="overview-callout">
+<b>Reality check:</b> Becoming a doctor requires many years of education and practical training. The journey is demanding, but it offers the opportunity to make a lasting difference in people's lives every day.
+</div>
+
+<h4><i class="fas fa-certificate"></i> Professional Certifications & Licensing</h4>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Medical License</span>
+<span class="overview-chip">Advanced Cardiac Life Support (ACLS)</span>
+<span class="overview-chip">Basic Life Support (BLS)</span>
+<span class="overview-chip">Pediatric Advanced Life Support (PALS)</span>
+<span class="overview-chip">Board Certification</span>
+<span class="overview-chip">Specialist Fellowship Certification</span>
+</div>
+
+<h4><i class="fas fa-stairs"></i> Career Progression</h4>
+
+<div class="overview-path">
+<span class="step">Medical Student</span><i class="fas fa-arrow-right"></i>
+<span class="step">Intern Doctor</span><i class="fas fa-arrow-right"></i>
+<span class="step">Medical Officer</span><i class="fas fa-arrow-right"></i>
+<span class="step">Resident Doctor</span><i class="fas fa-arrow-right"></i>
+<span class="step">Specialist Consultant</span><i class="fas fa-arrow-right"></i>
+<span class="step">Senior Consultant</span><i class="fas fa-arrow-right"></i>
+<span class="step">Medical Director</span>
+</div>
+
+<h4><i class="fas fa-building"></i> Employers</h4>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Public Hospitals</span>
+<span class="overview-chip">Private Hospitals</span>
+<span class="overview-chip">Health Clinics</span>
+<span class="overview-chip">Universities</span>
+<span class="overview-chip">Research Institutions</span>
+<span class="overview-chip">Military Medical Services</span>
+<span class="overview-chip">International NGOs</span>
+<span class="overview-chip">World Health Organizations</span>
+<span class="overview-chip">Pharmaceutical Companies</span>
+<span class="overview-chip">Telemedicine Companies</span>
+<span class="overview-chip">Medical Schools</span>
+<span class="overview-chip">Government Health Agencies</span>
+</div>
+
+<h4><i class="fas fa-scale-balanced"></i> Advantages & Challenges</h4>
+
+<div class="overview-two-col">
+
+<div class="pros">
+
+<h5><i class="fas fa-circle-check"></i> Advantages</h5>
+
+<ul>
+<li>Opportunity to save lives and improve health</li>
+<li>Highly respected profession worldwide</li>
+<li>Excellent salary potential</li>
+<li>Strong job security</li>
+<li>Wide range of medical specialties</li>
+<li>Continuous learning and career development</li>
+<li>Ability to work globally</li>
+<li>High level of personal fulfillment</li>
+</ul>
+
+</div>
+
+<div class="cons">
+
+<h5><i class="fas fa-circle-exclamation"></i> Challenges</h5>
+
+<ul>
+<li>Long and demanding education pathway</li>
+<li>Long working hours and night shifts</li>
+<li>High levels of responsibility</li>
+<li>Emotionally challenging situations</li>
+<li>Requires lifelong learning to stay current with medical advances</li>
+</ul>
+
+</div>
+
+</div>
+
+<h4><i class="fas fa-chart-line"></i> Future Outlook</h4>
+
+<p>Medicine remains one of the world's most stable and respected professions. Growing populations, longer life expectancy, and advances in medical technology continue to increase the demand for qualified doctors. New technologies such as Artificial Intelligence, robotic surgery, precision medicine, genomics, and telemedicine are transforming healthcare while creating new opportunities for physicians. Newly qualified doctors typically earn between <strong>$70,000–$120,000</strong>, experienced physicians earn approximately <strong>$120,000–$250,000</strong>, while specialist consultants and surgeons often earn <strong>$250,000–$500,000+</strong>, depending on their specialty, country, and healthcare system.</p>
+
+<h4><i class="fas fa-user-check"></i> Who Should Choose This Career?</h4>
+
+<ul>
+<li>Enjoys Biology and human anatomy</li>
+<li>Passionate about helping people</li>
+<li>Works well under pressure</li>
+<li>Has strong communication and interpersonal skills</li>
+<li>Enjoys solving complex medical problems</li>
+<li>Has patience, compassion, and empathy</li>
+<li>Can make important decisions quickly</li>
+<li>Committed to lifelong learning</li>
+<li>Dreams of making a positive impact on people's lives through healthcare</li>
+</ul>
+`,
+    salary: "$120,000 - $250,000",
+    growth: "10%",
+    demand: "Very High",
+    skills: [
+        "Clinical Diagnosis",
+        "Patient Care",
+        "Medical Procedures",
+        "Critical Thinking",
+        "Communication"
+    ],
+    education: [
+        "MBBS/MBChB",
+        "Medical Internship",
+        "Residency Training",
+        "Medical License"
+    ],
+    topCompanies: [
+        "Mayo Clinic",
+        "Cleveland Clinic",
+        "Johns Hopkins Medicine",
+        "Kaiser Permanente",
+        "National Health Service (NHS)"
+    ],
+    views: 18765,
+    matchScore: 0
+},
             {
-                id: 6,
-                title: "Mechanical Engineer",
-                category: "engineering",
-                icon: "fa-gear",
-                description: "Design and develop mechanical systems and devices. Work in manufacturing, automotive, and aerospace.",
-                longDescription: "Mechanical engineers create everything from engines to robots, using physics and materials science to solve real-world problems.",
-                salary: "$85,000 - $125,000",
-                growth: "12%",
-                demand: "High",
-                skills: ["CAD", "Thermodynamics", "Materials Science", "Problem Solving", "Project Management"],
-                education: ["Bachelor's in Mechanical Engineering", "Professional Engineer License"],
-                topCompanies: ["Tesla", "Boeing", "SpaceX", "Ford"],
-                views: 6543,
-                matchScore: 0
-            },
-            {
-                id: 7,
-                title: "Cybersecurity Analyst",
-                category: "technology",
-                icon: "fa-shield-hooded",
-                description: "Protect organizations from cyber threats. Monitor systems and respond to security incidents.",
-                longDescription: "Cybersecurity experts are the guardians of the digital world, protecting sensitive data and infrastructure from attacks.",
-                salary: "$95,000 - $145,000",
-                growth: "31%",
-                demand: "Very High",
-                skills: ["Network Security", "Ethical Hacking", "Risk Assessment", "Incident Response", "Security Tools"],
-                education: ["Bachelor's in Cybersecurity", "Security Certifications"],
-                topCompanies: ["CrowdStrike", "Palo Alto Networks", "Microsoft"],
-                views: 11234,
-                matchScore: 0
-            },
-            {
-                id: 8,
-                title: "Graphic Designer",
-                category: "creative",
-                icon: "fa-palette",
-                description: "Create visual concepts for brands, products, and communications. Bring ideas to life through design.",
-                longDescription: "Graphic designers use art and technology to communicate ideas, creating everything from logos to websites.",
-                salary: "$55,000 - $85,000",
-                growth: "8%",
-                demand: "Moderate",
-                skills: ["Adobe Creative Suite", "Typography", "Color Theory", "Branding", "Illustration"],
-                education: ["Bachelor's in Graphic Design", "Portfolio Development"],
-                topCompanies: ["Pentagram", "IDEO", "Frog Design"],
-                views: 7654,
-                matchScore: 0
-            }
+    id: 5,
+    title: "Graphic Designer",
+    category: "creative",
+    icon: "fa-pen-nib",
+    description: "Create visually engaging designs for brands, businesses, and digital platforms using creativity, design principles, and modern design tools to communicate powerful messages and build memorable visual identities.",
+    longDescription: `
+<p>Graphic Design is the professional discipline of creating visual content that communicates ideas, messages, and experiences through typography, images, colors, layouts, illustrations, and digital media. Graphic Designers combine creativity, artistic skills, technology, and communication principles to develop designs that help businesses establish strong brands, attract audiences, and deliver information effectively. They work across industries including technology, advertising, education, entertainment, publishing, and e-commerce to create everything from logos and marketing materials to websites, social media graphics, and digital experiences.</p>
+
+<h4><i class="fas fa-list-check"></i> Daily Responsibilities</h4>
+
+<ul>
+<li>Creating visual designs for brands, products, and marketing campaigns</li>
+<li>Designing logos, brand identities, and visual guidelines</li>
+<li>Developing graphics for websites, social media, advertisements, and mobile applications</li>
+<li>Creating posters, brochures, flyers, presentations, and promotional materials</li>
+<li>Selecting appropriate colors, fonts, layouts, and visual styles</li>
+<li>Working with clients to understand design requirements and objectives</li>
+<li>Editing and improving images, illustrations, and visual assets</li>
+<li>Creating user interface graphics and digital experiences</li>
+<li>Collaborating with marketers, developers, photographers, and content creators</li>
+<li>Researching design trends and exploring new creative techniques</li>
+<li>Reviewing feedback and improving designs based on client or team suggestions</li>
+</ul>
+
+<h4><i class="fas fa-diagram-project"></i> Career Specializations</h4>
+
+<p>Graphic Design offers many creative career paths and areas of specialization.</p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Brand Identity Designer</span>
+<span class="overview-chip">UI/UX Designer</span>
+<span class="overview-chip">Logo Designer</span>
+<span class="overview-chip">Motion Graphics Designer</span>
+<span class="overview-chip">Illustrator</span>
+<span class="overview-chip">Packaging Designer</span>
+<span class="overview-chip">Social Media Designer</span>
+<span class="overview-chip">Web Designer</span>
+<span class="overview-chip">Advertising Designer</span>
+<span class="overview-chip">Creative Director</span>
+</div>
+
+<h4><i class="fas fa-toolbox"></i> Skills You'll Need</h4>
+
+<p><strong>Technical Skills:</strong></p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Adobe Photoshop</span>
+<span class="overview-chip">Adobe Illustrator</span>
+<span class="overview-chip">Adobe InDesign</span>
+<span class="overview-chip">Figma</span>
+<span class="overview-chip">Canva</span>
+<span class="overview-chip">Typography</span>
+<span class="overview-chip">Color Theory</span>
+<span class="overview-chip">Brand Design</span>
+<span class="overview-chip">Photo Editing</span>
+<span class="overview-chip">Vector Design</span>
+<span class="overview-chip">Motion Graphics</span>
+<span class="overview-chip">UI Design</span>
+</div>
+
+<p style="margin-top:14px;"><strong>Soft Skills:</strong></p>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Creativity</span>
+<span class="overview-chip">Communication</span>
+<span class="overview-chip">Attention to Detail</span>
+<span class="overview-chip">Problem Solving</span>
+<span class="overview-chip">Time Management</span>
+<span class="overview-chip">Adaptability</span>
+<span class="overview-chip">Visual Thinking</span>
+<span class="overview-chip">Storytelling</span>
+<span class="overview-chip">Collaboration</span>
+<span class="overview-chip">Innovation</span>
+</div>
+
+<h4><i class="fas fa-graduation-cap"></i> Education Path</h4>
+
+<ul>
+<li>Bachelor's Degree in Graphic Design</li>
+<li>Bachelor's Degree in Fine Arts</li>
+<li>Bachelor's Degree in Visual Communication</li>
+<li>Bachelor's Degree in Digital Media</li>
+<li>UI/UX Design Courses</li>
+<li>Professional Design Certifications</li>
+<li>Self-learning through practical design projects and portfolios</li>
+</ul>
+
+<div class="overview-callout">
+<b>Reality check:</b> A strong portfolio is often more important than formal education in graphic design. Creating real projects such as logos, posters, websites, social media graphics, and brand designs helps designers demonstrate their creativity and attract clients or employers.
+</div>
+
+<h4><i class="fas fa-certificate"></i> Useful Certifications</h4>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Adobe Certified Professional</span>
+<span class="overview-chip">Google UX Design Certificate</span>
+<span class="overview-chip">Meta Social Media Marketing Certificate</span>
+<span class="overview-chip">Figma Design Certification</span>
+<span class="overview-chip">Canva Design School Certification</span>
+<span class="overview-chip">Interaction Design Foundation Courses</span>
+</div>
+
+<h4><i class="fas fa-stairs"></i> Career Progression</h4>
+
+<div class="overview-path">
+<span class="step">Junior Graphic Designer</span><i class="fas fa-arrow-right"></i>
+<span class="step">Graphic Designer</span><i class="fas fa-arrow-right"></i>
+<span class="step">Senior Graphic Designer</span><i class="fas fa-arrow-right"></i>
+<span class="step">Design Lead</span><i class="fas fa-arrow-right"></i>
+<span class="step">Art Director</span><i class="fas fa-arrow-right"></i>
+<span class="step">Creative Director</span><i class="fas fa-arrow-right"></i>
+<span class="step">Chief Creative Officer (CCO)</span>
+</div>
+
+<h4><i class="fas fa-building"></i> Industries That Hire Graphic Designers</h4>
+
+<div class="overview-chip-row">
+<span class="overview-chip">Technology</span>
+<span class="overview-chip">Advertising</span>
+<span class="overview-chip">Education</span>
+<span class="overview-chip">E-commerce</span>
+<span class="overview-chip">Entertainment</span>
+<span class="overview-chip">Media</span>
+<span class="overview-chip">Fashion</span>
+<span class="overview-chip">Publishing</span>
+<span class="overview-chip">Healthcare</span>
+<span class="overview-chip">Gaming</span>
+<span class="overview-chip">Marketing Agencies</span>
+<span class="overview-chip">Startups</span>
+</div>
+
+<h4><i class="fas fa-scale-balanced"></i> Advantages & Challenges</h4>
+
+<div class="overview-two-col">
+
+<div class="pros">
+
+<h5><i class="fas fa-circle-check"></i> Advantages</h5>
+
+<ul>
+<li>High demand across many industries</li>
+<li>Opportunity to work remotely or freelance</li>
+<li>Ability to express creativity and innovation</li>
+<li>Can build a personal brand and design business</li>
+<li>Many opportunities in digital media and technology</li>
+<li>Continuous learning with new design tools</li>
+<li>Ability to work with global clients</li>
+<li>Strong career growth opportunities</li>
+</ul>
+
+</div>
+
+<div class="cons">
+
+<h5><i class="fas fa-circle-exclamation"></i> Challenges</h5>
+
+<ul>
+<li>Requires continuous improvement of creative skills</li>
+<li>Meeting client expectations can be challenging</li>
+<li>Design trends change frequently</li>
+<li>Competition in freelance markets can be high</li>
+<li>Projects may involve tight deadlines</li>
+</ul>
+
+</div>
+
+</div>
+
+<h4><i class="fas fa-chart-line"></i> Future Outlook</h4>
+
+<p>Graphic Design continues to grow as businesses increasingly depend on strong visual communication to compete in digital markets. The rise of websites, mobile applications, social media platforms, online advertising, artificial intelligence design tools, and digital branding has increased demand for skilled designers. Modern Graphic Designers who combine creativity with technology, UI/UX knowledge, animation, and digital marketing skills will have strong career opportunities. Entry-level designers typically earn between <strong>$40,000–$60,000</strong>, experienced designers earn around <strong>$60,000–$90,000</strong>, while senior designers and creative directors can earn <strong>$90,000–$150,000+</strong> depending on experience, location, and industry.</p>
+
+<h4><i class="fas fa-user-check"></i> Who Should Choose This Career?</h4>
+
+<ul>
+<li>Enjoys creativity and visual storytelling</li>
+<li>Likes drawing, designing, and creating digital artwork</li>
+<li>Interested in branding, advertising, and media</li>
+<li>Enjoys solving problems through visual communication</li>
+<li>Has strong attention to detail</li>
+<li>Likes learning creative technology tools</li>
+<li>Enjoys experimenting with colors, layouts, and styles</li>
+<li>Wants a flexible career with freelance opportunities</li>
+<li>Dreams of creating designs that influence people and businesses</li>
+</ul>
+`,
+    salary: "$60,000 - $90,000",
+    growth: "7%",
+    demand: "High",
+    skills: [
+        "Adobe Photoshop",
+        "Adobe Illustrator",
+        "Figma",
+        "Typography",
+        "Brand Design"
+    ],
+    education: [
+        "Bachelor's in Graphic Design",
+        "Visual Communication",
+        "Design Certifications"
+    ],
+    topCompanies: [
+        "Adobe",
+        "Canva",
+        "Apple",
+        "Google",
+        "Microsoft"
+    ],
+    views: 7421,
+    matchScore: 0
+}
         ];
 
-        // ===================== TEST QUESTIONS (FIXED) =====================
+        // ===================== TEST QUESTIONS (EXPANDED) =====================
         const testQuestions = [
             {
                 id: 1,
-                text: "How do you prefer to solve problems?",
+                text: "It's Monday morning and you get to design your ideal workday from scratch. What does it look like?",
                 options: [
-                    { text: "By analyzing data and finding patterns", careerType: "technology" },
-                    { text: "By building and creating physical solutions", careerType: "engineering" },
-                    { text: "By helping and caring for others", careerType: "healthcare" },
-                    { text: "By expressing creativity through design", careerType: "creative" }
+                    { text: "Heads-down for hours, deep in a hard technical problem no one else has cracked yet", careerType: "technology" },
+                    { text: "In a workshop or lab, prototyping and testing a physical design until it works", careerType: "engineering" },
+                    { text: "Meeting people one-on-one, listening closely, and helping them through something difficult", careerType: "healthcare" },
+                    { text: "Pitching an idea, negotiating a deal, or planning how to grow something", careerType: "business" },
+                    { text: "Sketching, drafting, or refining something visual until it finally feels right", careerType: "creative" }
                 ]
             },
             {
                 id: 2,
-                text: "What work environment do you prefer?",
+                text: "A friend describes a problem they're stuck on. What's your instinct?",
                 options: [
-                    { text: "Working independently on complex problems", careerType: "technology" },
-                    { text: "Collaborating with a team on projects", careerType: "business" },
-                    { text: "Working directly with people", careerType: "healthcare" },
-                    { text: "Creative studio environment", careerType: "creative" }
+                    { text: "Ask what data or logs exist, then start debugging systematically", careerType: "technology" },
+                    { text: "Ask about the constraints — materials, budget, physics — then sketch a fix", careerType: "engineering" },
+                    { text: "Ask how they're feeling and what support they actually need right now", careerType: "healthcare" },
+                    { text: "Ask what the goal is and how to get there most efficiently", careerType: "business" },
+                    { text: "Ask what feeling or message they're trying to communicate", careerType: "creative" }
                 ]
             },
             {
                 id: 3,
-                text: "What's your strongest skill?",
+                text: "Which of these would you rather spend a free Saturday doing?",
                 options: [
-                    { text: "Logical thinking and coding", careerType: "technology" },
-                    { text: "Leadership and strategy", careerType: "business" },
-                    { text: "Empathy and communication", careerType: "healthcare" },
-                    { text: "Visual creativity", careerType: "creative" }
+                    { text: "Tinkering with a coding side project or building something with software", careerType: "technology" },
+                    { text: "Taking apart and rebuilding something mechanical or electronic", careerType: "engineering" },
+                    { text: "Volunteering, caregiving, or checking in on someone who's struggling", careerType: "healthcare" },
+                    { text: "Reading about markets, startups, or planning your own side hustle", careerType: "business" },
+                    { text: "Painting, writing, filming, or making something purely for its own sake", careerType: "creative" }
                 ]
             },
             {
                 id: 4,
-                text: "What motivates you most at work?",
+                text: "When you're learning something new, what pulls you in fastest?",
                 options: [
-                    { text: "Solving challenging technical problems", careerType: "technology" },
-                    { text: "Making a positive impact on people", careerType: "healthcare" },
-                    { text: "Building successful businesses", careerType: "business" },
-                    { text: "Creating beautiful things", careerType: "creative" }
+                    { text: "Understanding the underlying system or logic behind how it works", careerType: "technology" },
+                    { text: "Understanding how the physical parts fit and function together", careerType: "engineering" },
+                    { text: "Understanding how it affects real people's wellbeing", careerType: "healthcare" },
+                    { text: "Understanding how it creates value or solves a market problem", careerType: "business" },
+                    { text: "Understanding how it can be expressed or presented beautifully", careerType: "creative" }
                 ]
             },
             {
                 id: 5,
-                text: "How do you handle complex information?",
+                text: "Your team hits a major setback on a project. What's your natural role?",
                 options: [
-                    { text: "Break it down systematically", careerType: "technology" },
-                    { text: "Look for patterns and insights", careerType: "engineering" },
-                    { text: "Discuss with others to understand", careerType: "healthcare" },
-                    { text: "Visualize it creatively", careerType: "creative" }
+                    { text: "Diagnose exactly where the system broke and rebuild it properly", careerType: "technology" },
+                    { text: "Redesign the approach with more robust engineering safeguards", careerType: "engineering" },
+                    { text: "Check on how the team is coping and keep morale steady", careerType: "healthcare" },
+                    { text: "Reassess the plan, timeline, and budget, then re-pitch it to stakeholders", careerType: "business" },
+                    { text: "Reimagine the concept entirely and propose something more original", careerType: "creative" }
+                ]
+            },
+            {
+                id: 6,
+                text: "Which achievement would feel most satisfying to you personally?",
+                options: [
+                    { text: "Shipping software that thousands of people use every day", careerType: "technology" },
+                    { text: "Seeing something you engineered actually built and working in the real world", careerType: "engineering" },
+                    { text: "Knowing you directly improved someone's health or quality of life", careerType: "healthcare" },
+                    { text: "Growing a business or team from nothing into something successful", careerType: "business" },
+                    { text: "Creating a piece of work that genuinely moves people", careerType: "creative" }
+                ]
+            },
+            {
+                id: 7,
+                text: "How do you prefer to handle complex, messy information?",
+                options: [
+                    { text: "Break it into smaller logical pieces and solve each one in order", careerType: "technology" },
+                    { text: "Model it, test it, and iterate based on what the numbers show", careerType: "engineering" },
+                    { text: "Talk it through with people involved to understand the full picture", careerType: "healthcare" },
+                    { text: "Zoom out and look for the strategic pattern or opportunity", careerType: "business" },
+                    { text: "Let it sit, then reinterpret it in a new and unexpected way", careerType: "creative" }
+                ]
+            },
+            {
+                id: 8,
+                text: "Which subject did you enjoy most in school (or would have)?",
+                options: [
+                    { text: "Computer science or mathematics", careerType: "technology" },
+                    { text: "Physics or applied sciences", careerType: "engineering" },
+                    { text: "Biology or psychology", careerType: "healthcare" },
+                    { text: "Economics or business studies", careerType: "business" },
+                    { text: "Art, design, or creative writing", careerType: "creative" }
+                ]
+            },
+            {
+                id: 9,
+                text: "What kind of feedback means the most to you?",
+                options: [
+                    { text: "\"That's an elegant, well-built solution\"", careerType: "technology" },
+                    { text: "\"That design is efficient and holds up under pressure\"", careerType: "engineering" },
+                    { text: "\"You made a real difference for me\"", careerType: "healthcare" },
+                    { text: "\"That decision grew the bottom line\"", careerType: "business" },
+                    { text: "\"That's genuinely original — I've never seen it done that way\"", careerType: "creative" }
+                ]
+            },
+            {
+                id: 10,
+                text: "Pick the tool or workspace you'd be happiest spending 8 hours a day in:",
+                options: [
+                    { text: "A code editor and terminal", careerType: "technology" },
+                    { text: "CAD software or a hands-on lab bench", careerType: "engineering" },
+                    { text: "A clinic, hospital, or care setting", careerType: "healthcare" },
+                    { text: "A spreadsheet, CRM, or boardroom", careerType: "business" },
+                    { text: "A design tool, camera, or sketchbook", careerType: "creative" }
+                ]
+            },
+            {
+                id: 11,
+                text: "How do you make big decisions?",
+                options: [
+                    { text: "Test assumptions and trust what the data or experiments show", careerType: "technology" },
+                    { text: "Weigh trade-offs against hard constraints and safety margins", careerType: "engineering" },
+                    { text: "Consider how it affects the people involved above all else", careerType: "healthcare" },
+                    { text: "Run the numbers and think about risk versus return", careerType: "business" },
+                    { text: "Go with what feels most authentic or expressive", careerType: "creative" }
+                ]
+            },
+            {
+                id: 12,
+                text: "What would frustrate you most in a job?",
+                options: [
+                    { text: "Using outdated tools and never getting to solve interesting problems", careerType: "technology" },
+                    { text: "Never seeing your designs actually get built", careerType: "engineering" },
+                    { text: "Feeling disconnected from the people you're meant to help", careerType: "healthcare" },
+                    { text: "Having no ownership over strategy or growth", careerType: "business" },
+                    { text: "Having no creative freedom or originality allowed", careerType: "creative" }
+                ]
+            },
+            {
+                id: 13,
+                text: "Which headline would you be proudest to see about your work?",
+                options: [
+                    { text: "\"New app streamlines how millions manage their day\"", careerType: "technology" },
+                    { text: "\"Engineer's redesign cuts failure rate by half\"", careerType: "healthcare" },
+                    { text: "\"Local clinic's new program improves patient outcomes\"", careerType: "healthcare" },
+                    { text: "\"Startup founder scales company to new markets\"", careerType: "business" },
+                    { text: "\"Designer's campaign wins international recognition\"", careerType: "creative" }
+                ]
+            },
+            {
+                id: 14,
+                text: "When working on a team, what role do you gravitate toward?",
+                options: [
+                    { text: "The one who figures out how to build it technically", careerType: "technology" },
+                    { text: "The one who makes sure it physically holds up and performs", careerType: "engineering" },
+                    { text: "The one who checks that everyone is okay and supported", careerType: "healthcare" },
+                    { text: "The one who keeps the plan, budget, and goals on track", careerType: "business" },
+                    { text: "The one who makes it look and feel great", careerType: "creative" }
+                ]
+            },
+            {
+                id: 15,
+                text: "If you had to teach a skill to someone else, which would you choose?",
+                options: [
+                    { text: "How to write your first program", careerType: "technology" },
+                    { text: "How to design and build something functional", careerType: "engineering" },
+                    { text: "How to care for someone who's unwell", careerType: "healthcare" },
+                    { text: "How to pitch and sell an idea", careerType: "business" },
+                    { text: "How to draw, design, or tell a visual story", careerType: "creative" }
                 ]
             }
         ];
@@ -1592,7 +2925,7 @@
             
             document.getElementById('modalBody').innerHTML = `
                 <div style="margin-bottom: 30px;">
-                    <p style="font-size: 1.1rem; line-height: 1.6; margin-bottom: 20px;">${career.longDescription}</p>
+                    <div class="overview-block">${career.longDescription}</div>
                     
                     <div class="career-stats" style="margin: 20px 0;">
                         <div class="career-stat">
