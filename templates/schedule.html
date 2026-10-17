@@ -474,6 +474,15 @@
             border-color: var(--danger-color);
         }
 
+        .action-btn:disabled,
+        .action-btn:disabled:hover {
+            background: var(--gray-100) !important;
+            color: var(--gray-400) !important;
+            border-color: var(--gray-200) !important;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
         .slot-status {
             position: absolute;
             top: 20px;
@@ -502,6 +511,21 @@
         .status-incomplete {
             background: var(--danger-color);
             color: white;
+        }
+
+        /* Past days: dimmed in the calendar, Add Event disabled while viewing them */
+        .calendar-day.past {
+            opacity: 0.55;
+        }
+
+        .btn:disabled,
+        .btn:disabled:hover {
+            background: var(--gray-200);
+            color: var(--gray-400);
+            border-color: var(--gray-200);
+            box-shadow: none;
+            transform: none;
+            cursor: not-allowed;
         }
 
         /* Empty State */
@@ -653,6 +677,196 @@
             font-size: 0.7rem;
             font-weight: 600;
             color: white;
+        }
+
+        /* Event Details Card */
+        .details-card {
+            margin-top: 16px;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--border-radius);
+            padding: 18px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .details-card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 14px;
+        }
+
+        .details-card-header > i {
+            color: var(--primary-color);
+        }
+
+        .details-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: var(--gray-400);
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 4px;
+            transition: var(--transition);
+        }
+
+        .details-close:hover {
+            color: var(--dark-color);
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+        }
+
+        .details-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .details-row > i {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+        }
+
+        .details-label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .details-value {
+            display: block;
+            font-size: 0.95rem;
+            color: var(--dark-color);
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .details-description {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .details-description strong {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+
+        .details-description p {
+            color: var(--gray-600);
+            line-height: 1.6;
+        }
+
+        /* Inline delete confirmation */
+        .delete-confirm {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.06);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: var(--border-radius-sm);
+        }
+
+        .delete-confirm > span {
+            flex: 1;
+            min-width: 180px;
+            color: var(--danger-color);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        /* Day Marks */
+        .calendar-day.marked {
+            position: relative;
+            border-color: var(--mark-color, #ec4899);
+        }
+
+        .calendar-day.marked::before {
+            content: '\2605';
+            position: absolute;
+            top: 1px;
+            right: 4px;
+            font-size: 0.65rem;
+            color: var(--mark-color, #ec4899);
+        }
+
+        .calendar-day.marked.today::before {
+            color: white;
+        }
+
+        .day-mark-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            border-radius: var(--border-radius);
+            background: var(--gray-50);
+            border-left: 4px solid var(--mark-color, #ec4899);
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .day-mark-banner i {
+            color: var(--mark-color, #ec4899);
+        }
+
+        .day-mark-banner .mark-repeat {
+            margin-left: auto;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--gray-500);
+        }
+
+        .mark-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .mark-list-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--border-radius-sm);
+        }
+
+        .mark-list-item .mark-text {
+            flex: 1;
+            color: var(--dark-color);
+        }
+
+        .mark-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
 
         /* Notification Toast */
@@ -861,8 +1075,8 @@
                         <button class="btn btn-primary" onclick="openAddEventModal()">
                             <i class="fas fa-plus"></i> Add Event
                         </button>
-                        <button class="btn btn-success" onclick="printSchedule()">
-                            <i class="fas fa-print"></i> Print
+                        <button class="btn btn-success" onclick="openMarkModal()">
+                            <i class="fas fa-star"></i> Mark
                         </button>
                         <button class="btn btn-outline" onclick="shareSchedule()">
                             <i class="fas fa-share-alt"></i> Share
@@ -939,7 +1153,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Duration (minutes)</label>
-                        <input type="number" class="form-control-input" id="eventDuration" placeholder="90" value="60" min="0" step="15">
+                        <input type="number" class="form-control-input" id="eventDuration" placeholder="90" value="60" min="0" step="1">
                     </div>
                     <div class="form-group">
                         <label>Priority</label>
@@ -978,6 +1192,66 @@
         </div>
     </div>
 
+    <!-- ===== MARK DAY MODAL ===== -->
+    <div class="modal-overlay" id="markModal">
+        <div class="modal-content">
+            <h2><i class="fas fa-star" style="color:var(--warning-color);"></i> Mark a Day</h2>
+            <p class="modal-subtitle">Highlight a special day such as a birthday, holiday or trip.</p>
+
+            <form id="markForm" onsubmit="submitMark(event)">
+                <div class="form-group">
+                    <label>Date <span class="required">*</span></label>
+                    <input type="date" class="form-control-input" id="markDate" required onchange="refreshMarkList()">
+                </div>
+
+                <div class="form-group">
+                    <label>Label <span class="required">*</span></label>
+                    <input type="text" class="form-control-input" id="markLabel" list="markSuggestions" placeholder="e.g., My Birthday" maxlength="60" required>
+                    <datalist id="markSuggestions">
+                        <option value="My Birthday"></option>
+                        <option value="Holiday"></option>
+                        <option value="Exam Week"></option>
+                        <option value="Trip"></option>
+                    </datalist>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Color</label>
+                        <select class="form-control-input" id="markColor">
+                            <option value="#ec4899">Pink</option>
+                            <option value="#ef4444">Red</option>
+                            <option value="#8b5cf6">Purple</option>
+                            <option value="#10b981">Green</option>
+                            <option value="#f59e0b">Orange</option>
+                            <option value="#3b82f6">Blue</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Repeat</label>
+                        <label style="display:flex;align-items:center;gap:8px;font-weight:400;padding:12px 0;">
+                            <input type="checkbox" id="markYearly" style="width:auto;"> Every year
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="markListWrap" style="display:none;">
+                    <label>Already marked on this date</label>
+                    <div class="mark-list" id="markList"></div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeMarkModal()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-star"></i> Mark Day
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ===== NOTIFICATION TOAST ===== -->
     <div class="notification-toast" id="notificationToast">
         <div class="notification-icon">
@@ -1000,7 +1274,30 @@
         let selectedDate = new Date();
         let nextEventId = 1;
         let notificationTimeout = null;
+
+        // Returns today's date as YYYY-MM-DD in the user's LOCAL timezone
+        // (toISOString() would use UTC and can be off by a day)
+        function getTodayString() {
+            const t = new Date();
+            const y = t.getFullYear();
+            const m = String(t.getMonth() + 1).padStart(2, '0');
+            const d = String(t.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
         
+        // Default start time for new events: the exact current local time (HH:MM)
+        function getDefaultTimeString() {
+            const now = new Date();
+            return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        }
+
+        // True once the user edits the time field by hand
+        let eventTimeTouched = false;
+
+        // Which event's details card is open, and which event is awaiting delete confirmation
+        let expandedEventId = null;
+        let pendingDeleteId = null;
+
         // ===== LOCAL STORAGE FUNCTIONS =====
         function getStorageKey() {
             const email = '{{ session.get('email', 'default_user') }}';
@@ -1268,18 +1565,162 @@
         let scheduleData = loadScheduleData();
 
         // =========================
+        // DAY MARKS (birthdays, holidays, etc.)
+        // =========================
+        function getMarksKey() {
+            const email = '{{ session.get('email', 'default_user') }}';
+            return `dayMarks_${email}`;
+        }
+
+        function loadMarks() {
+            const stored = localStorage.getItem(getMarksKey());
+            if (stored) {
+                try { return JSON.parse(stored); } catch (e) { console.warn('Failed to parse day marks'); }
+            }
+            return [];
+        }
+
+        function saveMarks() {
+            localStorage.setItem(getMarksKey(), JSON.stringify(marksData));
+        }
+
+        let marksData = loadMarks();
+
+        // month is 0-based (JS style); returns YYYY-MM-DD
+        function dateKey(year, month, day) {
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        // Marks that apply to a date: exact match, or yearly marks on the same month/day
+        function getMarksForDate(year, month, day) {
+            const key = dateKey(year, month, day);
+            const monthDay = key.slice(5);
+            return marksData.filter(mk =>
+                mk.date === key || (mk.yearly && mk.date.slice(5) === monthDay && mk.date <= key)
+            );
+        }
+
+        function renderMarkBanners() {
+            const marks = getMarksForDate(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+            if (marks.length === 0) return;
+            const html = marks.map(mk => `
+                <div class="day-mark-banner" style="--mark-color:${mk.color};">
+                    <i class="fas fa-star"></i>
+                    <span>${escapeHtml(mk.label)}</span>
+                    ${mk.yearly ? '<span class="mark-repeat"><i class="fas fa-redo" style="color:inherit;"></i> Every year</span>' : ''}
+                </div>
+            `).join('');
+            document.getElementById('dailyView').insertAdjacentHTML('afterbegin', html);
+        }
+
+        function openMarkModal() {
+            const selectedKey = dateKey(
+                selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()
+            );
+            document.getElementById('markDate').min = getTodayString();
+            document.getElementById('markDate').value = selectedKey < getTodayString() ? getTodayString() : selectedKey;
+            document.getElementById('markLabel').value = '';
+            document.getElementById('markColor').value = '#ec4899';
+            document.getElementById('markYearly').checked = false;
+            refreshMarkList();
+
+            document.getElementById('markModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => document.getElementById('markLabel').focus(), 100);
+        }
+
+        function closeMarkModal() {
+            document.getElementById('markModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Lists marks already on the chosen date, each with a Remove button
+        function refreshMarkList() {
+            const wrap = document.getElementById('markListWrap');
+            const list = document.getElementById('markList');
+            const val = document.getElementById('markDate').value;
+            list.innerHTML = '';
+            if (!val) { wrap.style.display = 'none'; return; }
+
+            const [y, m, d] = val.split('-').map(Number);
+            const marks = getMarksForDate(y, m - 1, d);
+            if (marks.length === 0) { wrap.style.display = 'none'; return; }
+
+            wrap.style.display = 'block';
+            marks.forEach(mk => {
+                const row = document.createElement('div');
+                row.className = 'mark-list-item';
+                row.innerHTML = `
+                    <span class="mark-dot" style="background:${mk.color};"></span>
+                    <span class="mark-text">${escapeHtml(mk.label)}${mk.yearly ? ' (every year)' : ''}</span>
+                    <button type="button" class="action-btn danger" onclick="deleteMark(${mk.id})">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function submitMark(e) {
+            e.preventDefault();
+
+            const dateStr = document.getElementById('markDate').value;
+            const label = document.getElementById('markLabel').value.trim();
+            const color = document.getElementById('markColor').value;
+            const yearly = document.getElementById('markYearly').checked;
+
+            if (!dateStr || !label) {
+                showNotification('Missing Info', 'Please choose a date and enter a label.', 'error');
+                return;
+            }
+
+            if (dateStr < getTodayString()) {
+                showNotification('Invalid Date', 'You can only mark today or a future date.', 'error');
+                return;
+            }
+
+            marksData = loadMarks();
+            const nextId = marksData.length > 0 ? Math.max(...marksData.map(mk => mk.id)) + 1 : 1;
+            marksData.push({ id: nextId, date: dateStr, label: label, color: color, yearly: yearly });
+            saveMarks();
+            closeMarkModal();
+
+            // Jump to the marked day so the user can see it
+            const [y, m, d] = dateStr.split('-').map(Number);
+            currentDate = new Date(y, m - 1, 1);
+            selectDate(new Date(y, m - 1, d));
+
+            showNotification('Day Marked', `"${label}" marked on ${new Date(y, m - 1, d).toLocaleDateString()}${yearly ? ' (every year)' : ''}.`, 'success');
+        }
+
+        function deleteMark(markId) {
+            marksData = loadMarks().filter(mk => mk.id !== markId);
+            saveMarks();
+            refreshMarkList();
+            renderCalendar();
+            loadSchedule();
+            showNotification('Mark Removed', 'The mark has been removed.', 'warning');
+        }
+
+        // =========================
         // INITIALIZATION
         // =========================
         document.addEventListener('DOMContentLoaded', () => {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            document.getElementById('eventDate').value = `${year}-${month}-${day}`;
-            document.getElementById('eventTime').value = '09:00';
+            // Default to today and block all past dates in the date picker
+            document.getElementById('eventDate').value = getTodayString();
+            document.getElementById('eventDate').min = getTodayString();
+            document.getElementById('eventTime').value = getDefaultTimeString();
+            document.getElementById('markDate').min = getTodayString();
             
             initializeCalendar();
             loadSchedule();
+            updateScheduleHeader();
             updateTodayEvents();
             
             // Check for pending notifications from other tabs
@@ -1299,6 +1740,7 @@
                 loadSchedule();
                 updateTodayEvents();
                 renderCalendar();
+                updateAddEventButtons();
             }, 60000);
         });
 
@@ -1378,6 +1820,17 @@
                 if (hasEventsOnDate(i, month, year)) {
                     dayElement.classList.add('event');
                 }
+
+                if (dateKey(year, month, i) < getTodayString()) {
+                    dayElement.classList.add('past');
+                }
+
+                const dayMarks = getMarksForDate(year, month, i);
+                if (dayMarks.length > 0) {
+                    dayElement.classList.add('marked');
+                    dayElement.style.setProperty('--mark-color', dayMarks[0].color);
+                    dayElement.title = dayMarks.map(mk => mk.label).join(', ');
+                }
                 
                 dayElement.onclick = () => selectDate(new Date(year, month, i));
                 calendarDays.appendChild(dayElement);
@@ -1418,22 +1871,25 @@
         // SCHEDULE FUNCTIONS
         // =========================
 
-        // Flips any event whose date is before today from "upcoming" (or any
+        // Returns the Date when an event ends, from its "HH:MM-HH:MM" time
+        // (or just "HH:MM" when the duration is 0)
+        function getEventEndDate(event) {
+            const parts = event.time.split('-');
+            const endStr = parts[1] || parts[0];
+            const [h, m] = endStr.split(':').map(Number);
+            return new Date(event.year, event.month, event.day, h, m, 0, 0);
+        }
+
+        // Flips any event whose END time has passed from "upcoming" (or any
         // non-completed status) to "incomplete", and persists the change.
         // Events marked "completed" are left alone.
         function updatePastEventStatuses() {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
             let changed = false;
             const newlyIncomplete = [];
             scheduleData.forEach(event => {
                 if (event.status === 'completed') return;
 
-                const eventDate = new Date(event.year, event.month, event.day);
-                eventDate.setHours(0, 0, 0, 0);
-
-                if (eventDate < today && event.status !== 'incomplete') {
+                if (new Date() > getEventEndDate(event) && event.status !== 'incomplete') {
                     event.status = 'incomplete';
                     changed = true;
                     newlyIncomplete.push(event);
@@ -1468,6 +1924,7 @@
             }
             
             loadDailyView(dayEvents);
+            renderMarkBanners();
         }
 
         function loadDailyView(events) {
@@ -1524,13 +1981,34 @@
                                 `<button class="action-btn" onclick="joinEvent(${event.id})">
                                     <i class="fas fa-video"></i> Join
                                 </button>` : ''}
-                            <button class="action-btn success" onclick="markAsCompleted(${event.id})">
-                                <i class="fas fa-check"></i> Complete
-                            </button>
-                            <button class="action-btn danger" onclick="deleteEvent(${event.id})" style="color:var(--danger-color);">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
+                            ${event.status === 'completed' ?
+                                `<button class="action-btn success" disabled title="This event is already completed">
+                                    <i class="fas fa-check-double"></i> Completed
+                                </button>` :
+                            event.status === 'incomplete' ?
+                                `<button class="action-btn success" disabled title="This event has ended and can no longer be completed">
+                                    <i class="fas fa-check"></i> Complete
+                                </button>` :
+                                `<button class="action-btn success" onclick="markAsCompleted(${event.id})">
+                                    <i class="fas fa-check"></i> Complete
+                                </button>`}
+                            ${event.status === 'incomplete' ?
+                                `<button class="action-btn danger" disabled title="This event has ended and can no longer be deleted">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>` :
+                                `<button class="action-btn danger" onclick="deleteEvent(${event.id})" style="color:var(--danger-color);">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>`}
                         </div>
+                        ${event.id === pendingDeleteId ? `
+                            <div class="delete-confirm">
+                                <span><i class="fas fa-exclamation-triangle"></i> Delete this event? This cannot be undone.</span>
+                                <button class="action-btn danger" onclick="confirmDelete(${event.id})">
+                                    <i class="fas fa-trash"></i> Yes, delete
+                                </button>
+                                <button class="action-btn" onclick="cancelDelete()">Cancel</button>
+                            </div>` : ''}
+                        ${event.id === expandedEventId ? buildEventDetailsCard(event) : ''}
                     </div>
                     <span class="slot-status status-${event.status || 'upcoming'}">${event.status || 'upcoming'}</span>
                 `;
@@ -1567,39 +2045,93 @@
             });
         }
 
+        // Add Event buttons are disabled while a past day is selected
+        function updateAddEventButtons() {
+            const selectedKey = dateKey(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+            const isPast = selectedKey < getTodayString();
+            document.querySelectorAll('[onclick="openAddEventModal()"]').forEach(btn => {
+                btn.disabled = isPast;
+                btn.title = isPast ? 'Past days cannot be scheduled. Select today or a future day.' : '';
+            });
+        }
+
         function updateScheduleHeader() {
+            updateAddEventButtons();
             const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('scheduleDate').textContent = selectedDate.toLocaleDateString('en-US', dateOptions);
-            document.getElementById('scheduleTitle').textContent = "Today's Schedule";
+            document.getElementById('scheduleTitle').textContent =
+                dateKey(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()) === getTodayString()
+                    ? "Today's Schedule"
+                    : 'Schedule';
         }
 
         // =========================
         // EVENT HANDLERS
         // =========================
+        // Builds the inline details card shown inside an event
+        function buildEventDetailsCard(event) {
+            const cap = str => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+            const dateLabel = new Date(event.year, event.month, event.day).toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+
+            const rows = [
+                ['fa-book', 'Course', getCourseName(event.course)],
+                ['fa-tag', 'Type', cap(event.type)],
+                ['fa-calendar', 'Date', dateLabel],
+                ['fa-clock', 'Time', event.time],
+                ['fa-hourglass-half', 'Duration', event.duration > 0 ? `${event.duration} min` : 'None'],
+                ['fa-map-marker-alt', 'Location', event.location || 'Not specified'],
+                ['fa-chalkboard-teacher', 'Instructor', event.instructor || 'Not specified'],
+                ['fa-flag', 'Priority', cap(event.priority) || 'Not set'],
+                ['fa-info-circle', 'Status', cap(event.status || 'upcoming')]
+            ];
+
+            const rowsHtml = rows.map(([icon, label, value]) => `
+                <div class="details-row">
+                    <i class="fas ${icon}"></i>
+                    <div>
+                        <span class="details-label">${label}</span>
+                        <span class="details-value">${escapeHtml(value)}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            return `
+                <div class="details-card">
+                    <div class="details-card-header">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Event Details</span>
+                        <button class="details-close" onclick="viewEventDetails(${event.id})" aria-label="Close details">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="details-grid">${rowsHtml}</div>
+                    <div class="details-description">
+                        <strong>Description</strong>
+                        <p>${escapeHtml(event.description || 'No description provided.')}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Toggles the details card for an event (and jumps to its date if needed)
         function viewEventDetails(eventId) {
             const event = scheduleData.find(e => e.id === eventId);
-            if (event) {
-                alert(`📅 Event Details\n\n` +
-                      `Title: ${event.title}\n` +
-                      `Course: ${getCourseName(event.course)}\n` +
-                      `Type: ${event.type.charAt(0).toUpperCase() + event.type.slice(1)}\n` +
-                      `Time: ${event.time}\n` +
-                      `Date: ${new Date(event.year, event.month, event.day).toLocaleDateString()}\n` +
-                      `Location: ${event.location || 'Not specified'}\n` +
-                      `Instructor: ${event.instructor || 'Not specified'}\n` +
-                      `Description: ${event.description || 'No description'}\n` +
-                      `Priority: ${event.priority}\n` +
-                      `Status: ${event.status || 'upcoming'}`);
-            }
+            if (!event) return;
+
+            expandedEventId = (expandedEventId === eventId) ? null : eventId;
+            currentDate = new Date(event.year, event.month, 1);
+            selectDate(new Date(event.year, event.month, event.day));
         }
 
         function joinEvent(eventId) {
             const event = scheduleData.find(e => e.id === eventId);
             if (event) {
                 if (event.type === 'lecture' || event.type === 'lab') {
-                    alert(`Joining ${event.title}...\n\nMeeting link would open here.`);
+                    showNotification('Joining Event', `Joining ${event.title}... The meeting link would open here.`, 'info');
                 } else {
-                    alert('This event cannot be joined.');
+                    showNotification('Cannot Join', 'This event cannot be joined.', 'warning');
                 }
             }
         }
@@ -1607,6 +2139,13 @@
         function markAsCompleted(eventId) {
             const event = scheduleData.find(e => e.id === eventId);
             if (event) {
+                if (event.status === 'completed') {
+                    return;
+                }
+                if (event.status === 'incomplete') {
+                    showNotification('Cannot Complete', 'This event has ended and can no longer be completed.', 'error');
+                    return;
+                }
                 event.status = 'completed';
                 const index = scheduleData.indexOf(event);
                 scheduleData[index] = event;
@@ -1619,41 +2158,78 @@
                 const message = `Completed: ${event.title}`;
                 sendToDashboard(message, 'complete', event.title);
                 
-                alert(`✅ Marked "${event.title}" as completed.`);
             }
         }
 
+        // Step 1: show the inline "Yes, delete / Cancel" bar inside the event card
         function deleteEvent(eventId) {
             const event = scheduleData.find(e => e.id === eventId);
-            if (event) {
-                if (confirm(`Are you sure you want to delete "${event.title}"? This action cannot be undone.`)) {
-                    const index = scheduleData.indexOf(event);
-                    const eventTitle = event.title;
-                    scheduleData.splice(index, 1);
-                    saveScheduleData(scheduleData);
-                    loadSchedule();
-                    updateTodayEvents();
-                    renderCalendar();
-                    
-                    // Send notification to dashboard
-                    const message = `Deleted: ${eventTitle}`;
-                    sendToDashboard(message, 'delete', eventTitle);
-                    
-                    alert(`🗑️ Deleted "${eventTitle}"`);
-                }
+            if (!event) return;
+
+            if (event.status === 'incomplete') {
+                showNotification('Cannot Delete', 'This event has ended and can no longer be deleted.', 'error');
+                return;
             }
+
+            pendingDeleteId = eventId;
+            loadSchedule();
+        }
+
+        function cancelDelete() {
+            pendingDeleteId = null;
+            loadSchedule();
+        }
+
+        // Step 2: actually delete after the user confirms
+        function confirmDelete(eventId) {
+            const index = scheduleData.findIndex(e => e.id === eventId);
+            if (index === -1) {
+                pendingDeleteId = null;
+                loadSchedule();
+                return;
+            }
+
+            const event = scheduleData[index];
+            if (event.status === 'incomplete') {
+                pendingDeleteId = null;
+                loadSchedule();
+                showNotification('Cannot Delete', 'This event has ended and can no longer be deleted.', 'error');
+                return;
+            }
+
+            const eventTitle = event.title;
+            scheduleData.splice(index, 1);
+            saveScheduleData(scheduleData);
+            pendingDeleteId = null;
+            if (expandedEventId === eventId) expandedEventId = null;
+            loadSchedule();
+            updateTodayEvents();
+            renderCalendar();
+
+            // Send notification to dashboard
+            sendToDashboard(`Deleted: ${eventTitle}`, 'delete', eventTitle);
         }
 
         // =========================
         // ADD EVENT MODAL FUNCTIONS
         // =========================
         function openAddEventModal() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            document.getElementById('eventDate').value = `${year}-${month}-${day}`;
-            document.getElementById('eventTime').value = '09:00';
+            const viewedKey = dateKey(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+            if (viewedKey < getTodayString()) {
+                showNotification('Past Day', 'Past days cannot be scheduled. Select today or a future day.', 'error');
+                return;
+            }
+
+            // Refresh "today" every time the modal opens so the minimum date
+            // stays correct even if the tab was left open past midnight
+            const selectedKey = dateKey(
+                selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()
+            );
+            const defaultDate = selectedKey < getTodayString() ? getTodayString() : selectedKey;
+            document.getElementById('eventDate').value = defaultDate;
+            document.getElementById('eventDate').min = getTodayString();
+            document.getElementById('eventTime').value = getDefaultTimeString();
+            eventTimeTouched = false;
             document.getElementById('eventTitle').value = '';
             document.getElementById('eventCourse').value = '';
             document.getElementById('eventType').value = 'lecture';
@@ -1683,7 +2259,7 @@
             const course = document.getElementById('eventCourse').value;
             const type = document.getElementById('eventType').value;
             const dateStr = document.getElementById('eventDate').value;
-            const timeStr = document.getElementById('eventTime').value;
+            let timeStr = document.getElementById('eventTime').value;
             const duration = parseInt(document.getElementById('eventDuration').value) || 60;
             const priority = document.getElementById('eventPriority').value;
             const location = document.getElementById('eventLocation').value.trim();
@@ -1691,18 +2267,41 @@
             const description = document.getElementById('eventDescription').value.trim();
             
             if (!title) {
-                alert('Please enter an event title.');
+                showNotification('Missing Info', 'Please enter an event title.', 'error');
                 return;
             }
             
             if (!dateStr) {
-                alert('Please select a date.');
+                showNotification('Missing Info', 'Please select a date.', 'error');
+                return;
+            }
+
+            // Block dates that have already passed
+            // (YYYY-MM-DD strings compare correctly in chronological order)
+            if (dateStr < getTodayString()) {
+                showNotification('Invalid Date', 'You can only schedule events for today or a future date.', 'error');
                 return;
             }
             
             if (!timeStr) {
-                alert('Please select a time.');
+                showNotification('Missing Info', 'Please select a time.', 'error');
                 return;
+            }
+
+            // If the time field was left at its default, use the exact current
+            // time at the moment of submitting (the form may have been open a while)
+            if (dateStr === getTodayString() && !eventTimeTouched) {
+                timeStr = getDefaultTimeString();
+            }
+
+            // Block times that have already passed today
+            if (dateStr === getTodayString()) {
+                const now = new Date();
+                const [h, m] = timeStr.split(':').map(Number);
+                if (h * 60 + m < now.getHours() * 60 + now.getMinutes()) {
+                    showNotification('Invalid Time', 'That time has already passed today.', 'error');
+                    return;
+                }
             }
             
             const dateParts = dateStr.split('-');
@@ -1737,15 +2336,16 @@
             scheduleData.push(newEvent);
             saveScheduleData(scheduleData);
             closeAddEventModal();
-            loadSchedule();
+
+            // Jump to the event's date so the user can see it right away
+            currentDate = new Date(year, month, 1);
             updateTodayEvents();
-            renderCalendar();
+            selectDate(new Date(year, month, day));
             
             // Send notification to dashboard
             const message = `Added: ${title} (${getCourseName(course) || 'No Course'})`;
             sendToDashboard(message, 'event', title, `${dateStr} at ${timeStr}`);
             
-            alert(`✅ Event "${title}" added successfully! It has been saved permanently.`);
         }
 
         document.getElementById('addEventModal').addEventListener('click', function(e) {
@@ -1754,23 +2354,24 @@
             }
         });
 
+        document.getElementById('eventTime').addEventListener('input', () => { eventTimeTouched = true; });
+
+        document.getElementById('markModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeMarkModal();
+            }
+        });
+
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeAddEventModal();
+                closeMarkModal();
                 closeNotification();
             }
         });
 
-        function printSchedule() {
-            window.print();
-        }
-
         function shareSchedule() {
-            alert('📤 Share options:\n\n' +
-                  '• Export as PDF\n' +
-                  '• Share via Email\n' +
-                  '• Export to Calendar\n' +
-                  '• Generate Shareable Link');
+            showNotification('Share Schedule', 'Sharing (PDF, email, calendar export, link) is not available yet.', 'info');
         }
 
         function getCourseName(courseId) {

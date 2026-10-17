@@ -1,0 +1,43 @@
+{% extends "Teacher/teacher-body.html" %}
+
+{% block allcontent %}
+<style>
+    .teacher-home { max-width: 1100px; margin: 0 auto; font-family: 'Inter', sans-serif; }
+    .teacher-home .hero {
+        background: linear-gradient(135deg, #4361ee, #7209b7); color: #fff;
+        padding: 40px; border-radius: 20px; margin-bottom: 30px;
+    }
+    .teacher-home .hero h1 { margin: 0 0 8px; font-size: 2rem; }
+    .teacher-home .hero p { margin: 0; opacity: .9; }
+    .teacher-home .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+    .teacher-home .card {
+        background: #fff; border-radius: 16px; padding: 24px; text-decoration: none; color: #1e293b;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,.1); transition: transform .2s ease;
+    }
+    .teacher-home .card:hover { transform: translateY(-4px); }
+    .teacher-home .card h3 { margin: 0 0 6px; }
+    .teacher-home .card p { margin: 0; color: #6b7280; font-size: .95rem; }
+</style>
+
+<div class="teacher-home">
+    <div class="hero">
+        <h1>Welcome, {{ firstname }} {{ lastname }}</h1>
+        <p>This is your teacher dashboard.</p>
+    </div>
+
+    <div class="cards">
+        <a class="card" href="/resourses">
+            <h3>Resources</h3>
+            <p>Upload and manage learning materials.</p>
+        </a>
+        <a class="card" href="/messages">
+            <h3>Messages</h3>
+            <p>Talk with learners and colleagues.</p>
+        </a>
+        <a class="card" href="/schedule">
+            <h3>Schedule</h3>
+            <p>Plan your classes and events.</p>
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -231,6 +231,13 @@ def is_admin():
     """True if the logged-in session belongs to an admin."""
     return session.get('role') == 'admin'
 
+def home_endpoint_for_role(role):
+    """Which page each role lands on after login."""
+    if role == 'admin':
+        return 'admin_dashboard'
+    if role == 'teacher':
+        return 'teacher_dashboard'
+    return 'dashboard'   # students / learners
 
 def create_notification(conn, user_id, title, message, icon='fa-bell', color='blue'):
     """
@@ -421,6 +428,38 @@ def init_db():
             user_id INTEGER NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(strategy_id, user_id),
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    # Community opinions (Learning Strategies Hub's "Community Opinions"
+    # tab). Previously this lived entirely in the browser's localStorage
+    # under the key 'learningOpinions', which meant an opinion — and its
+    # like count — only existed on the device that posted it. Persisted
+    # here instead, so opinions (and who's liked them) are shared across
+    # every user and device, the same way strategy_likes already is.
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS opinions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            text TEXT NOT NULL,
+            tag TEXT DEFAULT 'general',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    # Per-user like tracking for opinions — same UNIQUE(opinion_id, user_id)
+    # pattern as resource_likes / strategy_likes above, so a like can only
+    # ever be counted once per person and can be reversed (unlike).
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS opinion_likes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            opinion_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(opinion_id, user_id),
+            FOREIGN KEY (opinion_id) REFERENCES opinions (id),
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
@@ -663,8 +702,48 @@ def get_strategy_like_counts(cursor):
     cursor.execute('SELECT strategy_id, COUNT(*) FROM strategy_likes GROUP BY strategy_id')
     return {row[0]: row[1] for row in cursor.fetchall()}
 
+
+# ============ OPINIONS (Learning Strategies Hub — Community Opinions) ============
+# Unlike the static strategy list above, opinions are entirely
+# user-generated (the text, the tag, and the like count), so — unlike
+# strategy_likes, which only tracks a relationship against a static id —
+# opinions need their own table for the content itself, plus the same
+# opinion_likes relationship table for per-user like tracking.
+
+def get_liked_opinion_ids(cursor, user_id):
+    """Set of opinion ids the given user has liked."""
+    if not user_id:
+        return set()
+    cursor.execute('SELECT opinion_id FROM opinion_likes WHERE user_id = ?', (user_id,))
+    return {row[0] for row in cursor.fetchall()}
+
+
+def serialize_opinion(row, liked_by_current_user=False):
+    """
+    row layout (opinions joined with users, plus a like-count subquery):
+      0 id, 1 user_id, 2 text, 3 tag, 4 created_at, 5 firstname, 6 lastname, 7 likes
+    """
+    firstname = (row[5] or '').strip()
+    lastname = (row[6] or '').strip()
+    author = f"{firstname} {lastname}".strip() or 'Anonymous Learner'
+
+    return {
+        'id': row[0],
+        'user_id': row[1],
+        'text': row[2],
+        'tag': row[3],
+        'date': to_iso_utc(row[4]),
+        'author': author,
+        'likes': row[7] or 0,
+        'liked_by_current_user': liked_by_current_user
+    }
+
 # ============ EXISTING ROUTES ===============
 
+# teachers routes 
+
+
+# learner routes
 @app.route('/admin_messages')
 def admin_messages():
     if 'user_id' not in session:
@@ -735,9 +814,8 @@ def login():
             session['quote_author'] = quote['author']
 
             # Admins land on the admin dashboard, everyone else on the regular student dashboard
-            if session['role'] == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            return redirect(url_for('dashboard'))
+                        # Each role lands on its own page: admin, teacher or learner
+            return redirect(url_for(home_endpoint_for_role(session['role'])))
         else:
             message = "Invalid email or password."
 
@@ -811,17 +889,15 @@ def google_callback():
     session['quote_text'] = quote['text']
     session['quote_author'] = quote['author']
 
-    if session['role'] == 'admin':
-        return redirect(url_for('admin_dashboard'))
-    return redirect(url_for('dashboard'))
+    return redirect(url_for(home_endpoint_for_role(session['role'])))
 
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    if session.get('role') == 'admin':
-        return redirect(url_for('admin_dashboard'))
+    if session.get('role') == 'teacher':
+        return redirect(url_for('teacher_dashboard'))
     
     if 'quote_text' not in session:
         quote = get_random_quote()
@@ -888,6 +964,21 @@ def admin_dashboard():
         total_admins=total_admins,
         total_resources=total_resources,
         recent_users=recent_users
+    )
+
+@app.route('/teacher-dashboard')
+def teacher_dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Only teachers belong here; everyone else goes to their own page.
+    if session.get('role') != 'teacher':
+        return redirect(url_for(home_endpoint_for_role(session.get('role'))))
+
+    return render_template(
+        'Teacher/teacher_dashboard.html',
+        firstname=session['firstname'],
+        lastname=session['lastname']
     )
 
 @app.route('/career')
@@ -960,18 +1051,27 @@ def register():
         lastname = request.form['lastname']
         email = request.form['email']
         password = request.form['password']
-        country = request.form.get('country')  # 'KE' or 'US', from the select field
+        country = request.form.get('country')
 
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
+        chosen_role = (request.form.get('role') or '').strip().lower()
+        role = 'teacher' if chosen_role == 'teacher' else 'student'
 
-        cursor.execute('''
-            INSERT INTO users (firstname, lastname, email, password, role, country)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (firstname, lastname, email, password, 'student', country))
-
-        conn.commit()
-        conn.close()
+        conn = sqlite3.connect('users.db', timeout=10)
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO users (firstname, lastname, email, password, role, country)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (firstname, lastname, email, password, role, country))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            return render_template(
+                'register.html',
+                message='An account with this email already exists. Please log in or use a different email.'
+            )
+        finally:
+            conn.close()
 
         return render_template('Login.html')
 
@@ -2536,6 +2636,137 @@ def toggle_strategy_like(strategy_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+# ============ COMMUNITY OPINIONS (Learning Strategies Hub) ============
+
+@app.route('/api/opinions', methods=['GET', 'POST'])
+def opinions_api():
+    """
+    GET: everyone's shared learning-strategy opinions, newest first,
+    with each one's live like count and (if logged in) whether the
+    current user has liked it.
+    POST: a logged-in user posts a new opinion.
+    """
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+
+    if request.method == 'POST':
+        if 'user_id' not in session:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+        data = request.get_json(silent=True) or {}
+        text = (data.get('text') or '').strip()
+        tag = (data.get('tag') or 'general').strip().lower()
+
+        valid_tags = {'reading', 'memorization', 'mastery', 'general'}
+        if tag not in valid_tags:
+            tag = 'general'
+
+        if not text:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Please share your opinion or strategy!'}), 400
+
+        cursor.execute('''
+            INSERT INTO opinions (user_id, text, tag)
+            VALUES (?, ?, ?)
+        ''', (session['user_id'], text, tag))
+        conn.commit()
+
+        opinion_id = cursor.lastrowid
+        cursor.execute('''
+            SELECT o.id, o.user_id, o.text, o.tag, o.created_at, u.firstname, u.lastname,
+                   (SELECT COUNT(*) FROM opinion_likes ol WHERE ol.opinion_id = o.id) AS likes
+            FROM opinions o
+            LEFT JOIN users u ON o.user_id = u.id
+            WHERE o.id = ?
+        ''', (opinion_id,))
+        row = cursor.fetchone()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'opinion': serialize_opinion(row, liked_by_current_user=False)
+        })
+
+    # GET — anyone can read the shared list, logged in or not
+    cursor.execute('''
+        SELECT o.id, o.user_id, o.text, o.tag, o.created_at, u.firstname, u.lastname,
+               (SELECT COUNT(*) FROM opinion_likes ol WHERE ol.opinion_id = o.id) AS likes
+        FROM opinions o
+        LEFT JOIN users u ON o.user_id = u.id
+        ORDER BY o.created_at DESC, o.id DESC
+    ''')
+    rows = cursor.fetchall()
+    liked_ids = get_liked_opinion_ids(cursor, session.get('user_id'))
+    conn.close()
+
+    return jsonify({
+        'success': True,
+        'opinions': [
+            serialize_opinion(row, liked_by_current_user=row[0] in liked_ids)
+            for row in rows
+        ]
+    })
+
+
+@app.route('/api/opinions/<int:opinion_id>/like', methods=['POST', 'DELETE'])
+def toggle_opinion_like(opinion_id):
+    """
+    POST   -> like an opinion (idempotent: liking twice stays liked)
+    DELETE -> unlike it
+
+    Same UNIQUE(opinion_id, user_id) pattern as resource_likes /
+    strategy_likes above — a like can only ever be counted once per
+    person, tied to their account rather than one browser's
+    localStorage, so repeated clicks (or a different device) can't
+    inflate the count.
+    """
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+        user_id = session['user_id']
+
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id FROM opinions WHERE id = ?', (opinion_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Opinion not found'}), 404
+
+        if request.method == 'DELETE':
+            cursor.execute('''
+                DELETE FROM opinion_likes WHERE opinion_id = ? AND user_id = ?
+            ''', (opinion_id, user_id))
+            conn.commit()
+            liked = False
+        else:
+            try:
+                cursor.execute('''
+                    INSERT INTO opinion_likes (opinion_id, user_id)
+                    VALUES (?, ?)
+                ''', (opinion_id, user_id))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                conn.rollback()  # already liked by this user — no-op, stays liked
+            liked = True
+
+        cursor.execute('SELECT COUNT(*) FROM opinion_likes WHERE opinion_id = ?', (opinion_id,))
+        likes_count = cursor.fetchone()[0]
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'liked': liked,
+            'likes': likes_count
+        })
+
+    except Exception as e:
+        print(f"Error toggling opinion like: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @app.route('/api/users/suggestions', methods=['GET'])
 def get_follow_suggestions():
     """A short list of other real users the logged-in user isn't already
@@ -2813,6 +3044,17 @@ def admin_delete_user(user_id):
 
     # Delete strategy like tracking rows
     cursor.execute('DELETE FROM strategy_likes WHERE user_id = ?', (user_id,))
+
+    # Delete opinion like tracking rows, and any opinions the user posted
+    # (their opinion_likes rows are removed first since opinions is the
+    # parent side of that relationship).
+    cursor.execute('DELETE FROM opinion_likes WHERE user_id = ?', (user_id,))
+    cursor.execute('''
+        DELETE FROM opinion_likes WHERE opinion_id IN (
+            SELECT id FROM opinions WHERE user_id = ?
+        )
+    ''', (user_id,))
+    cursor.execute('DELETE FROM opinions WHERE user_id = ?', (user_id,))
 
     # Delete follow relationships in both directions
     cursor.execute('DELETE FROM follows WHERE follower_id = ? OR following_id = ?', (user_id, user_id))

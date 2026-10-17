@@ -529,6 +529,27 @@
             color: var(--danger-color);
         }
 
+        .like-btn.liked {
+            color: var(--danger-color);
+            cursor: default;
+        }
+
+        .like-btn:disabled {
+            cursor: default;
+            opacity: 0.7;
+        }
+
+        .opinion-loading,
+        .opinion-error {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray-500);
+        }
+
+        .opinion-error {
+            color: var(--danger-color);
+        }
+
         /* Modal Styles */
         .modal {
             display: none;
@@ -796,14 +817,17 @@
                             <option value="mastery">Mastery Method</option>
                             <option value="general">General Tip</option>
                         </select>
-                        <button class="btn btn-primary" onclick="submitOpinion()">
+                        <button class="btn btn-primary" id="submitOpinionBtn" onclick="submitOpinion()">
                             <i class="fas fa-paper-plane"></i> Share Opinion
                         </button>
                     </div>
                 </div>
                 
                 <div class="opinions-list" id="opinionsContainer">
-                    <!-- Opinions will be loaded here -->
+                    <div class="opinion-loading">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
+                        Loading opinions…
+                    </div>
                 </div>
             </div>
         </div>
@@ -1039,12 +1063,184 @@
             }
         ];
 
-        // Community Opinions - Load from localStorage or start empty
-        let opinions = JSON.parse(localStorage.getItem('learningOpinions')) || [];
+        // ================================================================
+        // COMMUNITY OPINIONS — backed by /api/opinions and
+        // /api/opinions/<id>/like on the server (opinions + opinion_likes
+        // tables), not localStorage. Opinions and their like counts are
+        // now shared across every user/device instead of living only in
+        // the browser that posted them, mirroring the same pattern
+        // already used for strategy likes below.
+        // ================================================================
+        let opinions = [];
+        let opinionsLoaded = false;
 
-        let currentUser = "{{ firstname }} {{ lastname }}" || "Anonymous Learner";
+        async function loadOpinions() {
+            const container = document.getElementById('opinionsContainer');
+            try {
+                const response = await fetch('/api/opinions');
+                const result = await response.json();
 
-        // Strategy likes now live in the database (strategy_likes table),
+                if (!result.success) {
+                    throw new Error(result.message || 'Failed to load opinions');
+                }
+
+                opinions = result.opinions || [];
+                opinionsLoaded = true;
+                renderOpinions();
+            } catch (error) {
+                console.error('Error loading opinions:', error);
+                container.innerHTML = `
+                    <div class="opinion-error">
+                        <i class="fas fa-exclamation-circle" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
+                        Couldn't load opinions. Please try again later.
+                    </div>
+                `;
+            }
+        }
+
+        function renderOpinions() {
+            const container = document.getElementById('opinionsContainer');
+
+            if (opinions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="fas fa-comments"></i></div>
+                        <h3 class="empty-title">No Opinions Yet</h3>
+                        <p class="empty-text">Be the first to share your learning strategy!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Already ordered newest-first by the backend, but sort here
+            // too in case a freshly-submitted opinion was unshifted onto
+            // the local array out of that order.
+            container.innerHTML = [...opinions]
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .map(opinion => createOpinionCard(opinion)).join('');
+        }
+
+        function createOpinionCard(opinion) {
+            const tagNames = {
+                reading: "Reading Strategy",
+                memorization: "Memorization",
+                mastery: "Mastery Method",
+                general: "General Tip"
+            };
+
+            const isLiked = !!opinion.liked_by_current_user;
+
+            return `
+                <div class="opinion-card">
+                    <div class="opinion-author">
+                        <div class="author-avatar">
+                            ${(opinion.author || 'A').charAt(0)}
+                        </div>
+                        <div class="author-info">
+                            <div class="author-name">${opinion.author}</div>
+                            <div class="opinion-date">${formatDate(opinion.date)}</div>
+                        </div>
+                        <button class="like-btn ${isLiked ? 'liked' : ''}" data-opinion-like="${opinion.id}" onclick="likeOpinion(${opinion.id})">
+                            <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> ${opinion.likes}
+                        </button>
+                    </div>
+                    <div class="opinion-text">${opinion.text}</div>
+                    <div class="opinion-tags">
+                        <span class="opinion-tag">${tagNames[opinion.tag] || tagNames.general}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function submitOpinion() {
+            const textEl = document.getElementById('opinionText');
+            const tagEl = document.getElementById('opinionTag');
+            const submitBtn = document.getElementById('submitOpinionBtn');
+
+            const text = textEl.value.trim();
+            const tag = tagEl.value;
+
+            if (!text) {
+                alert('Please share your opinion or strategy!');
+                return;
+            }
+
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/opinions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, tag })
+                });
+
+                if (response.status === 401) {
+                    alert('Please log in to share an opinion.');
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    alert(result.message || 'Something went wrong. Please try again.');
+                    return;
+                }
+
+                opinions.unshift(result.opinion);
+                textEl.value = '';
+                renderOpinions();
+
+                alert('Thank you for sharing your learning strategy! Your wisdom will help others learn better.');
+            } catch (error) {
+                console.error('Error submitting opinion:', error);
+                alert('Network error — please try again.');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Toggles a like/unlike against the backend (opinion_likes table),
+        // then updates from the server's response — so the count shown is
+        // always what's actually stored, and a like can only ever be
+        // counted once per account no matter how many times it's clicked.
+        async function likeOpinion(id) {
+            const opinion = opinions.find(o => o.id === id);
+            if (!opinion) return;
+
+            const alreadyLiked = !!opinion.liked_by_current_user;
+
+            const likeButtons = document.querySelectorAll(`[data-opinion-like="${id}"]`);
+            likeButtons.forEach(btn => btn.disabled = true);
+
+            try {
+                const response = await fetch(`/api/opinions/${id}/like`, {
+                    method: alreadyLiked ? 'DELETE' : 'POST'
+                });
+
+                if (response.status === 401) {
+                    alert('Please log in to like an opinion.');
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    alert(result.message || 'Something went wrong. Please try again.');
+                    return;
+                }
+
+                opinion.liked_by_current_user = result.liked;
+                opinion.likes = result.likes;
+                renderOpinions();
+            } catch (error) {
+                console.error('Error toggling opinion like:', error);
+                alert('Network error — please try again.');
+            } finally {
+                document.querySelectorAll(`[data-opinion-like="${id}"]`).forEach(btn => btn.disabled = false);
+            }
+        }
+
+        // Strategy likes live in the database (strategy_likes table),
         // not localStorage — this set is just an in-memory cache of what
         // the backend told us on load, kept in sync as the user clicks.
         let likedStrategyIds = new Set();
@@ -1278,91 +1474,6 @@
             alert(`🎯 Let's practice the "${title}" technique!\n\nStart with small steps and practice daily for best results. Remember, consistency is key to mastering any learning technique.`);
         }
 
-        // Opinion Functions
-        function loadOpinions() {
-            const container = document.getElementById('opinionsContainer');
-            
-            if (opinions.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon"><i class="fas fa-comments"></i></div>
-                        <h3 class="empty-title">No Opinions Yet</h3>
-                        <p class="empty-text">Be the first to share your learning strategy!</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = opinions.sort((a, b) => new Date(b.date) - new Date(a.date))
-                .map(opinion => createOpinionCard(opinion)).join('');
-        }
-
-        function createOpinionCard(opinion) {
-            const tagNames = {
-                reading: "Reading Strategy",
-                memorization: "Memorization",
-                mastery: "Mastery Method",
-                general: "General Tip"
-            };
-            
-            return `
-                <div class="opinion-card">
-                    <div class="opinion-author">
-                        <div class="author-avatar">
-                            ${opinion.author.charAt(0)}
-                        </div>
-                        <div class="author-info">
-                            <div class="author-name">${opinion.author}</div>
-                            <div class="opinion-date">${formatDate(opinion.date)}</div>
-                        </div>
-                        <button class="like-btn" onclick="likeOpinion(${opinion.id})">
-                            <i class="fas fa-heart"></i> ${opinion.likes}
-                        </button>
-                    </div>
-                    <div class="opinion-text">${opinion.text}</div>
-                    <div class="opinion-tags">
-                        <span class="opinion-tag">${tagNames[opinion.tag]}</span>
-                    </div>
-                </div>
-            `;
-        }
-
-        function submitOpinion() {
-            const text = document.getElementById('opinionText').value.trim();
-            const tag = document.getElementById('opinionTag').value;
-            
-            if (!text) {
-                alert('Please share your opinion or strategy!');
-                return;
-            }
-            
-            const newOpinion = {
-                id: Date.now(),
-                author: currentUser,
-                text: text,
-                tag: tag,
-                likes: 0,
-                date: new Date().toISOString().split('T')[0]
-            };
-            
-            opinions.unshift(newOpinion);
-            localStorage.setItem('learningOpinions', JSON.stringify(opinions));
-            
-            document.getElementById('opinionText').value = '';
-            loadOpinions();
-            
-            alert('Thank you for sharing your learning strategy! Your wisdom will help others learn better.');
-        }
-
-        function likeOpinion(id) {
-            const opinion = opinions.find(o => o.id === id);
-            if (opinion) {
-                opinion.likes++;
-                localStorage.setItem('learningOpinions', JSON.stringify(opinions));
-                loadOpinions();
-            }
-        }
-
         // Filter and Sort Functions
         function filterStrategies() {
             const searchTerm = document.getElementById('searchStrategies').value.toLowerCase();
@@ -1466,7 +1577,11 @@
             }
             
             if (tabName === 'opinions') {
-                loadOpinions();
+                if (opinionsLoaded) {
+                    renderOpinions();
+                } else {
+                    loadOpinions();
+                }
             }
         }
 

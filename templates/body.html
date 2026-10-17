@@ -1474,15 +1474,12 @@
 
     <script>
     // ========== COURSE DATA FOR SEARCH (must match courses page) ==========
-    const searchCourses = [
-        { id: 'html', name: 'HTML Tutorial', code: 'HTML5', icon: 'fa-html5', color: '#e44d26', level: 'beginner' },
-        { id: 'css', name: 'CSS Tutorial', code: 'CSS3', icon: 'fa-css3-alt', color: '#264de4', level: 'beginner' },
-        { id: 'javascript', name: 'JavaScript Tutorial', code: 'JS', icon: 'fa-js', color: '#f7df1e', level: 'intermediate' },
-        { id: 'python', name: 'Python Tutorial', code: 'PY3', icon: 'fa-python', color: '#306998', level: 'beginner' },
-        { id: 'sql', name: 'SQL Tutorial', code: 'SQL', icon: 'fa-database', color: '#00758f', level: 'intermediate' },
-        { id: 'react', name: 'React Tutorial', code: 'REACT', icon: 'fa-react', color: '#61dafb', level: 'advanced' }
+        const searchCourses = [
+        { id: 'math', name: 'Grade 10 Mathematics', code: 'MAT 101', icon: 'fa-calculator', iconStyle: 'fas', color: '#7c3aed', level: 'grade-10', levelLabel: 'Grade 10' },
+        { id: 'csl', name: 'Grade 10 Community Service Learning (CSL)', code: 'CSL 101', icon: 'fa-hands-helping', iconStyle: 'fas', color: '#2e7d32', level: 'grade-10', levelLabel: 'Grade 10' },
+        { id: 'english', name: 'Grade 10 English', code: 'ENG 101', icon: 'fa-book-open', iconStyle: 'fas', color: '#0a2e5c', level: 'grade-10', levelLabel: 'Grade 10' },
+        { id: 'kiswahili', name: 'Grade 10 Kiswahili', code: 'KSL Grade 10', icon: 'fa-language', iconStyle: 'fas', color: '#16a34a', level: 'grade-10', levelLabel: 'Grade 10' }
     ];
-
     // ========== RECENTLY VIEWED COURSES (localStorage) ==========
     const RECENT_COURSES_KEY = 'recentSearchedCourses';
 
@@ -1533,7 +1530,7 @@
                         <i class="fas fa-search"></i>
                         No courses found for "${searchTerm}"
                         <div style="margin-top: 8px; font-size: 0.85rem; color: var(--gray-400);">
-                            Try searching for "HTML", "Python", "React", etc.
+                        Try searching for "Mathematics", "English", "Kiswahili", etc.
                         </div>
                     </div>
                 `;
@@ -1549,11 +1546,11 @@
                 html += `
                     <a href="/courses" class="search-result-item" data-course-id="${course.id}" data-search-term="${searchTerm}">
                         <div class="result-icon" style="background: ${course.color}20; color: ${course.color};">
-                            <i class="fab ${course.icon}"></i>
+                            <i class="${course.iconStyle || 'fas'} ${course.icon}"></i>
                         </div>
                         <div class="result-info">
                             <div class="result-title">${nameHighlight}</div>
-                            <div class="result-subtitle">${codeHighlight} • ${course.level.charAt(0).toUpperCase() + course.level.slice(1)} Level</div>
+                            <div class="result-subtitle">${codeHighlight} • ${course.levelLabel || course.level} Level</div>
                         </div>
                         <span class="result-badge">Course</span>
                     </a>
@@ -1588,11 +1585,11 @@
                 html += `
                     <a href="/courses" class="search-result-item" data-course-id="${course.id}">
                         <div class="result-icon" style="background: ${course.color}20; color: ${course.color};">
-                            <i class="fab ${course.icon}"></i>
+                           <i class="${course.iconStyle || 'fas'} ${course.icon}"></i>
                         </div>
                         <div class="result-info">
                             <div class="result-title">${course.name}</div>
-                            <div class="result-subtitle">${course.code} • ${course.level.charAt(0).toUpperCase() + course.level.slice(1)} Level</div>
+                            <div class="result-subtitle">${course.code} • ${course.levelLabel || course.level} Level</div>
                         </div>
                         <span class="result-badge"><i class="fas fa-clock"></i></span>
                     </a>
@@ -1796,6 +1793,36 @@
                 notificationBadge.style.display = 'none';
             }
         }
+        
+                // Picks an icon + colour that matches what the notification is about.
+        // The first rule that matches the type/title/message wins; if nothing
+        // matches, it uses the icon/colour the backend sent, then a plain bell.
+        const NOTIFICATION_STYLES = [
+            { words: ['missed', 'incomplete', 'overdue', 'failed to'],        icon: 'fas fa-triangle-exclamation', color: '#ef4444' },
+            { words: ['quiz passed', 'passed the', 'you passed', 'congrat'],  icon: 'fas fa-trophy',               color: '#f59e0b' },
+            { words: ['quiz', 'test', 'exam', 'assessment'],                  icon: 'fas fa-clipboard-check',      color: '#8b5cf6' },
+            { words: ['streak'],                                              icon: 'fas fa-fire',                 color: '#f97316' },
+            { words: ['grade', 'score', 'gpa', 'result'],                     icon: 'fas fa-award',                color: '#f59e0b' },
+            { words: ['completed', 'finished', 'certificate'],                icon: 'fas fa-circle-check',         color: '#10b981' },
+            { words: ['enrol', 'started', 'new course', 'course'],            icon: 'fas fa-book-open',            color: '#4361ee' },
+            { words: ['deleted', 'cancelled', 'canceled'],                    icon: 'fas fa-calendar-xmark',       color: '#ef4444' },
+            { words: ['scheduled', 'schedule', 'event', 'meeting', 'class'],  icon: 'fas fa-calendar-check',       color: '#06b6d4' },
+            { words: ['reminder', 'due', 'deadline', 'starts in'],            icon: 'fas fa-clock',                color: '#f59e0b' },
+            { words: ['follow'],                                              icon: 'fas fa-user-plus',            color: '#f72585' },
+            { words: ['like', 'liked'],                                       icon: 'fas fa-heart',                color: '#ef4444' },
+            { words: ['comment', 'replied', 'reply'],                         icon: 'fas fa-comment',              color: '#4cc9f0' },
+            { words: ['message', 'inbox', 'chat'],                            icon: 'fas fa-envelope',             color: '#4361ee' },
+            { words: ['post', 'upload', 'shared'],                            icon: 'fas fa-cloud-arrow-up',       color: '#8b5cf6' },
+            { words: ['password', 'security', 'login', 'sign in', 'verify'],  icon: 'fas fa-shield-halved',        color: '#64748b' },
+            { words: ['welcome', 'joined', 'account'],                        icon: 'fas fa-graduation-cap',       color: '#4361ee' }
+        ];
+
+        function getNotificationStyle(n) {
+            const text = `${n.type || ''} ${n.title || ''} ${n.message || ''}`.toLowerCase();
+            const match = NOTIFICATION_STYLES.find(rule => rule.words.some(w => text.includes(w)));
+            if (match) return { icon: match.icon, color: match.color };
+            return { icon: n.icon || 'fas fa-bell', color: n.color || '#4361ee' };
+        }
 
         function renderNotifications() {
             if (notifications.length === 0) {
@@ -1811,9 +1838,10 @@
 
             let html = '';
             notifications.forEach(n => {
-                const iconClass = n.icon || 'fas fa-bell';
-                const bg = n.color ? `${n.color}20` : '#e0e7ff';
-                const fg = n.color || '#4361ee';
+                                const style = getNotificationStyle(n);
+                const iconClass = style.icon;
+                const bg = `${style.color}20`;
+                const fg = style.color;
                 html += `
                     <div class="notification-item ${n.read ? '' : 'unread'}" data-id="${escapeHtml(n.id)}">
                         <div class="notification-icon" style="background-color: ${bg}; color: ${fg};">

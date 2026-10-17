@@ -1,1536 +1,814 @@
 {% extends "body.html" %}
 
 {% block allcontent %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skills Hub - Master New Abilities - eSchool</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --primary-dark: #3a0ca3;
-            --secondary-color: #7209b7;
-            --accent-color: #4cc9f0;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --danger-color: #ef4444;
-            --info-color: #3b82f6;
-            --dark-color: #1e293b;
-            --light-color: #f8fafc;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --border-radius: 20px;
-            --border-radius-sm: 12px;
-            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-            --hover-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        /* Header Styles */
-        .page-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 30px 120px;
-            border-radius: var(--border-radius);
-            margin-bottom: 30px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header-content {
-            position: relative;
-            z-index: 2;
-            text-align: center;
-        }
-
-        .page-icon {
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 25px;
-            font-size: 3rem;
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .page-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 3rem;
-            margin-bottom: 15px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
-
-        .page-subtitle {
-            font-size: 1.2rem;
-            opacity: 0.95;
-            max-width: 700px;
-            margin: 0 auto;
-            line-height: 1.6;
-        }
-
-        /* Tabs Navigation */
-        .tabs {
-            display: flex;
-            background: white;
-            border-radius: 50px;
-            margin-bottom: 40px;
-            overflow: hidden;
-            box-shadow: var(--card-shadow);
-            padding: 5px;
-            flex-wrap: wrap;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 16px 25px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-family: 'Inter', sans-serif;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--gray-600);
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            border-radius: 45px;
-            min-width: 150px;
-        }
-
-        .tab-btn:hover {
-            background: var(--gray-100);
-            color: var(--primary-color);
-        }
-
-        .tab-btn.active {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-        }
-
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Filter Bar */
-        .filter-bar {
-            background: white;
-            padding: 25px;
-            border-radius: var(--border-radius);
-            margin-bottom: 40px;
-            box-shadow: var(--card-shadow);
-        }
-
-        .filter-group {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .search-box {
-            flex: 2;
-            min-width: 300px;
-            position: relative;
-        }
-
-        .search-box i {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gray-400);
-            font-size: 1.1rem;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 14px 16px 14px 45px;
-            border: 2px solid var(--gray-200);
-            border-radius: 50px;
-            font-size: 1rem;
-            transition: var(--transition);
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        .select-control {
-            flex: 1;
-            min-width: 180px;
-            padding: 14px 20px;
-            border: 2px solid var(--gray-200);
-            border-radius: 50px;
-            font-size: 0.95rem;
-            background: white;
-            cursor: pointer;
-            transition: var(--transition);
-            font-weight: 500;
-        }
-
-        /* Skills Grid */
-        .skills-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 30px;
-            margin-top: 20px;
-        }
-
-        /* Skill Card */
-        .skill-card {
-            background: white;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            box-shadow: var(--card-shadow);
-            transition: var(--transition);
-            border: 1px solid var(--gray-200);
-            cursor: pointer;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .skill-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--hover-shadow);
-        }
-
-        .skill-banner {
-            height: 160px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .skill-icon {
-            width: 80px;
-            height: 80px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            color: var(--primary-color);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            border: 4px solid white;
-        }
-
-        .difficulty-badge {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .difficulty-beginner { background: var(--success-color); color: white; }
-        .difficulty-intermediate { background: var(--warning-color); color: white; }
-        .difficulty-advanced { background: var(--danger-color); color: white; }
-
-        .skill-content {
-            padding: 25px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .skill-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin-bottom: 10px;
-        }
-
-        .skill-category {
-            display: inline-block;
-            padding: 4px 12px;
-            background: var(--gray-100);
-            color: var(--primary-color);
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            margin-bottom: 15px;
-        }
-
-        .skill-description {
-            color: var(--gray-600);
-            line-height: 1.6;
-            margin-bottom: 20px;
-            font-size: 0.95rem;
-        }
-
-        .skill-stats {
-            display: flex;
-            gap: 15px;
-            padding: 15px 0;
-            border-top: 1px solid var(--gray-200);
-            border-bottom: 1px solid var(--gray-200);
-            margin: 15px 0;
-        }
-
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
-            color: var(--gray-600);
-        }
-
-        .stat-item i {
-            color: var(--primary-color);
-        }
-
-        .skill-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: auto;
-        }
-
-        .btn {
-            padding: 12px 20px;
-            border-radius: 12px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.9rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            flex: 1;
-            text-decoration: none;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--primary-color);
-            border: 2px solid var(--primary-color);
-        }
-
-        .btn-outline:hover {
-            background: var(--gray-100);
-            transform: translateY(-2px);
-        }
-
-        .btn-save {
-            background: var(--gray-100);
-            color: var(--gray-700);
-            border: 2px solid var(--gray-200);
-        }
-
-        .btn-save:hover {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-            transform: translateY(-2px);
-        }
-
-        .btn-save.saved {
-            background: var(--success-color);
-            color: white;
-            border-color: var(--success-color);
-        }
-
-        .btn-remove {
-            background: var(--danger-color);
-            color: white;
-            border: 2px solid var(--danger-color);
-        }
-
-        .btn-remove:hover {
-            background: #dc2626;
-            transform: translateY(-2px);
-        }
-
-        /* Full Screen Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 10000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            backdrop-filter: blur(8px);
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: var(--border-radius);
-            width: 98%;
-            max-width: 1200px;
-            height: 96vh;
-            max-height: 98vh;
-            position: relative;
-            animation: modalSlideIn 0.4s ease-out;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        @keyframes modalSlideIn {
-            from { 
-                opacity: 0; 
-                transform: scale(0.95) translateY(20px);
-            }
-            to { 
-                opacity: 1; 
-                transform: scale(1) translateY(0);
-            }
-        }
-
-        .modal-header {
-            padding: 30px 40px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            flex-shrink: 0;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
-        }
-
-        .modal-header h2 {
-            font-size: 2.2rem;
-            margin-bottom: 8px;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .modal-header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .close-modal {
-            position: absolute;
-            top: 20px;
-            right: 25px;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            font-size: 1.6rem;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .close-modal:hover {
-            background: var(--danger-color);
-            transform: rotate(90deg);
-        }
-
-        .modal-body {
-            padding: 40px 45px;
-            overflow-y: auto;
-            flex: 1;
-        }
-
-        .modal-body::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .modal-body::-webkit-scrollbar-track {
-            background: var(--gray-100);
-            border-radius: 10px;
-        }
-
-        .modal-body::-webkit-scrollbar-thumb {
-            background: var(--primary-color);
-            border-radius: 10px;
-        }
-
-        .modal-body::-webkit-scrollbar-thumb:hover {
-            background: var(--secondary-color);
-        }
-
-        .modal-body .section {
-            margin-bottom: 30px;
-        }
-
-        .modal-body .section:last-child {
-            margin-bottom: 0;
-        }
-
-        .modal-body .section-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .modal-body .section-title i {
-            font-size: 1.5rem;
-        }
-
-        .modal-body .description-text {
-            font-size: 1.1rem;
-            line-height: 1.8;
-            color: var(--gray-700);
-            padding: 20px;
-            background: var(--gray-50);
-            border-radius: var(--border-radius-sm);
-            border-left: 4px solid var(--primary-color);
-        }
-
-        .modal-body .steps-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .modal-body .step-item {
-            padding: 15px 18px;
-            background: var(--gray-50);
-            border-radius: var(--border-radius-sm);
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            transition: var(--transition);
-            border: 1px solid var(--gray-200);
-        }
-
-        .modal-body .step-item:hover {
-            background: white;
-            border-color: var(--primary-color);
-            transform: translateX(5px);
-        }
-
-        .modal-body .step-number {
-            width: 35px;
-            height: 35px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.9rem;
-            flex-shrink: 0;
-        }
-
-        .modal-body .step-text {
-            font-size: 1rem;
-            color: var(--gray-700);
-        }
-
-        .modal-body .tips-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .modal-body .tip-item {
-            padding: 15px 18px;
-            background: white;
-            border-radius: var(--border-radius-sm);
-            border-left: 4px solid var(--warning-color);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .modal-body .tip-item i {
-            color: var(--warning-color);
-            font-size: 1.2rem;
-            flex-shrink: 0;
-        }
-
-        .modal-body .tip-item span {
-            font-size: 0.95rem;
-            color: var(--gray-700);
-        }
-
-        .modal-body .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-        }
-
-        .modal-body .stat-card-modal {
-            background: var(--gray-50);
-            padding: 20px;
-            border-radius: var(--border-radius-sm);
-            text-align: center;
-            border: 1px solid var(--gray-200);
-            transition: var(--transition);
-        }
-
-        .modal-body .stat-card-modal:hover {
-            background: white;
-            border-color: var(--primary-color);
-            transform: translateY(-3px);
-        }
-
-        .modal-body .stat-number-modal {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-
-        .modal-body .stat-label-modal {
-            font-size: 0.9rem;
-            color: var(--gray-500);
-            margin-top: 5px;
-        }
-
-        .modal-body .modal-actions {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-            flex-wrap: wrap;
-        }
-
-        .modal-body .modal-actions .btn {
-            flex: 1;
-            min-width: 180px;
-            padding: 14px 28px;
-            font-size: 1.05rem;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            background: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--card-shadow);
-        }
-
-        .empty-icon {
-            width: 100px;
-            height: 100px;
-            background: var(--gray-100);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 30px;
-            font-size: 3rem;
-            color: var(--gray-400);
-        }
-
-        /* Toast Notification */
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: var(--dark-color);
-            color: white;
-            padding: 16px 24px;
-            border-radius: 12px;
-            box-shadow: var(--hover-shadow);
-            display: none;
-            align-items: center;
-            gap: 12px;
-            z-index: 9999;
-            animation: slideUp 0.3s ease-out;
-        }
-
-        .toast.show {
-            display: flex;
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(100px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        /* Responsive */
-        @media (max-width: 968px) {
-            .skills-grid {
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            }
-
-            .modal-body .steps-grid,
-            .modal-body .tips-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .modal-body .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .modal-header h2 {
-                font-size: 1.6rem;
-            }
-
-            .modal-body {
-                padding: 25px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .page-title {
-                font-size: 2.2rem;
-            }
-            
-            .tabs {
-                flex-direction: column;
-                border-radius: var(--border-radius);
-            }
-            
-            .filter-group {
-                flex-direction: column;
-            }
-            
-            .search-box, .select-control {
-                width: 100%;
-            }
-            
-            .skill-actions {
-                flex-direction: column;
-            }
-
-            .modal-content {
-                width: 100%;
-                height: 100vh;
-                max-height: 100vh;
-                border-radius: 0;
-            }
-
-            .modal-header {
-                padding: 20px;
-                border-radius: 0;
-            }
-
-            .modal-header h2 {
-                font-size: 1.3rem;
-            }
-
-            .modal-body {
-                padding: 20px;
-            }
-
-            .close-modal {
-                top: 12px;
-                right: 15px;
-                width: 40px;
-                height: 40px;
-                font-size: 1.2rem;
-            }
-
-            .modal-body .stats-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-            }
-
-            .modal-body .modal-actions .btn {
-                min-width: 100%;
-            }
-
-            .modal-body .description-text {
-                font-size: 1rem;
-                padding: 15px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .modal-body .stats-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <header class="page-header">
-            <div class="header-content">
-                <div class="page-icon">
-                    <i class="fas fa-rocket"></i>
-                </div>
-                <h1 class="page-title">Skills Hub</h1>
-                <p class="page-subtitle">Discover your talents, learn amazing skills, and master new abilities from chess to rubik's cube and beyond!</p>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --lc-primary: #4361ee;
+        --lc-secondary: #7209b7;
+        --lc-live: #ef4444;
+        --lc-success: #10b981;
+        --lc-warning: #f59e0b;
+        --lc-dark: #1e293b;
+        --lc-g50: #f9fafb;
+        --lc-g100: #f3f4f6;
+        --lc-g200: #e5e7eb;
+        --lc-g400: #9ca3af;
+        --lc-g500: #6b7280;
+        --lc-g600: #4b5563;
+        --lc-g700: #374151;
+        --lc-radius: 20px;
+        --lc-radius-sm: 12px;
+        --lc-shadow: 0 10px 25px -5px rgba(0,0,0,.1), 0 8px 10px -6px rgba(0,0,0,.02);
+        --lc-hover: 0 20px 40px -12px rgba(0,0,0,.25);
+        --lc-transition: all .3s cubic-bezier(.4,0,.2,1);
+        --lc-surface: #ffffff;
+        --lc-title: #1e293b;
+    }
+    /* Dark mode: switched on from the settings (see applyThemeFromSettings) */
+    html.lc-dark {
+        --lc-surface: #111827;
+        --lc-title: #f1f5f9;
+        --lc-g50: #1f2937;
+        --lc-g100: #273244;
+        --lc-g200: #374151;
+        --lc-g400: #6b7280;
+        --lc-g500: #9ca3af;
+        --lc-g600: #cbd5e1;
+        --lc-g700: #e2e8f0;
+        --lc-shadow: 0 10px 25px -5px rgba(0,0,0,.5);
+    }
+
+    /* Everything is scoped under .live-page so nothing leaks into the site layout */
+    .live-page { font-family: 'Inter', sans-serif; max-width: 1400px; margin: 0 auto; }
+    .live-page *, .lc-modal *, .lc-toast * { box-sizing: border-box; }
+
+    .live-page .page-header {
+        background: linear-gradient(135deg, var(--lc-primary), var(--lc-secondary));
+        color: #fff; padding: 30px 60px; border-radius: var(--lc-radius);
+        margin-bottom: 30px; text-align: center;
+    }
+    .live-page .page-icon {
+        width: 100px; height: 100px; background: rgba(255,255,255,.2); border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; margin: 0 auto 25px;
+        font-size: 3rem; border: 2px solid rgba(255,255,255,.3);
+    }
+    .live-page .page-title { font-family: 'Poppins', sans-serif; font-size: 3rem; font-weight: 800; margin-bottom: 15px; }
+    .live-page .page-subtitle { font-size: 1.2rem; opacity: .95; max-width: 700px; margin: 0 auto; line-height: 1.6; }
+    .live-page .header-pill {
+        display: inline-flex; align-items: center; gap: 10px; margin-top: 20px;
+        background: rgba(255,255,255,.18); padding: 8px 18px; border-radius: 50px; font-weight: 600; font-size: .95rem;
+    }
+
+    .pulse-dot {
+        width: 10px; height: 10px; border-radius: 50%; background: var(--lc-live);
+        display: inline-block; animation: lcPulse 1.4s infinite;
+    }
+    .header-pill .pulse-dot { background: #fff; }
+    @keyframes lcPulse {
+        0% { box-shadow: 0 0 0 0 rgba(239,68,68,.7); }
+        70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+        100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+    }
+
+    .live-page .tabs {
+        display: flex; background: var(--lc-surface); border-radius: 50px; margin-bottom: 30px;
+        box-shadow: var(--lc-shadow); padding: 5px; flex-wrap: wrap;
+    }
+    .live-page .tab-btn {
+        flex: 1; padding: 16px 25px; border: none; background: none; cursor: pointer;
+        font-family: 'Inter', sans-serif; font-size: 1rem; font-weight: 600; color: var(--lc-g600);
+        transition: var(--lc-transition); display: flex; align-items: center; justify-content: center;
+        gap: 12px; border-radius: 45px; min-width: 150px;
+    }
+    .live-page .tab-btn:hover { background: var(--lc-g100); color: var(--lc-primary); }
+    .live-page .tab-btn.active { background: linear-gradient(135deg, var(--lc-primary), var(--lc-secondary)); color: #fff; }
+    .tab-count {
+        background: rgba(0,0,0,.08); padding: 2px 10px; border-radius: 20px; font-size: .8rem;
+    }
+    .tab-btn.active .tab-count { background: rgba(255,255,255,.25); }
+
+    .live-page .filter-bar {
+        background: var(--lc-surface); padding: 20px 25px; border-radius: var(--lc-radius);
+        margin-bottom: 30px; box-shadow: var(--lc-shadow);
+    }
+    .live-page .filter-group { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+    .live-page .search-box { flex: 2; min-width: 260px; position: relative; }
+    .live-page .search-box i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--lc-g400); }
+    .live-page .form-control {
+        width: 100%; padding: 14px 16px 14px 45px; border: 2px solid var(--lc-g200);
+        border-radius: 50px; font-size: 1rem; transition: var(--lc-transition);
+        background: var(--lc-surface); color: var(--lc-g700);
+    }
+    .live-page .form-control:focus, .live-page .select-control:focus {
+        outline: none; border-color: var(--lc-primary); box-shadow: 0 0 0 3px rgba(67,97,238,.1);
+    }
+    .live-page .select-control {
+        flex: 1; min-width: 160px; padding: 14px 20px; border: 2px solid var(--lc-g200);
+        border-radius: 50px; font-size: .95rem; background: var(--lc-surface); color: var(--lc-g700); cursor: pointer; font-weight: 500;
+    }
+
+    .tab-content { display: none; animation: lcFade .4s ease-out; }
+    .tab-content.active { display: block; }
+    @keyframes lcFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: none; } }
+
+    .classes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 28px; }
+
+    .class-card {
+        background: var(--lc-surface); border-radius: var(--lc-radius); overflow: hidden; box-shadow: var(--lc-shadow);
+        transition: var(--lc-transition); border: 1px solid var(--lc-g200); cursor: pointer;
+        display: flex; flex-direction: column;
+    }
+    .class-card:hover { transform: translateY(-8px); box-shadow: var(--lc-hover); }
+    .class-card.is-live { border-color: var(--lc-live); box-shadow: 0 10px 25px -5px rgba(239,68,68,.25); }
+
+    .class-banner { height: 150px; position: relative; display: flex; align-items: center; justify-content: center; }
+    .class-icon {
+        width: 76px; height: 76px; background: #fff; border-radius: 50%; display: flex;
+        align-items: center; justify-content: center; font-size: 2.2rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,.2); border: 4px solid #fff;
+    }
+    .status-badge {
+        position: absolute; top: 14px; left: 14px; padding: 6px 14px; border-radius: 20px;
+        font-size: .78rem; font-weight: 700; display: flex; align-items: center; gap: 8px; letter-spacing: .3px;
+    }
+    .status-live { background: var(--lc-live); color: #fff; }
+    .status-live .pulse-dot { background: #fff; }
+    .status-upcoming { background: #fff; color: var(--lc-primary); }
+    .status-soon { background: var(--lc-warning); color: #fff; }
+    .status-ended { background: var(--lc-g500); color: #fff; }
+    .viewers-badge {
+        position: absolute; top: 14px; right: 14px; background: rgba(0,0,0,.45); color: #fff;
+        padding: 6px 12px; border-radius: 20px; font-size: .78rem; font-weight: 600;
+    }
+
+    .class-content { padding: 22px 24px 24px; flex: 1; display: flex; flex-direction: column; }
+    .class-subject {
+        display: inline-block; align-self: flex-start; padding: 4px 12px; background: var(--lc-g100);
+        border-radius: 20px; font-size: .78rem; font-weight: 600; margin-bottom: 10px;
+    }
+    .class-title { font-family: 'Poppins', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--lc-title); margin-bottom: 8px; }
+    .class-desc { color: var(--lc-g600); line-height: 1.6; font-size: .93rem; margin-bottom: 14px; }
+    .class-meta {
+        display: flex; flex-direction: column; gap: 8px; padding: 14px 0;
+        border-top: 1px solid var(--lc-g200); border-bottom: 1px solid var(--lc-g200); margin-bottom: 16px;
+        font-size: .9rem; color: var(--lc-g600);
+    }
+    .class-meta div { display: flex; align-items: center; gap: 10px; }
+    .class-meta i { color: var(--lc-primary); width: 16px; text-align: center; }
+    .class-actions { display: flex; gap: 10px; margin-top: auto; }
+
+    .lc-btn {
+        padding: 12px 18px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer;
+        transition: var(--lc-transition); font-family: 'Inter', sans-serif; font-size: .9rem;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: 1; text-decoration: none;
+    }
+    .lc-btn-primary { background: linear-gradient(135deg, var(--lc-primary), var(--lc-secondary)); color: #fff; }
+    .lc-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(67,97,238,.3); }
+    .lc-btn-live { background: var(--lc-live); color: #fff; }
+    .lc-btn-live:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(239,68,68,.35); }
+    .lc-btn-outline { background: transparent; color: var(--lc-primary); border: 2px solid var(--lc-primary); }
+    .lc-btn-outline:hover { background: var(--lc-g100); }
+    .lc-btn-remind { background: var(--lc-g100); color: var(--lc-g700); border: 2px solid var(--lc-g200); }
+    .lc-btn-remind:hover { background: var(--lc-primary); color: #fff; border-color: var(--lc-primary); }
+    .lc-btn-remind.on { background: var(--lc-success); color: #fff; border-color: var(--lc-success); }
+
+    .lc-empty { text-align: center; padding: 60px 20px; background: var(--lc-surface); border-radius: var(--lc-radius); box-shadow: var(--lc-shadow); grid-column: 1 / -1; }
+    .lc-empty-icon {
+        width: 100px; height: 100px; background: var(--lc-g100); border-radius: 50%; display: flex;
+        align-items: center; justify-content: center; margin: 0 auto 25px; font-size: 3rem; color: var(--lc-g400);
+    }
+    .lc-empty h3 { font-family: 'Poppins', sans-serif; font-size: 1.6rem; color: var(--lc-g600); margin-bottom: 10px; }
+    .lc-empty p { color: var(--lc-g500); max-width: 460px; margin: 0 auto; line-height: 1.6; }
+
+    /* Modal */
+    .lc-modal {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 10000;
+        align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px);
+        font-family: 'Inter', sans-serif;
+    }
+    .lc-modal-content {
+        background: var(--lc-surface); border-radius: var(--lc-radius); width: 98%; max-width: 1100px; max-height: 96vh;
+        display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,.5);
+        animation: lcSlide .35s ease-out;
+    }
+    @keyframes lcSlide { from { opacity: 0; transform: scale(.95) translateY(20px); } to { opacity: 1; transform: none; } }
+    .lc-modal-header { padding: 26px 40px; color: #fff; position: relative; flex-shrink: 0; }
+    .lc-modal-header h2 { font-family: 'Poppins', sans-serif; font-size: 2rem; margin-bottom: 6px; padding-right: 60px; }
+    .lc-modal-header p { opacity: .92; }
+    .lc-close {
+        position: absolute; top: 18px; right: 22px; background: rgba(255,255,255,.2); border: none; color: #fff;
+        width: 46px; height: 46px; border-radius: 50%; font-size: 1.4rem; cursor: pointer; transition: var(--lc-transition);
+    }
+    .lc-close:hover { background: var(--lc-live); transform: rotate(90deg); }
+    .lc-modal-body { padding: 30px 40px; overflow-y: auto; flex: 1; }
+    .lc-section { margin-bottom: 26px; }
+    .lc-section-title { font-size: 1.15rem; font-weight: 700; color: var(--lc-title); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+    .lc-text { line-height: 1.8; color: var(--lc-g700); padding: 18px; background: var(--lc-g50); border-radius: var(--lc-radius-sm); border-left: 4px solid var(--lc-primary); }
+
+    .player-box { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--lc-radius-sm); overflow: hidden; margin-bottom: 26px; }
+    .player-box iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .player-placeholder {
+        position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: #fff; text-align: center; padding: 20px; gap: 14px;
+    }
+    .player-placeholder i { font-size: 3rem; opacity: .85; }
+
+    .topics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .topic-item { padding: 13px 16px; background: var(--lc-g50); border: 1px solid var(--lc-g200); border-radius: var(--lc-radius-sm); display: flex; align-items: center; gap: 12px; color: var(--lc-g700); }
+    .topic-num { width: 30px; height: 30px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+    .lc-modal-actions { display: flex; gap: 14px; flex-wrap: wrap; }
+    .lc-modal-actions .lc-btn { min-width: 170px; padding: 14px 24px; }
+
+    .lc-toast {
+        position: fixed; bottom: 30px; right: 30px; background: var(--lc-dark); color: #fff; padding: 16px 24px;
+        border-radius: 12px; box-shadow: var(--lc-hover); display: none; align-items: center; gap: 12px;
+        z-index: 10001; font-family: 'Inter', sans-serif; max-width: 90vw;
+    }
+    .lc-toast.show { display: flex; animation: lcToast .3s ease-out; }
+    @keyframes lcToast { from { transform: translateY(80px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    @media (max-width: 768px) {
+        .live-page .page-header { padding: 25px 20px; }
+        .live-page .page-title { font-size: 2.1rem; }
+        .live-page .tabs { flex-direction: column; border-radius: var(--lc-radius); }
+        .live-page .filter-group { flex-direction: column; align-items: stretch; }
+        .classes-grid { grid-template-columns: 1fr; }
+        .lc-modal { padding: 0; }
+        .lc-modal-content { width: 100%; height: 100vh; max-height: 100vh; border-radius: 0; }
+        .lc-modal-header { padding: 20px; }
+        .lc-modal-header h2 { font-size: 1.35rem; }
+        .lc-modal-body { padding: 20px; }
+        .topics-grid { grid-template-columns: 1fr; }
+        .lc-modal-actions .lc-btn { min-width: 100%; }
+    }
+</style>
+
+<div class="live-page">
+    <header class="page-header">
+        <div class="page-icon"><i class="fas fa-video"></i></div>
+        <h1 class="page-title">Live Classes</h1>
+        <p class="page-subtitle">Find classes happening right now, watch live with your teachers, and set reminders for the ones coming up.</p>
+        <div class="header-pill"><span class="pulse-dot"></span><span id="headerLiveText">Checking live classes…</span></div>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="live" onclick="switchTab('live')">
+            <i class="fas fa-broadcast-tower"></i> Live Now <span class="tab-count" id="countLive">0</span>
+        </button>
+        <button class="tab-btn" data-tab="upcoming" onclick="switchTab('upcoming')">
+            <i class="fas fa-calendar-alt"></i> Upcoming <span class="tab-count" id="countUpcoming">0</span>
+        </button>
+        <button class="tab-btn" data-tab="reminders" onclick="switchTab('reminders')">
+            <i class="fas fa-bell"></i> My Reminders <span class="tab-count" id="countReminders">0</span>
+        </button>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-group">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchClasses" class="form-control" placeholder="Search classes, teachers or topics…">
             </div>
-        </header>
-
-        <!-- Tabs Navigation -->
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('explore')">
-                <i class="fas fa-compass"></i> Explore Skills
-            </button>
-            <button class="tab-btn" onclick="switchTab('mySkills')">
-                <i class="fas fa-user-graduate"></i> My Skills
-            </button>
-        </div>
-
-        <!-- Explore Skills Tab -->
-        <div id="explore-tab" class="tab-content active">
-            <div class="filter-bar">
-                <div class="filter-group">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="searchSkills" class="form-control" placeholder="Search skills (chess, rubik's cube, drawing...)">
-                    </div>
-                    <select id="categoryFilter" class="select-control">
-                        <option value="">All Categories</option>
-                        <option value="puzzle">Puzzle & Games</option>
-                        <option value="creative">Creative Arts</option>
-                        <option value="mental">Mental Abilities</option>
-                        <option value="physical">Physical Skills</option>
-                        <option value="technology">Technology</option>
-                    </select>
-                    <select id="difficultyFilter" class="select-control">
-                        <option value="">All Difficulties</option>
-                        <option value="beginner">Beginner</option>
-                        <option value="intermediate">Intermediate</option>
-                        <option value="advanced">Advanced</option>
-                    </select>
-                    <select id="sortSkills" class="select-control">
-                        <option value="popular">Most Popular</option>
-                        <option value="newest">Newest First</option>
-                        <option value="name">Name A-Z</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="skills-grid" id="skillsContainer">
-                <!-- Skills will be loaded here -->
-            </div>
-        </div>
-
-        <!-- My Skills Tab -->
-        <div id="mySkills-tab" class="tab-content">
-            <div style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
-                <button class="btn btn-primary" onclick="filterMySkills('all')" style="flex: 0 1 auto; padding: 10px 20px;">
-                    <i class="fas fa-list"></i> All
-                </button>
-                <button class="btn btn-outline" onclick="filterMySkills('learning')" style="flex: 0 1 auto; padding: 10px 20px;">
-                    <i class="fas fa-play-circle"></i> Learning
-                </button>
-                <button class="btn btn-outline" onclick="filterMySkills('saved')" style="flex: 0 1 auto; padding: 10px 20px;">
-                    <i class="fas fa-bookmark"></i> Saved
-                </button>
-            </div>
-            <div class="skills-grid" id="mySkillsContainer">
-                <!-- User's skills will be loaded here -->
-            </div>
-            <div class="empty-state" id="mySkillsEmpty" style="display: none;">
-                <div class="empty-icon">
-                    <i class="fas fa-graduation-cap"></i>
-                </div>
-                <h3 class="empty-title">Start Your Skills Journey</h3>
-                <p class="empty-text">Begin learning a new skill from our collection and track your progress!</p>
-                <button class="btn btn-primary" onclick="switchTab('explore')">
-                    <i class="fas fa-compass"></i> Explore Skills
-                </button>
-            </div>
+            <select id="subjectFilter" class="select-control">
+                <option value="">All Subjects</option>
+                <option value="math">Mathematics</option>
+                <option value="english">English</option>
+                <option value="kiswahili">Kiswahili</option>
+                <option value="csl">Community Service Learning</option>
+            </select>
+            <select id="whenFilter" class="select-control">
+                <option value="">Any Day</option>
+                <option value="today">Today</option>
+                <option value="tomorrow">Tomorrow</option>
+                <option value="week">Next 7 Days</option>
+            </select>
         </div>
     </div>
 
-    <!-- Full Screen Skill Modal -->
-    <div id="skillModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Skill Title</h2>
-                <p id="modalCategory">Category</p>
-                <button class="close-modal" onclick="closeSkillModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                <!-- Skill details will be loaded here -->
-            </div>
+    <div id="live-tab" class="tab-content active"><div class="classes-grid" id="liveContainer"></div></div>
+    <div id="upcoming-tab" class="tab-content"><div class="classes-grid" id="upcomingContainer"></div></div>
+    <div id="reminders-tab" class="tab-content"><div class="classes-grid" id="remindersContainer"></div></div>
+</div>
+
+<!-- Class details / player modal -->
+<div id="classModal" class="lc-modal">
+    <div class="lc-modal-content">
+        <div class="lc-modal-header" id="modalHeader">
+            <h2 id="modalTitle">Class</h2>
+            <p id="modalSub"></p>
+            <button class="lc-close" onclick="closeClassModal()" aria-label="Close"><i class="fas fa-times"></i></button>
         </div>
+        <div class="lc-modal-body" id="modalBody"></div>
     </div>
+</div>
 
-    <!-- Toast Notification -->
-    <div class="toast" id="toast">
-        <i class="fas fa-check-circle" style="color: var(--success-color);"></i>
-        <span id="toastMessage">Skill saved!</span>
-    </div>
+<div class="lc-toast" id="toast"><i class="fas fa-bell" style="color: var(--lc-warning);"></i><span id="toastMessage"></span></div>
 
-    <script>
-        // Skills Database
-        const skills = [
-            {
-                id: 1,
-                title: "Chess Mastery",
-                category: "puzzle",
-                icon: "fa-chess-queen",
-                difficulty: "intermediate",
-                timeToLearn: "20-40 hours",
-                popularity: 98,
-                description: "Learn strategic thinking, tactics, and game patterns to become a chess master.",
-                longDescription: "Chess is the ultimate game of strategy. This course covers openings, middle game tactics, endgame principles, and advanced strategies.",
-                steps: [
-                    "Learn piece movements and basic rules",
-                    "Master basic tactics (forks, pins, skewers)",
-                    "Study common opening principles",
-                    "Practice endgame techniques",
-                    "Analyze grandmaster games"
-                ],
-                tips: [
-                    "Play daily to build pattern recognition",
-                    "Analyze your losses to learn from mistakes",
-                    "Study one opening deeply",
-                    "Join local chess clubs for practice"
-                ],
-                learners: 15234,
-                lessons: 25,
-                practiceTime: "30 min/day"
-            },
-            {
-                id: 2,
-                title: "Rubik's Cube Solving",
-                category: "puzzle",
-                icon: "fa-cube",
-                difficulty: "beginner",
-                timeToLearn: "5-10 hours",
-                popularity: 95,
-                description: "Learn to solve the 3x3 Rubik's Cube in under 2 minutes using the beginner's method.",
-                longDescription: "Master the world's most famous puzzle! Learn layer-by-layer method, algorithms, and speedcubing techniques.",
-                steps: [
-                    "Understand cube notation",
-                    "Solve the white cross",
-                    "Complete the first two layers",
-                    "Orient the last layer",
-                    "Permute the last layer"
-                ],
-                tips: [
-                    "Practice algorithms slowly at first",
-                    "Use finger tricks for speed",
-                    "Time yourself to track progress",
-                    "Learn CFOP for advanced solving"
-                ],
-                learners: 23456,
-                lessons: 15,
-                practiceTime: "15 min/day"
-            },
-            {
-                id: 3,
-                title: "Speed Reading",
-                category: "mental",
-                icon: "fa-book-open",
-                difficulty: "intermediate",
-                timeToLearn: "15-20 hours",
-                popularity: 89,
-                description: "Read faster while maintaining comprehension. Perfect for students and professionals.",
-                longDescription: "Learn techniques to double or triple your reading speed while improving comprehension and retention.",
-                steps: [
-                    "Eliminate subvocalization",
-                    "Use peripheral vision",
-                    "Practice with a pointer",
-                    "Expand visual span",
-                    "Regular comprehension tests"
-                ],
-                tips: [
-                    "Start with easier material",
-                    "Practice 15 minutes daily",
-                    "Track your words per minute",
-                    "Take breaks between sessions"
-                ],
-                learners: 18765,
-                lessons: 20,
-                practiceTime: "20 min/day"
-            },
-            {
-                id: 4,
-                title: "Calligraphy & Hand Lettering",
-                category: "creative",
-                icon: "fa-pen-fancy",
-                difficulty: "beginner",
-                timeToLearn: "10-15 hours",
-                popularity: 92,
-                description: "Create beautiful handwritten art with modern calligraphy techniques.",
-                longDescription: "Discover the art of beautiful writing. Learn brush lettering, pointed pen techniques, and create stunning designs.",
-                steps: [
-                    "Understand basic strokes",
-                    "Practice letterforms",
-                    "Connect letters into words",
-                    "Add flourishes and decoration",
-                    "Create final compositions"
-                ],
-                tips: [
-                    "Use grid paper for practice",
-                    "Invest in quality pens",
-                    "Trace master works to learn",
-                    "Join lettering communities"
-                ],
-                learners: 12345,
-                lessons: 18,
-                practiceTime: "20 min/day"
-            },
-            {
-                id: 5,
-                title: "Memory Techniques",
-                category: "mental",
-                icon: "fa-brain",
-                difficulty: "intermediate",
-                timeToLearn: "12-18 hours",
-                popularity: 94,
-                description: "Master mnemonics, memory palaces, and recall techniques to remember anything.",
-                longDescription: "Learn powerful memory techniques used by memory champions to remember names, numbers, and complex information.",
-                steps: [
-                    "Learn the method of loci",
-                    "Create vivid mental images",
-                    "Use peg systems for numbers",
-                    "Build memory palaces",
-                    "Practice recall speed"
-                ],
-                tips: [
-                    "Start with short lists",
-                    "Use sensory details in images",
-                    "Review memories regularly",
-                    "Teach techniques to others"
-                ],
-                learners: 14567,
-                lessons: 22,
-                practiceTime: "15 min/day"
-            },
-            {
-                id: 6,
-                title: "Juggling",
-                category: "physical",
-                icon: "fa-hand-peace",
-                difficulty: "beginner",
-                timeToLearn: "8-12 hours",
-                popularity: 86,
-                description: "Learn to juggle 3 balls with proper technique and patterns.",
-                longDescription: "Develop coordination and focus through the art of juggling. Perfect for improving hand-eye coordination.",
-                steps: [
-                    "Practice with one ball",
-                    "Two-ball exchanges",
-                    "Three-ball cascade pattern",
-                    "Add variations and tricks",
-                    "Increase speed and height"
-                ],
-                tips: [
-                    "Stand over a bed while learning",
-                    "Use beanbags not hard balls",
-                    "Practice 15 minutes daily",
-                    "Film yourself to check form"
-                ],
-                learners: 9876,
-                lessons: 12,
-                practiceTime: "15 min/day"
-            },
-            {
-                id: 7,
-                title: "Public Speaking",
-                category: "mental",
-                icon: "fa-microphone-alt",
-                difficulty: "advanced",
-                timeToLearn: "25-35 hours",
-                popularity: 97,
-                description: "Overcome stage fright and deliver compelling presentations with confidence.",
-                longDescription: "Master the art of speaking in front of audiences. Learn structure, delivery, and audience engagement techniques.",
-                steps: [
-                    "Overcome fear of speaking",
-                    "Structure your message",
-                    "Use body language effectively",
-                    "Engage with the audience",
-                    "Handle Q&A sessions"
-                ],
-                tips: [
-                    "Record yourself practicing",
-                    "Join Toastmasters clubs",
-                    "Start with small groups",
-                    "Use storytelling techniques"
-                ],
-                learners: 21567,
-                lessons: 28,
-                practiceTime: "30 min/day"
-            },
-            {
-                id: 8,
-                title: "Sudoku Mastery",
-                category: "puzzle",
-                icon: "fa-th",
-                difficulty: "beginner",
-                timeToLearn: "5-8 hours",
-                popularity: 88,
-                description: "Learn techniques to solve any Sudoku puzzle from easy to expert level.",
-                longDescription: "Master logic puzzles with systematic solving techniques and pattern recognition.",
-                steps: [
-                    "Understand basic rules",
-                    "Use elimination techniques",
-                    "Learn hidden pairs and triples",
-                    "Master X-Wing and Swordfish",
-                    "Practice with timed puzzles"
-                ],
-                tips: [
-                    "Start with easy puzzles",
-                    "Use pencil marks",
-                    "Take breaks when stuck",
-                    "Solve daily for improvement"
-                ],
-                learners: 11234,
-                lessons: 16,
-                practiceTime: "15 min/day"
+<script>
+    // =========================
+    // CONFIG
+    // =========================
+    const APP_TIMEZONE = 'Africa/Nairobi';
+
+    // ---------------------------------------------------------------
+    // CLASS SCHEDULE
+    // ---------------------------------------------------------------
+    // The times below are DEMO times relative to "now" so the page
+    // always shows some live and upcoming classes while you test.
+    // For real classes, replace  mins(-20)  with a fixed time, e.g.
+    //     new Date('2026-10-20T09:00:00+03:00')   // 9:00 AM Nairobi
+    //
+    // streamUrl : a link students open to watch (Zoom, Google Meet,
+    //             YouTube Live, Teams...). Used by "Open Class Link".
+    // embedUrl  : OPTIONAL. If the platform allows embedding (e.g. a
+    //             YouTube live embed https://www.youtube.com/embed/VIDEO_ID)
+    //             the class plays inside the page. Leave '' to show an
+    //             "Open Class Link" button instead.
+    // ---------------------------------------------------------------
+    const mins = (m) => new Date(Date.now() + m * 60000);
+
+    const liveClasses = [
+        {
+            id: 1, title: "Quadratic Equations: Factorising", subject: "math", teacher: "Mr. Kiprono",
+            grade: "Grade 10", description: "Learn to solve quadratic equations by factorising, with worked examples and live Q&A.",
+            topics: ["Recognising quadratic expressions", "Factorising when a = 1", "Solving by factorisation", "Practice problems"],
+            start: mins(-20), durationMin: 60, platform: "Google Meet", streamUrl: "#", embedUrl: "", viewers: 134
+        },
+        {
+            id: 2, title: "Reading Comprehension Skills", subject: "english", teacher: "Ms. Chebet",
+            grade: "Grade 10", description: "Practical techniques for reading passages quickly and answering comprehension questions accurately.",
+            topics: ["Skimming and scanning", "Finding the main idea", "Inference questions", "Timed practice"],
+            start: mins(-5), durationMin: 45, platform: "YouTube Live", streamUrl: "#", embedUrl: "", viewers: 89
+        },
+        {
+            id: 3, title: "Sarufi: Aina za Maneno", subject: "kiswahili", teacher: "Bw. Wanjala",
+            grade: "Grade 10", description: "Mapitio ya aina za maneno katika Kiswahili na matumizi yake katika sentensi.",
+            topics: ["Nomino na viwakilishi", "Vitenzi na vielezi", "Vivumishi", "Mazoezi"],
+            start: mins(25), durationMin: 45, platform: "Zoom", streamUrl: "#", embedUrl: "", viewers: 0
+        },
+        {
+            id: 4, title: "Planning a Community Project", subject: "csl", teacher: "Mrs. Jepkorir",
+            grade: "Grade 10", description: "Step-by-step guide to identifying a community need and planning a service project.",
+            topics: ["Identifying community needs", "Setting goals", "Mobilising resources", "Presenting your plan"],
+            start: mins(150), durationMin: 60, platform: "Google Meet", streamUrl: "#", embedUrl: "", viewers: 0
+        },
+        {
+            id: 5, title: "Trigonometry: Sine and Cosine Rules", subject: "math", teacher: "Mr. Kiprono",
+            grade: "Grade 10", description: "Apply the sine and cosine rules to find missing sides and angles in triangles.",
+            topics: ["Sine rule", "Cosine rule", "Choosing the right rule", "Exam-style questions"],
+            start: mins(60 * 24 + 30), durationMin: 60, platform: "Google Meet", streamUrl: "#", embedUrl: "", viewers: 0
+        },
+        {
+            id: 6, title: "Essay Writing: Structure and Style", subject: "english", teacher: "Ms. Chebet",
+            grade: "Grade 10", description: "Plan and write a strong essay, from the opening paragraph to a convincing conclusion.",
+            topics: ["Planning an essay", "Paragraph structure", "Linking ideas", "Editing your work"],
+            start: mins(60 * 26), durationMin: 60, platform: "YouTube Live", streamUrl: "#", embedUrl: "", viewers: 0
+        },
+        {
+            id: 7, title: "Insha: Uandishi wa Barua", subject: "kiswahili", teacher: "Bw. Wanjala",
+            grade: "Grade 10", description: "Jifunze muundo wa barua rasmi na isiyo rasmi pamoja na mifano.",
+            topics: ["Barua rasmi", "Barua ya kirafiki", "Lugha ya heshima", "Mazoezi ya uandishi"],
+            start: mins(60 * 48), durationMin: 45, platform: "Zoom", streamUrl: "#", embedUrl: "", viewers: 0
+        },
+        {
+            id: 8, title: "Conflict Resolution in Practice", subject: "csl", teacher: "Mrs. Jepkorir",
+            grade: "Grade 10", description: "Role-play common conflicts and practise calm, fair ways of resolving them.",
+            topics: ["Causes of conflict", "Active listening", "Mediation steps", "Role-play"],
+            start: mins(60 * 72), durationMin: 60, platform: "Google Meet", streamUrl: "#", embedUrl: "", viewers: 0
+        }
+    ];
+
+    const SUBJECTS = {
+        math:      { label: "Mathematics",              icon: "fa-calculator",     color: "#7c3aed" },
+        english:   { label: "English",                  icon: "fa-book-open",      color: "#0a2e5c" },
+        kiswahili: { label: "Kiswahili",                icon: "fa-language",       color: "#16a34a" },
+        csl:       { label: "Community Service Learning", icon: "fa-hands-helping", color: "#2e7d32" }
+    };
+
+    // =========================
+    // TIME HELPERS (Nairobi)
+    // =========================
+    const _dateKeyFmt = new Intl.DateTimeFormat('en-CA', { timeZone: APP_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
+    const _dayFmt = new Intl.DateTimeFormat('en-US', { timeZone: APP_TIMEZONE, weekday: 'short', month: 'short', day: 'numeric' });
+    const _timeFmt = new Intl.DateTimeFormat('en-US', { timeZone: APP_TIMEZONE, hour: 'numeric', minute: '2-digit', hour12: true });
+
+    function dateKey(d) { return _dateKeyFmt.format(d); }
+    function daysBetweenKeys(a, b) {
+        const [ay, am, ad] = a.split('-').map(Number);
+        const [by, bm, bd] = b.split('-').map(Number);
+        return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
+    }
+
+    function endOf(c) { return new Date(c.start.getTime() + c.durationMin * 60000); }
+
+    function getStatus(c, now = new Date()) {
+        if (now >= endOf(c)) return 'ended';
+        if (now >= c.start) return 'live';
+        return 'upcoming';
+    }
+
+    function formatWhen(c) {
+        return `${_dayFmt.format(c.start)} · ${_timeFmt.format(c.start)} – ${_timeFmt.format(endOf(c))} EAT`;
+    }
+
+    function formatCountdown(ms) {
+        const totalMin = Math.max(0, Math.ceil(ms / 60000));
+        if (totalMin < 60) return `${totalMin} min`;
+        const h = Math.floor(totalMin / 60), m = totalMin % 60;
+        if (h < 24) return m ? `${h}h ${m}m` : `${h}h`;
+        const d = Math.floor(h / 24);
+        return `${d}d ${h % 24}h`;
+    }
+
+    // =========================
+    // REMINDERS (per student, localStorage)
+    // =========================
+    function getReminderKey() {
+        const email = {{ session.get('email', 'default_user') | tojson }};
+        return `liveReminders_${email}`;
+    }
+    function loadReminders() {
+        try {
+            const v = JSON.parse(localStorage.getItem(getReminderKey()));
+            return Array.isArray(v) ? v : [];
+        } catch (e) { return []; }
+    }
+    function saveReminders() {
+        try { localStorage.setItem(getReminderKey(), JSON.stringify(reminders)); } catch (e) { /* storage full/blocked */ }
+    }
+
+    let reminders = loadReminders();
+    let currentTab = 'live';
+    let lastStatuses = {};        // id -> status, used to detect "just went live"
+    let openClassId = null;
+
+    // =========================
+    // RENDERING
+    // =========================
+    function getFiltered(list) {
+        const q = document.getElementById('searchClasses').value.trim().toLowerCase();
+        const subject = document.getElementById('subjectFilter').value;
+        const when = document.getElementById('whenFilter').value;
+        const todayKey = dateKey(new Date());
+
+        return list.filter(c => {
+            if (subject && c.subject !== subject) return false;
+            if (q) {
+                const hay = `${c.title} ${c.teacher} ${c.description} ${c.topics.join(' ')} ${SUBJECTS[c.subject].label}`.toLowerCase();
+                if (!hay.includes(q)) return false;
             }
-        ];
-
-        // User's learned skills with progress
-        let mySkills = JSON.parse(localStorage.getItem('mySkills')) || [];
-
-        // Saved skills (for bookmarking)
-        let savedSkills = JSON.parse(localStorage.getItem('savedSkills')) || [];
-
-        let currentMySkillsFilter = 'all';
-
-        // Initialize page
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSkills();
-            loadMySkills();
-            setupEventListeners();
+            if (when) {
+                const diff = daysBetweenKeys(todayKey, dateKey(c.start));
+                if (when === 'today' && diff !== 0) return false;
+                if (when === 'tomorrow' && diff !== 1) return false;
+                if (when === 'week' && (diff < 0 || diff > 7)) return false;
+            }
+            return true;
         });
+    }
 
-        function setupEventListeners() {
-            document.getElementById('searchSkills').addEventListener('input', filterSkills);
-            document.getElementById('categoryFilter').addEventListener('change', filterSkills);
-            document.getElementById('difficultyFilter').addEventListener('change', filterSkills);
-            document.getElementById('sortSkills').addEventListener('change', filterSkills);
+    function createClassCard(c) {
+        const status = getStatus(c);
+        const sub = SUBJECTS[c.subject];
+        const now = new Date();
+        const isReminded = reminders.includes(c.id);
+        const minsToStart = (c.start - now) / 60000;
+
+        let badge;
+        if (status === 'live') {
+            badge = `<div class="status-badge status-live"><span class="pulse-dot"></span> LIVE NOW</div>`;
+        } else if (status === 'ended') {
+            badge = `<div class="status-badge status-ended"><i class="fas fa-flag-checkered"></i> ENDED</div>`;
+        } else if (minsToStart <= 60) {
+            badge = `<div class="status-badge status-soon"><i class="fas fa-hourglass-half"></i> Starts in ${formatCountdown(c.start - now)}</div>`;
+        } else {
+            badge = `<div class="status-badge status-upcoming"><i class="fas fa-clock"></i> In ${formatCountdown(c.start - now)}</div>`;
         }
 
-        function loadSkills() {
-            const container = document.getElementById('skillsContainer');
-            container.innerHTML = skills.map(skill => createSkillCard(skill)).join('');
+        const viewers = status === 'live' && c.viewers
+            ? `<div class="viewers-badge"><i class="fas fa-eye"></i> ${c.viewers.toLocaleString()} watching</div>` : '';
+
+        let actions;
+        if (status === 'live') {
+            actions = `
+                <button class="lc-btn lc-btn-live" onclick="event.stopPropagation(); openClass(${c.id})"><i class="fas fa-play"></i> Watch Now</button>
+                <button class="lc-btn lc-btn-outline" onclick="event.stopPropagation(); openClass(${c.id}, false)"><i class="fas fa-info-circle"></i> Details</button>`;
+        } else if (status === 'upcoming') {
+            actions = `
+                <button class="lc-btn lc-btn-primary" onclick="event.stopPropagation(); openClass(${c.id})"><i class="fas fa-eye"></i> Details</button>
+                <button class="lc-btn lc-btn-remind ${isReminded ? 'on' : ''}" onclick="event.stopPropagation(); toggleReminder(${c.id})">
+                    <i class="fas ${isReminded ? 'fa-check-circle' : 'fa-bell'}"></i> ${isReminded ? 'Reminder On' : 'Remind Me'}
+                </button>`;
+        } else {
+            actions = `
+                <button class="lc-btn lc-btn-primary" onclick="event.stopPropagation(); openClass(${c.id})"><i class="fas fa-eye"></i> Details</button>
+                <button class="lc-btn lc-btn-remind" onclick="event.stopPropagation(); toggleReminder(${c.id})"><i class="fas fa-trash"></i> Remove</button>`;
         }
 
-        function createSkillCard(skill, isMySkills = false) {
-            const userSkill = mySkills.find(s => s.skillId === skill.id);
-            const isSaved = savedSkills.includes(skill.id);
-            const isLearning = !!userSkill;
-            
-            const difficultyClass = `difficulty-${skill.difficulty}`;
-            
-            let actionButtons = '';
-            
-            if (isMySkills) {
-                // In My Skills tab, show appropriate buttons
-                if (isLearning) {
-                    actionButtons = `
-                        <button class="btn btn-primary" onclick="event.stopPropagation(); viewSkillDetails(${skill.id})">
-                            <i class="fas fa-eye"></i> View Details
-                        </button>
-                        <button class="btn btn-remove" onclick="event.stopPropagation(); removeFromMySkills(${skill.id})">
-                            <i class="fas fa-trash"></i> Remove
-                        </button>
-                    `;
-                } else if (isSaved) {
-                    actionButtons = `
-                        <button class="btn btn-primary" onclick="event.stopPropagation(); viewSkillDetails(${skill.id})">
-                            <i class="fas fa-eye"></i> View Details
-                        </button>
-                        <button class="btn btn-remove" onclick="event.stopPropagation(); toggleSave(${skill.id})">
-                            <i class="fas fa-bookmark"></i> Unsave
-                        </button>
-                    `;
-                }
+        return `
+            <div class="class-card ${status === 'live' ? 'is-live' : ''}" onclick="openClass(${c.id}, false)">
+                <div class="class-banner" style="background: linear-gradient(135deg, ${sub.color}, ${sub.color}bb);">
+                    <div class="class-icon" style="color: ${sub.color};"><i class="fas ${sub.icon}"></i></div>
+                    ${badge}
+                    ${viewers}
+                </div>
+                <div class="class-content">
+                    <span class="class-subject" style="color: ${sub.color};">${sub.label}</span>
+                    <h3 class="class-title">${c.title}</h3>
+                    <p class="class-desc">${c.description}</p>
+                    <div class="class-meta">
+                        <div><i class="fas fa-chalkboard-teacher"></i> ${c.teacher} · ${c.grade}</div>
+                        <div><i class="fas fa-calendar-day"></i> ${formatWhen(c)}</div>
+                        <div><i class="fas fa-video"></i> ${c.platform}</div>
+                    </div>
+                    <div class="class-actions">${actions}</div>
+                </div>
+            </div>`;
+    }
+
+    function emptyState(icon, title, text) {
+        return `<div class="lc-empty"><div class="lc-empty-icon"><i class="fas ${icon}"></i></div><h3>${title}</h3><p>${text}</p></div>`;
+    }
+
+    function renderAll() {
+        const now = new Date();
+        const withStatus = liveClasses.map(c => ({ c, status: getStatus(c, now) }));
+
+        const live = getFiltered(withStatus.filter(x => x.status === 'live').map(x => x.c))
+            .sort((a, b) => a.start - b.start);
+        const upcoming = getFiltered(withStatus.filter(x => x.status === 'upcoming').map(x => x.c))
+            .sort((a, b) => a.start - b.start);
+        const myReminders = getFiltered(liveClasses.filter(c => reminders.includes(c.id)))
+            .sort((a, b) => a.start - b.start);
+
+        document.getElementById('liveContainer').innerHTML = live.length
+            ? live.map(createClassCard).join('')
+            : emptyState('fa-broadcast-tower', 'No classes live right now',
+                'Nothing is streaming at the moment. Check the Upcoming tab and set a reminder so you don’t miss the next one.');
+
+        document.getElementById('upcomingContainer').innerHTML = upcoming.length
+            ? upcoming.map(createClassCard).join('')
+            : emptyState('fa-calendar-alt', 'No upcoming classes found', 'Try changing your search or filters.');
+
+        document.getElementById('remindersContainer').innerHTML = myReminders.length
+            ? myReminders.map(createClassCard).join('')
+            : emptyState('fa-bell-slash', 'No reminders yet',
+                'Tap “Remind Me” on an upcoming class and it will show up here. You’ll get an alert when it goes live while this page is open.');
+
+        // Tab counts reflect everything (ignoring filters)
+        const totalLive = withStatus.filter(x => x.status === 'live').length;
+        document.getElementById('countLive').textContent = totalLive;
+        document.getElementById('countUpcoming').textContent = withStatus.filter(x => x.status === 'upcoming').length;
+        document.getElementById('countReminders').textContent = liveClasses.filter(c => reminders.includes(c.id)).length;
+
+        document.getElementById('headerLiveText').textContent =
+            totalLive === 0 ? 'No classes live right now'
+            : `${totalLive} class${totalLive === 1 ? '' : 'es'} live right now`;
+
+        // Notify when a reminded class has just gone live
+        withStatus.forEach(({ c, status }) => {
+            if (lastStatuses[c.id] === 'upcoming' && status === 'live' && reminders.includes(c.id)) {
+                showToast(`“${c.title}” is live now!`);
+            }
+            lastStatuses[c.id] = status;
+        });
+    }
+
+    // =========================
+    // ACTIONS
+    // =========================
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById(`${tab}-tab`).classList.add('active');
+        renderAll();
+    }
+
+    function toggleReminder(id) {
+        const c = liveClasses.find(x => x.id === id);
+        const i = reminders.indexOf(id);
+        if (i > -1) {
+            reminders.splice(i, 1);
+            showToast(`Reminder removed for “${c.title}”`);
+        } else {
+            reminders.push(id);
+            showToast(`We’ll alert you when “${c.title}” goes live`);
+        }
+        saveReminders();
+        renderAll();
+        if (openClassId === id) openClass(id, false);   // refresh modal buttons
+    }
+
+    function openClass(id, autoplay = true) {
+        const c = liveClasses.find(x => x.id === id);
+        if (!c) return;
+        openClassId = id;
+
+        const status = getStatus(c);
+        const sub = SUBJECTS[c.subject];
+        const isReminded = reminders.includes(id);
+
+        document.getElementById('modalHeader').style.background = `linear-gradient(135deg, ${sub.color}, ${sub.color}bb)`;
+        document.getElementById('modalTitle').textContent = c.title;
+        document.getElementById('modalSub').textContent = `${sub.label} • ${c.teacher} • ${formatWhen(c)}`;
+
+        let player = '';
+        if (status === 'live') {
+            if (c.embedUrl) {
+                player = `<div class="player-box"><iframe src="${c.embedUrl}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="${c.title}"></iframe></div>`;
             } else {
-                // In Explore tab
-                actionButtons = `
-                    <button class="btn btn-primary" onclick="event.stopPropagation(); viewSkillDetails(${skill.id})">
-                        <i class="fas fa-eye"></i> View Details
-                    </button>
-                    <button class="btn btn-save ${isSaved ? 'saved' : ''}" onclick="event.stopPropagation(); toggleSave(${skill.id})">
-                        <i class="fas ${isSaved ? 'fa-check-circle' : 'fa-bookmark'}"></i> ${isSaved ? 'Saved' : 'Save'}
-                    </button>
-                `;
+                player = `
+                    <div class="player-box" style="background: linear-gradient(135deg, ${sub.color}, #111);">
+                        <div class="player-placeholder">
+                            <i class="fas fa-broadcast-tower"></i>
+                            <div style="font-size:1.3rem;font-weight:700;">This class is live on ${c.platform}</div>
+                            <a class="lc-btn lc-btn-live" style="flex:none;padding:14px 28px;" href="${c.streamUrl}" target="_blank" rel="noopener">
+                                <i class="fas fa-external-link-alt"></i> Open Class Link
+                            </a>
+                        </div>
+                    </div>`;
             }
-            
-            return `
-                <div class="skill-card">
-                    <div class="skill-banner" onclick="viewSkillDetails(${skill.id})">
-                        <div class="skill-icon">
-                            <i class="fas ${skill.icon}"></i>
-                        </div>
-                        <div class="difficulty-badge ${difficultyClass}">
-                            ${skill.difficulty.toUpperCase()}
-                        </div>
-                        ${isSaved ? `<div style="position: absolute; top: 15px; left: 15px; background: var(--success-color); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;"><i class="fas fa-bookmark"></i> Saved</div>` : ''}
-                        ${isLearning ? `<div style="position: absolute; bottom: 15px; left: 15px; background: var(--primary-color); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;"><i class="fas fa-graduation-cap"></i> Learning</div>` : ''}
+        } else if (status === 'upcoming') {
+            player = `
+                <div class="player-box" style="background: linear-gradient(135deg, ${sub.color}, #111);">
+                    <div class="player-placeholder">
+                        <i class="fas fa-clock"></i>
+                        <div style="font-size:1.3rem;font-weight:700;">Starts in ${formatCountdown(c.start - new Date())}</div>
+                        <div style="opacity:.85;">The stream opens here when the class begins.</div>
                     </div>
-                    <div class="skill-content">
-                        <h3 class="skill-title" onclick="viewSkillDetails(${skill.id})">${skill.title}</h3>
-                        <span class="skill-category">${skill.category.toUpperCase()}</span>
-                        <p class="skill-description">${skill.description}</p>
-                        
-                        <div class="skill-stats">
-                            <div class="stat-item">
-                                <i class="fas fa-clock"></i>
-                                <span>${skill.timeToLearn}</span>
-                            </div>
-                            <div class="stat-item">
-                                <i class="fas fa-users"></i>
-                                <span>${skill.learners.toLocaleString()}</span>
-                            </div>
-                            <div class="stat-item">
-                                <i class="fas fa-star"></i>
-                                <span>${skill.popularity}%</span>
-                            </div>
-                        </div>
-                        
-                        <div class="skill-actions">
-                            ${actionButtons}
-                        </div>
-                    </div>
-                </div>
-            `;
+                </div>`;
+        } else {
+            player = `
+                <div class="player-box" style="background: linear-gradient(135deg, #4b5563, #111);">
+                    <div class="player-placeholder"><i class="fas fa-flag-checkered"></i><div style="font-size:1.3rem;font-weight:700;">This class has ended</div></div>
+                </div>`;
         }
 
-        function toggleSave(skillId) {
-            const index = savedSkills.indexOf(skillId);
-            const skill = skills.find(s => s.id === skillId);
-            
-            if (index > -1) {
-                savedSkills.splice(index, 1);
-                showToast(`Removed "${skill.title}" from saved skills`);
-            } else {
-                savedSkills.push(skillId);
-                showToast(`Saved "${skill.title}" to your skills library`);
-            }
-            
-            localStorage.setItem('savedSkills', JSON.stringify(savedSkills));
-            loadSkills();
-            loadMySkills();
-        }
+        const remindBtn = status === 'ended' ? '' : `
+            <button class="lc-btn lc-btn-remind ${isReminded ? 'on' : ''}" onclick="toggleReminder(${c.id})">
+                <i class="fas ${isReminded ? 'fa-check-circle' : 'fa-bell'}"></i> ${isReminded ? 'Reminder On' : 'Remind Me'}
+            </button>`;
 
-        function removeFromMySkills(skillId) {
-            const skill = skills.find(s => s.id === skillId);
-            const index = mySkills.findIndex(s => s.skillId === skillId);
-            
-            if (index > -1) {
-                mySkills.splice(index, 1);
-                localStorage.setItem('mySkills', JSON.stringify(mySkills));
-                showToast(`Removed "${skill.title}" from your learning list`);
-                loadMySkills();
-                loadSkills();
-            }
-        }
+        document.getElementById('modalBody').innerHTML = `
+            ${player}
+            <div class="lc-section">
+                <div class="lc-section-title"><i class="fas fa-info-circle" style="color:${sub.color};"></i> About This Class</div>
+                <div class="lc-text" style="border-left-color:${sub.color};">${c.description}</div>
+            </div>
+            <div class="lc-section">
+                <div class="lc-section-title"><i class="fas fa-list-ol" style="color:${sub.color};"></i> What You’ll Cover</div>
+                <div class="topics-grid">
+                    ${c.topics.map((t, i) => `
+                        <div class="topic-item"><div class="topic-num" style="background:${sub.color};">${i + 1}</div><span>${t}</span></div>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="lc-modal-actions">
+                ${remindBtn}
+                <button class="lc-btn lc-btn-outline" onclick="closeClassModal()"><i class="fas fa-times"></i> Close</button>
+            </div>`;
 
-        function loadMySkills() {
-            const container = document.getElementById('mySkillsContainer');
-            const empty = document.getElementById('mySkillsEmpty');
-            
-            // Get all skill IDs that are either being learned or saved
-            const learningIds = mySkills.map(s => s.skillId);
-            const allMySkillIds = [...new Set([...learningIds, ...savedSkills])];
-            
-            if (allMySkillIds.length === 0) {
-                container.innerHTML = '';
-                empty.style.display = 'block';
-                return;
-            }
-            
-            empty.style.display = 'none';
-            
-            let userSkills = allMySkillIds.map(id => skills.find(skill => skill.id === id)).filter(s => s);
-            
-            // Apply filter
-            if (currentMySkillsFilter === 'learning') {
-                userSkills = userSkills.filter(skill => mySkills.some(s => s.skillId === skill.id));
-            } else if (currentMySkillsFilter === 'saved') {
-                userSkills = userSkills.filter(skill => savedSkills.includes(skill.id));
-            }
-            
-            if (userSkills.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="grid-column: 1/-1;">
-                        <div class="empty-icon"><i class="fas fa-filter"></i></div>
-                        <h3 class="empty-title">No ${currentMySkillsFilter === 'learning' ? 'Learning' : 'Saved'} Skills</h3>
-                        <p class="empty-text">You don't have any ${currentMySkillsFilter === 'learning' ? 'skills in progress' : 'saved skills'} yet.</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = userSkills.map(skill => createSkillCard(skill, true)).join('');
-        }
+        document.getElementById('classModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
 
-        function filterMySkills(filter) {
-            currentMySkillsFilter = filter;
-            // Reset all filter buttons
-            document.querySelectorAll('#mySkills-tab .btn').forEach(btn => {
-                btn.classList.remove('active');
-                btn.style.background = '';
-                btn.style.color = '';
-            });
-            // Find and highlight the active filter button
-            const buttons = document.querySelectorAll('#mySkills-tab .btn');
-            const filterMap = { 'all': 0, 'learning': 1, 'saved': 2 };
-            if (buttons[filterMap[filter]]) {
-                buttons[filterMap[filter]].classList.add('active');
-                buttons[filterMap[filter]].style.background = 'var(--primary-color)';
-                buttons[filterMap[filter]].style.color = 'white';
-            }
-            loadMySkills();
-        }
+    function closeClassModal() {
+        document.getElementById('classModal').style.display = 'none';
+        document.getElementById('modalBody').innerHTML = '';   // also stops any embedded stream
+        document.body.style.overflow = '';
+        openClassId = null;
+    }
 
-        function viewSkillDetails(id) {
-            const skill = skills.find(s => s.id === id);
-            if (!skill) return;
-            
-            const userSkill = mySkills.find(s => s.skillId === id);
-            const isSaved = savedSkills.includes(id);
-            const isLearning = !!userSkill;
-            
-            document.getElementById('modalTitle').textContent = skill.title;
-            document.getElementById('modalCategory').textContent = `${skill.category.toUpperCase()} • ${skill.difficulty.toUpperCase()} • ${skill.timeToLearn}`;
-            
-            document.getElementById('modalBody').innerHTML = `
-                <!-- Description Section -->
-                <div class="section">
-                    <div class="section-title">
-                        <i class="fas fa-info-circle" style="color: var(--primary-color);"></i>
-                        About This Skill
-                    </div>
-                    <div class="description-text">
-                        ${skill.longDescription}
-                    </div>
-                </div>
-                
-                <!-- Learning Path Section -->
-                <div class="section">
-                    <div class="section-title">
-                        <i class="fas fa-list-ol" style="color: var(--primary-color);"></i>
-                        Learning Path
-                    </div>
-                    <div class="steps-grid">
-                        ${skill.steps.map((step, index) => `
-                            <div class="step-item">
-                                <div class="step-number">${index + 1}</div>
-                                <div class="step-text">${step}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                
-                <!-- Pro Tips Section -->
-                <div class="section">
-                    <div class="section-title">
-                        <i class="fas fa-lightbulb" style="color: var(--warning-color);"></i>
-                        Pro Tips
-                    </div>
-                    <div class="tips-grid">
-                        ${skill.tips.map(tip => `
-                            <div class="tip-item">
-                                <i class="fas fa-check-circle"></i>
-                                <span>${tip}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                
-                <!-- Statistics Section -->
-                <div class="section">
-                    <div class="section-title">
-                        <i class="fas fa-chart-line" style="color: var(--success-color);"></i>
-                        Practice Statistics
-                    </div>
-                    <div class="stats-grid">
-                        <div class="stat-card-modal">
-                            <div class="stat-number-modal">${skill.lessons}</div>
-                            <div class="stat-label-modal">Lessons</div>
-                        </div>
-                        <div class="stat-card-modal">
-                            <div class="stat-number-modal">${skill.learners.toLocaleString()}</div>
-                            <div class="stat-label-modal">Learners</div>
-                        </div>
-                        <div class="stat-card-modal">
-                            <div class="stat-number-modal">${skill.practiceTime}</div>
-                            <div class="stat-label-modal">Daily Practice</div>
-                        </div>
-                        <div class="stat-card-modal">
-                            <div class="stat-number-modal">${skill.popularity}%</div>
-                            <div class="stat-label-modal">Popularity</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Action Buttons -->
-                <div class="modal-actions">
-                    <button class="btn btn-save ${isSaved ? 'saved' : ''}" onclick="toggleSave(${skill.id}); closeSkillModal();">
-                        <i class="fas ${isSaved ? 'fa-check-circle' : 'fa-bookmark'}"></i> ${isSaved ? 'Saved' : 'Save Skill'}
-                    </button>
-                    <button class="btn btn-outline" onclick="closeSkillModal()">
-                        <i class="fas fa-times"></i> Close
-                    </button>
-                </div>
-            `;
-            
-            document.getElementById('skillModal').style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-        }
+    let toastTimer;
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        document.getElementById('toastMessage').textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+    }
 
-        function filterSkills() {
-            const searchTerm = document.getElementById('searchSkills').value.toLowerCase();
-            const category = document.getElementById('categoryFilter').value;
-            const difficulty = document.getElementById('difficultyFilter').value;
-            const sortBy = document.getElementById('sortSkills').value;
-            
-            let filtered = [...skills];
-            
-            if (searchTerm) {
-                filtered = filtered.filter(s => 
-                    s.title.toLowerCase().includes(searchTerm) ||
-                    s.description.toLowerCase().includes(searchTerm)
-                );
-            }
-            
-            if (category) {
-                filtered = filtered.filter(s => s.category === category);
-            }
-            
-            if (difficulty) {
-                filtered = filtered.filter(s => s.difficulty === difficulty);
-            }
-            
-            filtered.sort((a, b) => {
-                switch(sortBy) {
-                    case 'popular':
-                        return b.popularity - a.popularity;
-                    case 'newest':
-                        return b.id - a.id;
-                    case 'name':
-                        return a.title.localeCompare(b.title);
-                    default:
-                        return 0;
+    // =========================
+    // THEME FROM SETTINGS
+    // =========================
+    // Colours on this page follow the app's settings. Order of lookup:
+    //   1. Saved settings in localStorage (see SETTINGS_KEYS below)
+    //   2. CSS variables set by body.html / the settings page
+    //      (--primary-color, --secondary-color)
+    //   3. The built-in defaults in :root
+    //
+    // >>> If your settings page saves under a different localStorage key
+    //     or field name, add it to SETTINGS_KEYS / the FIELD lists. <<<
+    const SETTINGS_KEYS = ['eschoolSettings', 'userSettings', 'settings', 'themeSettings', 'appSettings', 'theme'];
+    const PRIMARY_FIELDS   = ['primaryColor', 'primary', 'themeColor', 'accentColor', 'color', 'primary_color'];
+    const SECONDARY_FIELDS = ['secondaryColor', 'secondary', 'secondary_color'];
+    const MODE_FIELDS      = ['theme', 'mode', 'colorScheme', 'darkMode', 'dark_mode'];
+
+    function normalizeHex(v) {
+        if (typeof v !== 'string') return null;
+        v = v.trim();
+        if (/^#([0-9a-f]{3})$/i.test(v)) v = '#' + v.slice(1).split('').map(ch => ch + ch).join('');
+        return /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null;
+    }
+
+    // Lighten (+) or darken (-) a hex colour by percent
+    function shadeHex(hex, percent) {
+        const n = parseInt(hex.slice(1), 16);
+        const f = (c) => Math.max(0, Math.min(255, Math.round(c + (percent < 0 ? c : 255 - c) * (percent / 100))));
+        const r = f((n >> 16) & 255), g = f((n >> 8) & 255), b = f(n & 255);
+        return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+
+    function readSavedSettings() {
+        const email = {{ session.get('email', 'default_user') | tojson }};
+        const out = {};
+        SETTINGS_KEYS.forEach(base => {
+            [base, `${base}_${email}`].forEach(key => {
+                let raw;
+                try { raw = localStorage.getItem(key); } catch (e) { return; }
+                if (!raw) return;
+                let val;
+                try { val = JSON.parse(raw); } catch (e) { val = raw; }   // plain string like "dark" or "#ff6600"
+                if (val && typeof val === 'object') {
+                    Object.assign(out, val);
+                    if (val.appearance && typeof val.appearance === 'object') Object.assign(out, val.appearance);
+                    if (val.theme && typeof val.theme === 'object') Object.assign(out, val.theme);
+                } else if (typeof val === 'string') {
+                    if (normalizeHex(val)) out.primaryColor = val; else out.theme = val;
                 }
             });
-            
-            const container = document.getElementById('skillsContainer');
-            if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="grid-column: 1/-1;">
-                        <div class="empty-icon"><i class="fas fa-search"></i></div>
-                        <h3 class="empty-title">No Skills Found</h3>
-                        <p class="empty-text">Try adjusting your search or filters to find more skills</p>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = filtered.map(skill => createSkillCard(skill)).join('');
-            }
-        }
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => 
-                btn.innerHTML.toLowerCase().includes(tabName === 'explore' ? 'explore' :
-                                                   tabName === 'mySkills' ? 'my skills' : '')
-            );
-            if (activeBtn) activeBtn.classList.add('active');
-            
-            document.getElementById(`${tabName}-tab`).classList.add('active');
-            
-            if (tabName === 'mySkills') {
-                // Reset filter when switching to My Skills
-                currentMySkillsFilter = 'all';
-                loadMySkills();
-            }
-        }
-
-        function closeSkillModal() {
-            document.getElementById('skillModal').style.display = 'none';
-            document.body.style.overflow = '';
-        }
-
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            const toastMessage = document.getElementById('toastMessage');
-            toastMessage.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-
-        window.onclick = function(event) {
-            const modal = document.getElementById('skillModal');
-            if (event.target === modal) {
-                closeSkillModal();
-            }
-        }
-
-        // Close modal with Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeSkillModal();
-            }
         });
-    </script>
-</body>
-</html>
+        return out;
+    }
+
+    function pickField(obj, fields) {
+        for (const f of fields) if (obj[f] !== undefined && obj[f] !== null && obj[f] !== '') return obj[f];
+        return undefined;
+    }
+
+    function cssVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function isDarkFromSettings(saved) {
+        const mode = pickField(saved, MODE_FIELDS);
+        if (mode === true || mode === 'dark') return true;
+        if (mode === false || mode === 'light') return false;
+        if (mode === 'system' || mode === 'auto') return window.matchMedia('(prefers-color-scheme: dark)').matches;
+        // Fall back to whatever the page shell is doing
+        const els = [document.documentElement, document.body];
+        return els.some(el => el && (el.dataset.theme === 'dark' || el.classList.contains('dark') ||
+                                     el.classList.contains('dark-mode') || el.classList.contains('dark-theme')));
+    }
+
+    function applyThemeFromSettings() {
+        const root = document.documentElement;
+        const saved = readSavedSettings();
+
+        const primary = normalizeHex(pickField(saved, PRIMARY_FIELDS)) || normalizeHex(cssVar('--primary-color'));
+        const secondary = normalizeHex(pickField(saved, SECONDARY_FIELDS)) || normalizeHex(cssVar('--secondary-color'));
+
+        if (primary) {
+            root.style.setProperty('--lc-primary', primary);
+            root.style.setProperty('--lc-secondary', secondary || shadeHex(primary, -30));
+        } else {
+            root.style.removeProperty('--lc-primary');
+            root.style.removeProperty('--lc-secondary');
+        }
+        root.classList.toggle('lc-dark', isDarkFromSettings(saved));
+    }
+
+    // =========================
+    // INIT
+    // =========================
+    document.addEventListener('DOMContentLoaded', () => {
+        applyThemeFromSettings();
+
+        // Re-apply live when settings change: another tab, the settings page,
+        // or a custom event (dispatch  window.dispatchEvent(new Event('settingschange'))
+        // from your settings page after saving to update this page instantly).
+        window.addEventListener('storage', applyThemeFromSettings);
+        window.addEventListener('settingschange', applyThemeFromSettings);
+        const mo = new MutationObserver(applyThemeFromSettings);
+        [document.documentElement, document.body].forEach(el => el && mo.observe(el, { attributes: true, attributeFilter: ['class', 'data-theme'] }));
+
+        ['searchClasses'].forEach(id => document.getElementById(id).addEventListener('input', renderAll));
+        ['subjectFilter', 'whenFilter'].forEach(id => document.getElementById(id).addEventListener('change', renderAll));
+
+        document.getElementById('classModal').addEventListener('click', e => {
+            if (e.target.id === 'classModal') closeClassModal();
+        });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeClassModal(); });
+
+        // Seed statuses so the first render doesn't fire "went live" toasts
+        liveClasses.forEach(c => { lastStatuses[c.id] = getStatus(c); });
+        renderAll();
+
+        // Refresh countdowns and statuses every 30 seconds
+        setInterval(renderAll, 30000);
+    });
+</script>
 {% endblock %}

@@ -194,7 +194,16 @@
         flex-direction: column;
         gap: 15px;
         min-height: 60px;
+        /* Fixed height (about 3 courses): extra enrolled courses scroll
+           inside the card instead of making the card taller. */
+        max-height: 410px;
+        overflow-y: auto;
+        padding-right: 6px;
     }
+
+    .courses-list::-webkit-scrollbar { width: 6px; }
+    .courses-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    body.dark-mode .courses-list::-webkit-scrollbar-thumb { background: #475569; }
 
     .course-item {
         display: flex;
@@ -346,7 +355,7 @@
         gap: 20px;
     }
 
-    .academic-stats-grid .academic-stat-item:last-child {
+    .academic-stats-grid .academic-stat-item:last-child:nth-child(odd) {
         grid-column: 1 / -1;
         max-width: 50%;
         justify-self: center;
@@ -404,7 +413,9 @@
 
     .academic-stat-item .stat-icon-display.gpa-icon { color: var(--primary-color); }
     .academic-stat-item .stat-icon-display.grade-icon { color: #f59e0b; }
-    .academic-stat-item .stat-icon-display.assessments-icon { color: #10b981; }
+        .academic-stat-item .stat-icon-display.assessments-icon { color: #10b981; }
+    .academic-stat-item .stat-icon-display.streak-icon { color: #f97316; }
+    #streakItem .stat-number { color: #f97316; }
 
     body.dark-mode .academic-strength-card {
         background-color: #1e293b;
@@ -781,6 +792,32 @@
         background-color: var(--accent-color);
     }
 
+    /* Days with scheduled events */
+    .calendar-day.event:not(.today) {
+        background-color: var(--primary-light);
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .calendar-day.event::after {
+        width: 5px;
+        height: 5px;
+    }
+
+    .calendar-day.event.today::after {
+        background-color: white;
+    }
+
+    /* Days where an event was missed */
+    .calendar-day.event.missed::after {
+        background-color: var(--danger-color);
+    }
+
+    body.dark-mode .calendar-day.event:not(.today) {
+        background-color: #1c2b47;
+        color: #90caf9;
+    }
+
     body.dark-mode .dashboard-card {
         background-color: #1e293b;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
@@ -880,7 +917,7 @@
             grid-template-columns: repeat(2, 1fr);
         }
 
-        .academic-stats-grid .academic-stat-item:last-child {
+        .academic-stats-grid .academic-stat-item:last-child:nth-child(odd) {
             max-width: 60%;
         }
     }
@@ -919,7 +956,7 @@
             gap: 10px;
         }
 
-        .academic-stats-grid .academic-stat-item:last-child {
+        .academic-stats-grid .academic-stat-item:last-child:nth-child(odd) {
             max-width: 70%;
         }
 
@@ -956,7 +993,7 @@
             gap: 8px;
         }
 
-        .academic-stats-grid .academic-stat-item:last-child {
+        .academic-stats-grid .academic-stat-item:last-child:nth-child(odd) {
             max-width: 80%;
         }
 
@@ -999,7 +1036,7 @@
                     </div>
                     <div class="stat-box">
                         <div class="stat-number" id="streakDaysCount">0</div>
-                        <div class="stat-label">Streak Days</div>
+                        <div class="stat-label">Total Days</div>
                     </div>
                 </div>
             </div>
@@ -1070,8 +1107,14 @@
                     <div class="academic-stat-item" id="assessmentsItem">
                         <span class="stat-icon-display assessments-icon"><i class="fas fa-clipboard-list"></i></span>
                         <div class="stat-number" id="assessmentsValue">0</div>
-                        <div class="stat-label">Total Assessments</div>
+                                                <div class="stat-label">Total Assessments</div>
                         <div class="stat-sub">Completed</div>
+                    </div>
+                    <div class="academic-stat-item" id="streakItem">
+                        <span class="stat-icon-display streak-icon"><i class="fas fa-fire"></i></span>
+                        <div class="stat-number" id="quizStreakValue">0</div>
+                        <div class="stat-label">Quiz Streak Days</div>
+                        <div class="stat-sub" id="quizStreakSub">Finish a quiz today</div>
                     </div>
                 </div>
             </div>
@@ -1225,60 +1268,67 @@ function viewFollowing() {
 }
 
 // ========== COURSE DEFINITIONS ==========
+// FIX: previously flagged quiz:true on nearly every module (a per-module
+// quiz model). The actual app (see courses.html / progress.html) has
+// exactly ONE consolidated quiz per course, tracked on the enrollment as
+// quizFinished/quizPassed/quizScore/quizScoreTotal — not per module. Kept
+// the module list/exercise counts identical, just dropped the per-module
+// `quiz` flags and added a single `hasQuiz` flag per course, matching
+// progress.html's courseDefinitions exactly so both pages agree.
 const courseDefinitions = [
-    { id:'math', name:'Grade 10 Mathematics', code:'MAT 101', level:'grade-10', icon:'fa-calculator', iconStyle:'fas', color:'#7c3aed',
+    { id:'math', name:'Grade 10 Mathematics', code:'MAT 101', level:'grade-10', icon:'fa-calculator', iconStyle:'fas', color:'#7c3aed', hasQuiz:true,
       modules: [
-          { name:'1.1 Real Numbers', duration:'25 min', exercises:5, quiz:true },
-          { name:'1.2 Indices and Logarithms', duration:'25 min', exercises:5, quiz:true },
-          { name:'1.3 Quadratic Expressions and Equations', duration:'30 min', exercises:5, quiz:true },
-          { name:'2.1 Geometry and Transformations', duration:'25 min', exercises:5, quiz:true },
-          { name:'2.2 Trigonometry and Area', duration:'30 min', exercises:5, quiz:true },
-          { name:'2.3 Solid Mensuration and Motion', duration:'30 min', exercises:5, quiz:true },
-          { name:'3.1 Statistics I', duration:'25 min', exercises:5, quiz:true },
-          { name:'3.2 Probability I', duration:'25 min', exercises:5, quiz:true }
+          { name:'1.1 Real Numbers', duration:'25 min', exercises:5 },
+          { name:'1.2 Indices and Logarithms', duration:'25 min', exercises:5 },
+          { name:'1.3 Quadratic Expressions and Equations', duration:'30 min', exercises:5 },
+          { name:'2.1 Geometry and Transformations', duration:'25 min', exercises:5 },
+          { name:'2.2 Trigonometry and Area', duration:'30 min', exercises:5 },
+          { name:'2.3 Solid Mensuration and Motion', duration:'30 min', exercises:5 },
+          { name:'3.1 Statistics I', duration:'25 min', exercises:5 },
+          { name:'3.2 Probability I', duration:'25 min', exercises:5 }
       ]},
-    { id:'csl', name:'Grade 10 Community Service Learning (CSL)', code:'CSL 101', level:'grade-10', icon:'fa-hands-helping', iconStyle:'fas', color:'#2e7d32',
+    { id:'csl', name:'Grade 10 Community Service Learning (CSL)', code:'CSL 101', level:'grade-10', icon:'fa-hands-helping', iconStyle:'fas', color:'#2e7d32', hasQuiz:true,
       modules: [
-          { name:'1.1 Concept of Community Service Learning', duration:'25 min', exercises:4, quiz:true },
-          { name:'1.2 Community Needs', duration:'25 min', exercises:4, quiz:true },
-          { name:'1.3 Leadership Qualities', duration:'25 min', exercises:4, quiz:true },
-          { name:'1.4 Intercultural Competence', duration:'20 min', exercises:3, quiz:true },
-          { name:'2.1 Community Self-awareness', duration:'20 min', exercises:3, quiz:true },
-          { name:'2.2 Conflict Resolution', duration:'20 min', exercises:3, quiz:true },
-          { name:'2.3 Responsible Decision-making', duration:'20 min', exercises:3, quiz:true },
-          { name:'3.1 Foundations of Research', duration:'25 min', exercises:4, quiz:true },
-          { name:'3.2 Problem Identification', duration:'25 min', exercises:4, quiz:true },
-          { name:'3.3 Intervention Implementation', duration:'25 min', exercises:4, quiz:true },
-          { name:'3.4 Reporting and Presentation', duration:'20 min', exercises:3, quiz:true },
-          { name:'4.1 Introduction to Social Entrepreneurship', duration:'20 min', exercises:3, quiz:true },
-          { name:'4.2 Opportunity Identification', duration:'20 min', exercises:3, quiz:true },
-          { name:'4.3 Social Enterprise Planning', duration:'25 min', exercises:4, quiz:true },
-          { name:'4.4 Resource Mobilisation', duration:'20 min', exercises:3, quiz:true }
+          { name:'1.1 Concept of Community Service Learning', duration:'25 min', exercises:4 },
+          { name:'1.2 Community Needs', duration:'25 min', exercises:4 },
+          { name:'1.3 Leadership Qualities', duration:'25 min', exercises:4 },
+          { name:'1.4 Intercultural Competence', duration:'20 min', exercises:3 },
+          { name:'2.1 Community Self-awareness', duration:'20 min', exercises:3 },
+          { name:'2.2 Conflict Resolution', duration:'20 min', exercises:3 },
+          { name:'2.3 Responsible Decision-making', duration:'20 min', exercises:3 },
+          { name:'3.1 Foundations of Research', duration:'25 min', exercises:4 },
+          { name:'3.2 Problem Identification', duration:'25 min', exercises:4 },
+          { name:'3.3 Intervention Implementation', duration:'25 min', exercises:4 },
+          { name:'3.4 Reporting and Presentation', duration:'20 min', exercises:3 },
+          { name:'4.1 Introduction to Social Entrepreneurship', duration:'20 min', exercises:3 },
+          { name:'4.2 Opportunity Identification', duration:'20 min', exercises:3 },
+          { name:'4.3 Social Enterprise Planning', duration:'25 min', exercises:4 },
+          { name:'4.4 Resource Mobilisation', duration:'20 min', exercises:3 }
       ]},
-    { id:'english', name:'Grade 10 English', code:'ENG 101', level:'grade-10', icon:'fa-book-open', iconStyle:'fas', color:'#0a2e5c',
+    { id:'english', name:'Grade 10 English', code:'ENG 101', level:'grade-10', icon:'fa-book-open', iconStyle:'fas', color:'#0a2e5c', hasQuiz:true,
       modules: [
-          { name:'1.1 Speaking Etiquette', duration:'20 min', exercises:3, quiz:true },
-          { name:'1.2 Listening – Intensive and Critical', duration:'20 min', exercises:3, quiz:true },
-          { name:'1.3 Sound Systems (Phonology)', duration:'20 min', exercises:3, quiz:true },
-          { name:'2.1 Reading Fluency', duration:'20 min', exercises:3, quiz:true },
-          { name:'2.2 Reading Comprehension', duration:'25 min', exercises:4, quiz:true },
-          { name:'2.3 Information Literacy', duration:'20 min', exercises:3, quiz:true },
-          { name:'3.1 Word Classes', duration:'25 min', exercises:4, quiz:true },
-          { name:'3.2 Phrases and Clauses', duration:'20 min', exercises:3, quiz:true },
-          { name:'3.3 Sentence Structures', duration:'25 min', exercises:4, quiz:true },
-          { name:'4.1 Functional Writing', duration:'25 min', exercises:4, quiz:true },
-          { name:'4.2 Creative and Essay Writing', duration:'25 min', exercises:4, quiz:true },
-          { name:'5.0 Oral Literature – Narratives, Poems & Short Forms', duration:'25 min', exercises:4, quiz:true },
-          { name:'6.0 Poetry – Structure and Stylistic Devices', duration:'25 min', exercises:4, quiz:true },
-          { name:'7.0 Prose Fiction – Plot and Characterization', duration:'25 min', exercises:4, quiz:true },
-          { name:'8.0 Drama – Play Text Analysis', duration:'20 min', exercises:3, quiz:true }
+          { name:'1.1 Speaking Etiquette', duration:'20 min', exercises:3 },
+          { name:'1.2 Listening – Intensive and Critical', duration:'20 min', exercises:3 },
+          { name:'1.3 Sound Systems (Phonology)', duration:'20 min', exercises:3 },
+          { name:'2.1 Reading Fluency', duration:'20 min', exercises:3 },
+          { name:'2.2 Reading Comprehension', duration:'25 min', exercises:4 },
+          { name:'2.3 Information Literacy', duration:'20 min', exercises:3 },
+          { name:'3.1 Word Classes', duration:'25 min', exercises:4 },
+          { name:'3.2 Phrases and Clauses', duration:'20 min', exercises:3 },
+          { name:'3.3 Sentence Structures', duration:'25 min', exercises:4 },
+          { name:'4.1 Functional Writing', duration:'25 min', exercises:4 },
+          { name:'4.2 Creative and Essay Writing', duration:'25 min', exercises:4 },
+          { name:'5.0 Oral Literature – Narratives, Poems & Short Forms', duration:'25 min', exercises:4 },
+          { name:'6.0 Poetry – Structure and Stylistic Devices', duration:'25 min', exercises:4 },
+          { name:'7.0 Prose Fiction – Plot and Characterization', duration:'25 min', exercises:4 },
+          { name:'8.0 Drama – Play Text Analysis', duration:'20 min', exercises:3 }
       ]},
-    { id:'kiswahili', name:'Grade 10 Kiswahili', code:'KSL Grade 10', level:'grade-10', icon:'fa-language', iconStyle:'fas', color:'#16a34a',
+    { id:'kiswahili', name:'Grade 10 Kiswahili', code:'KSL Grade 10', level:'grade-10', icon:'fa-language', iconStyle:'fas', color:'#16a34a', hasQuiz:true,
       modules: [
-          { name:'Moduli 1: Kuwasiliana na Fursa (Mikondo ya Fursa za Ajira)', duration:'30 min', exercises:5, quiz:true },
-          { name:'Moduli 2: Kukabiliana na Shinikizorika', duration:'30 min', exercises:5, quiz:true },
-          { name:'Moduli 3: Utambuzi wa Uwezo na Vipaji', duration:'25 min', exercises:4, quiz:true },
-          { name:'Moduli 4: Usalama Barabarani', duration:'30 min', exercises:5, quiz:true }
+          { name:'Moduli 1: Kuwasiliana na Fursa (Mikondo ya Fursa za Ajira)', duration:'30 min', exercises:5 },
+          { name:'Moduli 2: Kukabiliana na Shinikizorika', duration:'30 min', exercises:5 },
+          { name:'Moduli 3: Utambuzi wa Uwezo na Vipaji', duration:'25 min', exercises:4 },
+          { name:'Moduli 4: Usalama Barabarani', duration:'30 min', exercises:5 }
       ]}
 ];
 
@@ -1287,30 +1337,27 @@ function getCourse(id) {
 }
 
 // ========== GRADE CALCULATION ==========
-// FIX: this used to score a quiz component as (quizzesPassed / totalQuizzesAvailable
-// in the WHOLE course), and would only include quizzes in the weighted grade at all
-// when totalQuizzes > 0 — but totalQuizzes here meant "how many quizzes this course
-// has", not "how many you've attempted". A student who failed every quiz they took
-// still had quizzesPassed = 0, which this function couldn't tell apart from "hasn't
-// tried any quiz yet" — so poor quiz performance was silently excluded instead of
-// counted against the grade. It also scored exercises as (completed / ALL exercises
-// in the course), which is a completion percentage, not a performance score.
-//
-// Now: exercisesCompleted and quizzesAttempted both reflect only work actually done
-// (see generateGradesFromEnrolled below, which now tracks attempted quizzes as the
-// completed modules that carry a quiz). Completed exercises are treated as fully
-// correct (no partial-credit data exists to do otherwise), but quiz score is a real
-// passed/attempted ratio — so failing quizzes you did attempt now properly lowers
-// the grade instead of being ignored.
-function calculateGrade(exercisesCompleted, quizzesPassed, quizzesAttempted) {
+// FIX: rewritten to mirror progress.html's calculateGrade exactly, so the
+// dashboard's GPA/Grade always agree with the Progress tab. Previously
+// this scored quizzes as (quizzesPassed / quizzesAttempted) using a
+// per-module quiz-attempt approximation that doesn't exist in the real
+// data model. The real model is: each course has exactly ONE consolidated
+// quiz; quizResult is null until it's been finished (quizFinished), and
+// once finished carries the real percentage (quizScore/quizScoreTotal)
+// when available, falling back to a pass/fail approximation only for
+// older saved data that predates those fields. A failed attempt still
+// counts — it's a real result, not "not yet tried".
+function calculateGrade(exercisesCompleted, quizResult) {
     const hasExerciseWork = exercisesCompleted > 0;
-    const hasQuizWork = quizzesAttempted > 0;
+    const hasQuizWork = !!quizResult;
 
     if (!hasExerciseWork && !hasQuizWork) return { grade: 'N/A', gradePoint: 0, percentage: 0 };
 
     const exerciseScore = hasExerciseWork ? 100 : 0;
-    const quizScore = hasQuizWork ? Math.min(100, (quizzesPassed / quizzesAttempted) * 100) : 0;
-    
+    const quizScore = hasQuizWork
+        ? (typeof quizResult.percentage === 'number' ? quizResult.percentage : (quizResult.passed ? 100 : 0))
+        : 0;
+
     let weightedScore;
     if (hasExerciseWork && hasQuizWork) {
         weightedScore = (exerciseScore * 0.7) + (quizScore * 0.3);
@@ -1319,7 +1366,7 @@ function calculateGrade(exercisesCompleted, quizzesPassed, quizzesAttempted) {
     } else {
         weightedScore = quizScore;
     }
-    
+
     let grade, gradePoint;
     if (weightedScore >= 90) { grade = 'A'; gradePoint = 4.0; }
     else if (weightedScore >= 85) { grade = 'A-'; gradePoint = 3.7; }
@@ -1332,7 +1379,7 @@ function calculateGrade(exercisesCompleted, quizzesPassed, quizzesAttempted) {
     else if (weightedScore >= 50) { grade = 'D+'; gradePoint = 1.3; }
     else if (weightedScore >= 40) { grade = 'D'; gradePoint = 1.0; }
     else { grade = 'F'; gradePoint = 0.0; }
-    
+
     return { grade, gradePoint, percentage: Math.round(weightedScore) };
 }
 
@@ -1353,63 +1400,64 @@ function getGpaClass(gpa) {
     return 'gpa-poor';
 }
 
+// FIX: rewritten to mirror progress.html's generateGradesFromExercisesAndQuizzes,
+// trimmed to just what this card needs (grades.length for "Total
+// Assessments", gpa, overallGrade). Each completed module's exercises adds
+// one assessment row, the course's single consolidated quiz (once
+// finished, using enr.quizFinished/quizPassed/quizScore/quizScoreTotal —
+// the same fields the courses/progress pages write) adds one more, and the
+// course's overall performance adds one more — identical counting to the
+// Progress tab, so "Total Assessments" here always matches it. A course
+// only contributes to allGrades/GPA once real work exists in it
+// (exercises completed or quiz finished), and a genuinely earned F still
+// counts toward GPA rather than being skipped.
 function generateGradesFromEnrolled(enrolled) {
     let allGrades = [];
     let totalGradePoints = 0;
     let totalWeightedCredits = 0;
-    
+
     enrolled.forEach(enr => {
         const course = getCourse(enr.courseId);
         if (!course) return;
-        
+
         let totalExercisesCompleted = 0;
-        // FIX: quizzesAttempted approximates "quizzes the student actually took" as
-        // the number of completed modules that carry a quiz (there's no separate
-        // attempt-tracking field in the stored data — completing a quiz-bearing
-        // module is the closest available signal that its quiz was attempted).
-        // This replaces totalQuizzesAvailable (every quiz the whole course has,
-        // regardless of whether the student ever got to it), which is what made
-        // quiz performance either diluted by untouched modules or ignored outright.
-        let quizzesAttempted = 0;
-        
+
         course.modules.forEach((module, index) => {
             const moduleExercises = module.exercises || 0;
             if (enr.completed && enr.completed.includes(index)) {
                 totalExercisesCompleted += moduleExercises;
-                if (module.quiz === true) {
-                    quizzesAttempted += 1;
-                }
+                allGrades.push({ type: 'exercises' });
             }
         });
-        
-        const quizzesPassed = enr.quizzesPassed || 0;
-        
-        // FIX: only produce a grade for a course the student has actually done
-        // something in (previously checked whether the course HAS exercises/quizzes
-        // defined at all, which is true for every course regardless of activity).
-        if (totalExercisesCompleted > 0 || quizzesAttempted > 0) {
-            const courseGrade = calculateGrade(totalExercisesCompleted, quizzesPassed, quizzesAttempted);
-            allGrades.push({
-                course: course.name,
-                grade: courseGrade.grade,
-                gradePoint: courseGrade.gradePoint,
-                percentage: courseGrade.percentage
-            });
-            
-            // FIX: previously skipped adding to the GPA whenever gradePoint was 0,
-            // which meant a genuinely earned F was excluded instead of pulling the
-            // GPA down. Since this block only runs when real work was done, the
-            // grade is never the "N/A" case and should always count.
+
+        const quizFinished = !!enr.quizFinished;
+        const quizPassedFlag = !!enr.quizPassed;
+        const quizPercentage = (typeof enr.quizScore === 'number' && typeof enr.quizScoreTotal === 'number' && enr.quizScoreTotal > 0)
+            ? Math.round((enr.quizScore / enr.quizScoreTotal) * 100)
+            : null;
+        const quizResult = quizFinished ? { passed: quizPassedFlag, percentage: quizPercentage } : null;
+
+        if (course.hasQuiz && quizFinished) {
+            allGrades.push({ type: 'quizzes' });
+        }
+
+        if (totalExercisesCompleted > 0 || quizFinished) {
+            const courseGrade = calculateGrade(totalExercisesCompleted, quizResult);
+            allGrades.push({ type: 'overall' });
+
+            // A genuinely earned F (gradePoint 0.0) still counts toward the
+            // GPA — this branch only runs once real work exists, so the
+            // grade here is never the "N/A" case.
             totalGradePoints += courseGrade.gradePoint * (course.modules.length / 10);
             totalWeightedCredits += (course.modules.length / 10);
         }
     });
-    
+
     const overallGPA = totalWeightedCredits > 0 ? totalGradePoints / totalWeightedCredits : 0;
     const overallGrade = overallGPA >= 3.7 ? 'A' : overallGPA >= 3.3 ? 'A-' : overallGPA >= 3.0 ? 'B' : 
                         overallGPA >= 2.7 ? 'B-' : overallGPA >= 2.3 ? 'C+' : overallGPA >= 2.0 ? 'C' : 
                         overallGPA >= 1.7 ? 'C-' : overallGPA >= 1.3 ? 'D+' : overallGPA >= 1.0 ? 'D' : 'F';
-    
+
     return { grades: allGrades, gpa: overallGPA, overallGrade: overallGrade };
 }
 
@@ -1444,8 +1492,26 @@ function updateAcademicStats() {
         const subEl = assessmentsItem.querySelector('.stat-sub');
         if (subEl) {
             const totalCourses = enrolled.length || 0;
-            subEl.textContent = `${totalCourses} course${totalCourses !== 1 ? 's' : ''}`;
+                        subEl.textContent = `${totalCourses} course${totalCourses !== 1 ? 's' : ''}`;
         }
+    }
+
+    // Quiz streak tile: total days, plus the current run underneath
+    const streakValueEl = document.getElementById('quizStreakValue');
+    const streakSubEl = document.getElementById('quizStreakSub');
+    if (streakValueEl) {
+        const totalDays = getQuizTotalDays();
+        const bestRun = getQuizBestStreak();
+        streakValueEl.textContent = totalDays;
+        if (streakSubEl) {
+            let doneToday = false;
+            try {
+                const raw = localStorage.getItem(getQuizStreakKey());
+                doneToday = !!raw && JSON.parse(raw).lastCompletedDate === getNairobiDateKey();
+            } catch (e) { /* ignore */ }
+            streakSubEl.textContent = totalDays === 0
+                ? 'Finish a quiz today'
+                : `Total days • highest streak: ${bestRun}${doneToday ? ' • done today' : ''}`;        }
     }
 }
 
@@ -1476,6 +1542,12 @@ function loadMyCourses() {
             // JS/Python/SQL/React lineup). Without this, orphaned entries
             // display as generic "Course <id>" placeholders forever, since
             // there's no real course left to look their name up against.
+            //
+            // FIX: also carry through the single-consolidated-quiz fields
+            // (quizFinished/quizPassed/quizScore/quizScoreTotal) that the
+            // courses page (courses.html) writes and the Progress page
+            // reads — these were missing here before, so the Academic
+            // Strength card had no way to see quiz results at all.
             return parsed
                 .filter(enr => getCourse(enr.courseId))
                 .map(enr => ({
@@ -1484,7 +1556,11 @@ function loadMyCourses() {
                     currentModule: enr.currentModule || 0,
                     exercisesCompleted: enr.exercisesCompleted || 0,
                     quizzesPassed: enr.quizzesPassed || 0,
-                    progress: enr.progress || 0
+                    progress: enr.progress || 0,
+                    quizFinished: enr.quizFinished || false,
+                    quizPassed: enr.quizPassed || false,
+                    quizScore: typeof enr.quizScore === 'number' ? enr.quizScore : null,
+                    quizScoreTotal: typeof enr.quizScoreTotal === 'number' ? enr.quizScoreTotal : null
                 }));
         } catch (e) {
             console.warn('Failed to parse stored course data');
@@ -1535,7 +1611,9 @@ function getStatusBadge(progress) {
 }
 
 function renderMyCourses() {
-    const courses = loadMyCourses();
+    // Only courses the student is actually enrolled in (loadMyCourses reads
+    // the enrollments only, never the full catalog).
+    const courses = loadMyCourses().filter(enr => enr.enrolled !== false);
     const container = document.getElementById('myCoursesList');
     const noMessage = document.getElementById('noCoursesMessage');
     
@@ -1558,7 +1636,9 @@ function renderMyCourses() {
     if (noMessage) noMessage.style.display = 'none';
     
     courses.sort((a, b) => (b.progress || 0) - (a.progress || 0));
-    const displayCourses = courses.slice(0, 3);
+    // FIX: show every enrolled course (the list scrolls inside a fixed-height
+    // card), instead of cutting at 3 and adding a "View all" link.
+    const displayCourses = courses;
     
     displayCourses.forEach((course, index) => {
         const progress = course.progress || 0;
@@ -1588,13 +1668,6 @@ function renderMyCourses() {
         container.appendChild(courseItem);
     });
     
-    if (courses.length > 3) {
-        const viewAll = document.createElement('div');
-        viewAll.className = 'view-all-courses';
-        viewAll.style.cssText = 'text-align: center; margin-top: 10px;';
-        viewAll.innerHTML = `<a href="/courses" class="card-link">View all ${courses.length} courses <i class="fas fa-arrow-right"></i></a>`;
-        container.appendChild(viewAll);
-    }
 }
 
 // ========== STUDY TIME ==========
@@ -1631,13 +1704,106 @@ function calculateStreak(dailySessions) {
     return streak;
 }
 
+// ========== QUIZ STREAK (earned by finishing a quiz) ==========
+// Same quizStreakData_<email> record the courses page updates.
+function getQuizStreakKey() {
+    const email = {{ session.get('email', 'default_user') | tojson }};
+    return `quizStreakData_${email}`;
+}
+
+function getNairobiDateKey(date) {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Nairobi', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(date || new Date());
+}
+
+// Current run of consecutive days (drops to 0 after a missed day)
+function getQuizStreak() {
+    const stored = localStorage.getItem(getQuizStreakKey());
+    if (!stored) return 0;
+    try {
+        const data = JSON.parse(stored);
+        if (!data.lastCompletedDate) return 0;
+        const [ay, am, ad] = data.lastCompletedDate.split('-').map(Number);
+        const [by, bm, bd] = getNairobiDateKey().split('-').map(Number);
+        const daysSince = Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
+        return daysSince > 1 ? 0 : (data.currentStreak || 0);
+    } catch (e) {
+        return 0;
+    }
+}
+
+// Highest streak ever recorded (longest run of consecutive quiz days)
+function getQuizBestStreak() {
+    const stored = localStorage.getItem(getQuizStreakKey());
+    if (!stored) return 0;
+    try {
+        const d = JSON.parse(stored);
+        return Math.max(d.bestStreak || 0, d.currentStreak || 0);
+    } catch (e) {
+        return 0;
+    }
+}
+
+// Total streak days = every day a quiz was finished (never goes back down).
+// Falls back to the best streak for data saved before totals were tracked.
+function getQuizTotalDays() {
+    const stored = localStorage.getItem(getQuizStreakKey());
+    if (!stored) return 0;
+    try {
+        const d = JSON.parse(stored);
+        if (typeof d.totalDays === 'number') return d.totalDays;
+        return Math.max(d.bestStreak || 0, d.currentStreak || 0);
+    } catch (e) {
+        return 0;
+    }
+}
+
+// ========== LOGIN DAYS (number of days the user has opened the site) ==========
+function getLoginDaysKey() {
+    const email = {{ session.get('email', 'default_user') | tojson }};
+    return `loginDays_${email}`;
+}
+
+function readLoginDays() {
+    try {
+        const days = JSON.parse(localStorage.getItem(getLoginDaysKey()) || 'null');
+        return Array.isArray(days) ? days : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Saves today (Nairobi time) once. The first time it runs, it also adds any
+// days already recorded in the study-time data, so existing users keep their history.
+function recordLoginDay() {
+    let days = readLoginDays();
+    if (days === null) {
+        days = [];
+        try {
+            const study = JSON.parse(localStorage.getItem(getStudyTimeKey()) || '{}');
+            Object.keys(study.dailySessions || {}).forEach(d => {
+                if (study.dailySessions[d] > 0) days.push(d);
+            });
+        } catch (e) { /* ignore */ }
+    }
+    const today = getNairobiDateKey();
+    if (!days.includes(today)) days.push(today);
+    localStorage.setItem(getLoginDaysKey(), JSON.stringify(days));
+}
+
+function getLoginDays() {
+    const days = readLoginDays();
+    return days ? days.length : 0;
+}
+
 function updateDashboardStats() {
     const enrolled = loadMyCourses();
     const activeCourses = enrolled.length;
     const totalProgress = enrolled.reduce((sum, e) => sum + (e.progress || 0), 0);
     const avgProgress = activeCourses > 0 ? Math.round(totalProgress / activeCourses) : 0;
-    const studyData = loadStudyTime();
-    const streakDays = calculateStreak(studyData.dailySessions || {});
+       recordLoginDay();
+    const streakDays = getLoginDays();
 
     document.getElementById('activeCoursesCount').textContent = activeCourses;
     document.getElementById('avgProgressCount').textContent = `${avgProgress}%`;
@@ -1661,8 +1827,15 @@ function loadRecentActivity() {
             // Biology" or "CSL Tutorial" from an earlier catalog version),
             // so the Recent Activity card doesn't keep showing history for
             // courses that were never re-added under the current lineup.
+            //
+            // FIX: schedule-event entries (type starts with "event") use
+            // the event's own title as courseName, so they are not course
+            // names and must be kept — before, this filter dropped every
+            // schedule event from Recent Activity.
             const knownNames = new Set(courseDefinitions.map(c => c.name));
-            return activity.filter(a => knownNames.has(a.courseName));
+            return activity.filter(a =>
+                String(a.type || '').startsWith('event') || knownNames.has(a.courseName)
+            );
         } catch (e) {
             console.warn('Failed to parse activity data');
         }
@@ -1705,6 +1878,53 @@ const activityTextMap = {
     'event-incomplete': a => `You missed the event "${a.courseName}"`
 };
 
+// FIX: log entries whose `type` didn't exactly match a key in
+// activityTextMap (e.g. "course-start", "quiz_completed", "quizPassed")
+// fell through to the generic text "Activity". This maps any reasonable
+// spelling of the type onto the known ones, and getActivityText() always
+// produces a real sentence (never just "Activity").
+activityIconMap['quiz-done'] = 'fa-clipboard-check';
+activityTextMap['quiz-done'] = a => `You completed the "${a.courseName}" quiz${a.extra ? ' (' + a.extra + ')' : ''}`;
+
+function normalizeActivityType(a) {
+    const raw = String(a.type || a.action || a.event || '')
+        .replace(/([a-z])([A-Z])/g, '$1-$2')
+        .toLowerCase()
+        .replace(/[_\s]+/g, '-');
+    if (activityTextMap[raw]) return raw;
+
+    const has = (...words) => words.some(w => raw.includes(w));
+
+    if (has('event')) {
+        if (has('add', 'creat', 'schedul')) return 'event-added';
+        if (has('incomplete', 'miss')) return 'event-incomplete';
+        if (has('complet', 'done', 'finish')) return 'event-completed';
+        if (has('delet', 'remov')) return 'event-deleted';
+        if (has('updat', 'edit')) return 'event-updated';
+        return null;
+    }
+    if (has('quiz', 'test', 'exam', 'assessment')) {
+        if (has('pass')) return 'quiz-pass';
+        if (has('fail')) return 'quiz-fail';
+        if (has('start', 'begin', 'open')) return 'quiz-start';
+        return 'quiz-done';
+    }
+    if (has('start', 'begin', 'enrol', 'enroll', 'join', 'open')) return 'start';
+    if (has('complet', 'finish')) return 'complete';
+    return null;
+}
+
+function getActivityText(a) {
+    const type = normalizeActivityType(a);
+    if (type && activityTextMap[type]) return activityTextMap[type](a);
+    // Unknown type: use any message the page logged, else build a sentence
+    // from whatever is there instead of the bare word "Activity".
+    const msg = a.message || a.text || a.description || a.title;
+    if (msg) return msg;
+    const label = String(a.type || 'activity').replace(/[-_]+/g, ' ');
+    return a.courseName ? `${label.charAt(0).toUpperCase() + label.slice(1)}: "${a.courseName}"` : 'Recent activity';
+}
+
 function renderDashboardActivity() {
     const container = document.getElementById('dashboardActivityList');
     const emptyMsg = document.getElementById('noActivityMessage');
@@ -1723,9 +1943,8 @@ function renderDashboardActivity() {
 
     const recent = activity.slice(0, 5);
     recent.forEach(a => {
-        const icon = activityIconMap[a.type] || 'fa-circle-info';
-        const textFn = activityTextMap[a.type];
-        const text = textFn ? textFn(a) : 'Activity';
+        const icon = activityIconMap[normalizeActivityType(a)] || 'fa-circle-info';
+        const text = getActivityText(a);
 
         const item = document.createElement('div');
         item.className = 'activity-item';
@@ -1741,6 +1960,82 @@ function renderDashboardActivity() {
 }
 
 // ========== CALENDAR ==========
+// FIX: the calendar used to hard-code event dots on days 7, 12, 19, 21 and
+// 27 of every month, and the "today" popup always claimed "Calculus
+// assignment due" / "Physics class at 2 PM" — none of it came from the
+// student's real schedule. It now reads the events saved by the Schedule
+// page (localStorage) and only marks days that really have an event.
+//
+// IMPORTANT: the key below must match the key your /schedule page saves its
+// events under. If your schedule page uses a different key, add it to
+// SCHEDULE_STORAGE_KEYS (the first one that has data is used).
+function getScheduleStorageKeys() {
+    const email = {{ session.get('email', 'default_user') | tojson }};
+    return [
+        `scheduleEvents_${email}`,
+        `scheduleData_${email}`,
+        `schedule_${email}`,
+        `calendarEvents_${email}`,
+        `events_${email}`
+    ];
+}
+
+// Turns whatever date format an event uses into a local "YYYY-MM-DD" key.
+// Plain date strings are read as-is (no timezone shifting).
+function toDateKey(value) {
+    if (value === undefined || value === null || value === '') return null;
+    if (typeof value === 'string') {
+        const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    }
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return null;
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function loadScheduleEvents() {
+    const keys = getScheduleStorageKeys();
+    for (const key of keys) {
+        const stored = localStorage.getItem(key);
+        if (!stored) continue;
+        try {
+            let parsed = JSON.parse(stored);
+            if (parsed && !Array.isArray(parsed) && Array.isArray(parsed.events)) {
+                parsed = parsed.events;
+            }
+            if (!Array.isArray(parsed)) continue;
+
+            return parsed
+                .filter(ev => ev && !ev.deleted)
+                .map(ev => {
+                    // FIX: the Schedule page saves each event's date as
+                    // separate year / month / day fields (month is 0-based,
+                    // 0 = January). Reading ev.day on its own as a date
+                    // produced a wrong date, so no day was ever marked.
+                    let dateKey;
+                    if (ev.year !== undefined && ev.month !== undefined && ev.day !== undefined) {
+                        dateKey = `${ev.year}-${String(Number(ev.month) + 1).padStart(2, '0')}-${String(ev.day).padStart(2, '0')}`;
+                    } else {
+                        dateKey = toDateKey(ev.date || ev.dueDate || ev.due_date || ev.start || ev.day);
+                    }
+                    return {
+                        title: ev.title || ev.name || ev.courseName || 'Untitled event',
+                        time: ev.time || ev.startTime || ev.start_time || '',
+                        completed: !!(ev.completed || ev.done || ev.status === 'completed'),
+                        missed: ev.status === 'incomplete',
+                        dateKey: dateKey
+                    };
+                })
+                .filter(ev => ev.dateKey);
+        } catch (e) {
+            console.warn('Failed to parse schedule data from', key);
+        }
+    }
+    return [];
+}
+
 function generateCalendar() {
     const today = new Date();
     const currentYear = today.getFullYear();
@@ -1756,6 +2051,16 @@ function generateCalendar() {
     let adjustedStartDay = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
+
+    // Real events, grouped by day for the month being shown
+    const eventsByDay = {};
+    loadScheduleEvents().forEach(ev => {
+        const parts = ev.dateKey.split('-');
+        if (parseInt(parts[0], 10) === currentYear && parseInt(parts[1], 10) - 1 === currentMonth) {
+            const dayNum = parseInt(parts[2], 10);
+            (eventsByDay[dayNum] = eventsByDay[dayNum] || []).push(ev);
+        }
+    });
     
     let calendarHTML = `
         <div class="calendar-header">Mon</div>
@@ -1773,13 +2078,22 @@ function generateCalendar() {
     
     for (let day = 1; day <= daysInMonth; day++) {
         let additionalClass = '';
-        if (day === todayDate && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
+        if (day === todayDate) {
             additionalClass = 'today';
         }
-        if ((day === 7 || day === 12 || day === 19 || day === 21 || day === 27) && additionalClass !== 'today') {
-            additionalClass = 'event';
+
+        // Mark every day that has a scheduled event (today included), and
+        // flag days where an event was missed so they get a red dot.
+        let titleAttr = '';
+        if (eventsByDay[day]) {
+            additionalClass += ' event';
+            if (eventsByDay[day].some(ev => ev.missed)) additionalClass += ' missed';
+            const tip = eventsByDay[day].map(ev => ev.title).join(', ').replace(/"/g, '&quot;');
+            titleAttr = ` title="${tip}"`;
         }
-        calendarHTML += `<div class="calendar-day ${additionalClass}">${day}</div>`;
+
+        const hasEvents = eventsByDay[day] ? ' data-has-events="1"' : '';
+        calendarHTML += `<div class="calendar-day ${additionalClass}"${hasEvents}${titleAttr}>${day}</div>`;
     }
     
     const totalCells = Math.ceil((adjustedStartDay + daysInMonth) / 7) * 7;
@@ -1797,18 +2111,73 @@ function generateCalendar() {
         day.addEventListener('click', function() {
             const date = this.textContent;
             if (date && !this.classList.contains('other-month')) {
-                if (this.classList.contains('today')) {
-                    alert(`Today is ${monthName} ${date}. You have:\n- Calculus assignment due\n- Physics class at 2 PM`);
-                } else if (this.classList.contains('event')) {
-                    alert(`${monthName} ${date}: You have a scheduled event`);
+                const dayEvents = eventsByDay[parseInt(date, 10)] || [];
+                const prefix = this.classList.contains('today') ? `Today is ${monthName} ${date}.` : `${monthName} ${date}:`;
+                if (dayEvents.length) {
+                    const lines = dayEvents.map(ev => `- ${ev.title}${ev.time ? ' (' + ev.time + ')' : ''}${ev.completed ? ' ✓' : ''}`).join('\n');
+                    alert(`${prefix} You have:\n${lines}`);
                 } else {
-                    alert(`${monthName} ${date}: No events scheduled`);
+                    alert(`${prefix} No events scheduled`);
                 }
             } else if (date && this.classList.contains('other-month')) {
                 alert(`This date is in another month`);
             }
         });
     });
+}
+
+// ========== MISSED SCHEDULE EVENTS -> RECENT ACTIVITY ==========
+function getScheduleDataKey() {
+    const email = {{ session.get('email', 'default_user') | tojson }};
+    return `scheduleData_${email}`;
+}
+
+// When an event ends ("HH:MM-HH:MM"); falls back to end of day if no time
+function getEventEndDate(ev) {
+    const parts = String(ev.time || '').split('-');
+    const endStr = parts[1] || parts[0];
+    if (!endStr || !endStr.includes(':')) {
+        return new Date(ev.year, ev.month, ev.day, 23, 59, 59);
+    }
+    const [h, m] = endStr.split(':').map(Number);
+    return new Date(ev.year, ev.month, ev.day, h, m, 0, 0);
+}
+
+function addActivityEntry(type, courseName, extra) {
+    const key = getActivityStorageKey();
+    let activity = [];
+    try { activity = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) {}
+    activity.unshift({ type: type, courseName: courseName, extra: extra || '', timestamp: Date.now() });
+    if (activity.length > 50) activity.length = 50;
+    localStorage.setItem(key, JSON.stringify(activity));
+}
+
+// Any event whose end time has passed and wasn't completed becomes
+// "incomplete" and is logged once in Recent Activity. Setting the status
+// is what prevents duplicate entries, and the schedule page uses the
+// same status, so the two pages never log the same event twice.
+function checkMissedScheduleEvents() {
+    const key = getScheduleDataKey();
+    const stored = localStorage.getItem(key);
+    if (!stored) return;
+
+    let events;
+    try { events = JSON.parse(stored); } catch (e) { return; }
+    if (!Array.isArray(events)) return;
+
+    const now = new Date();
+    let changed = false;
+    events.forEach(ev => {
+        if (!ev || ev.status === 'completed' || ev.status === 'incomplete') return;
+        if (ev.year === undefined || ev.month === undefined || ev.day === undefined) return;
+        if (now > getEventEndDate(ev)) {
+            ev.status = 'incomplete';
+            changed = true;
+            addActivityEntry('event-incomplete', ev.title);
+        }
+    });
+
+    if (changed) localStorage.setItem(key, JSON.stringify(events));
 }
 
 // ========== INIT ==========
@@ -1818,6 +2187,8 @@ function generateCalendar() {
 // half a minute. Pulled the refresh logic into one function so it can be
 // triggered instantly from multiple places, not just the timer.
 function refreshDashboardData() {
+    checkMissedScheduleEvents();
+    generateCalendar();
     renderMyCourses();
     updateDashboardStats();
     updateAcademicStats();
@@ -1826,7 +2197,6 @@ function refreshDashboardData() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    generateCalendar();
     refreshDashboardData();
     renderSuggestions();
 
@@ -1852,7 +2222,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Academic Strength card until the next 30s tick.
     window.addEventListener('storage', function(e) {
         if (e.key === getStorageKey() || e.key === getStudyTimeKey() ||
-            e.key === 'notification_trigger' || e.key === getActivityStorageKey()) {
+            e.key === 'notification_trigger' || e.key === getActivityStorageKey() || e.key === getQuizStreakKey() ||            getScheduleStorageKeys().includes(e.key)) {
             refreshDashboardData();
         }
     });

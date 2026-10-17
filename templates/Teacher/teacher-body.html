@@ -1,0 +1,2169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2360A5FA'/%3E%3Cstop offset='100%25' stop-color='%232DD4BF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='12' fill='%230F172A'/%3E%3Cpath d='M32 6 60 21 32 36 4 21Z' fill='url(%23g)'/%3E%3Ccircle cx='32' cy='21' r='3.4' fill='%230F172A'/%3E%3Cpath d='M32 21C40 27 44 34 44 44' fill='none' stroke='url(%23g)' stroke-width='3.4' stroke-linecap='round'/%3E%3Cpath d='M38 44h12' fill='none' stroke='url(%23g)' stroke-width='3.4' stroke-linecap='round'/%3E%3Ccircle cx='44' cy='49' r='4' fill='url(%23g)'/%3E%3C/svg%3E">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eschool</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <!--
+        This base template expects a `country` variable from your Flask
+        route (e.g. render_template('dashboard.html', ..., country=user.country)),
+        same "KE" / "US" / None value the profile page's country dropdown
+        reads and writes via /api/users/<id>/country.
+
+        Under the user's name (top-right user menu and the mobile sidebar
+        header) it shows:
+          - "Teacher"            when the logged-in role is teacher
+          - the user's country   for everyone else who has one set
+          - "Learner"            as the fallback
+
+        It also expects `role` (injected for every page by inject_user()
+        in the Flask app). Teachers get the teacher sidebar menu;
+        everyone else keeps the learner menu.
+    -->
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --accent-color: #4cc9f0;
+            --success-color: #4ade80;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --light-color: #f8fafc;
+            --dark-color: #1e293b;
+            --gray-color: #64748b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            line-height: 1.6;
+            color: var(--dark-color);
+            background-color: #f1f5f9;
+            min-height: 100vh;
+        }
+
+        /* ===== HIDE SCROLLBAR ===== */
+        body::-webkit-scrollbar,
+        .mobile-sidebar::-webkit-scrollbar,
+        .notifications-list::-webkit-scrollbar,
+        .search-results-dropdown::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
+        body,
+        .mobile-sidebar,
+        .notifications-list,
+        .search-results-dropdown {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        /* ========== HAMBURGER BUTTON ========== */
+        .hamburger {
+            width: 30px;
+            height: 22px;
+            position: relative;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: none;
+            flex-shrink: 0;
+            margin: 0 10px 0 0;
+            padding: 0;
+            z-index: 1100;
+        }
+
+        .hamburger span {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: #333;
+            left: 0;
+            transition: 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .hamburger span:nth-child(1) { top: 0; }
+        .hamburger span:nth-child(2) { top: 9px; }
+        .hamburger span:nth-child(3) { top: 18px; }
+
+        body.dark-mode .hamburger span {
+            background: #f1f5f9;
+        }
+
+        /* ===== SEARCH RESULTS DROPDOWN ===== */
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-bar {
+            position: relative;
+            width: 300px;
+        }
+
+        .search-bar input {
+            width: 100%;
+            padding: 12px 20px 12px 45px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: white;
+        }
+
+        .search-bar input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .search-bar i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-color);
+        }
+
+        .search-results-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+            padding: 8px 0;
+        }
+
+        .search-results-dropdown.active {
+            display: block;
+        }
+
+        .search-recent-label {
+            padding: 8px 16px 4px 16px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--gray-400);
+            font-weight: 600;
+        }
+
+        body.dark-mode .search-recent-label {
+            color: #64748b;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            color: var(--dark-color);
+        }
+
+        .search-result-item:hover {
+            background-color: var(--gray-50);
+        }
+
+        .search-result-item .result-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .search-result-item .result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-result-item .result-title {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--dark-color);
+        }
+
+        .search-result-item .result-subtitle {
+            font-size: 0.8rem;
+            color: var(--gray-color);
+        }
+
+        .search-result-item .result-badge {
+            font-size: 0.65rem;
+            padding: 2px 10px;
+            border-radius: 12px;
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .search-no-results {
+            padding: 20px 16px;
+            text-align: center;
+            color: var(--gray-color);
+            font-size: 0.9rem;
+        }
+
+        .search-no-results i {
+            display: block;
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            opacity: 0.5;
+        }
+
+        body.dark-mode .search-results-dropdown {
+            background-color: #1e293b;
+        }
+
+        body.dark-mode .search-result-item {
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .search-result-item:hover {
+            background-color: #263449;
+        }
+
+        body.dark-mode .search-result-item .result-title {
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .search-result-item .result-subtitle {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .search-no-results {
+            color: #94a3b8;
+        }
+
+        /* ===== MOBILE SIDEBAR ===== */
+        .mobile-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: white;
+            padding: 12px 0 10px 0;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            overflow-y: hidden;
+            box-shadow: 2px 0 15px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mobile-sidebar.open {
+            transform: translateX(0);
+        }
+
+        .mobile-sidebar-close {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #666;
+            border-radius: 50%;
+            transition: var(--transition);
+            z-index: 1001;
+        }
+
+        .mobile-sidebar-close:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: #333;
+        }
+
+        body.dark-mode .mobile-sidebar-close {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .mobile-sidebar-close:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+        }
+
+        .mobile-sidebar-header {
+            padding: 8px 16px 6px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            margin-bottom: 4px;
+            flex-shrink: 0;
+        }
+
+        .mobile-sidebar-header .user-info-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mobile-sidebar-header .user-avatar-sm {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .mobile-sidebar-header .user-avatar-sm img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .mobile-sidebar-header .user-name-sm {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--dark-color);
+            line-height: 1.2;
+        }
+
+        .mobile-sidebar-header .user-role-sm {
+            font-size: 0.7rem;
+            color: var(--gray-color);
+        }
+
+        body.dark-mode .mobile-sidebar-header {
+            border-bottom-color: #334155;
+        }
+
+        body.dark-mode .mobile-sidebar-header .user-name-sm {
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .mobile-sidebar-header .user-role-sm {
+            color: #94a3b8;
+        }
+
+        .mobile-sidebar .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 7px 18px;
+            text-decoration: none;
+            color: var(--dark-color);
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+            font-size: 0.85rem;
+        }
+
+        .mobile-sidebar .nav-item:hover {
+            background-color: #f8fafc;
+            color: var(--primary-color);
+        }
+
+        .mobile-sidebar .nav-item.active {
+            background-color: #e0e7ff;
+            color: var(--primary-color);
+            border-left-color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .mobile-sidebar .nav-item i {
+            width: 18px;
+            text-align: center;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .mobile-sidebar .nav-divider {
+            height: 1px;
+            background-color: #f1f5f9;
+            margin: 4px 18px;
+            flex-shrink: 0;
+        }
+
+        .mobile-sidebar .logout-item {
+            color: #e74c3c;
+            margin-top: auto;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 8px;
+        }
+
+        .mobile-sidebar .logout-item i {
+            color: #e74c3c;
+        }
+
+        .mobile-sidebar-nav-list {
+            flex: 1;
+            overflow-y: hidden;
+            padding: 0;
+        }
+
+        body.dark-mode .mobile-sidebar {
+            background-color: #1e293b;
+        }
+
+        body.dark-mode .mobile-sidebar .nav-item {
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .mobile-sidebar .nav-item:hover {
+            background-color: #263449;
+            color: #90caf9;
+        }
+
+        body.dark-mode .mobile-sidebar .nav-item.active {
+            background-color: #1c2b47;
+            color: #90caf9;
+        }
+
+        body.dark-mode .mobile-sidebar .nav-divider {
+            background-color: #334155;
+        }
+
+        body.dark-mode .mobile-sidebar .logout-item {
+            border-top-color: #334155;
+        }
+
+        .mobile-sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0,0,0,0.4);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+            z-index: 999;
+        }
+
+        .mobile-sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* User Profile Dropdown */
+        .user-profile-dropdown {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .user-profile-trigger {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .user-profile-trigger:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .dropdown-arrow {
+            font-size: 12px;
+            color: #666;
+            transition: transform 0.3s;
+        }
+
+        .user-profile-dropdown.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .user-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 280px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            margin-top: 10px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .user-profile-dropdown.active .user-dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 10px 10px 0 0;
+            color: white;
+        }
+
+        .dropdown-avatar {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .dropdown-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .dropdown-name {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .dropdown-email {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #f0f0f0;
+            margin: 4px 0;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #333;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .dropdown-item i {
+            width: 20px;
+            text-align: center;
+            color: var(--primary-color);
+            font-size: 14px;
+        }
+
+        .dropdown-item.logout-item {
+            color: #e74c3c;
+        }
+
+        .dropdown-item.logout-item i {
+            color: #e74c3c;
+        }
+
+        .dropdown-item.logout-item:hover {
+            background-color: #fee;
+        }
+
+        .dropdown-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 999;
+            display: none;
+        }
+
+        .user-profile-dropdown.active ~ .dropdown-backdrop {
+            display: block;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .dashboard-header {
+            background-color: white;
+            box-shadow: var(--card-shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            flex-wrap: wrap;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            font-size: 2.7rem;
+            color: var(--primary-color);
+        }
+
+        .logo-text {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 2.3rem;
+            color: var(--primary-color);
+        }
+
+        .logo-text span {
+            color: var(--accent-color);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .notification-btn {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            color: var(--gray-color);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--danger-color);
+            color: white;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ===== MAIN LAYOUT ===== */
+        .dashboard-layout {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 30px;
+            min-height: calc(100vh - 120px);
+        }
+
+        .sidebar {
+            background-color: white;
+            border-radius: 12px;
+            padding: 15px 0;
+            box-shadow: var(--card-shadow);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .sidebar .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            text-decoration: none;
+            color: var(--dark-color);
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+            font-size: 0.9rem;
+        }
+
+        .sidebar .nav-item:hover {
+            background-color: #f8fafc;
+            color: var(--primary-color);
+        }
+
+        .sidebar .nav-item.active {
+            background-color: #e0e7ff;
+            color: var(--primary-color);
+            border-left-color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .sidebar .nav-item i {
+            width: 18px;
+            text-align: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar .nav-divider {
+            height: 1px;
+            background-color: #f1f5f9;
+            margin: 8px 20px;
+        }
+
+        .dashboard-content-area {
+            width: 100%;
+            min-width: 0;
+        }
+
+        /* Notification Dropdown */
+        .notification-dropdown {
+            position: relative;
+        }
+        
+        .notification-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 360px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .notification-dropdown.active .notification-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .notification-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-header h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+        }
+        
+        .mark-all-read {
+            font-size: 12px;
+            color: var(--accent-color, #4361ee);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-weight: 500;
+        }
+        
+        .mark-all-read:hover {
+            text-decoration: underline;
+        }
+
+        .notifications-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notification-item {
+            padding: 14px 20px;
+            display: flex;
+            gap: 12px;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-item:hover {
+            background-color: #f9fafb;
+        }
+        
+        .notification-item.unread {
+            background-color: #eef2ff;
+        }
+        
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .notification-icon i {
+            font-size: 18px;
+        }
+        
+        .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .notification-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        
+        .notification-message {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+        
+        .notification-time {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        .notification-empty,
+        .notification-loading,
+        .notification-error {
+            padding: 32px 20px;
+            text-align: center;
+            color: var(--gray-400);
+            font-size: 0.9rem;
+        }
+
+        .notification-empty i,
+        .notification-loading i,
+        .notification-error i {
+            display: block;
+            font-size: 1.6rem;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+        
+        .notification-footer {
+            padding: 12px 20px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .view-all-link {
+            font-size: 13px;
+            color: #4361ee;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .view-all-link:hover {
+            text-decoration: underline;
+        }
+
+        /* ===== MOBILE STYLES ===== */
+        @media (max-width: 768px) {
+            .header-container {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                padding: 12px 15px 8px 15px;
+                gap: 8px;
+            }
+
+            .hamburger {
+                display: flex;
+                order: 0;
+                margin: 0 8px 0 0;
+            }
+
+            .logo {
+                order: 1;
+                margin-right: auto;
+            }
+
+            .logo-text {
+                font-size: 1.5rem;
+            }
+
+            .logo-icon {
+                font-size: 1.8rem;
+            }
+
+            .header-actions {
+                order: 2;
+                flex-shrink: 0;
+                gap: 10px;
+            }
+
+            .user-info {
+                display: none;
+            }
+
+            .user-profile-trigger {
+                padding: 4px 6px;
+            }
+
+            .user-avatar {
+                width: 30px;
+                height: 30px;
+                font-size: 11px;
+            }
+
+            .dropdown-arrow {
+                display: none;
+            }
+
+            .notification-btn {
+                font-size: 1.1rem;
+            }
+
+            .notification-badge {
+                width: 16px;
+                height: 16px;
+                font-size: 0.6rem;
+                top: -4px;
+                right: -4px;
+            }
+
+            .notification-menu {
+                width: min(360px, 90vw);
+            }
+
+            .search-wrapper {
+                order: 3;
+                width: 100%;
+                flex-basis: 100%;
+                margin-top: 6px;
+            }
+
+            .search-bar {
+                width: 100%;
+            }
+
+            .search-bar input {
+                width: 100%;
+                padding: 10px 16px 10px 38px;
+                font-size: 0.9rem;
+                border-radius: 25px;
+            }
+
+            .search-bar i {
+                left: 14px;
+                font-size: 0.9rem;
+            }
+
+            .search-results-dropdown {
+                max-height: 300px;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .dashboard-layout {
+                display: block;
+                padding: 16px 10px;
+                gap: 0;
+            }
+
+            .dashboard-content-area {
+                padding: 0;
+            }
+        }
+
+        /* ===== DARK MODE ===== */
+        body.dark-mode {
+            background-color: #0f172a;
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .dashboard-header,
+        body.dark-mode .notification-menu,
+        body.dark-mode .user-dropdown-menu {
+            background-color: #1e293b;
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .notification-header,
+        body.dark-mode .notification-footer {
+            border-color: #334155;
+        }
+
+        body.dark-mode .notification-header h4,
+        body.dark-mode .notification-title {
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .notification-message {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .notification-item {
+            border-bottom-color: #334155;
+        }
+
+        body.dark-mode .notification-item:hover {
+            background-color: #263449;
+        }
+
+        body.dark-mode .notification-item.unread {
+            background-color: #1c2b47;
+        }
+
+        body.dark-mode .notification-empty,
+        body.dark-mode .notification-loading,
+        body.dark-mode .notification-error {
+            color: #64748b;
+        }
+
+        body.dark-mode .search-bar input {
+            background-color: #0f172a;
+            color: #f1f5f9;
+            border-color: #334155;
+        }
+
+        body.dark-mode .sidebar {
+            background-color: #1e293b;
+        }
+
+        body.dark-mode .sidebar .nav-item {
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .sidebar .nav-item:hover {
+            background-color: #263449;
+            color: #90caf9;
+        }
+
+        body.dark-mode .sidebar .nav-item.active {
+            background-color: #1c2b47;
+            color: #90caf9;
+        }
+
+        body.dark-mode .sidebar .nav-divider {
+            background-color: #334155;
+        }
+
+        body.dark-mode .user-name {
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .user-role {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .dropdown-item {
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .dropdown-item:hover {
+            background-color: #263449;
+        }
+
+        body.dark-mode .dropdown-divider {
+            background-color: #334155;
+        }
+
+        /* Hide all scrollbars */
+        *::-webkit-scrollbar {
+            display: none;
+        }
+
+        * {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- SITE-WIDE APPEARANCE INIT -->
+    <script>
+    (function () {
+        try {
+            var userKey = "{{ session.get('email', 'anonymous') }}";
+
+            function storageKey(name) {
+                return 'settings.' + name + '.' + userKey;
+            }
+
+            var accentMap = {
+                blue:   { color: '#4a6cf7', hover: '#3a5ce5' },
+                green:  { color: '#10b981', hover: '#059669' },
+                purple: { color: '#8b5cf6', hover: '#7c3aed' },
+                dark:   { color: '#1e293b', hover: '#0f172a' }
+            };
+
+            var savedColor = localStorage.getItem(storageKey('themeColor'));
+            if (savedColor && accentMap[savedColor]) {
+                document.documentElement.style.setProperty('--accent-color', accentMap[savedColor].color);
+                document.documentElement.style.setProperty('--accent-hover', accentMap[savedColor].hover);
+                document.documentElement.style.setProperty('--accent-soft', accentMap[savedColor].color + '1a');
+                document.documentElement.style.setProperty('--primary-color', accentMap[savedColor].color);
+                document.documentElement.style.setProperty('--secondary-color', accentMap[savedColor].hover);
+            }
+
+            var savedMode = localStorage.getItem(storageKey('themeMode'));
+            var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedMode === 'dark' || (savedMode === 'auto' && prefersDark)) {
+                document.body.classList.add('dark-mode');
+            }
+
+            var savedFontSize = localStorage.getItem(storageKey('fontSize'));
+            if (savedFontSize) {
+                document.documentElement.style.setProperty('--base-font-size', savedFontSize + 'px');
+            }
+        } catch (e) {
+            // localStorage unavailable
+        }
+    })();
+    </script>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <a href="{{ '/teacher-dashboard' if role == 'teacher' else '/dashboard' }}" class="logo">
+                <i class="fas fa-graduation-cap logo-icon"></i>
+                <div class="logo-text">E<span>school</span></div>
+            </a>
+
+            <div class="search-wrapper">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="globalSearchInput" placeholder="Search courses..." autocomplete="off">
+                </div>
+                <div class="search-results-dropdown" id="searchResults"></div>
+            </div>
+            
+            <div class="header-actions">
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <button class="notification-btn" id="notificationBtn">
+                        <i class="far fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge"></span>
+                    </button>
+                    
+                    <div class="notification-menu" id="notificationMenu">
+                        <div class="notification-header">
+                            <h4>Notifications</h4>
+                            <button class="mark-all-read" id="markAllRead">Mark all as read</button>
+                        </div>
+                        <div class="notifications-list" id="notificationsList">
+                            <div class="notification-loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                Loading notifications…
+                            </div>
+                        </div>
+                        <div class="notification-footer">
+                            <a href="/notifications" class="view-all-link">View all notifications →</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="user-profile-dropdown" id="userProfileDropdown">
+                    <div class="user-profile-trigger" id="userProfileTrigger">
+                        <div class="user-avatar" data-profile-avatar>
+                            {% if avatar_url %}
+                                <img src="{{ avatar_url }}" alt="Profile photo">
+                            {% else %}
+                                {{ firstname[0] }}{{ lastname[0] }}
+                            {% endif %}
+                        </div>
+                        <div class="user-info">
+                            <div class="user-name">{{ firstname }} {{ lastname }}</div>
+                            <div class="user-role">{% if role == 'teacher' %}Teacher{% elif country == 'KE' %}🇰🇪 Kenya{% elif country == 'US' %}🇺🇸 United States{% else %}Learner{% endif %}</div>
+                        </div>
+                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    </div>
+                    
+                    <div class="user-dropdown-menu" id="userDropdownMenu">
+                        <div class="dropdown-header">
+                            <div class="dropdown-avatar" data-profile-avatar>
+                                {% if avatar_url %}
+                                    <img src="{{ avatar_url }}" alt="Profile photo">
+                                {% else %}
+                                    {{ firstname[0] }}{{ lastname[0] }}
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div class="dropdown-name">{{ firstname }} {{ lastname }}</div>
+                                <div class="dropdown-email">{{ session.get('email', '') }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown-divider"></div>
+                        
+                        <a href="{{ '/teacher-dashboard' if role == 'teacher' else '/dashboard' }}" class="dropdown-item">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/profile" class="dropdown-item">
+                            <i class="fas fa-user"></i>
+                            <span>My Profile</span>
+                        </a>
+                        <a href="/settings" class="dropdown-item">
+                            <i class="fas fa-cog"></i>
+                            <span>Settings</span>
+                        </a>
+                        <a href="/progres" class="dropdown-item">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Progress</span>
+                        </a>
+                        
+                        <div class="dropdown-divider"></div>
+                        
+                        <a href="/help" class="dropdown-item">
+                            <i class="fas fa-question-circle"></i>
+                            <span>Help & Support</span>
+                        </a>
+                        <a href="/aboutus" class="dropdown-item">
+                            <i class="fas fa-info-circle"></i>
+                            <span>About Us</span>
+                        </a>
+                        
+                        <div class="dropdown-divider"></div>
+                        
+                        <a href="/logout" class="dropdown-item logout-item">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Log Out</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== MOBILE SIDEBAR ===== -->
+    <nav class="mobile-sidebar" id="mobileSidebar">
+        <button class="mobile-sidebar-close" id="mobileSidebarClose" aria-label="Close menu">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <div class="mobile-sidebar-header">
+            <div class="user-info-display">
+                <div class="user-avatar-sm" data-profile-avatar>
+                    {% if avatar_url %}
+                        <img src="{{ avatar_url }}" alt="Profile photo">
+                    {% else %}
+                        {{ firstname[0] }}{{ lastname[0] }}
+                    {% endif %}
+                </div>
+                <div>
+                    <div class="user-name-sm">{{ firstname }} {{ lastname }}</div>
+                    <div class="user-role-sm">{% if role == 'teacher' %}Teacher{% elif country == 'KE' %}🇰🇪 Kenya{% elif country == 'US' %}🇺🇸 United States{% else %}Learner{% endif %}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mobile-sidebar-nav-list">
+            {% if role == 'teacher' %}
+            <!-- ===== TEACHER MENU ===== -->
+            <a href="/teacher-dashboard" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/resourses" class="nav-item">
+                <i class="fas fa-book"></i>
+                <span>Resources</span>
+            </a>
+            <a href="/teacher-upload" class="nav-item">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <span>Upload</span>
+            </a>
+            <a href="/create-live" class="nav-item">
+                <i class="fas fa-video"></i>
+                <span>Create Live</span>
+            </a>
+            <a href="/messages" class="nav-item">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+            </a>
+            <a href="/progres" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Progress</span>
+            </a>
+
+            <div class="nav-divider"></div>
+
+            <a href="/settings" class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+            <a href="/support" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                <span>Help &amp; Support</span>
+            </a>
+            {% else %}
+            <!-- ===== LEARNER MENU ===== -->
+            <a href="/dashboard" class="nav-item active">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/courses" class="nav-item">
+                <i class="fas fa-book-open"></i>
+                <span>Explore Courses</span>
+            </a>
+            <a href="/schedule" class="nav-item">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Schedule</span>
+            </a>
+            <a href="/careerD" class="nav-item">
+                <i class="fa-solid fa-briefcase"></i>
+                <span>Career growth</span>
+            </a>
+            <a href="/progres" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Progress</span>
+            </a>
+            
+            <div class="nav-divider"></div>
+            
+            <a href="/resourses" class="nav-item">
+                <i class="fas fa-book"></i>
+                <span>Resources</span>
+            </a>
+            <a href="/skills" class="nav-item">
+                <i class="fas fa-brain"></i>
+                <span>Skills growth</span>
+            </a>
+            <a href="/strategies" class="nav-item">
+                <i class="fa-solid fa-lightbulb"></i>
+                <span>Strategies</span>
+            </a>
+            <a href="/messages" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                <span>Messages</span>
+            </a>
+
+            <div class="nav-divider"></div>
+            
+            <a href="/settings" class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+            <a href="/help" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                <span>Help & Support</span>
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="nav-divider"></div>
+        
+        <a href="/logout" class="nav-item logout-item">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Log Out</span>
+        </a>
+    </nav>
+
+    <!-- Mobile sidebar overlay -->
+    <div class="mobile-sidebar-overlay" id="mobileOverlay"></div>
+
+    <!-- Main Layout -->
+    <div class="dashboard-layout">
+        <nav class="sidebar" id="sidebar">
+            {% if role == 'teacher' %}
+            <!-- ===== TEACHER MENU ===== -->
+            <a href="/teacher-dashboard" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/resourses" class="nav-item">
+                <i class="fas fa-book"></i>
+                <span>Resources</span>
+            </a>
+            <a href="/upload" class="nav-item">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <span>Upload</span>
+            </a>
+            <a href="/create-live" class="nav-item">
+                <i class="fas fa-video"></i>
+                <span>Create Live</span>
+            </a>
+            <a href="/messages" class="nav-item">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+            </a>
+            <a href="/progres" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Progress</span>
+            </a>
+
+            <div class="nav-divider"></div>
+
+            <a href="/settings" class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+            <a href="/support" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                <span>Help &amp; Support</span>
+            </a>
+            {% else %}
+            <!-- ===== LEARNER MENU ===== -->
+            <a href="/dashboard" class="nav-item active">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/courses" class="nav-item">
+                <i class="fas fa-book-open"></i>
+                <span>Explore Courses</span>
+            </a>
+            <a href="/schedule" class="nav-item">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Schedule</span>
+            </a>
+            <a href="/careerD" class="nav-item">
+                <i class="fa-solid fa-briefcase"></i>
+                <span>Career growth</span>
+            </a>
+            <a href="/progres" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Progress</span>
+            </a>
+            
+            <div class="nav-divider"></div>
+            
+            <a href="/resourses" class="nav-item">
+                <i class="fas fa-book"></i>
+                <span>Resources</span>
+            </a>
+            <a href="/skills" class="nav-item">
+                <i class="fas fa-brain"></i>
+                <span>Skills growth</span>
+            </a>
+            <a href="/strategies" class="nav-item">
+                <i class="fa-solid fa-lightbulb"></i>
+                <span>Strategies</span>
+            </a>
+            <a href="/messages" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                <span>Messages</span>
+            </a>
+
+            <div class="nav-divider"></div>
+            
+            <a href="/settings" class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+            <a href="/support" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                <span>Help & Support</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <div class="dashboard-content-area">
+            {% block allcontent %}
+            {% endblock %}
+        </div>
+    </div>
+
+    <script>
+    // ========== COURSE DATA FOR SEARCH (must match courses page) ==========
+        const searchCourses = [
+        { id: 'math', name: 'Grade 10 Mathematics', code: 'MAT 101', icon: 'fa-calculator', iconStyle: 'fas', color: '#7c3aed', level: 'grade-10', levelLabel: 'Grade 10' },
+        { id: 'csl', name: 'Grade 10 Community Service Learning (CSL)', code: 'CSL 101', icon: 'fa-hands-helping', iconStyle: 'fas', color: '#2e7d32', level: 'grade-10', levelLabel: 'Grade 10' },
+        { id: 'english', name: 'Grade 10 English', code: 'ENG 101', icon: 'fa-book-open', iconStyle: 'fas', color: '#0a2e5c', level: 'grade-10', levelLabel: 'Grade 10' },
+        { id: 'kiswahili', name: 'Grade 10 Kiswahili', code: 'KSL Grade 10', icon: 'fa-language', iconStyle: 'fas', color: '#16a34a', level: 'grade-10', levelLabel: 'Grade 10' }
+    ];
+    // ========== RECENTLY VIEWED COURSES (localStorage) ==========
+    const RECENT_COURSES_KEY = 'recentSearchedCourses';
+
+    function getRecentCourses() {
+        try {
+            return JSON.parse(localStorage.getItem(RECENT_COURSES_KEY)) || [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveRecentCourse(courseId) {
+        const course = searchCourses.find(c => c.id === courseId);
+        if (!course) return;
+        let recents = getRecentCourses().filter(id => id !== courseId);
+        recents.unshift(courseId);
+        recents = recents.slice(0, 5);
+        localStorage.setItem(RECENT_COURSES_KEY, JSON.stringify(recents));
+    }
+
+    // ========== GLOBAL SEARCH FUNCTIONALITY ==========
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchInput = document.getElementById('globalSearchInput');
+        const searchResults = document.getElementById('searchResults');
+        let searchTimeout = null;
+
+        function performSearch(query) {
+            if (!query || query.trim().length < 1) {
+                renderRecentCourses();
+                return;
+            }
+
+            const searchTerm = query.toLowerCase().trim();
+            const results = searchCourses.filter(course => {
+                return course.name.toLowerCase().includes(searchTerm) ||
+                       course.code.toLowerCase().includes(searchTerm) ||
+                       course.level.toLowerCase().includes(searchTerm) ||
+                       course.id.toLowerCase().includes(searchTerm);
+            });
+
+            renderSearchResults(results, searchTerm);
+        }
+
+        function renderSearchResults(results, searchTerm) {
+            if (results.length === 0) {
+                searchResults.innerHTML = `
+                    <div class="search-no-results">
+                        <i class="fas fa-search"></i>
+                        No courses found for "${searchTerm}"
+                        <div style="margin-top: 8px; font-size: 0.85rem; color: var(--gray-400);">
+                        Try searching for "Mathematics", "English", "Kiswahili", etc.
+                        </div>
+                    </div>
+                `;
+                searchResults.classList.add('active');
+                return;
+            }
+
+            let html = '';
+            results.slice(0, 8).forEach(course => {
+                const nameHighlight = highlightMatch(course.name, searchTerm);
+                const codeHighlight = highlightMatch(course.code, searchTerm);
+                
+                html += `
+                    <a href="/courses" class="search-result-item" data-course-id="${course.id}" data-search-term="${searchTerm}">
+                        <div class="result-icon" style="background: ${course.color}20; color: ${course.color};">
+                            <i class="${course.iconStyle || 'fas'} ${course.icon}"></i>
+                        </div>
+                        <div class="result-info">
+                            <div class="result-title">${nameHighlight}</div>
+                            <div class="result-subtitle">${codeHighlight} • ${course.levelLabel || course.level} Level</div>
+                        </div>
+                        <span class="result-badge">Course</span>
+                    </a>
+                `;
+            });
+
+            if (results.length > 8) {
+                html += `
+                    <a href="/courses" class="search-result-item" style="justify-content: center; color: var(--primary-color); font-weight: 500;" data-search-term="${searchTerm}">
+                        <i class="fas fa-arrow-right"></i> View all ${results.length} results
+                    </a>
+                `;
+            }
+
+            searchResults.innerHTML = html;
+            searchResults.classList.add('active');
+            attachResultClickListeners();
+        }
+
+        function renderRecentCourses() {
+            const recentCourseObjs = getRecentCourses()
+                .map(id => searchCourses.find(c => c.id === id))
+                .filter(Boolean);
+
+            if (recentCourseObjs.length === 0) {
+                searchResults.classList.remove('active');
+                return;
+            }
+
+            let html = `<div class="search-recent-label">Recently Viewed</div>`;
+            recentCourseObjs.forEach(course => {
+                html += `
+                    <a href="/courses" class="search-result-item" data-course-id="${course.id}">
+                        <div class="result-icon" style="background: ${course.color}20; color: ${course.color};">
+                           <i class="${course.iconStyle || 'fas'} ${course.icon}"></i>
+                        </div>
+                        <div class="result-info">
+                            <div class="result-title">${course.name}</div>
+                            <div class="result-subtitle">${course.code} • ${course.levelLabel || course.level} Level</div>
+                        </div>
+                        <span class="result-badge"><i class="fas fa-clock"></i></span>
+                    </a>
+                `;
+            });
+
+            searchResults.innerHTML = html;
+            searchResults.classList.add('active');
+            attachResultClickListeners();
+        }
+
+        function attachResultClickListeners() {
+            document.querySelectorAll('.search-result-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const searchTerm = this.dataset.searchTerm || searchInput.value;
+                    sessionStorage.setItem('searchTerm', searchTerm);
+
+                    const courseId = this.dataset.courseId;
+                    if (courseId) {
+                        sessionStorage.setItem('openCourseId', courseId);
+                        saveRecentCourse(courseId);
+                    } else {
+                        sessionStorage.removeItem('openCourseId');
+                    }
+
+                    window.location.href = this.getAttribute('href');
+                });
+            });
+        }
+
+        function highlightMatch(text, searchTerm) {
+            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return text.replace(regex, '<strong style="color: var(--primary-color);">$1</strong>');
+        }
+
+        // Input event with debounce
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value;
+
+            if (query.trim().length === 0) {
+                renderRecentCourses();
+                return;
+            }
+
+            searchTimeout = setTimeout(() => {
+                performSearch(query);
+            }, 300);
+        });
+
+        searchInput.addEventListener('focus', function() {
+            if (this.value.trim().length === 0) {
+                renderRecentCourses();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-wrapper')) {
+                searchResults.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                searchResults.classList.remove('active');
+                searchInput.blur();
+            }
+        });
+
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && this.value.trim().length > 0) {
+                sessionStorage.setItem('searchTerm', this.value.trim());
+                sessionStorage.removeItem('openCourseId');
+                window.location.href = '/courses';
+            }
+        });
+
+        // ===== HAMBURGER MENU =====
+        const hamburger = document.getElementById('hamburger');
+        const mobileSidebar = document.getElementById('mobileSidebar');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        const mobileSidebarClose = document.getElementById('mobileSidebarClose');
+
+        function openMobileSidebar() {
+            mobileSidebar.classList.add('open');
+            mobileOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMobileSidebar() {
+            mobileSidebar.classList.remove('open');
+            mobileOverlay.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        hamburger.addEventListener('click', openMobileSidebar);
+        mobileSidebarClose.addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeMobileSidebar();
+        });
+        mobileOverlay.addEventListener('click', closeMobileSidebar);
+
+        const mobileNavLinks = document.querySelectorAll('.mobile-sidebar .nav-item');
+        mobileNavLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                closeMobileSidebar();
+            });
+        });
+
+        // Navigation active state
+        const links = document.querySelectorAll('.nav-item');
+
+        // Highlight the link for the page we're on; fall back to the last clicked link
+        let activeLink = window.location.pathname;
+        if (!document.querySelector(`.sidebar [href="${activeLink}"]`)) {
+            activeLink = localStorage.getItem("activeNavLink");
+        }
+        
+        if (activeLink) {
+            links.forEach(l => l.classList.remove("active"));
+            const linkToActivate = document.querySelector(`.sidebar [href="${activeLink}"]`);
+            if (linkToActivate) {
+                linkToActivate.classList.add("active");
+            }
+            const mobileLinkToActivate = document.querySelector(`.mobile-sidebar [href="${activeLink}"]`);
+            if (mobileLinkToActivate) {
+                mobileLinkToActivate.classList.add("active");
+            }
+        }
+
+        links.forEach(link => {
+            link.addEventListener('click', function () {
+                localStorage.setItem("activeNavLink", this.getAttribute("href"));
+            });
+        });
+
+        // User Profile Dropdown
+        const userProfileDropdown = document.getElementById('userProfileDropdown');
+        const userProfileTrigger = document.getElementById('userProfileTrigger');
+        
+        userProfileTrigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            userProfileDropdown.classList.toggle('active');
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!userProfileDropdown.contains(e.target)) {
+                userProfileDropdown.classList.remove('active');
+            }
+        });
+        
+        const dropdownItems = document.querySelectorAll('.dropdown-item');
+        dropdownItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                userProfileDropdown.classList.remove('active');
+            });
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                userProfileDropdown.classList.remove('active');
+            }
+        });
+
+        // ===================================================================
+        // NOTIFICATIONS — fetched live from the backend, nothing hardcoded.
+        //
+        // Expected API contract (adjust the URLs below if yours differ):
+        //   GET  /notifications            -> [{id, title, message, time, icon, color, read}, ...]
+        //   POST /notifications/<id>/read  -> marks a single notification read
+        //   POST /notifications/read-all   -> marks every notification read
+        // ===================================================================
+        const notificationDropdown = document.getElementById('notificationDropdown');
+        const notificationBtn = document.getElementById('notificationBtn');
+        const notificationBadge = document.getElementById('notificationBadge');
+        const notificationsList = document.getElementById('notificationsList');
+        const markAllReadBtn = document.getElementById('markAllRead');
+
+        let notifications = [];
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text == null ? '' : String(text);
+            return div.innerHTML;
+        }
+
+        function formatNotifTime(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (isNaN(date.getTime())) return escapeHtml(value); // backend already sent a display string
+            const diff = Date.now() - date.getTime();
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+            if (diff < 172800000) return 'Yesterday';
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function updateNotificationBadge() {
+            const unreadCount = notifications.filter(n => !n.read).length;
+            if (unreadCount > 0) {
+                notificationBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                notificationBadge.style.display = 'flex';
+            } else {
+                notificationBadge.style.display = 'none';
+            }
+        }
+        
+        // Picks an icon + colour that matches what the notification is about.
+        // The first rule that matches the type/title/message wins; if nothing
+        // matches, it uses the icon/colour the backend sent, then a plain bell.
+        const NOTIFICATION_STYLES = [
+            { words: ['missed', 'incomplete', 'overdue', 'failed to'],        icon: 'fas fa-triangle-exclamation', color: '#ef4444' },
+            { words: ['quiz passed', 'passed the', 'you passed', 'congrat'],  icon: 'fas fa-trophy',               color: '#f59e0b' },
+            { words: ['quiz', 'test', 'exam', 'assessment'],                  icon: 'fas fa-clipboard-check',      color: '#8b5cf6' },
+            { words: ['streak'],                                              icon: 'fas fa-fire',                 color: '#f97316' },
+            { words: ['grade', 'score', 'gpa', 'result'],                     icon: 'fas fa-award',                color: '#f59e0b' },
+            { words: ['completed', 'finished', 'certificate'],                icon: 'fas fa-circle-check',         color: '#10b981' },
+            { words: ['enrol', 'started', 'new course', 'course'],            icon: 'fas fa-book-open',            color: '#4361ee' },
+            { words: ['deleted', 'cancelled', 'canceled'],                    icon: 'fas fa-calendar-xmark',       color: '#ef4444' },
+            { words: ['scheduled', 'schedule', 'event', 'meeting', 'class'],  icon: 'fas fa-calendar-check',       color: '#06b6d4' },
+            { words: ['reminder', 'due', 'deadline', 'starts in'],            icon: 'fas fa-clock',                color: '#f59e0b' },
+            { words: ['follow'],                                              icon: 'fas fa-user-plus',            color: '#f72585' },
+            { words: ['like', 'liked'],                                       icon: 'fas fa-heart',                color: '#ef4444' },
+            { words: ['comment', 'replied', 'reply'],                         icon: 'fas fa-comment',              color: '#4cc9f0' },
+            { words: ['message', 'inbox', 'chat'],                            icon: 'fas fa-envelope',             color: '#4361ee' },
+            { words: ['post', 'upload', 'shared'],                            icon: 'fas fa-cloud-arrow-up',       color: '#8b5cf6' },
+            { words: ['password', 'security', 'login', 'sign in', 'verify'],  icon: 'fas fa-shield-halved',        color: '#64748b' },
+            { words: ['welcome', 'joined', 'account'],                        icon: 'fas fa-graduation-cap',       color: '#4361ee' }
+        ];
+
+        function getNotificationStyle(n) {
+            const text = `${n.type || ''} ${n.title || ''} ${n.message || ''}`.toLowerCase();
+            const match = NOTIFICATION_STYLES.find(rule => rule.words.some(w => text.includes(w)));
+            if (match) return { icon: match.icon, color: match.color };
+            return { icon: n.icon || 'fas fa-bell', color: n.color || '#4361ee' };
+        }
+
+        function renderNotifications() {
+            if (notifications.length === 0) {
+                notificationsList.innerHTML = `
+                    <div class="notification-empty">
+                        <i class="far fa-bell-slash"></i>
+                        No notifications yet
+                    </div>
+                `;
+                updateNotificationBadge();
+                return;
+            }
+
+            let html = '';
+            notifications.forEach(n => {
+                const style = getNotificationStyle(n);
+                const iconClass = style.icon;
+                const bg = `${style.color}20`;
+                const fg = style.color;
+                html += `
+                    <div class="notification-item ${n.read ? '' : 'unread'}" data-id="${escapeHtml(n.id)}">
+                        <div class="notification-icon" style="background-color: ${bg}; color: ${fg};">
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">${escapeHtml(n.title)}</div>
+                            <div class="notification-message">${escapeHtml(n.message)}</div>
+                            <div class="notification-time">${formatNotifTime(n.time)}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            notificationsList.innerHTML = html;
+            updateNotificationBadge();
+
+            notificationsList.querySelectorAll('.notification-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    if (this.classList.contains('unread')) {
+                        markNotificationRead(id);
+                    }
+                });
+            });
+        }
+
+        function loadNotifications() {
+            fetch('/notifications')
+                .then(res => {
+                    if (!res.ok) throw new Error('Request failed');
+                    return res.json();
+                })
+                .then(data => {
+                    notifications = Array.isArray(data) ? data : (data.notifications || []);
+                    renderNotifications();
+                })
+                .catch(err => {
+                    console.error('Error loading notifications:', err);
+                    notificationsList.innerHTML = `
+                        <div class="notification-error">
+                            <i class="fas fa-exclamation-circle"></i>
+                            Couldn't load notifications
+                        </div>
+                    `;
+                });
+        }
+
+        function markNotificationRead(id) {
+            const n = notifications.find(x => String(x.id) === String(id));
+            if (n) n.read = true;
+            renderNotifications();
+
+            fetch(`/notifications/${id}/read`, { method: 'POST' })
+                .catch(err => console.error('Error marking notification read:', err));
+        }
+
+        notificationBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            notificationDropdown.classList.toggle('active');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!notificationDropdown.contains(e.target)) {
+                notificationDropdown.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                notificationDropdown.classList.remove('active');
+            }
+        });
+
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                notifications.forEach(n => n.read = true);
+                renderNotifications();
+
+                fetch('/notifications/read-all', { method: 'POST' })
+                    .catch(err => console.error('Error marking all notifications read:', err));
+            });
+        }
+
+        loadNotifications();
+        setInterval(loadNotifications, 15000); // poll for new notifications
+
+        // Close mobile sidebar on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && mobileSidebar.classList.contains('open')) {
+                closeMobileSidebar();
+            }
+        });
+
+        const savedSearchTerm = sessionStorage.getItem('searchTerm');
+        if (savedSearchTerm && searchInput) {
+            searchInput.value = savedSearchTerm;
+            performSearch(savedSearchTerm);
+            setTimeout(() => {
+                sessionStorage.removeItem('searchTerm');
+            }, 1000);
+        }
+    });
+    </script>
+
+    <!-- SITE-WIDE STUDY TIME TRACKING (fixed) -->
+    <script>
+    (function () {
+        // Counts time only while this tab is visible AND the person has done
+        // something in the last 60 seconds. Nothing about the running session
+        // is saved in localStorage, so a closed or crashed tab can never leave
+        // a stale start time behind. That old bug dumped days of "study time"
+        // into a single day (for example 1514 hours on one Friday).
+        //
+        // Day boundaries use Africa/Nairobi, matching the Progress page.
+        const APP_TIMEZONE = 'Africa/Nairobi';
+        const TICK_MS = 5000;               // how often time is added
+        const IDLE_LIMIT_MS = 60000;        // no input for 60s = not studying
+        const MAX_DAY_SECONDS = 16 * 3600;  // a saved day above this is treated as corrupted
+
+        // Uses the tojson filter so this is a safely-encoded JS string literal.
+        // Note: this comment avoids writing double-curly-brace syntax, because
+        // Jinja parses it even inside JS comments.
+        function getStudyTimeKey() {
+            const email = {{ session.get('email', 'default_user') | tojson }};
+             return `studyTimeData_${email}`;
+        }
+
+        const _dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: APP_TIMEZONE,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }); // en-CA formats as YYYY-MM-DD
+
+        function getLocalDateKey(date) {
+            return _dateKeyFormatter.format(date || new Date());
+        }
+
+        function loadStudyTime() {
+            const data = { totalSeconds: 0, dailySessions: {}, totalSessions: 0, firstVisit: Date.now() };
+            try {
+                const raw = localStorage.getItem(getStudyTimeKey());
+                if (raw) {
+                    const d = JSON.parse(raw);
+                    data.totalSeconds = Number(d.totalSeconds) || 0;
+                    data.totalSessions = Number(d.totalSessions) || 0;
+                    data.firstVisit = d.firstVisit || data.firstVisit;
+                    if (d.dailySessions && typeof d.dailySessions === 'object') {
+                        let removedBadDay = false;
+                        Object.keys(d.dailySessions).forEach(function (day) {
+                            const v = Number(d.dailySessions[day]);
+                            if (!isFinite(v) || v < 0 || v > MAX_DAY_SECONDS) {
+                                removedBadDay = true;          // impossible value from the old tracker
+                            } else {
+                                data.dailySessions[day] = v;
+                            }
+                        });
+                        if (removedBadDay) {
+                            data.totalSeconds = Object.keys(data.dailySessions)
+                                .reduce(function (sum, k) { return sum + data.dailySessions[k]; }, 0);
+                        }
+                    }
+                }
+            } catch (e) {
+                // unreadable data: start fresh
+            }
+            return data;
+        }
+
+        function saveStudyTime(data) {
+            try {
+                localStorage.setItem(getStudyTimeKey(), JSON.stringify(data));
+            } catch (e) {
+                // storage full or blocked
+            }
+        }
+
+        // In memory only. Never saved.
+        let lastTickAt = null;
+        let lastInputAt = Date.now();
+        let sessionActive = false;
+
+        function studyTick() {
+            const now = Date.now();
+            if (lastTickAt === null) { lastTickAt = now; return; }
+
+            // Cap the gap so a sleeping device or throttled timer can't add
+            // minutes or hours in one go.
+            const delta = Math.min((now - lastTickAt) / 1000, (TICK_MS / 1000) * 2);
+            lastTickAt = now;
+
+            const idle = (now - lastInputAt) > IDLE_LIMIT_MS;
+            if (document.hidden || idle) {
+                sessionActive = false;   // next active tick starts a new session
+                return;
+            }
+            if (delta <= 0) return;
+
+            // Re-read every time so other tabs' writes are not overwritten.
+            const data = loadStudyTime();
+            const today = getLocalDateKey();
+            data.totalSeconds += delta;
+            data.dailySessions[today] = (data.dailySessions[today] || 0) + delta;
+            if (!sessionActive) {
+                data.totalSessions += 1;
+                sessionActive = true;
+            }
+            saveStudyTime(data);
+        }
+
+        function initSiteWideTracking() {
+            ['click', 'scroll', 'keydown', 'mousemove', 'touchstart', 'touchmove'].forEach(function (evt) {
+                document.addEventListener(evt, function () { lastInputAt = Date.now(); }, { passive: true });
+            });
+
+            document.addEventListener('visibilitychange', function () {
+                // Reset the clock on every hide/show so time spent away is never counted.
+                lastTickAt = Date.now();
+                if (!document.hidden) lastInputAt = Date.now();
+            });
+
+            lastTickAt = Date.now();
+            lastInputAt = Date.now();
+            setInterval(studyTick, TICK_MS);
+        }
+
+        document.addEventListener('DOMContentLoaded', initSiteWideTracking);
+    })();
+    </script>
+</body>
+</html>
