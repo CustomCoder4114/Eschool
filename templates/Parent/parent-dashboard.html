@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent Dashboard - Eschool</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --secondary: #14B8A6;
+            --bg: #F8FAFC;
+            --text: #0F172A;
+            --soft: #64748B;
+            --line: #E2E8F0;
+            --radius: 20px;
+            --shadow: 0 10px 25px -5px rgba(15,23,42,.1), 0 8px 10px -6px rgba(15,23,42,.04);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        .topbar {
+            background: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.08);
+            position: sticky; top: 0; z-index: 10;
+        }
+        .topbar-inner {
+            max-width: 1100px; margin: 0 auto; padding: 14px 20px;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+        }
+        .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .logo i { font-size: 2rem; color: var(--primary); }
+        .logo span {
+            font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 1.7rem;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        .user { display: flex; align-items: center; gap: 14px; }
+        .avatar {
+            width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+            background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff;
+            display: flex; align-items: center; justify-content: center; font-weight: 700;
+        }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .who { line-height: 1.25; }
+        .who b { display: block; font-size: .95rem; }
+        .who small { color: var(--soft); font-size: .8rem; }
+        .logout {
+            text-decoration: none; color: #dc2626; font-weight: 600; font-size: .9rem;
+            border: 2px solid #fecaca; padding: 9px 16px; border-radius: 12px; transition: all .2s ease;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .logout:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+
+        main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 60px; }
+
+        .hero {
+            background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff;
+            border-radius: var(--radius); padding: 38px 40px; margin-bottom: 30px; position: relative; overflow: hidden;
+        }
+        .hero h1 { font-family: 'Manrope', sans-serif; font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+        .hero p { opacity: .95; max-width: 560px; line-height: 1.6; }
+        .hero .big-icon { position: absolute; right: 30px; top: 50%; transform: translateY(-50%); font-size: 6rem; opacity: .15; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px; }
+        .card {
+            background: #fff; border-radius: var(--radius); padding: 26px; box-shadow: var(--shadow);
+            border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; color: inherit; text-decoration: none;
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+        a.card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -12px rgba(15,23,42,.2); }
+        .card .ico {
+            width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; color: #fff;
+        }
+        .card h3 { font-family: 'Manrope', sans-serif; font-size: 1.1rem; }
+        .card p { color: var(--soft); font-size: .92rem; line-height: 1.55; }
+        .soon {
+            align-self: flex-start; margin-top: auto; font-size: .75rem; font-weight: 700; letter-spacing: .04em;
+            background: #FEF3C7; color: #92400E; padding: 4px 12px; border-radius: 20px;
+        }
+        .go { align-self: flex-start; margin-top: auto; font-size: .85rem; font-weight: 600; color: var(--primary); }
+
+        @media (max-width: 640px) {
+            .hero { padding: 28px 22px; }
+            .hero h1 { font-size: 1.6rem; }
+            .hero .big-icon { display: none; }
+            .who { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a href="/parent-dashboard" class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Eschool</span>
+            </a>
+            <div class="user">
+                <div class="avatar">
+                    {% if avatar_url %}
+                        <img src="{{ avatar_url }}" alt="Profile photo">
+                    {% else %}
+                        {{ (firstname or 'P')[0] }}{{ (lastname or '')[:1] }}
+                    {% endif %}
+                </div>
+                <div class="who">
+                    <b>{{ firstname }} {{ lastname }}</b>
+                    <small>Parent</small>
+                </div>
+                <a href="/logout" class="logout"><i class="fas fa-sign-out-alt"></i> Log out</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Welcome, {{ firstname }}</h1>
+            <p>This is your parent space. Follow your child's learning and stay connected with their teachers.</p>
+            <i class="fas fa-people-roof big-icon"></i>
+        </section>
+
+        <section class="grid">
+            <div class="card">
+                <div class="ico" style="background: linear-gradient(135deg, #2563EB, #3B82F6);"><i class="fas fa-child-reaching"></i></div>
+                <h3>My children</h3>
+                <p>Link your child's learner account to see how they are doing.</p>
+                <span class="soon">COMING SOON</span>
+            </div>
+
+            <div class="card">
+                <div class="ico" style="background: linear-gradient(135deg, #14B8A6, #2DD4BF);"><i class="fas fa-chart-line"></i></div>
+                <h3>Progress reports</h3>
+                <p>See courses completed, quiz results and study time.</p>
+                <span class="soon">COMING SOON</span>
+            </div>
+
+            <div class="card">
+                <div class="ico" style="background: linear-gradient(135deg, #F59E0B, #FBBF24);"><i class="fas fa-comments"></i></div>
+                <h3>Messages</h3>
+                <p>Talk with your child's teachers.</p>
+                <span class="soon">COMING SOON</span>
+            </div>
+
+            <a class="card" href="/contact">
+                <div class="ico" style="background: linear-gradient(135deg, #7C3AED, #A78BFA);"><i class="fas fa-headset"></i></div>
+                <h3>Contact the school</h3>
+                <p>Have a question? Send a message to the Eschool team.</p>
+                <span class="go">Open contact page <i class="fas fa-arrow-right"></i></span>
+            </a>
+        </section>
+    </main>
+</body>
+</html>

@@ -1,0 +1,2539 @@
+{% extends "Teacher/teacher-body.html" %}
+
+{% block allcontent %}
+<!--
+    PROFILE PAGE — expects these variables from your Flask route, e.g.:
+
+        return render_template(
+            'profile.html',
+            profile_user_id=user.id,
+            username=user.username,
+            firstname=user.firstname,
+            lastname=user.lastname,
+            avatar_url=user.avatar_url,
+            is_own_profile=(user.id == session.get('user_id')),
+            is_following=current_user_follows_this_profile,  # bool, only used when is_own_profile is False
+            posts_count=posts_count,
+            followers_count=followers_count,
+            following_count=following_count,
+            bio_lines=["NEVER AVERAGE", "1% \U0001F464\U0001F464", "ROMANS 8:18"],  # or bio.split('\n')
+        )
+
+    OPTIONAL extras (the page works without them; each one only shows if sent):
+        profile_role="teacher" or "learner"   # role badge of the PROFILE OWNER
+        location="Iten, Kenya"
+        joined_date="October 2026"
+        status_note="..."                     # small bubble next to the avatar
+        highlights=[{"url": "...", "cover_url": "...", "label": "..."}]
+
+    DATA FETCHED CLIENT-SIDE (nothing else is needed from the route):
+        Uploads       GET  /api/resources/user/<profile_user_id>
+        Live classes  own profile -> GET /api/live-classes?mine=1   (the same data the Create Live page lists)
+                      other profiles -> GET /api/users/<profile_user_id>/live-classes
+        Ratings       GET  /api/users/<profile_user_id>/ratings
+                      POST /api/users/<profile_user_id>/ratings   (visitors leave a review)
+
+    Ratings JSON shape:
+        { "average_out_of_ten": 8.4, "count": 12,
+          "distribution": {"1":0,"2":0,"3":1,"4":3,"5":8},
+          "reviews": [ { "id", "reviewer_name", "reviewer_avatar_url",
+                         "stars" (1-5), "comment", "created_at" } ],
+          "my_review": null or {"stars", "comment"} }
+-->
+<style>
+    :root {
+        --primary-color: #4361ee;
+        --primary-dark: #3a0ca3;
+        --secondary-color: #7209b7;
+        --accent-color: #4cc9f0;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --info-color: #3b82f6;
+        --dark-color: #1e293b;
+        --light-color: #f8fafc;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --border-radius: 20px;
+        --border-radius-sm: 12px;
+        --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+        --hover-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Theme tokens used by this page. Light by default, dark when the site is in dark mode. */
+    .profile-page {
+        --ig-bg: transparent;
+        --ig-surface: #ffffff;
+        --ig-border: #e5e7eb;
+        --ig-text: #1e293b;
+        --ig-text-dim: #64748b;
+        --ig-pill: #eef2f7;
+        --ig-pill-hover: #e2e8f0;
+    }
+
+    body.dark-mode .profile-page {
+        --ig-bg: transparent;
+        --ig-surface: #1e293b;
+        --ig-border: #334155;
+        --ig-text: #f1f5f9;
+        --ig-text-dim: #94a3b8;
+        --ig-pill: #334155;
+        --ig-pill-hover: #475569;
+    }
+
+    .profile-page {
+        background: var(--ig-bg);
+        color: var(--ig-text);
+        min-height: 100vh;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        padding: 10px 24px 0;
+    }
+
+    .profile-page * {
+        box-sizing: border-box;
+    }
+
+    .profile-shell {
+        max-width: 935px;
+        margin: 0 auto;
+    }
+
+    /* ---------- User search bar ---------- */
+    .profile-search-section {
+        max-width: 480px;
+        margin: 4px auto 32px;
+    }
+
+    .profile-search-wrapper {
+        position: relative;
+    }
+
+    .profile-search-icon {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--gray-400);
+        font-size: 0.95rem;
+        pointer-events: none;
+    }
+
+    .profile-search-input {
+        width: 100%;
+        padding: 14px 18px 14px 44px;
+        border-radius: 999px;
+        border: 1.5px solid var(--gray-200);
+        background: #ffffff;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 0.95rem;
+        color: var(--dark-color);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        transition: var(--transition);
+    }
+
+    .profile-search-input::placeholder {
+        color: var(--gray-400);
+    }
+
+    .profile-search-input:hover {
+        border-color: var(--gray-300);
+    }
+
+    .profile-search-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.12);
+    }
+
+    .profile-search-results {
+        position: absolute;
+        top: calc(100% + 10px);
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--border-radius-sm);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        max-height: 320px;
+        overflow-y: auto;
+        z-index: 50;
+        display: none;
+    }
+
+    .profile-search-results.show {
+        display: block;
+    }
+
+    .profile-search-result-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        cursor: pointer;
+        text-decoration: none;
+        color: var(--dark-color);
+        transition: var(--transition);
+    }
+
+    .profile-search-result-item:not(:last-child) {
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .profile-search-result-item:hover {
+        background: var(--gray-50);
+    }
+
+    .profile-search-result-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #fff;
+        background: var(--primary-color);
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .profile-search-result-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .profile-search-result-name {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .profile-search-empty {
+        padding: 16px;
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--gray-400);
+    }
+
+    body.dark-mode .profile-search-input {
+        background: #1e293b;
+        border-color: #334155;
+        color: #f1f5f9;
+    }
+
+    body.dark-mode .profile-search-input::placeholder {
+        color: #64748b;
+    }
+
+    body.dark-mode .profile-search-input:hover {
+        border-color: #475569;
+    }
+
+    body.dark-mode .profile-search-results {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    body.dark-mode .profile-search-result-item:not(:last-child) {
+        border-bottom-color: #334155;
+    }
+
+    body.dark-mode .profile-search-result-item {
+        color: #f1f5f9;
+    }
+
+    body.dark-mode .profile-search-result-item:hover {
+        background: #263449;
+    }
+
+    /* ---------- Profile card: cover + header + stats ---------- */
+    .profile-card {
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .profile-cover {
+        height: 150px;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    }
+
+    .profile-cover::before,
+    .profile-cover::after {
+        content: "";
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .profile-cover::before {
+        width: 220px;
+        height: 220px;
+        right: -50px;
+        top: -90px;
+    }
+
+    .profile-cover::after {
+        width: 140px;
+        height: 140px;
+        left: 22%;
+        bottom: -80px;
+    }
+
+    /* ---------- Header row: avatar + identity ---------- */
+    .profile-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 32px;
+        padding: 0 32px 26px;
+        margin-top: -70px;
+        flex-wrap: wrap;
+        position: relative;
+        z-index: 2;
+    }
+
+    .profile-avatar-wrap {
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .profile-avatar {
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        overflow: hidden;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        border: 5px solid var(--ig-surface);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 52px;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+    }
+
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .avatar-note {
+        position: absolute;
+        top: -6px;
+        right: -18px;
+        background: var(--ig-surface);
+        color: var(--ig-text);
+        border-radius: 16px;
+        padding: 6px 12px 6px 14px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 110px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border: 1px solid var(--ig-border);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+    }
+
+    .profile-identity {
+        flex: 1;
+        min-width: 260px;
+        padding-top: 84px;
+    }
+
+    .profile-username-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+    }
+
+    .profile-username {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--ig-text);
+        letter-spacing: -0.2px;
+    }
+
+    .profile-settings-icon {
+        color: var(--ig-text-dim);
+        font-size: 18px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: var(--transition);
+    }
+
+    .profile-settings-icon:hover {
+        color: var(--primary-color);
+        transform: rotate(45deg);
+    }
+
+    .profile-actions {
+        display: flex;
+        gap: 8px;
+        margin-left: auto;
+    }
+
+    .pill-btn {
+        background: var(--ig-pill);
+        color: var(--ig-text);
+        border: none;
+        border-radius: 999px;
+        padding: 9px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: var(--transition);
+    }
+
+    .pill-btn:hover {
+        background: var(--ig-pill-hover);
+    }
+
+    .pill-btn.primary {
+        background: var(--primary-color);
+        color: #fff;
+    }
+
+    .pill-btn.primary:hover {
+        background: var(--primary-dark);
+    }
+
+    .pill-btn:disabled {
+        opacity: 0.7;
+        cursor: wait;
+    }
+
+    .profile-fullname {
+        font-weight: 500;
+        font-size: 15px;
+        color: var(--ig-text-dim);
+        margin-bottom: 10px;
+    }
+
+    .profile-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .meta-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: var(--ig-pill);
+        color: var(--ig-text-dim);
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .meta-chip.role {
+        background: rgba(67, 97, 238, 0.12);
+        color: var(--primary-color);
+    }
+
+    .profile-bio {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--ig-text);
+        white-space: pre-line;
+        padding-left: 12px;
+        border-left: 3px solid var(--primary-color);
+    }
+
+    .profile-bio .bio-muted {
+        color: var(--ig-text-dim);
+    }
+
+    /* ---------- Stats strip ---------- */
+    .profile-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border-top: 1px solid var(--ig-border);
+    }
+
+    .profile-stats .stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 16px 8px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: var(--ig-text-dim);
+    }
+
+    .profile-stats .stat + .stat {
+        border-left: 1px solid var(--ig-border);
+    }
+
+    .profile-stats .stat strong {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0;
+        color: var(--ig-text);
+        line-height: 1.2;
+    }
+
+    @keyframes statCountPop {
+        0%   { transform: scale(1); }
+        40%  { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
+
+    .profile-stats .stat strong.pop {
+        display: inline-block;
+        animation: statCountPop 0.3s ease;
+    }
+
+    /* ---------- Highlights / New row ---------- */
+    .profile-highlights {
+        display: flex;
+        gap: 26px;
+        padding: 22px 32px;
+        overflow-x: auto;
+        border-top: 1px solid var(--ig-border);
+    }
+
+    .highlight-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        text-decoration: none;
+        color: var(--ig-text);
+    }
+
+    .highlight-circle {
+        width: 66px;
+        height: 66px;
+        border-radius: 50%;
+        border: 2px solid var(--primary-color);
+        padding: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: var(--ig-pill);
+    }
+
+    .highlight-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+
+    .highlight-circle.new-circle {
+        border: 1px solid var(--ig-border);
+        color: var(--ig-text);
+        font-size: 24px;
+    }
+
+    .highlight-label {
+        font-size: 12px;
+        color: var(--ig-text-dim);
+        max-width: 74px;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ---------- Tabs ---------- */
+    .profile-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: 999px;
+        padding: 6px;
+        max-width: 520px;
+        margin: 0 auto 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .profile-tab {
+        flex: 1;
+        justify-content: center;
+        background: none;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 999px;
+        color: var(--ig-text-dim);
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        letter-spacing: 0.3px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .profile-tab i {
+        font-size: 15px;
+    }
+
+    .profile-tab:hover {
+        color: var(--ig-text);
+        background: var(--ig-pill);
+    }
+
+    .profile-tab.active {
+        color: #fff;
+        background: var(--primary-color);
+        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.35);
+    }
+
+    /* ---------- Tab panels ---------- */
+    .tab-panel {
+        display: none;
+    }
+
+    .tab-panel.active {
+        display: block;
+    }
+
+    /* ---------- Uploads: insights + toolbar ---------- */
+    .uploads-insights {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .insight-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius-sm);
+        padding: 14px 16px;
+        min-width: 0;
+    }
+
+    .insight-card > i {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        color: var(--c, var(--primary-color));
+        background: color-mix(in srgb, var(--c, var(--primary-color)) 15%, transparent);
+        flex-shrink: 0;
+    }
+
+    .insight-card > div {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .insight-card strong {
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.2;
+        color: var(--ig-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .insight-card span {
+        font-size: 12px;
+        color: var(--ig-text-dim);
+    }
+
+    .uploads-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+
+    .filter-chips {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .filter-chip {
+        border: 1px solid var(--ig-border);
+        background: var(--ig-surface);
+        color: var(--ig-text-dim);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .filter-chip span {
+        margin-left: 4px;
+        opacity: 0.7;
+        font-weight: 500;
+    }
+
+    .filter-chip:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    .filter-chip.active {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        color: #fff;
+    }
+
+    .sort-select {
+        border: 1px solid var(--ig-border);
+        background: var(--ig-surface);
+        color: var(--ig-text);
+        border-radius: 999px;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .sort-select:focus {
+        border-color: var(--primary-color);
+    }
+
+    /* ---------- Posts / uploads grid ---------- */
+    .posts-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        padding: 0 0 40px;
+    }
+
+    .post-tile {
+        display: block;
+        position: relative;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        background: var(--ig-surface);
+        cursor: pointer;
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius-sm);
+        padding: 0;
+        transition: var(--transition);
+    }
+
+    .post-tile:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--hover-shadow);
+    }
+
+    .post-tile img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: transform 0.4s ease;
+    }
+
+    .post-tile:hover img {
+        transform: scale(1.06);
+    }
+
+    .post-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0, 0, 0, 0.75);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 999px;
+        letter-spacing: 0.2px;
+        z-index: 2;
+    }
+
+    .post-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.7));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        color: #fff;
+        font-weight: 700;
+        font-size: 15px;
+    }
+
+    .post-tile:hover .post-overlay,
+    .post-tile:focus-visible .post-overlay {
+        opacity: 1;
+    }
+
+    .post-overlay span {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .post-caption {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 10px 12px;
+        color: #fff;
+        font-size: 12.5px;
+        font-weight: 600;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        z-index: 2;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .post-tile:hover .post-caption,
+    .post-tile:focus-visible .post-caption {
+        opacity: 1;
+    }
+
+    .posts-empty {
+        padding: 60px 20px;
+        text-align: center;
+        color: var(--ig-text-dim);
+        background: var(--ig-surface);
+        border: 1px dashed var(--ig-border);
+        border-radius: var(--border-radius);
+        margin-bottom: 40px;
+    }
+
+    .posts-empty i {
+        font-size: 44px;
+        margin-bottom: 14px;
+        display: block;
+        opacity: 0.6;
+    }
+
+    .posts-empty .pill-btn {
+        margin-top: 16px;
+    }
+
+    .posts-loading {
+        padding: 60px 20px;
+        text-align: center;
+        color: var(--ig-text-dim);
+    }
+
+    .posts-loading i {
+        font-size: 28px;
+        margin-bottom: 10px;
+        display: block;
+    }
+
+    /* ---------- Preview modal ---------- */
+    .rp-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 3000;
+        padding: 20px;
+    }
+
+    .rp-modal-overlay.show {
+        display: flex;
+    }
+
+    .rp-modal-box {
+        background: var(--ig-surface, #fff);
+        border: 1px solid var(--ig-border, #e5e7eb);
+        border-radius: 12px;
+        max-width: 720px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        color: var(--ig-text, #1e293b);
+    }
+
+    .rp-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--ig-border, #e5e7eb);
+        gap: 12px;
+    }
+
+    .rp-modal-header h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .rp-modal-header button {
+        background: none;
+        border: none;
+        color: var(--ig-text-dim, #64748b);
+        font-size: 18px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .rp-modal-header button:hover {
+        color: var(--ig-text, #1e293b);
+    }
+
+    .rp-modal-body {
+        padding: 0;
+    }
+
+    .rp-modal-body img,
+    .rp-modal-body video {
+        width: 100%;
+        max-height: 65vh;
+        object-fit: contain;
+        display: block;
+        background: #000;
+    }
+
+    .rp-modal-body audio {
+        width: 100%;
+        padding: 30px 20px;
+    }
+
+    .rp-modal-body iframe {
+        width: 100%;
+        height: 65vh;
+        border: none;
+    }
+
+    .rp-modal-fallback {
+        padding: 40px 20px;
+        text-align: center;
+        color: var(--ig-text-dim, #64748b);
+    }
+
+    .rp-modal-fallback a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .rp-modal-footer {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--ig-border, #e5e7eb);
+        font-size: 13px;
+        color: var(--ig-text-dim, #64748b);
+        flex-wrap: wrap;
+    }
+
+    .rp-modal-footer span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* =========================================================
+       LIVE CLASSES TAB
+       ========================================================= */
+    .lc-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .lc-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-bottom: 40px;
+    }
+
+    .lc-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius-sm);
+        padding: 16px 18px;
+        transition: var(--transition);
+    }
+
+    .lc-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--card-shadow);
+    }
+
+    .lc-card.live {
+        border-color: var(--danger-color);
+    }
+
+    .lc-card.ended {
+        opacity: 0.8;
+    }
+
+    .lc-date {
+        width: 58px;
+        flex-shrink: 0;
+        text-align: center;
+        border-radius: 12px;
+        padding: 8px 0;
+        background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+        color: var(--primary-color);
+    }
+
+    .lc-card.live .lc-date {
+        background: color-mix(in srgb, var(--danger-color) 12%, transparent);
+        color: var(--danger-color);
+    }
+
+    .lc-card.ended .lc-date {
+        background: var(--ig-pill);
+        color: var(--ig-text-dim);
+    }
+
+    .lc-date .m {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+    }
+
+    .lc-date .d {
+        display: block;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+
+    .lc-main {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .lc-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--ig-text);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 4px;
+    }
+
+    .lc-status {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 10px;
+        border-radius: 999px;
+        letter-spacing: 0.3px;
+    }
+
+    .lc-status.upcoming { background: rgba(67, 97, 238, 0.12); color: var(--primary-color); }
+    .lc-status.ended { background: var(--ig-pill); color: var(--ig-text-dim); }
+    .lc-status.live { background: var(--danger-color); color: #fff; }
+    .lc-status.live::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #fff;
+        margin-right: 6px;
+        animation: lcPulse 1.2s infinite;
+    }
+
+    @keyframes lcPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+
+    .lc-desc {
+        font-size: 13px;
+        color: var(--ig-text-dim);
+        line-height: 1.45;
+        margin-bottom: 8px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .lc-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        font-size: 12.5px;
+        color: var(--ig-text-dim);
+    }
+
+    .lc-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .lc-action {
+        flex-shrink: 0;
+    }
+
+    /* =========================================================
+       RATINGS TAB
+       ========================================================= */
+    .rt-summary {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 28px;
+        align-items: center;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius);
+        padding: 26px 28px;
+        margin-bottom: 18px;
+    }
+
+    .rt-score {
+        text-align: center;
+    }
+
+    .rt-score-number {
+        font-size: 52px;
+        font-weight: 800;
+        line-height: 1;
+        color: var(--ig-text);
+    }
+
+    .rt-score-number small {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--ig-text-dim);
+    }
+
+    .rt-score-count {
+        font-size: 13px;
+        color: var(--ig-text-dim);
+        margin-top: 8px;
+    }
+
+    .stars {
+        position: relative;
+        display: inline-block;
+        font-size: 20px;
+        letter-spacing: 2px;
+        line-height: 1;
+        margin-top: 10px;
+    }
+
+    .stars-bg {
+        color: var(--ig-border);
+    }
+
+    .stars-fg {
+        position: absolute;
+        left: 0;
+        top: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        color: #f59e0b;
+    }
+
+    .stars.sm {
+        font-size: 15px;
+        margin-top: 0;
+    }
+
+    .rt-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .rt-bar-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 13px;
+        color: var(--ig-text-dim);
+    }
+
+    .rt-bar-label {
+        width: 44px;
+        flex-shrink: 0;
+        font-weight: 600;
+        color: var(--ig-text);
+    }
+
+    .rt-bar-label i {
+        color: #f59e0b;
+        font-size: 11px;
+        margin-left: 2px;
+    }
+
+    .rt-bar-track {
+        flex: 1;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--ig-pill);
+        overflow: hidden;
+    }
+
+    .rt-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        transition: width 0.6s ease;
+    }
+
+    .rt-bar-count {
+        width: 28px;
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    .rt-form {
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius-sm);
+        padding: 18px 20px;
+        margin-bottom: 18px;
+    }
+
+    .rt-form h4 {
+        margin: 0 0 12px;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .rt-picker {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 12px;
+    }
+
+    .rt-picker button {
+        background: none;
+        border: none;
+        font-size: 28px;
+        line-height: 1;
+        cursor: pointer;
+        color: var(--ig-border);
+        padding: 0 2px;
+        transition: transform 0.15s ease, color 0.15s ease;
+    }
+
+    .rt-picker button.on {
+        color: #f59e0b;
+    }
+
+    .rt-picker button:hover {
+        transform: scale(1.15);
+    }
+
+    .rt-form textarea {
+        width: 100%;
+        min-height: 80px;
+        resize: vertical;
+        border: 1px solid var(--ig-border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-family: inherit;
+        font-size: 14px;
+        background: var(--ig-bg, transparent);
+        color: var(--ig-text);
+        outline: none;
+    }
+
+    .rt-form textarea:focus {
+        border-color: var(--primary-color);
+    }
+
+    .rt-form-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+
+    .rt-form-msg {
+        font-size: 13px;
+        color: var(--ig-text-dim);
+    }
+
+    .rt-form-msg.error {
+        color: var(--danger-color);
+    }
+
+    .rt-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-bottom: 40px;
+    }
+
+    .rt-review {
+        display: flex;
+        gap: 14px;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius-sm);
+        padding: 16px 18px;
+    }
+
+    .rt-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    }
+
+    .rt-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .rt-body {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .rt-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+    }
+
+    .rt-name {
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .rt-date {
+        font-size: 12px;
+        color: var(--ig-text-dim);
+        margin-left: auto;
+    }
+
+    .rt-score-chip {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--ig-text-dim);
+    }
+
+    .rt-comment {
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--ig-text);
+        white-space: pre-line;
+        word-break: break-word;
+    }
+
+    .rt-comment.muted {
+        color: var(--ig-text-dim);
+        font-style: italic;
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 800px) {
+        .uploads-insights {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 700px) {
+        .rt-summary {
+            grid-template-columns: 1fr;
+            gap: 20px;
+            padding: 22px 18px;
+        }
+        .lc-card {
+            flex-wrap: wrap;
+        }
+        .lc-action {
+            width: 100%;
+        }
+        .lc-action .pill-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .profile-page {
+            padding: 6px 12px 0;
+        }
+        .profile-cover {
+            height: 110px;
+        }
+        .profile-header {
+            gap: 16px;
+            padding: 0 16px 20px;
+            margin-top: -45px;
+        }
+        .profile-avatar {
+            width: 90px;
+            height: 90px;
+            font-size: 34px;
+            border-width: 4px;
+        }
+        .profile-identity {
+            min-width: 0;
+            padding-top: 52px;
+        }
+        .profile-username {
+            font-size: 20px;
+        }
+        .profile-actions {
+            width: 100%;
+            margin-left: 0;
+            order: 3;
+        }
+        .profile-stats .stat strong {
+            font-size: 18px;
+        }
+        .profile-highlights {
+            padding: 18px 16px;
+        }
+        .avatar-note {
+            display: none;
+        }
+        .profile-tabs {
+            gap: 0;
+            justify-content: space-around;
+        }
+        .profile-tab span {
+            display: none;
+        }
+        .posts-grid {
+            gap: 6px;
+        }
+        .post-caption {
+            display: none;
+        }
+        .lc-summary {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="profile-page">
+    <div class="profile-shell">
+
+        <div class="profile-card">
+            <div class="profile-cover"></div>
+
+            <!-- ===== Header ===== -->
+            <div class="profile-header">
+                <div class="profile-avatar-wrap">
+                    {% if status_note %}
+                    <div class="avatar-note">
+                        <i class="fas fa-chevron-up" style="font-size:9px;"></i>
+                        <span>{{ status_note }}</span>
+                        <i class="fas fa-chevron-down" style="font-size:9px;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="profile-avatar">
+                        {% if avatar_url %}
+                            <img src="{{ avatar_url }}" alt="{{ username }}'s profile photo">
+                        {% else %}
+                            <span>{{ (firstname[0] if firstname else username[0]) | upper }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="profile-identity">
+                    <div class="profile-username-row">
+                        <span class="profile-username">{{ username }}</span>
+                        {% if is_own_profile %}
+                        <a class="profile-settings-icon" href="/settings" title="Settings">
+                            <i class="fas fa-cog"></i>
+                        </a>
+                        {% endif %}
+
+                        <div class="profile-actions">
+                            {% if is_own_profile %}
+                                <a class="pill-btn" href="/settings">Edit Profile</a>
+                            {% else %}
+                                <button
+                                    class="pill-btn primary"
+                                    type="button"
+                                    data-action="follow"
+                                    data-follow-btn="{{ profile_user_id }}"
+                                    data-user-id="{{ profile_user_id }}"
+                                    data-following="{{ 'true' if is_following else 'false' }}"
+                                >{{ 'Following' if is_following else 'Follow' }}</button>
+                                <a class="pill-btn" href="/messages?user={{ profile_user_id }}">Message</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if firstname or lastname %}
+                    <div class="profile-fullname">{{ firstname }} {{ lastname }}</div>
+                    {% endif %}
+
+                    {% if profile_role or location or joined_date %}
+                    <div class="profile-meta">
+                        {% if profile_role %}
+                        <span class="meta-chip role">
+                            <i class="fas {{ 'fa-chalkboard-teacher' if profile_role == 'teacher' else 'fa-user-graduate' }}"></i>
+                            {{ 'Teacher' if profile_role == 'teacher' else 'Learner' }}
+                        </span>
+                        {% endif %}
+                        {% if location %}
+                        <span class="meta-chip"><i class="fas fa-location-dot"></i> {{ location }}</span>
+                        {% endif %}
+                        {% if joined_date %}
+                        <span class="meta-chip"><i class="far fa-calendar"></i> Joined {{ joined_date }}</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if bio_lines %}
+                    <div class="profile-bio">{% for line in bio_lines %}{{ line }}{% if not loop.last %}
+{% endif %}{% endfor %}</div>
+                    {% elif bio %}
+                    <div class="profile-bio">{{ bio }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- ===== Stats ===== -->
+            <div class="profile-stats">
+                <span class="stat"><strong id="postsCountStat">{{ posts_count | default(0) }}</strong> posts</span>
+                <span class="stat" data-followers-stat="{{ profile_user_id }}">
+                    <strong data-followers-count="{{ profile_user_id }}">{{ followers_count | default(0) }}</strong> Students
+                </span>
+                <span class="stat"><strong>{{ following_count | default(0) }}</strong> following</span>
+            </div>
+
+            <!-- ===== Highlights / New ===== -->
+            {% if highlights %}
+            <div class="profile-highlights">
+                {% if is_own_profile %}
+                {% endif %}
+                {% for h in highlights | default([]) %}
+                <a class="highlight-item" href="{{ h.url }}">
+                    <div class="highlight-circle"><img src="{{ h.cover_url }}" alt="{{ h.label }}"></div>
+                    <span class="highlight-label">{{ h.label }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ===== Tabs ===== -->
+        <div class="profile-tabs">
+            <button class="profile-tab active" data-tab="uploads" type="button">
+                <i class="fas fa-th"></i><span>Uploads</span>
+            </button>
+            <button class="profile-tab" data-tab="strength" type="button">
+                <i class="fas fa-video"></i><span>Live classes</span>
+            </button>
+            <button class="profile-tab" data-tab="achievements" type="button">
+                <i class="fas fa-star"></i><span>Ratings</span>
+            </button>
+        </div>
+
+        <!-- ===== Uploads panel — real resources, fetched client-side ===== -->
+        <div class="tab-panel active" id="panel-uploads">
+            <div class="posts-loading" id="postsLoading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Loading uploads…</div>
+            </div>
+
+            <div class="uploads-insights" id="uploadsInsights" style="display:none;">
+                <div class="insight-card" style="--c:#4361ee;">
+                    <i class="fas fa-eye"></i>
+                    <div><strong id="insightViews">0</strong><span>Total views</span></div>
+                </div>
+                <div class="insight-card" style="--c:#ef4444;">
+                    <i class="fas fa-heart"></i>
+                    <div><strong id="insightLikes">0</strong><span>Total likes</span></div>
+                </div>
+                <div class="insight-card" style="--c:#10b981;">
+                    <i class="fas fa-chart-line"></i>
+                    <div><strong id="insightRate">—</strong><span>Like rate</span></div>
+                </div>
+                <div class="insight-card" style="--c:#f59e0b;">
+                    <i class="fas fa-fire"></i>
+                    <div><strong id="insightTop">—</strong><span>Top upload</span></div>
+                </div>
+            </div>
+
+            <div class="uploads-toolbar" id="uploadsToolbar" style="display:none;">
+                <div class="filter-chips" id="uploadsFilters"></div>
+                <select class="sort-select" id="uploadsSort" aria-label="Sort uploads">
+                    <option value="recent">Newest</option>
+                    <option value="views">Most viewed</option>
+                    <option value="likes">Most liked</option>
+                </select>
+            </div>
+
+            <div class="posts-grid" id="postsGrid" style="display:none;"></div>
+            <div class="posts-empty" id="postsEmpty" style="display:none;">
+                <i class="fas fa-camera"></i>
+                <div>No uploads yet</div>
+            </div>
+        </div>
+
+        <!-- ===== Live classes panel — classes this teacher created ===== -->
+        <div class="tab-panel" id="panel-strength">
+            <div class="posts-loading" id="strengthLoading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Loading live classes…</div>
+            </div>
+            <div id="strengthContent" style="display:none;"></div>
+        </div>
+
+        <!-- ===== Ratings panel — stars, average out of ten, reviews ===== -->
+        <div class="tab-panel" id="panel-achievements">
+            <div class="posts-loading" id="achievementsLoading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Loading ratings…</div>
+            </div>
+            <div id="achievementsContent" style="display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Resource preview modal -->
+<div class="rp-modal-overlay" id="rpModalOverlay">
+    <div class="rp-modal-box" id="rpModalBox"></div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    const PROFILE_USER_ID = {{ profile_user_id | tojson }};
+    const IS_OWN_PROFILE = {{ is_own_profile | tojson }};
+
+    // ---------------------------------------------------------------
+    // USER SEARCH — same /messages/search_users?q= endpoint the
+    // messages page uses to find accounts by name. Selecting a result
+    // navigates straight to that person's profile.
+    // ---------------------------------------------------------------
+    const userSearchInput = document.getElementById('profileUserSearchInput');
+    const userSearchResults = document.getElementById('profileUserSearchResults');
+    let userSearchDebounceTimer = null;
+
+    function closeUserSearchResults() {
+        userSearchResults.classList.remove('show');
+        userSearchResults.innerHTML = '';
+    }
+
+    function renderUserSearchResults(users) {
+        if (!users || users.length === 0) {
+            userSearchResults.innerHTML = `<div class="profile-search-empty">No users found.</div>`;
+            userSearchResults.classList.add('show');
+            return;
+        }
+
+        userSearchResults.innerHTML = users.map(u => `
+            <a class="profile-search-result-item" href="/profile/${u.id}">
+                <div class="profile-search-result-avatar">
+                    ${u.avatar_url
+                        ? `<img src="${u.avatar_url}" alt="${u.name}">`
+                        : (u.avatar || '?')}
+                </div>
+                <span class="profile-search-result-name">${u.name}</span>
+            </a>
+        `).join('');
+        userSearchResults.classList.add('show');
+    }
+
+    if (userSearchInput) {
+        userSearchInput.addEventListener('input', function () {
+            const query = this.value.trim();
+            clearTimeout(userSearchDebounceTimer);
+
+            if (query.length === 0) {
+                closeUserSearchResults();
+                return;
+            }
+
+            userSearchDebounceTimer = setTimeout(() => {
+                fetch(`/messages/search_users?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(users => renderUserSearchResults(users))
+                    .catch(err => {
+                        console.error('Error searching users:', err);
+                        userSearchResults.innerHTML = `<div class="profile-search-empty">Something went wrong.</div>`;
+                        userSearchResults.classList.add('show');
+                    });
+            }, 300);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!userSearchInput.contains(e.target) && !userSearchResults.contains(e.target)) {
+                closeUserSearchResults();
+            }
+        });
+    }
+
+    // ---------------------------------------------------------------
+    // TABS — three panels; live classes and ratings load on first open.
+    // ---------------------------------------------------------------
+    const tabs = document.querySelectorAll('.profile-tab');
+    const panels = document.querySelectorAll('.tab-panel');
+    let liveLoaded = false;
+    let ratingsLoaded = false;
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            const target = this.dataset.tab;
+
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+
+            panels.forEach(p => p.classList.toggle('active', p.id === `panel-${target}`));
+
+            if (target === 'strength' && !liveLoaded) {
+                liveLoaded = true;
+                loadLiveClasses();
+            }
+            if (target === 'achievements' && !ratingsLoaded) {
+                ratingsLoaded = true;
+                loadRatings();
+            }
+        });
+    });
+
+    // ---------------------------------------------------------------
+    // SHARED HELPERS
+    // ---------------------------------------------------------------
+    function escapeAttr(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : String(str);
+        return div.innerHTML.replace(/"/g, '&quot;');
+    }
+
+    function formatCount(n) {
+        n = n || 0;
+        if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+        if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+        return n.toString();
+    }
+
+    function safeUrl(url) {
+        return /^https?:\/\//i.test(url || '') || /^\//.test(url || '') ? url : '';
+    }
+
+    // ---------------------------------------------------------------
+    // UPLOADS GRID — real data from /api/resources/user/<id>.
+    // ---------------------------------------------------------------
+    let uploads = [];
+    let activeFilter = 'all';
+    let activeSort = 'recent';
+
+    const FILTER_ORDER = ['video', 'document', 'image', 'audio', 'other'];
+    const FILTER_LABELS = { video: 'Videos', document: 'Documents', image: 'Images', audio: 'Audio', other: 'Other' };
+
+    function viewsOf(r) { return r.views_count ?? r.views ?? 0; }
+    function likesOf(r) { return r.likes_count ?? r.likes ?? 0; }
+
+    function filterGroup(r) {
+        const c = resolveCategory(r);
+        return (c === 'pdf' || c === 'doc') ? 'document' : c;
+    }
+
+    function updateInsights() {
+        const totalViews = uploads.reduce((s, r) => s + viewsOf(r), 0);
+        const totalLikes = uploads.reduce((s, r) => s + likesOf(r), 0);
+        const top = uploads.reduce((best, r) => (!best || viewsOf(r) > viewsOf(best)) ? r : best, null);
+
+        document.getElementById('insightViews').textContent = formatCount(totalViews);
+        document.getElementById('insightLikes').textContent = formatCount(totalLikes);
+        document.getElementById('insightRate').textContent =
+            totalViews > 0 ? Math.min(100, Math.round((totalLikes / totalViews) * 100)) + '%' : '—';
+
+        const topEl = document.getElementById('insightTop');
+        topEl.textContent = (top && totalViews > 0) ? (top.title || 'Untitled') : '—';
+        topEl.title = topEl.textContent;
+    }
+
+    function renderFilters() {
+        const el = document.getElementById('uploadsFilters');
+        const counts = {};
+        uploads.forEach(r => {
+            const g = filterGroup(r);
+            counts[g] = (counts[g] || 0) + 1;
+        });
+        if (activeFilter !== 'all' && !counts[activeFilter]) activeFilter = 'all';
+
+        const chip = (key, label, n) =>
+            `<button type="button" class="filter-chip ${activeFilter === key ? 'active' : ''}" data-filter="${key}">${label}<span>${n}</span></button>`;
+
+        let html = chip('all', 'All', uploads.length);
+        FILTER_ORDER.forEach(key => {
+            if (counts[key]) html += chip(key, FILTER_LABELS[key], counts[key]);
+        });
+        el.innerHTML = html;
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('postsGrid');
+        let list = uploads.filter(r => activeFilter === 'all' || filterGroup(r) === activeFilter);
+
+        if (activeSort === 'views') {
+            list = list.slice().sort((a, b) => viewsOf(b) - viewsOf(a));
+        } else if (activeSort === 'likes') {
+            list = list.slice().sort((a, b) => likesOf(b) - likesOf(a));
+        }
+
+        grid.innerHTML = list.map(renderTile).join('');
+    }
+
+    function renderUploadsUI() {
+        updateInsights();
+        renderFilters();
+        renderGrid();
+    }
+
+    document.getElementById('uploadsFilters').addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-filter]');
+        if (!btn) return;
+        activeFilter = btn.dataset.filter;
+        renderFilters();
+        renderGrid();
+    });
+
+    document.getElementById('uploadsSort').addEventListener('change', function () {
+        activeSort = this.value;
+        renderGrid();
+    });
+
+    async function loadUploads() {
+        const loading = document.getElementById('postsLoading');
+        const grid = document.getElementById('postsGrid');
+        const empty = document.getElementById('postsEmpty');
+        const insights = document.getElementById('uploadsInsights');
+        const toolbar = document.getElementById('uploadsToolbar');
+
+        loading.style.display = 'block';
+        grid.style.display = 'none';
+        empty.style.display = 'none';
+
+        try {
+            const res = await fetch(`/api/resources/user/${PROFILE_USER_ID}`);
+            if (!res.ok) throw new Error(`Failed to load uploads (${res.status})`);
+            const data = await res.json();
+            uploads = data.resources || [];
+        } catch (err) {
+            console.error('Failed to load uploads:', err);
+            uploads = [];
+        }
+
+        loading.style.display = 'none';
+
+        const postsCountStat = document.getElementById('postsCountStat');
+        if (postsCountStat) postsCountStat.textContent = uploads.length;
+
+        if (!uploads.length) {
+            insights.style.display = 'none';
+            toolbar.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+
+        insights.style.display = 'grid';
+        toolbar.style.display = 'flex';
+        grid.style.display = 'grid';
+        renderUploadsUI();
+    }
+
+    function renderTile(r) {
+        const views = viewsOf(r);
+        const likes = likesOf(r);
+        const thumb = r.thumbnail_url || getDefaultThumbnail();
+
+        return `
+            <button class="post-tile" type="button" onclick="window.__openResourcePreview(${r.id})" title="${escapeAttr(r.title)}">
+                <span class="post-badge">${getFileTypeText(r.file_category)}</span>
+                <img src="${thumb}" alt="${escapeAttr(r.title)}" loading="lazy" onerror="this.onerror=null;this.src=window.__fallbackThumb;">
+                <span class="post-overlay">
+                    <span><i class="fas fa-eye"></i> ${formatCount(views)}</span>
+                    <span><i class="fas fa-heart"></i> ${formatCount(likes)}</span>
+                </span>
+                <span class="post-caption">${escapeAttr(r.title)}</span>
+            </button>
+        `;
+    }
+
+    function getFileTypeText(type) {
+        return {
+            video: 'Video',
+            pdf: 'Document',
+            doc: 'Document',
+            image: 'Image',
+            audio: 'Audio'
+        }[type] || 'File';
+    }
+
+    // Inline placeholder (the old unsplash source URL no longer serves images).
+    function getDefaultThumbnail() {
+        return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Crect width='600' height='600' fill='%23cbd5e1'/%3E%3Cpath d='M220 170h120l60 60v200H220z' fill='%2394a3b8'/%3E%3Cpath d='M340 170v60h60z' fill='%2364748b'/%3E%3C/svg%3E";
+    }
+    window.__fallbackThumb = getDefaultThumbnail();
+
+    function resolveCategory(r) {
+        const known = ['video', 'audio', 'image', 'pdf', 'doc'];
+        const raw = (r.file_category || '').toString().toLowerCase().trim();
+        if (known.includes(raw)) return raw;
+        return 'other';
+    }
+
+    // ---------------------------------------------------------------
+    // PREVIEW MODAL — opens the real file, tracks one view per user
+    // via POST /api/resources/<id>/view.
+    // ---------------------------------------------------------------
+    const rpOverlay = document.getElementById('rpModalOverlay');
+    const rpBox = document.getElementById('rpModalBox');
+
+    window.__openResourcePreview = async function (id) {
+        try {
+            const res = await fetch(`/api/resources/${id}`);
+            if (!res.ok) throw new Error(`Failed to load resource (${res.status})`);
+            const data = await res.json();
+            const r = data.resource;
+            if (!r) return;
+
+            const category = resolveCategory(r);
+            let media;
+
+            if (!r.file_url) {
+                media = `<div class="rp-modal-fallback">This file is missing its URL.</div>`;
+            } else if (category === 'video') {
+                media = `<video controls autoplay><source src="${r.file_url}">Your browser can't play this video.</video>`;
+            } else if (category === 'audio') {
+                media = `<audio controls autoplay><source src="${r.file_url}">Your browser can't play this audio.</audio>`;
+            } else if (category === 'image') {
+                media = `<img src="${r.file_url}" alt="${escapeAttr(r.title)}">`;
+            } else if (category === 'pdf') {
+                media = `<iframe src="${r.file_url}" title="${escapeAttr(r.title)}"></iframe>`;
+            } else {
+                media = `
+                    <div class="rp-modal-fallback">
+                        <p>No inline preview for this file type.</p>
+                        <a href="/api/resources/${r.id}/download"><i class="fas fa-download"></i> Download</a>
+                    </div>`;
+            }
+
+            const views = r.views_count ?? r.views ?? 0;
+            const likes = r.likes_count ?? r.likes ?? 0;
+
+            rpBox.innerHTML = `
+                <div class="rp-modal-header">
+                    <h2>${escapeAttr(r.title)}</h2>
+                    <button type="button" onclick="window.__closeResourcePreview()">✕</button>
+                </div>
+                <div class="rp-modal-body">${media}</div>
+                <div class="rp-modal-footer">
+                    <span><i class="fas fa-eye"></i> ${formatCount(views)} views</span>
+                    <span><i class="fas fa-heart"></i> ${formatCount(likes)} likes</span>
+                </div>
+            `;
+
+            rpOverlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+
+            fetch(`/api/resources/${id}/view`, { method: 'POST' }).catch(() => {});
+        } catch (err) {
+            console.error('Failed to open resource preview:', err);
+        }
+    };
+
+    window.__closeResourcePreview = function () {
+        rpOverlay.querySelectorAll('video, audio').forEach(m => {
+            m.pause();
+            m.currentTime = 0;
+            m.src = '';
+            m.load();
+        });
+        rpOverlay.classList.remove('show');
+        rpBox.innerHTML = '';
+        document.body.style.overflow = '';
+        loadUploads();
+    };
+
+    rpOverlay.addEventListener('click', function (e) {
+        if (e.target === rpOverlay) window.__closeResourcePreview();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && rpOverlay.classList.contains('show')) window.__closeResourcePreview();
+    });
+
+    loadUploads();
+
+    // ---------------------------------------------------------------
+    // FOLLOW / UNFOLLOW — POST/DELETE /api/users/<id>/follow with an
+    // optimistic update that reconciles with the server's total.
+    // ---------------------------------------------------------------
+    const followBtn = document.querySelector('[data-action="follow"]');
+    if (followBtn) {
+        followBtn.addEventListener('click', async function () {
+            const userId = this.getAttribute('data-user-id');
+            const wasFollowing = this.dataset.following === 'true';
+            const newFollowing = !wasFollowing;
+
+            const countEl = document.querySelector(`[data-followers-count="${userId}"]`);
+            const currentCount = countEl ? parseInt(countEl.textContent.replace(/[^\d]/g, ''), 10) || 0 : 0;
+            const optimisticCount = Math.max(0, currentCount + (wasFollowing ? -1 : 1));
+
+            this.disabled = true;
+            applyFollowState(this, newFollowing);
+            updateFollowerCount(userId, optimisticCount, { animate: true });
+
+            let res;
+            try {
+                res = await fetch(`/api/users/${userId}/follow`, {
+                    method: wasFollowing ? 'DELETE' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin'
+                });
+            } catch (networkErr) {
+                console.warn('[follow] request did not reach the server; keeping local state.', networkErr);
+                this.disabled = false;
+                return;
+            }
+
+            if (res.status === 401) {
+                window.location.href = '/Login';
+                return;
+            }
+
+            if (res.status === 404 || res.status === 405) {
+                console.warn(`[follow] "/api/users/${userId}/follow" isn't available yet (${res.status}); keeping local state.`);
+                this.disabled = false;
+                return;
+            }
+
+            try {
+                if (!res.ok) throw new Error(`Follow request failed (${res.status})`);
+
+                const data = await res.json();
+                const finalFollowing = typeof data.following === 'boolean' ? data.following : newFollowing;
+                const finalCount = typeof data.followers_count === 'number' ? data.followers_count : optimisticCount;
+
+                applyFollowState(this, finalFollowing);
+                updateFollowerCount(userId, finalCount, { animate: false });
+            } catch (err) {
+                console.error('Failed to toggle follow:', err);
+                applyFollowState(this, wasFollowing);
+                updateFollowerCount(userId, currentCount, { animate: false });
+            } finally {
+                this.disabled = false;
+            }
+        });
+    }
+
+    function applyFollowState(btn, following) {
+        btn.dataset.following = following;
+        btn.textContent = following ? 'Following' : 'Follow';
+        btn.classList.toggle('primary', !following);
+    }
+
+    function updateFollowerCount(userId, count, { animate = false } = {}) {
+        const countEl = document.querySelector(`[data-followers-count="${userId}"]`);
+        if (!countEl) return;
+        countEl.textContent = count;
+        if (animate) {
+            countEl.classList.remove('pop');
+            void countEl.offsetWidth;
+            countEl.classList.add('pop');
+            setTimeout(() => countEl.classList.remove('pop'), 300);
+        }
+    }
+
+    // =================================================================
+    // LIVE CLASSES TAB
+    // On your own profile this reads /api/live-classes?mine=1, the same
+    // data the Create Live page lists under "My live classes". On other
+    // people's profiles it reads /api/users/<id>/live-classes.
+    // =================================================================
+    let liveClasses = [];
+    let liveFilter = 'all';
+
+    // Accepts both naming styles, so either API shape works.
+    function normalizeLiveClass(c) {
+        return {
+            id: c.id,
+            title: c.title,
+            description: c.description,
+            scheduled_at: c.scheduled_at || c.start,
+            duration_minutes: c.duration_minutes || c.durationMin || c.duration,
+            join_url: c.join_url || c.streamUrl || c.url,
+            attendees_count: c.attendees_count || c.attendees || 0
+        };
+    }
+
+    function classWindow(c) {
+        const start = new Date(c.scheduled_at).getTime();
+        const mins = Number(c.duration_minutes) > 0 ? Number(c.duration_minutes) : 60;
+        return { start: start, end: start + mins * 60000, mins: mins };
+    }
+
+    // live / upcoming / ended, worked out from the start time and duration
+    function classStatus(c) {
+        const w = classWindow(c);
+        if (isNaN(w.start)) return 'upcoming';
+        const now = Date.now();
+        if (now < w.start) return 'upcoming';
+        if (now <= w.end) return 'live';
+        return 'ended';
+    }
+
+    function statusLabel(s) {
+        return { live: 'Live now', upcoming: 'Upcoming', ended: 'Ended' }[s];
+    }
+
+    function renderLiveCard(c) {
+        const status = classStatus(c);
+        const w = classWindow(c);
+        const d = new Date(c.scheduled_at);
+        const valid = !isNaN(d.getTime());
+        const month = valid ? d.toLocaleDateString([], { month: 'short' }) : '--';
+        const day = valid ? d.getDate() : '--';
+        const when = valid
+            ? d.toLocaleDateString([], { weekday: 'short' }) + ', ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Time to be announced';
+        const url = safeUrl(c.join_url);
+
+        let action = '';
+        if (status === 'live' && url) {
+            action = `<a class="pill-btn primary" href="${escapeAttr(url)}" target="_blank" rel="noopener"><i class="fas fa-video"></i> Join now</a>`;
+        } else if (status === 'upcoming' && url) {
+            action = `<a class="pill-btn" href="${escapeAttr(url)}" target="_blank" rel="noopener"><i class="fas fa-link"></i> Class link</a>`;
+        }
+
+        return `
+            <div class="lc-card ${status}">
+                <div class="lc-date"><span class="m">${escapeAttr(month)}</span><span class="d">${escapeAttr(day)}</span></div>
+                <div class="lc-main">
+                    <div class="lc-title">${escapeAttr(c.title || 'Untitled class')}<span class="lc-status ${status}">${statusLabel(status)}</span></div>
+                    ${c.description ? `<div class="lc-desc">${escapeAttr(c.description)}</div>` : ''}
+                    <div class="lc-meta">
+                        <span><i class="far fa-clock"></i> ${escapeAttr(when)}</span>
+                        <span><i class="fas fa-hourglass-half"></i> ${w.mins} min</span>
+                        ${Number(c.attendees_count) > 0 ? `<span><i class="fas fa-users"></i> ${formatCount(c.attendees_count)} joined</span>` : ''}
+                    </div>
+                </div>
+                ${action ? `<div class="lc-action">${action}</div>` : ''}
+            </div>
+        `;
+    }
+
+    function renderLivePanel() {
+        const content = document.getElementById('strengthContent');
+        const counts = { all: liveClasses.length, live: 0, upcoming: 0, ended: 0 };
+        let totalAttendees = 0;
+        liveClasses.forEach(c => {
+            counts[classStatus(c)] += 1;
+            totalAttendees += Number(c.attendees_count) || 0;
+        });
+
+        if (!liveClasses.length) {
+            content.innerHTML = `
+                <div class="posts-empty">
+                    <i class="fas fa-video"></i>
+                    <div>${IS_OWN_PROFILE ? "You haven't created any live classes yet." : 'No live classes yet.'}</div>
+                    ${IS_OWN_PROFILE ? '<a class="pill-btn primary" href="/teacher-live"><i class="fas fa-plus"></i> Create a live class</a>' : ''}
+                </div>`;
+            return;
+        }
+
+        if (liveFilter !== 'all' && !counts[liveFilter]) liveFilter = 'all';
+
+        const chip = (key, label) =>
+            `<button type="button" class="filter-chip ${liveFilter === key ? 'active' : ''}" data-live-filter="${key}">${label}<span>${counts[key]}</span></button>`;
+
+        // live first, then soonest upcoming, then most recent ended
+        const order = { live: 0, upcoming: 1, ended: 2 };
+        const list = liveClasses
+            .filter(c => liveFilter === 'all' || classStatus(c) === liveFilter)
+            .slice()
+            .sort((a, b) => {
+                const sa = classStatus(a), sb = classStatus(b);
+                if (sa !== sb) return order[sa] - order[sb];
+                const ta = new Date(a.scheduled_at).getTime() || 0;
+                const tb = new Date(b.scheduled_at).getTime() || 0;
+                return sa === 'ended' ? tb - ta : ta - tb;
+            });
+
+        content.innerHTML = `
+            <div class="lc-summary">
+                <div class="insight-card" style="--c:#4361ee;">
+                    <i class="fas fa-video"></i>
+                    <div><strong>${counts.all}</strong><span>Classes created</span></div>
+                </div>
+                <div class="insight-card" style="--c:#f59e0b;">
+                    <i class="far fa-calendar-check"></i>
+                    <div><strong>${counts.upcoming + counts.live}</strong><span>Upcoming</span></div>
+                </div>
+                <div class="insight-card" style="--c:#10b981;">
+                    <i class="fas fa-circle-check"></i>
+                    <div><strong>${counts.ended}</strong><span>Completed</span></div>
+                </div>
+            </div>
+            <div class="uploads-toolbar">
+                <div class="filter-chips" id="liveFilters">
+                    ${chip('all', 'All')}
+                    ${counts.live ? chip('live', 'Live now') : ''}
+                    ${counts.upcoming ? chip('upcoming', 'Upcoming') : ''}
+                    ${counts.ended ? chip('ended', 'Past') : ''}
+                </div>
+                ${IS_OWN_PROFILE ? '<a class="pill-btn primary" href="/teacher-live"><i class="fas fa-plus"></i> New live class</a>' : ''}
+            </div>
+            <div class="lc-list">${list.map(renderLiveCard).join('')}</div>
+        `;
+    }
+
+    async function fetchLiveList(url, key) {
+        const res = await fetch(url, { credentials: 'same-origin' });
+        if (res.status === 401) { window.location.href = '/Login'; return null; }
+        if (!res.ok) throw new Error(`Failed to load live classes (${res.status})`);
+        const data = await res.json();
+        return (data[key] || data.classes || data.live_classes || []).map(normalizeLiveClass);
+    }
+
+    async function loadLiveClasses() {
+        const loading = document.getElementById('strengthLoading');
+        const content = document.getElementById('strengthContent');
+        loading.style.display = 'block';
+        content.style.display = 'none';
+
+        try {
+            let list = null;
+
+            if (IS_OWN_PROFILE) {
+                // Same source as the Create Live page's "My live classes".
+                try {
+                    list = await fetchLiveList('/api/live-classes?mine=1', 'live_classes');
+                } catch (e) {
+                    console.warn('Could not read /api/live-classes?mine=1, trying the profile endpoint.', e);
+                }
+            }
+
+            if (!list || !list.length) {
+                try {
+                    const fromProfile = await fetchLiveList(`/api/users/${PROFILE_USER_ID}/live-classes`, 'classes');
+                    if (fromProfile && fromProfile.length) list = fromProfile;
+                } catch (e) {
+                    if (!list) throw e;
+                }
+            }
+
+            liveClasses = list || [];
+            loading.style.display = 'none';
+            content.style.display = 'block';
+            renderLivePanel();
+        } catch (err) {
+            console.error('Failed to load live classes:', err);
+            loading.style.display = 'none';
+            content.style.display = 'block';
+            content.innerHTML = `
+                <div class="posts-empty">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <div>Couldn't load live classes. Please try again later.</div>
+                </div>`;
+        }
+    }
+
+    document.getElementById('strengthContent').addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-live-filter]');
+        if (!btn) return;
+        liveFilter = btn.dataset.liveFilter;
+        renderLivePanel();
+    });
+
+    // keep Live now / Upcoming / Past labels correct while the page stays open
+    setInterval(function () {
+        if (liveLoaded && liveClasses.length && document.getElementById('panel-strength').classList.contains('active')) {
+            renderLivePanel();
+        }
+    }, 60000);
+
+    // =================================================================
+    // RATINGS TAB — GET/POST /api/users/<id>/ratings
+    // Stars are 1-5; the average is shown out of ten (stars x 2).
+    // =================================================================
+    let ratingsData = null;
+    let ratingSort = 'newest';
+    let pickedStars = 0;
+
+    function starsHTML(outOfFive, small) {
+        const pct = Math.max(0, Math.min(100, (Number(outOfFive) || 0) / 5 * 100));
+        return `<span class="stars ${small ? 'sm' : ''}" aria-label="${(Number(outOfFive) || 0).toFixed(1)} out of 5 stars">
+            <span class="stars-bg">★★★★★</span>
+            <span class="stars-fg" style="width:${pct}%">★★★★★</span>
+        </span>`;
+    }
+
+    function initialsOf(name) {
+        return (name || '?').trim().charAt(0).toUpperCase() || '?';
+    }
+
+    function renderReview(r) {
+        const stars = Number(r.stars) || 0;
+        const d = new Date(r.created_at);
+        const when = isNaN(d.getTime()) ? '' : d.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+        const avatar = safeUrl(r.reviewer_avatar_url)
+            ? `<img src="${escapeAttr(r.reviewer_avatar_url)}" alt="${escapeAttr(r.reviewer_name)}">`
+            : escapeAttr(initialsOf(r.reviewer_name));
+
+        return `
+            <div class="rt-review">
+                <div class="rt-avatar">${avatar}</div>
+                <div class="rt-body">
+                    <div class="rt-head">
+                        <span class="rt-name">${escapeAttr(r.reviewer_name || 'Anonymous')}</span>
+                        ${starsHTML(stars, true)}
+                        <span class="rt-score-chip">${stars * 2}/10</span>
+                        <span class="rt-date">${escapeAttr(when)}</span>
+                    </div>
+                    ${r.comment
+                        ? `<div class="rt-comment">${escapeAttr(r.comment)}</div>`
+                        : `<div class="rt-comment muted">No written review.</div>`}
+                </div>
+            </div>
+        `;
+    }
+
+    function sortedReviews() {
+        const list = (ratingsData.reviews || []).slice();
+        if (ratingSort === 'highest') list.sort((a, b) => (b.stars || 0) - (a.stars || 0));
+        else if (ratingSort === 'lowest') list.sort((a, b) => (a.stars || 0) - (b.stars || 0));
+        else list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        return list;
+    }
+
+    function renderReviewForm() {
+        if (IS_OWN_PROFILE) return '';
+        const mine = ratingsData.my_review;
+        if (mine && !pickedStars) pickedStars = Number(mine.stars) || 0;
+
+        const picker = [1, 2, 3, 4, 5].map(n =>
+            `<button type="button" data-pick="${n}" class="${n <= pickedStars ? 'on' : ''}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`
+        ).join('');
+
+        return `
+            <div class="rt-form">
+                <h4>${mine ? 'Update your review' : 'Leave a review'}</h4>
+                <div class="rt-picker" id="rtPicker">${picker}</div>
+                <textarea id="rtComment" maxlength="500" placeholder="Share your experience with this teacher (optional)">${escapeAttr(mine ? mine.comment : '')}</textarea>
+                <div class="rt-form-footer">
+                    <span class="rt-form-msg" id="rtMsg">${pickedStars ? `${pickedStars * 2}/10` : 'Pick a star rating'}</span>
+                    <button type="button" class="pill-btn primary" id="rtSubmit">${mine ? 'Update review' : 'Submit review'}</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderRatingsPanel() {
+        const content = document.getElementById('achievementsContent');
+        const count = Number(ratingsData.count) || 0;
+        const avgTen = Number(ratingsData.average_out_of_ten) || 0;
+        const avgFive = avgTen / 2;
+        const dist = ratingsData.distribution || {};
+
+        if (!count) {
+            content.innerHTML = `
+                ${renderReviewForm()}
+                <div class="posts-empty">
+                    <i class="far fa-star"></i>
+                    <div>${IS_OWN_PROFILE ? 'No ratings yet. Reviews from your learners will appear here.' : 'No ratings yet. Be the first to leave a review.'}</div>
+                </div>`;
+            return;
+        }
+
+        const bars = [5, 4, 3, 2, 1].map(n => {
+            const c = Number(dist[n] ?? dist[String(n)]) || 0;
+            const pct = Math.round((c / count) * 100);
+            return `
+                <div class="rt-bar-row">
+                    <span class="rt-bar-label">${n}<i class="fas fa-star"></i></span>
+                    <div class="rt-bar-track"><div class="rt-bar-fill" style="width:${pct}%"></div></div>
+                    <span class="rt-bar-count">${c}</span>
+                </div>`;
+        }).join('');
+
+        content.innerHTML = `
+            <div class="rt-summary">
+                <div class="rt-score">
+                    <div class="rt-score-number">${avgTen.toFixed(1)}<small>/10</small></div>
+                    ${starsHTML(avgFive, false)}
+                    <div class="rt-score-count">${avgFive.toFixed(1)} of 5 stars · ${count} review${count === 1 ? '' : 's'}</div>
+                </div>
+                <div class="rt-bars">${bars}</div>
+            </div>
+            ${renderReviewForm()}
+            <div class="uploads-toolbar">
+                <strong>Reviews (${count})</strong>
+                <select class="sort-select" id="rtSort" aria-label="Sort reviews">
+                    <option value="newest" ${ratingSort === 'newest' ? 'selected' : ''}>Newest</option>
+                    <option value="highest" ${ratingSort === 'highest' ? 'selected' : ''}>Highest rated</option>
+                    <option value="lowest" ${ratingSort === 'lowest' ? 'selected' : ''}>Lowest rated</option>
+                </select>
+            </div>
+            <div class="rt-list">${sortedReviews().map(renderReview).join('')}</div>
+        `;
+    }
+
+    async function loadRatings() {
+        const loading = document.getElementById('achievementsLoading');
+        const content = document.getElementById('achievementsContent');
+        loading.style.display = 'block';
+        content.style.display = 'none';
+
+        try {
+            const res = await fetch(`/api/users/${PROFILE_USER_ID}/ratings`, { credentials: 'same-origin' });
+            if (res.status === 401) { window.location.href = '/Login'; return; }
+            if (!res.ok) throw new Error(`Failed to load ratings (${res.status})`);
+            ratingsData = await res.json();
+            loading.style.display = 'none';
+            content.style.display = 'block';
+            renderRatingsPanel();
+        } catch (err) {
+            console.error('Failed to load ratings:', err);
+            loading.style.display = 'none';
+            content.style.display = 'block';
+            content.innerHTML = `
+                <div class="posts-empty">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <div>Couldn't load ratings. Please try again later.</div>
+                </div>`;
+        }
+    }
+
+    async function submitReview() {
+        const msg = document.getElementById('rtMsg');
+        const btn = document.getElementById('rtSubmit');
+        const comment = document.getElementById('rtComment').value.trim();
+
+        if (!pickedStars) {
+            msg.textContent = 'Please pick a star rating first.';
+            msg.classList.add('error');
+            return;
+        }
+
+        btn.disabled = true;
+        msg.classList.remove('error');
+        msg.textContent = 'Saving…';
+
+        try {
+            const res = await fetch(`/api/users/${PROFILE_USER_ID}/ratings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ stars: pickedStars, comment: comment })
+            });
+            if (res.status === 401) { window.location.href = '/Login'; return; }
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+
+            pickedStars = 0;
+            await loadRatings();
+        } catch (err) {
+            console.error('Failed to save review:', err);
+            msg.textContent = err.message || "Couldn't save your review.";
+            msg.classList.add('error');
+            btn.disabled = false;
+        }
+    }
+
+    document.getElementById('achievementsContent').addEventListener('click', function (e) {
+        const star = e.target.closest('[data-pick]');
+        if (star) {
+            pickedStars = Number(star.dataset.pick);
+            document.querySelectorAll('#rtPicker button').forEach(b => {
+                b.classList.toggle('on', Number(b.dataset.pick) <= pickedStars);
+            });
+            const msg = document.getElementById('rtMsg');
+            if (msg) { msg.classList.remove('error'); msg.textContent = `${pickedStars * 2}/10`; }
+            return;
+        }
+        if (e.target.closest('#rtSubmit')) submitReview();
+    });
+
+    document.getElementById('achievementsContent').addEventListener('change', function (e) {
+        if (e.target.id === 'rtSort') {
+            ratingSort = e.target.value;
+            const keepStars = pickedStars;
+            renderRatingsPanel();
+            pickedStars = keepStars;
+        }
+    });
+})();
+</script>
+{% endblock %}

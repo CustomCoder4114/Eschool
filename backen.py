@@ -5,11 +5,15 @@ import uuid
 import json
 import random
 import hashlib
-from datetime import datetime
+import re
+from urllib.parse import urlparse, parse_qs
+from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
 import math
+import sqlite3
+from flask import jsonify, request, session
 
 app = Flask(__name__)
 
@@ -237,6 +241,8 @@ def home_endpoint_for_role(role):
         return 'admin_dashboard'
     if role == 'teacher':
         return 'teacher_dashboard'
+    if role == 'parent':
+        return 'parent_dashboard'
     return 'dashboard'   # students / learners
 
 def create_notification(conn, user_id, title, message, icon='fa-bell', color='blue'):
@@ -493,6 +499,25 @@ def init_db():
         cursor.execute("ALTER TABLE messages ADD COLUMN is_broadcast INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
         pass  # column already exists
+
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS live_classes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            grade TEXT DEFAULT 'Grade 10',
+            description TEXT,
+            topics TEXT,
+            start_time TEXT NOT NULL,
+            duration_min INTEGER NOT NULL DEFAULT 60,
+            platform TEXT,
+            stream_url TEXT NOT NULL,
+            embed_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (teacher_id) REFERENCES users (id)
+        )
+    ''')
     
     conn.commit()
     conn.close()
@@ -740,10 +765,124 @@ def serialize_opinion(row, liked_by_current_user=False):
 
 # ============ EXISTING ROUTES ===============
 
-# teachers routes 
+# teachers routes////////////////////////// 
+
+@app.route('/teacher-dashboard')
+def teacher_dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Only teachers belong here; everyone else goes to their own page.
+    if session.get('role') != 'teacher':
+        return redirect(url_for(home_endpoint_for_role(session.get('role'))))
+
+    return render_template(
+        'Teacher/teacher_dashboard.html',
+        firstname=session['firstname'],
+        lastname=session['lastname']
+    )
+    if session.get('role') == 'parent':
+        return redirect(url_for('parent_dashboard'))
+
+@app.route('/parent-dashboard')
+def parent_dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Only parents belong here; everyone else goes to their own page.
+    if session.get('role') != 'parent':
+        return redirect(url_for(home_endpoint_for_role(session.get('role'))))
+
+    return render_template(
+        'Parent/parent-dashboard.html',
+        firstname=session['firstname'],
+        lastname=session['lastname']
+    )
+
+@app.route('/teacher-upload', methods=['GET', 'POST'])
+def upload():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('Teacher/teacher-upload.html',
+                         firstname=session['firstname'],
+                         lastname=session['lastname'],
+                         user_id=session['user_id'])
+
+@app.route('/teacher-messages')
+def jmessage():
+    return render_template('Teacher/teacher-messages.html')
+
+@app.route('/teacher-resourses')
+def jresourses():
+    return render_template('Teacher/teacher-resourses.html')
+
+@app.route('/teacher-settings')
+def jsettings():
+    return render_template('Teacher/teacher-settings.html')
+
+@app.route('/teacher-support')
+def jsupport():
+    return render_template('Teacher/teacher-support.html')
+
+@app.route('/teacher-schedule')
+def jschedule():
+    return render_template('Teacher/teacher-schedule.html')
+
+@app.route('/teacher-live')
+def jlive():
+    return render_template('Teacher/teacher-live.html')
+
+@app.route('/teacher-profile')
+def jprofile():
+    """The logged-in user's own profile page."""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    ctx = build_profile_context(session['user_id'])
+    if ctx is None:
+        # Session points at a user_id that no longer exists in the DB
+        session.clear()
+        return redirect(url_for('login'))
+
+    return render_template('Teacher/teacher-profile.html', **ctx)
 
 
-# learner routes
+@app.route('/parent-dashboard')
+def parent_dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Only parents belong here; everyone else goes to their own page.
+    if session.get('role') != 'parent':
+        return redirect(url_for(home_endpoint_for_role(session.get('role'))))
+
+    return render_template(
+        'Parent/parent-dashboard.html',
+        firstname=session['firstname'],
+        lastname=session['lastname']
+    )
+    
+@app.route('/profile/<int:user_id>')
+def view_profile(user_id):
+    """Anyone else's profile page — this is what the Follow button and
+    live followers/following counts are actually for."""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Viewing your own id through this route just sends you to the
+    # canonical /profile instead of duplicating the same page.
+    if user_id == session['user_id']:
+        return redirect(url_for('profile'))
+
+    ctx = build_profile_context(user_id)
+    if ctx is None:
+        abort(404)
+
+    return render_template('Teacher/teacher-profile.html', **ctx)
+
+# learner routes //////////////////////
+
 @app.route('/admin_messages')
 def admin_messages():
     if 'user_id' not in session:
@@ -770,11 +909,11 @@ def admin_support():
 
 @app.route('/intro')
 def intro():
-    return render_template('intro.html')
+    return render_template('Home/intro.html')
 
 @app.route('/')
 def learn():
-    return render_template('learn.html')
+    return render_template('Home/learn.html')
 
 @app.route('/Login', methods=['GET', 'POST'])
 def login():
@@ -819,7 +958,7 @@ def login():
         else:
             message = "Invalid email or password."
 
-    return render_template('Login.html', message=message)
+    return render_template('Home/Login.html', message=message)
 
 
 # ============ GOOGLE OAUTH ROUTES ============
@@ -910,7 +1049,7 @@ def dashboard():
     conn.close()
 
     return render_template(
-        'dashboard.html',
+        'Learner/dashboard.html',
         firstname=session['firstname'],
         lastname=session['lastname'],
         quote_text=session.get('quote_text'),
@@ -966,36 +1105,21 @@ def admin_dashboard():
         recent_users=recent_users
     )
 
-@app.route('/teacher-dashboard')
-def teacher_dashboard():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    # Only teachers belong here; everyone else goes to their own page.
-    if session.get('role') != 'teacher':
-        return redirect(url_for(home_endpoint_for_role(session.get('role'))))
-
-    return render_template(
-        'Teacher/teacher_dashboard.html',
-        firstname=session['firstname'],
-        lastname=session['lastname']
-    )
-
 @app.route('/career')
 def career():
-    return render_template('career.html')
+    return render_template('Home/career.html')
 
 @app.route('/earn')
 def earn():
-    return render_template('earn.html')
+    return render_template('Home/earn.html')
 
 @app.route('/aboutus')
 def aboutus():
-    return render_template('aboutus.html')
+    return render_template('Home/aboutus.html')
 
 @app.route('/services')
 def services():
-    return render_template('services.html')
+    return render_template('Home/services.html')
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
@@ -1003,7 +1127,7 @@ def contact():
     endpoint contact.html's form submits to — it emails the message
     straight to CONTACT_RECEIVER_EMAIL and never touches the database."""
     if request.method == 'GET':
-        return render_template('contact.html')
+        return render_template('Home/contact.html')
 
     data = request.get_json(silent=True) or {}
 
@@ -1054,7 +1178,12 @@ def register():
         country = request.form.get('country')
 
         chosen_role = (request.form.get('role') or '').strip().lower()
-        role = 'teacher' if chosen_role == 'teacher' else 'student'
+        if chosen_role == 'teacher':
+            role = 'teacher'
+        elif chosen_role == 'parent':
+            role = 'parent'
+        else:
+            role = 'student'      # learner (and anything unexpected)
 
         conn = sqlite3.connect('users.db', timeout=10)
         try:
@@ -1073,9 +1202,9 @@ def register():
         finally:
             conn.close()
 
-        return render_template('Login.html')
+        return render_template('Home/Login.html')
 
-    return render_template('register.html')
+    return render_template('Home/register.html')
 
 @app.context_processor
 def inject_user():
@@ -1102,82 +1231,48 @@ def inject_user():
 
 @app.route('/body')
 def body():
-    return render_template('body.html')
+    return render_template('Learner/body.html')
 
 @app.route('/courses')
 def courses():
-    return render_template('courses.html')
-
-@app.route('/profile')
-def profile():
-    """The logged-in user's own profile page."""
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    ctx = build_profile_context(session['user_id'])
-    if ctx is None:
-        # Session points at a user_id that no longer exists in the DB
-        session.clear()
-        return redirect(url_for('login'))
-
-    return render_template('profile.html', **ctx)
-
-
-@app.route('/profile/<int:user_id>')
-def view_profile(user_id):
-    """Anyone else's profile page — this is what the Follow button and
-    live followers/following counts are actually for."""
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    # Viewing your own id through this route just sends you to the
-    # canonical /profile instead of duplicating the same page.
-    if user_id == session['user_id']:
-        return redirect(url_for('profile'))
-
-    ctx = build_profile_context(user_id)
-    if ctx is None:
-        abort(404)
-
-    return render_template('profile.html', **ctx)
-
+    return render_template('Learner/courses.html')
 
 @app.route('/schedule')
 def schedule():
-    return render_template('schedule.html')
+    return render_template('Learner/schedule.html')
 
 @app.route('/careerD')
 def careerD():
-    return render_template('careerD.html')
+    return render_template('Learner/careerD.html')
 
 @app.route('/progres')
 def progres():
-    return render_template('progres.html')
+    return render_template('Learner/progres.html')
 
 @app.route('/settings')
 def settings():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    return render_template('settings.html')
+    return render_template('Learner/settings.html')
 
 @app.route('/strategies')
 def strategies():
-    return render_template('strategies.html')
+    return render_template('Learner/strategies.html')
 
-@app.route('/skills')
-def skills():
-    return render_template('skills.html')
+@app.route('/live')
+def live():
+    return render_template('Learner/live.html')
 
 @app.route('/messages')
 def messages():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    return render_template('messages.html')
+    return render_template('Learner/messages.html')
 
 @app.route('/support')
 def support():
-    return render_template('support.html')
+    return render_template('Learner/support.html')
 
 @app.route('/logout')
 def logout():
@@ -1868,16 +1963,6 @@ def upload_profile_photo():
 
     avatar_url = get_avatar_url(user_id, new_filename)
     return jsonify({'success': True, 'avatar_url': avatar_url})
-
-@app.route('/upload', methods=['GET', 'POST'])
-def upload():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    return render_template('upload.html',
-                         firstname=session['firstname'],
-                         lastname=session['lastname'],
-                         user_id=session['user_id'])
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -2885,13 +2970,213 @@ def toggle_follow(target_user_id):
         print(f"Error toggling follow: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+VALID_LIVE_SUBJECTS = {'math', 'english', 'kiswahili', 'csl'}
+
+
+def parse_stream_url(url):
+    """
+    Works out the platform name and, for YouTube, the embed link from a
+    pasted live URL. Returns (platform, embed_url).
+    embed_url is '' when the platform can't be shown inside the page
+    (Zoom, Google Meet, Teams): learners get an "Open Class Link" button.
+    """
+    p = urlparse(url)
+    host = (p.netloc or '').lower()
+    if host.startswith('www.'):
+        host = host[4:]
+    path = p.path or ''
+
+    if host in ('youtube.com', 'm.youtube.com', 'youtu.be'):
+        vid = None
+        if host == 'youtu.be':
+            vid = path.strip('/').split('/')[0]
+        elif path.startswith('/watch'):
+            vid = (parse_qs(p.query).get('v') or [None])[0]
+        else:
+            parts = path.strip('/').split('/')
+            if len(parts) >= 2 and parts[0] in ('live', 'embed', 'shorts'):
+                vid = parts[1]
+        if vid and re.fullmatch(r'[A-Za-z0-9_-]{11}', vid):
+            return 'YouTube Live', f'https://www.youtube.com/embed/{vid}'
+        return 'YouTube Live', ''
+    if host == 'meet.google.com':
+        return 'Google Meet', ''
+    if host.endswith('zoom.us') or host.endswith('zoom.com'):
+        return 'Zoom', ''
+    if host.endswith('teams.microsoft.com') or host.endswith('teams.live.com'):
+        return 'Microsoft Teams', ''
+    return (host or 'Online'), ''
+
+
+def serialize_live_class(row):
+    """
+    row layout: 0 id, 1 teacher_id, 2 title, 3 subject, 4 grade, 5 description,
+    6 topics (JSON), 7 start_time, 8 duration_min, 9 platform, 10 stream_url,
+    11 embed_url, 12 firstname, 13 lastname
+    """
+    firstname = (row[12] or '').strip()
+    lastname = (row[13] or '').strip()
+    try:
+        topics = json.loads(row[6] or '[]')
+    except ValueError:
+        topics = []
+    return {
+        'id': row[0],
+        'teacher_id': row[1],
+        'teacher': f"{firstname} {lastname}".strip() or 'Teacher',
+        'title': row[2],
+        'subject': row[3],
+        'grade': row[4] or 'Grade 10',
+        'description': row[5] or '',
+        'topics': topics,
+        'start': row[7],                 # UTC, like 2026-10-20T06:00:00Z
+        'durationMin': row[8],
+        'platform': row[9] or 'Online',
+        'streamUrl': row[10],
+        'embedUrl': row[11] or '',
+        'viewers': 0,
+        'is_mine': session.get('user_id') == row[1]
+    }
+
+
+LIVE_CLASS_SELECT = '''
+    SELECT lc.id, lc.teacher_id, lc.title, lc.subject, lc.grade, lc.description,
+           lc.topics, lc.start_time, lc.duration_min, lc.platform, lc.stream_url,
+           lc.embed_url, u.firstname, u.lastname
+    FROM live_classes lc
+    LEFT JOIN users u ON lc.teacher_id = u.id
+'''
+
+
+@app.route('/api/live-classes', methods=['GET', 'POST'])
+def live_classes_api():
+    """
+    GET  -> every live class (learners see these on the Live Classes page).
+            Add ?mine=1 to get only the logged-in teacher's own classes.
+    POST -> a teacher (or admin) creates a live class.
+    """
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+    conn = sqlite3.connect('users.db', timeout=10)
+    try:
+        cursor = conn.cursor()
+
+        if request.method == 'POST':
+            if session.get('role') not in ('teacher', 'admin'):
+                return jsonify({'success': False, 'message': 'Only teachers can create live classes'}), 403
+
+            data = request.get_json(silent=True) or {}
+
+            title = (data.get('title') or '').strip()[:120]
+            subject = (data.get('subject') or '').strip().lower()
+            grade = (data.get('grade') or 'Grade 10').strip()[:30]
+            description = (data.get('description') or '').strip()[:600]
+            url = (data.get('url') or '').strip()
+
+            if not title:
+                return jsonify({'success': False, 'message': 'Please enter a class title'}), 400
+            if subject not in VALID_LIVE_SUBJECTS:
+                return jsonify({'success': False, 'message': 'Please choose a valid subject'}), 400
+
+            # The link must be a real http(s) address
+            parsed = urlparse(url)
+            if parsed.scheme not in ('http', 'https') or not parsed.netloc or len(url) > 500:
+                return jsonify({'success': False, 'message': 'Please paste a valid live link starting with https://'}), 400
+
+            # Topics: a list of up to 8 short lines
+            raw_topics = data.get('topics') or []
+            if isinstance(raw_topics, str):
+                raw_topics = raw_topics.split('\n')
+            topics = [str(t).strip()[:100] for t in raw_topics if str(t).strip()][:8]
+
+            # Duration: 15 minutes to 8 hours
+            try:
+                duration = int(data.get('duration') or 60)
+            except (TypeError, ValueError):
+                duration = 60
+            duration = max(15, min(duration, 480))
+
+            # Start time: ISO string from the browser, stored as UTC
+            try:
+                start_raw = str(data.get('start') or '').replace('Z', '+00:00')
+                start_dt = datetime.fromisoformat(start_raw)
+                if start_dt.tzinfo is None:
+                    start_dt = start_dt.replace(tzinfo=timezone.utc)
+                start_dt = start_dt.astimezone(timezone.utc)
+            except ValueError:
+                return jsonify({'success': False, 'message': 'Please choose a valid date and start time'}), 400
+
+            if start_dt + timedelta(minutes=duration) < datetime.now(timezone.utc):
+                return jsonify({'success': False, 'message': 'That time has already passed'}), 400
+
+            platform, embed_url = parse_stream_url(url)
+
+            cursor.execute('''
+                INSERT INTO live_classes
+                (teacher_id, title, subject, grade, description, topics, start_time,
+                 duration_min, platform, stream_url, embed_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                session['user_id'], title, subject, grade, description,
+                json.dumps(topics), start_dt.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                duration, platform, url, embed_url
+            ))
+            conn.commit()
+
+            cursor.execute(LIVE_CLASS_SELECT + ' WHERE lc.id = ?', (cursor.lastrowid,))
+            row = cursor.fetchone()
+            return jsonify({'success': True, 'live_class': serialize_live_class(row)})
+
+        # ---- GET ----
+        # Hide classes that ended more than a day ago
+            if request.args.get('mine') == '1':
+            # A teacher's own list keeps every class they created
+             query = LIVE_CLASS_SELECT + ' WHERE lc.teacher_id = ?'
+            params = [session['user_id']]
+        else:
+            # Learners only see classes that ended less than a day ago
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+            query = LIVE_CLASS_SELECT + ' WHERE lc.start_time >= ?'
+            params = [cutoff]
+        query += ' ORDER BY lc.start_time ASC'
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        return jsonify({'success': True, 'live_classes': [serialize_live_class(r) for r in rows]})
+    finally:
+        conn.close()
+
+
+@app.route('/api/live-classes/<int:live_id>', methods=['DELETE'])
+def delete_live_class(live_id):
+    """A teacher deletes their own live class (admins can delete any)."""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+    conn = sqlite3.connect('users.db', timeout=10)
+    try:
+        cursor = conn.cursor()
+        cursor.execute('SELECT teacher_id FROM live_classes WHERE id = ?', (live_id,))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({'success': False, 'message': 'Live class not found'}), 404
+        if row[0] != session['user_id'] and session.get('role') != 'admin':
+            return jsonify({'success': False, 'message': 'You can only delete your own live classes'}), 403
+
+        cursor.execute('DELETE FROM live_classes WHERE id = ?', (live_id,))
+        conn.commit()
+        return jsonify({'success': True})
+    finally:
+        conn.close()
+
 @app.route('/resourses')
 def resourses():
     """Render the resourses page"""
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    return render_template('resourses.html',
+    return render_template('Learner/resourses.html',
                          firstname=session['firstname'],
                          lastname=session['lastname'],
                          user_id=session['user_id'])
@@ -3066,6 +3351,167 @@ def admin_delete_user(user_id):
     conn.close()
     
     return jsonify({'success': True, 'message': 'User deleted successfully'})
+
+
+
+# Copy the exact database path/name from the sqlite3.connect(...) line that
+# already exists in backen.py. If this points at a different file, you get
+# "no such table: users" errors.
+DB_PATH = "users.db"
+
+
+# ============ PROFILE: LIVE CLASSES + RATINGS ============
+# Uses the same users.db as the rest of the app.
+
+def _profile_db():
+    conn = sqlite3.connect('users.db', timeout=10)
+    conn.row_factory = sqlite3.Row
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_ratings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id INTEGER NOT NULL,
+            reviewer_id INTEGER NOT NULL,
+            stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),
+            comment TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (teacher_id, reviewer_id),
+            FOREIGN KEY (teacher_id) REFERENCES users (id),
+            FOREIGN KEY (reviewer_id) REFERENCES users (id)
+        )
+    """)
+    return conn
+
+
+@app.route('/api/users/<int:user_id>/live-classes')
+def api_user_live_classes(user_id):
+    """Every live class a teacher has created (no time cutoff), for their profile."""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+    conn = _profile_db()
+    try:
+        rows = conn.execute(
+            """SELECT id, title, description, start_time, duration_min, stream_url
+               FROM live_classes
+               WHERE teacher_id = ?
+               ORDER BY start_time DESC""",
+            (user_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    return jsonify({
+        'success': True,
+        'classes': [{
+            'id': r['id'],
+            'title': r['title'],
+            'description': r['description'] or '',
+            'scheduled_at': r['start_time'],
+            'duration_minutes': r['duration_min'],
+            'join_url': r['stream_url'],
+            'attendees_count': 0,
+        } for r in rows]
+    })
+
+
+@app.route('/api/users/<int:user_id>/ratings', methods=['GET'])
+def api_user_ratings(user_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+    me = session['user_id']
+    conn = _profile_db()
+    try:
+        summary = conn.execute(
+            'SELECT COUNT(*) AS n, AVG(stars) AS avg FROM teacher_ratings WHERE teacher_id = ?',
+            (user_id,),
+        ).fetchone()
+
+        distribution = {str(n): 0 for n in range(1, 6)}
+        for r in conn.execute(
+            'SELECT stars, COUNT(*) AS n FROM teacher_ratings WHERE teacher_id = ? GROUP BY stars',
+            (user_id,),
+        ).fetchall():
+            distribution[str(r['stars'])] = r['n']
+
+        rows = conn.execute(
+            """SELECT r.id, r.reviewer_id, r.stars, r.comment, r.created_at,
+                      u.firstname, u.lastname, u.avatar_filename
+               FROM teacher_ratings r
+               LEFT JOIN users u ON u.id = r.reviewer_id
+               WHERE r.teacher_id = ?
+               ORDER BY r.created_at DESC, r.id DESC
+               LIMIT 100""",
+            (user_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    reviews, my_review = [], None
+    for r in rows:
+        name = f"{(r['firstname'] or '').strip()} {(r['lastname'] or '').strip()}".strip() or 'Anonymous'
+        reviews.append({
+            'id': r['id'],
+            'reviewer_name': name,
+            'reviewer_avatar_url': get_avatar_url(r['reviewer_id'], r['avatar_filename']),
+            'stars': r['stars'],
+            'comment': r['comment'] or '',
+            'created_at': to_iso_utc(r['created_at']),
+        })
+        if r['reviewer_id'] == me:
+            my_review = {'stars': r['stars'], 'comment': r['comment'] or ''}
+
+    count = summary['n'] or 0
+    average = (summary['avg'] or 0) * 2   # stars are 1-5, shown out of ten
+
+    return jsonify({
+        'success': True,
+        'average_out_of_ten': round(average, 1),
+        'count': count,
+        'distribution': distribution,
+        'reviews': reviews,
+        'my_review': my_review,
+    })
+
+
+@app.route('/api/users/<int:user_id>/ratings', methods=['POST'])
+def api_post_user_rating(user_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+    me = session['user_id']
+    if me == user_id:
+        return jsonify({'error': "You can't review yourself."}), 400
+
+    data = request.get_json(silent=True) or {}
+    try:
+        stars = int(data.get('stars'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Please pick a star rating.'}), 400
+    if stars < 1 or stars > 5:
+        return jsonify({'error': 'Stars must be between 1 and 5.'}), 400
+    comment = (data.get('comment') or '').strip()[:500]
+
+    conn = _profile_db()
+    try:
+        exists = conn.execute('SELECT 1 FROM users WHERE id = ?', (user_id,)).fetchone()
+        if not exists:
+            return jsonify({'error': 'User not found.'}), 404
+
+        conn.execute(
+            """INSERT INTO teacher_ratings (teacher_id, reviewer_id, stars, comment)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(teacher_id, reviewer_id)
+               DO UPDATE SET stars = excluded.stars,
+                             comment = excluded.comment,
+                             created_at = CURRENT_TIMESTAMP""",
+            (user_id, me, stars, comment),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({'success': True})
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-{% extends "body.html" %}
+{% extends "Learner/body.html" %}
 
 {% block allcontent %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -148,8 +148,8 @@
         display: inline-block; align-self: flex-start; padding: 4px 12px; background: var(--lc-g100);
         border-radius: 20px; font-size: .78rem; font-weight: 600; margin-bottom: 10px;
     }
-    .class-title { font-family: 'Poppins', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--lc-title); margin-bottom: 8px; }
-    .class-desc { color: var(--lc-g600); line-height: 1.6; font-size: .93rem; margin-bottom: 14px; }
+    .class-title { font-family: 'Poppins', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--lc-title); margin-bottom: 8px; word-break: break-word; }
+    .class-desc { color: var(--lc-g600); line-height: 1.6; font-size: .93rem; margin-bottom: 14px; word-break: break-word; }
     .class-meta {
         display: flex; flex-direction: column; gap: 8px; padding: 14px 0;
         border-top: 1px solid var(--lc-g200); border-bottom: 1px solid var(--lc-g200); margin-bottom: 16px;
@@ -181,6 +181,7 @@
     }
     .lc-empty h3 { font-family: 'Poppins', sans-serif; font-size: 1.6rem; color: var(--lc-g600); margin-bottom: 10px; }
     .lc-empty p { color: var(--lc-g500); max-width: 460px; margin: 0 auto; line-height: 1.6; }
+    .lc-retry { margin-top: 20px; max-width: 200px; margin-left: auto; margin-right: auto; }
 
     /* Modal */
     .lc-modal {
@@ -195,7 +196,7 @@
     }
     @keyframes lcSlide { from { opacity: 0; transform: scale(.95) translateY(20px); } to { opacity: 1; transform: none; } }
     .lc-modal-header { padding: 26px 40px; color: #fff; position: relative; flex-shrink: 0; }
-    .lc-modal-header h2 { font-family: 'Poppins', sans-serif; font-size: 2rem; margin-bottom: 6px; padding-right: 60px; }
+    .lc-modal-header h2 { font-family: 'Poppins', sans-serif; font-size: 2rem; margin-bottom: 6px; padding-right: 60px; word-break: break-word; }
     .lc-modal-header p { opacity: .92; }
     .lc-close {
         position: absolute; top: 18px; right: 22px; background: rgba(255,255,255,.2); border: none; color: #fff;
@@ -205,7 +206,7 @@
     .lc-modal-body { padding: 30px 40px; overflow-y: auto; flex: 1; }
     .lc-section { margin-bottom: 26px; }
     .lc-section-title { font-size: 1.15rem; font-weight: 700; color: var(--lc-title); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
-    .lc-text { line-height: 1.8; color: var(--lc-g700); padding: 18px; background: var(--lc-g50); border-radius: var(--lc-radius-sm); border-left: 4px solid var(--lc-primary); }
+    .lc-text { line-height: 1.8; color: var(--lc-g700); padding: 18px; background: var(--lc-g50); border-radius: var(--lc-radius-sm); border-left: 4px solid var(--lc-primary); word-break: break-word; }
 
     .player-box { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--lc-radius-sm); overflow: hidden; margin-bottom: 26px; }
     .player-box iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
@@ -216,7 +217,7 @@
     .player-placeholder i { font-size: 3rem; opacity: .85; }
 
     .topics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .topic-item { padding: 13px 16px; background: var(--lc-g50); border: 1px solid var(--lc-g200); border-radius: var(--lc-radius-sm); display: flex; align-items: center; gap: 12px; color: var(--lc-g700); }
+    .topic-item { padding: 13px 16px; background: var(--lc-g50); border: 1px solid var(--lc-g200); border-radius: var(--lc-radius-sm); display: flex; align-items: center; gap: 12px; color: var(--lc-g700); word-break: break-word; }
     .topic-num { width: 30px; height: 30px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
     .lc-modal-actions { display: flex; gap: 14px; flex-wrap: wrap; }
     .lc-modal-actions .lc-btn { min-width: 170px; padding: 14px 24px; }
@@ -313,72 +314,49 @@
     const APP_TIMEZONE = 'Africa/Nairobi';
 
     // ---------------------------------------------------------------
-    // CLASS SCHEDULE
+    // LIVE CLASSES
     // ---------------------------------------------------------------
-    // The times below are DEMO times relative to "now" so the page
-    // always shows some live and upcoming classes while you test.
-    // For real classes, replace  mins(-20)  with a fixed time, e.g.
-    //     new Date('2026-10-20T09:00:00+03:00')   // 9:00 AM Nairobi
-    //
-    // streamUrl : a link students open to watch (Zoom, Google Meet,
-    //             YouTube Live, Teams...). Used by "Open Class Link".
-    // embedUrl  : OPTIONAL. If the platform allows embedding (e.g. a
-    //             YouTube live embed https://www.youtube.com/embed/VIDEO_ID)
-    //             the class plays inside the page. Leave '' to show an
-    //             "Open Class Link" button instead.
+    // Classes are created by teachers on the Create Live page and loaded
+    // from the server (GET /api/live-classes). Nothing is hardcoded here.
+    // The list refreshes every 30 seconds, so a newly created class
+    // shows up on this page without reloading.
     // ---------------------------------------------------------------
-    const mins = (m) => new Date(Date.now() + m * 60000);
+    let liveClasses = [];
+    let isLoading = true;
+    let loadFailed = false;
 
-    const liveClasses = [
-        {
-            id: 1, title: "Quadratic Equations: Factorising", subject: "math", teacher: "Mr. Kiprono",
-            grade: "Grade 10", description: "Learn to solve quadratic equations by factorising, with worked examples and live Q&A.",
-            topics: ["Recognising quadratic expressions", "Factorising when a = 1", "Solving by factorisation", "Practice problems"],
-            start: mins(-20), durationMin: 60, platform: "Google Meet", streamUrl: "#", embedUrl: "", viewers: 134
-        },
-        {
-            id: 2, title: "Reading Comprehension Skills", subject: "english", teacher: "Ms. Chebet",
-            grade: "Grade 10", description: "Practical techniques for reading passages quickly and answering comprehension questions accurately.",
-            topics: ["Skimming and scanning", "Finding the main idea", "Inference questions", "Timed practice"],
-            start: mins(-5), durationMin: 45, platform: "YouTube Live", streamUrl: "#", embedUrl: "", viewers: 89
-        },
-        {
-            id: 3, title: "Sarufi: Aina za Maneno", subject: "kiswahili", teacher: "Bw. Wanjala",
-            grade: "Grade 10", description: "Mapitio ya aina za maneno katika Kiswahili na matumizi yake katika sentensi.",
-            topics: ["Nomino na viwakilishi", "Vitenzi na vielezi", "Vivumishi", "Mazoezi"],
-            start: mins(25), durationMin: 45, platform: "Zoom", streamUrl: "#", embedUrl: "", viewers: 0
-        },
-        {
-            id: 4, title: "Planning a Community Project", subject: "csl", teacher: "Mrs. Jepkorir",
-            grade: "Grade 10", description: "Step-by-step guide to identifying a community need and planning a service project.",
-            topics: ["Identifying community needs", "Setting goals", "Mobilising resources", "Presenting your plan"],
-            start: mins(150), durationMin: 60, platform: "Google Meet", streamUrl: "#", embedUrl: "", viewers: 0
-        },
-        {
-            id: 5, title: "Trigonometry: Sine and Cosine Rules", subject: "math", teacher: "Mr. Kiprono",
-            grade: "Grade 10", description: "Apply the sine and cosine rules to find missing sides and angles in triangles.",
-            topics: ["Sine rule", "Cosine rule", "Choosing the right rule", "Exam-style questions"],
-            start: mins(60 * 24 + 30), durationMin: 60, platform: "Google Meet", streamUrl: "#", embedUrl: "", viewers: 0
-        },
-        {
-            id: 6, title: "Essay Writing: Structure and Style", subject: "english", teacher: "Ms. Chebet",
-            grade: "Grade 10", description: "Plan and write a strong essay, from the opening paragraph to a convincing conclusion.",
-            topics: ["Planning an essay", "Paragraph structure", "Linking ideas", "Editing your work"],
-            start: mins(60 * 26), durationMin: 60, platform: "YouTube Live", streamUrl: "#", embedUrl: "", viewers: 0
-        },
-        {
-            id: 7, title: "Insha: Uandishi wa Barua", subject: "kiswahili", teacher: "Bw. Wanjala",
-            grade: "Grade 10", description: "Jifunze muundo wa barua rasmi na isiyo rasmi pamoja na mifano.",
-            topics: ["Barua rasmi", "Barua ya kirafiki", "Lugha ya heshima", "Mazoezi ya uandishi"],
-            start: mins(60 * 48), durationMin: 45, platform: "Zoom", streamUrl: "#", embedUrl: "", viewers: 0
-        },
-        {
-            id: 8, title: "Conflict Resolution in Practice", subject: "csl", teacher: "Mrs. Jepkorir",
-            grade: "Grade 10", description: "Role-play common conflicts and practise calm, fair ways of resolving them.",
-            topics: ["Causes of conflict", "Active listening", "Mediation steps", "Role-play"],
-            start: mins(60 * 72), durationMin: 60, platform: "Google Meet", streamUrl: "#", embedUrl: "", viewers: 0
+    // Teachers type the class text, so it is escaped before it goes into the page.
+    function esc(text) {
+        const div = document.createElement('div');
+        div.textContent = text == null ? '' : String(text);
+        return div.innerHTML;
+    }
+
+    async function loadLiveClasses() {
+        try {
+            const res = await fetch('/api/live-classes');
+            if (!res.ok) throw new Error('Request failed');
+            const data = await res.json();
+            liveClasses = (data.live_classes || []).map(c => ({
+                ...c,
+                rawTitle: c.title,                 // unescaped, only for toast messages
+                title: esc(c.title),
+                teacher: esc(c.teacher),
+                grade: esc(c.grade),
+                description: esc(c.description),
+                platform: esc(c.platform),
+                topics: (c.topics || []).map(esc),
+                streamUrl: esc(c.streamUrl),
+                embedUrl: esc(c.embedUrl),
+                start: new Date(c.start)
+            }));
+            loadFailed = false;
+        } catch (e) {
+            console.error('Could not load live classes:', e);
+            loadFailed = true;
         }
-    ];
+        isLoading = false;
+    }
 
     const SUBJECTS = {
         math:      { label: "Mathematics",              icon: "fa-calculator",     color: "#7c3aed" },
@@ -386,6 +364,7 @@
         kiswahili: { label: "Kiswahili",                icon: "fa-language",       color: "#16a34a" },
         csl:       { label: "Community Service Learning", icon: "fa-hands-helping", color: "#2e7d32" }
     };
+    function subjectOf(c) { return SUBJECTS[c.subject] || SUBJECTS.math; }
 
     // =========================
     // TIME HELPERS (Nairobi)
@@ -456,7 +435,7 @@
         return list.filter(c => {
             if (subject && c.subject !== subject) return false;
             if (q) {
-                const hay = `${c.title} ${c.teacher} ${c.description} ${c.topics.join(' ')} ${SUBJECTS[c.subject].label}`.toLowerCase();
+                const hay = `${c.title} ${c.teacher} ${c.description} ${c.topics.join(' ')} ${subjectOf(c).label}`.toLowerCase();
                 if (!hay.includes(q)) return false;
             }
             if (when) {
@@ -471,7 +450,7 @@
 
     function createClassCard(c) {
         const status = getStatus(c);
-        const sub = SUBJECTS[c.subject];
+        const sub = subjectOf(c);
         const now = new Date();
         const isReminded = reminders.includes(c.id);
         const minsToStart = (c.start - now) / 60000;
@@ -528,11 +507,33 @@
             </div>`;
     }
 
-    function emptyState(icon, title, text) {
-        return `<div class="lc-empty"><div class="lc-empty-icon"><i class="fas ${icon}"></i></div><h3>${title}</h3><p>${text}</p></div>`;
+    function emptyState(icon, title, text, extra = '') {
+        return `<div class="lc-empty"><div class="lc-empty-icon"><i class="${icon}"></i></div><h3>${title}</h3><p>${text}</p>${extra}</div>`;
     }
 
+    const RETRY_BUTTON = `<button class="lc-btn lc-btn-primary lc-retry" onclick="refreshClasses()"><i class="fas fa-rotate-right"></i> Try again</button>`;
+
     function renderAll() {
+        // First load still in progress
+        if (isLoading) {
+            const loading = emptyState('fas fa-spinner fa-spin', 'Loading live classes…', 'One moment please.');
+            ['liveContainer', 'upcomingContainer', 'remindersContainer'].forEach(id => {
+                document.getElementById(id).innerHTML = loading;
+            });
+            return;
+        }
+
+        // Could not reach the server and there is nothing to show
+        if (loadFailed && liveClasses.length === 0) {
+            const failed = emptyState('fas fa-wifi', 'Couldn’t load live classes',
+                'Please check your connection and try again.', RETRY_BUTTON);
+            ['liveContainer', 'upcomingContainer', 'remindersContainer'].forEach(id => {
+                document.getElementById(id).innerHTML = failed;
+            });
+            document.getElementById('headerLiveText').textContent = 'Live classes unavailable';
+            return;
+        }
+
         const now = new Date();
         const withStatus = liveClasses.map(c => ({ c, status: getStatus(c, now) }));
 
@@ -545,16 +546,17 @@
 
         document.getElementById('liveContainer').innerHTML = live.length
             ? live.map(createClassCard).join('')
-            : emptyState('fa-broadcast-tower', 'No classes live right now',
+            : emptyState('fas fa-broadcast-tower', 'No classes live right now',
                 'Nothing is streaming at the moment. Check the Upcoming tab and set a reminder so you don’t miss the next one.');
 
         document.getElementById('upcomingContainer').innerHTML = upcoming.length
             ? upcoming.map(createClassCard).join('')
-            : emptyState('fa-calendar-alt', 'No upcoming classes found', 'Try changing your search or filters.');
+            : emptyState('fas fa-calendar-alt', 'No upcoming classes found',
+                liveClasses.length === 0 ? 'Your teachers haven’t scheduled any live classes yet. Check back soon.' : 'Try changing your search or filters.');
 
         document.getElementById('remindersContainer').innerHTML = myReminders.length
             ? myReminders.map(createClassCard).join('')
-            : emptyState('fa-bell-slash', 'No reminders yet',
+            : emptyState('fas fa-bell-slash', 'No reminders yet',
                 'Tap “Remind Me” on an upcoming class and it will show up here. You’ll get an alert when it goes live while this page is open.');
 
         // Tab counts reflect everything (ignoring filters)
@@ -570,10 +572,15 @@
         // Notify when a reminded class has just gone live
         withStatus.forEach(({ c, status }) => {
             if (lastStatuses[c.id] === 'upcoming' && status === 'live' && reminders.includes(c.id)) {
-                showToast(`“${c.title}” is live now!`);
+                showToast(`“${c.rawTitle}” is live now!`);
             }
             lastStatuses[c.id] = status;
         });
+    }
+
+    async function refreshClasses() {
+        await loadLiveClasses();
+        renderAll();
     }
 
     // =========================
@@ -589,13 +596,14 @@
 
     function toggleReminder(id) {
         const c = liveClasses.find(x => x.id === id);
+        if (!c) return;
         const i = reminders.indexOf(id);
         if (i > -1) {
             reminders.splice(i, 1);
-            showToast(`Reminder removed for “${c.title}”`);
+            showToast(`Reminder removed for “${c.rawTitle}”`);
         } else {
             reminders.push(id);
-            showToast(`We’ll alert you when “${c.title}” goes live`);
+            showToast(`We’ll alert you when “${c.rawTitle}” goes live`);
         }
         saveReminders();
         renderAll();
@@ -608,12 +616,13 @@
         openClassId = id;
 
         const status = getStatus(c);
-        const sub = SUBJECTS[c.subject];
+        const sub = subjectOf(c);
         const isReminded = reminders.includes(id);
 
+        // c.title and c.teacher are already escaped, so they go in as HTML
         document.getElementById('modalHeader').style.background = `linear-gradient(135deg, ${sub.color}, ${sub.color}bb)`;
-        document.getElementById('modalTitle').textContent = c.title;
-        document.getElementById('modalSub').textContent = `${sub.label} • ${c.teacher} • ${formatWhen(c)}`;
+        document.getElementById('modalTitle').innerHTML = c.title;
+        document.getElementById('modalSub').innerHTML = `${sub.label} • ${c.teacher} • ${formatWhen(c)}`;
 
         let player = '';
         if (status === 'live') {
@@ -625,7 +634,7 @@
                         <div class="player-placeholder">
                             <i class="fas fa-broadcast-tower"></i>
                             <div style="font-size:1.3rem;font-weight:700;">This class is live on ${c.platform}</div>
-                            <a class="lc-btn lc-btn-live" style="flex:none;padding:14px 28px;" href="${c.streamUrl}" target="_blank" rel="noopener">
+                            <a class="lc-btn lc-btn-live" style="flex:none;padding:14px 28px;" href="${c.streamUrl}" target="_blank" rel="noopener noreferrer">
                                 <i class="fas fa-external-link-alt"></i> Open Class Link
                             </a>
                         </div>
@@ -652,12 +661,13 @@
                 <i class="fas ${isReminded ? 'fa-check-circle' : 'fa-bell'}"></i> ${isReminded ? 'Reminder On' : 'Remind Me'}
             </button>`;
 
-        document.getElementById('modalBody').innerHTML = `
-            ${player}
+        const aboutSection = c.description ? `
             <div class="lc-section">
                 <div class="lc-section-title"><i class="fas fa-info-circle" style="color:${sub.color};"></i> About This Class</div>
                 <div class="lc-text" style="border-left-color:${sub.color};">${c.description}</div>
-            </div>
+            </div>` : '';
+
+        const topicsSection = c.topics.length ? `
             <div class="lc-section">
                 <div class="lc-section-title"><i class="fas fa-list-ol" style="color:${sub.color};"></i> What You’ll Cover</div>
                 <div class="topics-grid">
@@ -665,7 +675,12 @@
                         <div class="topic-item"><div class="topic-num" style="background:${sub.color};">${i + 1}</div><span>${t}</span></div>
                     `).join('')}
                 </div>
-            </div>
+            </div>` : '';
+
+        document.getElementById('modalBody').innerHTML = `
+            ${player}
+            ${aboutSection}
+            ${topicsSection}
             <div class="lc-modal-actions">
                 ${remindBtn}
                 <button class="lc-btn lc-btn-outline" onclick="closeClassModal()"><i class="fas fa-times"></i> Close</button>
@@ -803,12 +818,16 @@
         });
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeClassModal(); });
 
-        // Seed statuses so the first render doesn't fire "went live" toasts
-        liveClasses.forEach(c => { lastStatuses[c.id] = getStatus(c); });
+        // Show "Loading…", then load the real classes from the server
         renderAll();
+        loadLiveClasses().then(() => {
+            // Seed statuses so the first render doesn't fire "went live" toasts
+            liveClasses.forEach(c => { lastStatuses[c.id] = getStatus(c); });
+            renderAll();
+        });
 
-        // Refresh countdowns and statuses every 30 seconds
-        setInterval(renderAll, 30000);
+        // Every 30 seconds: pick up new classes and refresh countdowns and statuses
+        setInterval(refreshClasses, 30000);
     });
 </script>
 {% endblock %}

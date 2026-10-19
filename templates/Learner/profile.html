@@ -1,4 +1,4 @@
-{% extends "body.html" %}
+{% extends "Learner/body.html" %}
 
 {% block allcontent %}
 <!--
@@ -1022,10 +1022,6 @@
         <!-- ===== Highlights / New ===== -->
         <div class="profile-highlights">
             {% if is_own_profile %}
-            <a class="highlight-item" href="/upload">
-                <div class="highlight-circle new-circle"><i class="fas fa-plus"></i></div>
-                <span class="highlight-label">New</span>
-            </a>
             {% endif %}
             {% for h in highlights | default([]) %}
             <a class="highlight-item" href="{{ h.url }}">

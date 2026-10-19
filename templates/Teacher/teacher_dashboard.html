@@ -2,42 +2,680 @@
 
 {% block allcontent %}
 <style>
-    .teacher-home { max-width: 1100px; margin: 0 auto; font-family: 'Inter', sans-serif; }
-    .teacher-home .hero {
-        background: linear-gradient(135deg, #4361ee, #7209b7); color: #fff;
-        padding: 40px; border-radius: 20px; margin-bottom: 30px;
+    .teacher-home {
+        --th-surface: #ffffff;
+        --th-surface-alt: #f8fafc;
+        --th-border: #e5e7eb;
+        --th-text: #1e293b;
+        --th-muted: #6b7280;
+        --th-faint: #94a3b8;
+        --th-shadow: 0 10px 25px -5px rgba(0,0,0,.1);
+        max-width: 1100px; margin: 0 auto; font-family: 'Inter', 'Open Sans', sans-serif; color: var(--th-text);
     }
+    body.dark-mode .teacher-home {
+        --th-surface: #1e293b;
+        --th-surface-alt: #263449;
+        --th-border: #334155;
+        --th-text: #f1f5f9;
+        --th-muted: #94a3b8;
+        --th-faint: #64748b;
+        --th-shadow: 0 10px 25px -5px rgba(0,0,0,.4);
+    }
+    .teacher-home * { box-sizing: border-box; }
+
+    /* ---------- Hero ---------- */
+    .teacher-home .hero {
+        background: linear-gradient(135deg, var(--primary-color, #4361ee), var(--secondary-color, #3a0ca3));
+        color: #fff; padding: 36px 40px; border-radius: 20px; margin-bottom: 30px; position: relative; overflow: hidden;
+    }
+    .teacher-home .hero::after {
+        content: ""; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px;
+        border-radius: 50%; background: rgba(255,255,255,.08);
+    }
+    .teacher-home .hero-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px; position: relative; z-index: 1; }
+    .teacher-home .hero .greeting { font-size: .95rem; opacity: .85; margin-bottom: 6px; }
     .teacher-home .hero h1 { margin: 0 0 8px; font-size: 2rem; }
     .teacher-home .hero p { margin: 0; opacity: .9; }
+    .teacher-home .hero-clock { text-align: right; }
+    .teacher-home .hero-clock .time { font-size: 1.8rem; font-weight: 700; letter-spacing: 1px; }
+    .teacher-home .hero-clock .date { font-size: .9rem; opacity: .85; }
+    .teacher-home .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; position: relative; z-index: 1; }
+    .teacher-home .hero-btn {
+        display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px;
+        text-decoration: none; font-weight: 600; font-size: .9rem; transition: transform .2s ease, background .2s ease;
+    }
+    .teacher-home .hero-btn.primary { background: #fff; color: var(--primary-color, #4361ee); }
+    .teacher-home .hero-btn.ghost { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+    .teacher-home .hero-btn:hover { transform: translateY(-2px); }
+    .teacher-home .hero-btn.ghost:hover { background: rgba(255,255,255,.25); }
+
+    /* ---------- Stats ---------- */
+    .teacher-home .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .teacher-home .stat {
+        background: var(--th-surface); border-radius: 16px; padding: 20px 22px; box-shadow: var(--th-shadow);
+        display: flex; align-items: center; gap: 16px; transition: transform .2s ease;
+    }
+    .teacher-home .stat:hover { transform: translateY(-3px); }
+    .teacher-home .stat-icon {
+        width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); flex-shrink: 0;
+    }
+    .teacher-home .stat .num { font-size: 1.9rem; font-weight: 700; line-height: 1.1; }
+    .teacher-home .stat .label { color: var(--th-muted); font-size: .88rem; }
+
+    /* ---------- Section titles ---------- */
+    .teacher-home .section-title { display: flex; justify-content: space-between; align-items: center; margin: 34px 0 16px; }
+    .teacher-home .section-title h2 { margin: 0; font-size: 1.2rem; }
+    .teacher-home .section-title span { color: var(--th-muted); font-size: .85rem; }
+
+    /* ---------- Quick links ---------- */
     .teacher-home .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
     .teacher-home .card {
-        background: #fff; border-radius: 16px; padding: 24px; text-decoration: none; color: #1e293b;
-        box-shadow: 0 10px 25px -5px rgba(0,0,0,.1); transition: transform .2s ease;
+        background: var(--th-surface); border-radius: 16px; padding: 24px; text-decoration: none; color: var(--th-text);
+        box-shadow: var(--th-shadow); transition: transform .2s ease; display: block; position: relative;
     }
     .teacher-home .card:hover { transform: translateY(-4px); }
+    .teacher-home .card .card-icon {
+        width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        margin-bottom: 14px; color: var(--c, var(--primary-color)); background: color-mix(in srgb, var(--c, var(--primary-color)) 15%, transparent);
+    }
     .teacher-home .card h3 { margin: 0 0 6px; }
-    .teacher-home .card p { margin: 0; color: #6b7280; font-size: .95rem; }
+    .teacher-home .card p { margin: 0; color: var(--th-muted); font-size: .95rem; }
+    .teacher-home .card .go { position: absolute; top: 24px; right: 24px; color: var(--th-faint); transition: transform .2s ease; }
+    .teacher-home .card:hover .go { transform: translateX(4px); color: var(--primary-color); }
+
+    /* ---------- Panels / layout ---------- */
+    .teacher-home .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 20px; }
+    .teacher-home .grid-2.even { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 860px) { .teacher-home .grid-2, .teacher-home .grid-2.even { grid-template-columns: 1fr; } }
+    .teacher-home .panel { background: var(--th-surface); border-radius: 16px; padding: 24px; box-shadow: var(--th-shadow); min-width: 0; }
+    .teacher-home .panel h3 { margin: 0 0 16px; font-size: 1.05rem; }
+    .teacher-home .panel-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .teacher-home .panel-head h3 { margin: 0; }
+    .teacher-home .empty { text-align: center; padding: 28px 10px; color: var(--th-muted); font-size: .9rem; }
+    .teacher-home .empty i { display: block; font-size: 1.6rem; margin-bottom: 8px; opacity: .5; }
+
+    /* ---------- Tabs ---------- */
+    .teacher-home .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .teacher-home .tab-btn {
+        border: none; background: var(--th-surface-alt); color: var(--th-muted); padding: 7px 15px; border-radius: 999px;
+        cursor: pointer; font-weight: 600; font-size: .85rem; transition: all .2s ease; font-family: inherit;
+    }
+    .teacher-home .tab-btn:hover { filter: brightness(.96); }
+    .teacher-home .tab-btn.active { background: var(--primary-color, #4361ee); color: #fff; }
+    .teacher-home .tab-pane { display: none; }
+    .teacher-home .tab-pane.active { display: block; }
+
+    /* ---------- Classes ---------- */
+    .teacher-home .class-item { border: 1px solid var(--th-border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+    .teacher-home .class-item.next { border-color: var(--primary-color, #4361ee); }
+    .teacher-home .class-item.done { opacity: .6; }
+    .teacher-home .class-head {
+        width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        background: var(--th-surface); border: none; padding: 14px 16px; cursor: pointer; text-align: left;
+        font-size: .95rem; color: var(--th-text); font-family: inherit;
+    }
+    .teacher-home .class-head:hover { background: var(--th-surface-alt); }
+    .teacher-home .class-head .time { color: var(--primary-color, #4361ee); font-weight: 700; margin-right: 12px; }
+    .teacher-home .class-head .arrow { transition: transform .2s ease; color: var(--th-faint); }
+    .teacher-home .class-item.open .arrow { transform: rotate(180deg); }
+    .teacher-home .class-body { display: none; padding: 0 16px 14px; color: var(--th-muted); font-size: .9rem; }
+    .teacher-home .class-item.open .class-body { display: block; }
+    .teacher-home .badge {
+        display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600;
+        background: color-mix(in srgb, var(--primary-color, #4361ee) 15%, transparent); color: var(--primary-color, #4361ee); margin-left: 8px;
+    }
+    .teacher-home .badge.status-next { background: var(--primary-color, #4361ee); color: #fff; }
+    .teacher-home .badge.status-done { background: var(--th-surface-alt); color: var(--th-muted); }
+
+    /* ---------- Announcements ---------- */
+    .teacher-home .note { padding: 12px 0; border-bottom: 1px solid var(--th-border); }
+    .teacher-home .note:last-child { border-bottom: none; }
+    .teacher-home .note small { display: block; color: var(--th-muted); margin-top: 2px; }
+    .teacher-home .note .when { color: var(--th-faint); font-size: .78rem; }
+
+    /* ---------- To-do ---------- */
+    .teacher-home .todo-form { display: flex; gap: 8px; margin-bottom: 12px; }
+    .teacher-home .todo-form input[type="text"] {
+        flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--th-border); border-radius: 10px; font-size: .9rem;
+        outline: none; background: var(--th-surface); color: var(--th-text); font-family: inherit;
+    }
+    .teacher-home .todo-form input[type="text"]:focus { border-color: var(--primary-color, #4361ee); }
+    .teacher-home .todo-form button {
+        background: var(--primary-color, #4361ee); color: #fff; border: none; border-radius: 10px; padding: 0 16px; cursor: pointer; font-weight: 600; font-family: inherit;
+    }
+    .teacher-home .todo-form button:hover { filter: brightness(.92); }
+    .teacher-home .todo-filters { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; flex-wrap: wrap; }
+    .teacher-home .todo-filters .tab-btn { padding: 4px 12px; font-size: .78rem; }
+    .teacher-home .clear-done { background: none; border: none; color: var(--th-muted); font-size: .78rem; cursor: pointer; text-decoration: underline; font-family: inherit; }
+    .teacher-home .todo-list { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; }
+    .teacher-home .todo-list li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--th-border); }
+    .teacher-home .todo-list li.done span { text-decoration: line-through; color: var(--th-faint); }
+    .teacher-home .todo-list span { flex: 1; font-size: .92rem; word-break: break-word; }
+    .teacher-home .todo-list .del { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.1rem; }
+    .teacher-home .progress { height: 8px; background: var(--th-surface-alt); border-radius: 999px; overflow: hidden; margin-top: 14px; }
+    .teacher-home .progress > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--primary-color, #4361ee), var(--secondary-color, #3a0ca3)); transition: width .3s ease; }
+    .teacher-home .progress-text { font-size: .8rem; color: var(--th-muted); margin-top: 6px; }
+
+    /* ---------- Chart ---------- */
+    .teacher-home .chart { display: flex; align-items: flex-end; gap: 14px; height: 190px; margin-top: 26px; }
+    .teacher-home .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+    .teacher-home .bar {
+        width: 100%; max-width: 46px; background: linear-gradient(180deg, var(--secondary-color, #3a0ca3), var(--primary-color, #4361ee));
+        border-radius: 8px 8px 0 0; height: 0; transition: height .5s ease; position: relative; cursor: pointer;
+    }
+    .teacher-home .bar:hover { filter: brightness(1.15); }
+    .teacher-home .bar::after {
+        content: attr(data-value); position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
+        background: #0f172a; color: #fff; font-size: .75rem; padding: 2px 8px; border-radius: 6px;
+        opacity: 0; pointer-events: none; transition: opacity .2s ease; white-space: nowrap;
+    }
+    .teacher-home .bar:hover::after { opacity: 1; }
+    .teacher-home .bar-label { margin-top: 8px; font-size: .8rem; color: var(--th-muted); }
+    .teacher-home .chart-summary { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--th-border); font-size: .88rem; color: var(--th-muted); }
+    .teacher-home .chart-summary strong { color: var(--th-text); }
+
+    /* ---------- Course overview ---------- */
+    .teacher-home .course-row { margin-bottom: 16px; }
+    .teacher-home .course-row:last-child { margin-bottom: 0; }
+    .teacher-home .course-row .top { display: flex; justify-content: space-between; font-size: .9rem; margin-bottom: 6px; gap: 10px; }
+    .teacher-home .course-row .top small { color: var(--th-muted); }
+    .teacher-home .course-row .progress { margin-top: 0; }
+
+    /* ---------- Activity feed ---------- */
+    .teacher-home .feed-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--th-border); }
+    .teacher-home .feed-item:last-child { border-bottom: none; }
+    .teacher-home .feed-icon {
+        width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        background: color-mix(in srgb, var(--primary-color, #4361ee) 15%, transparent); color: var(--primary-color, #4361ee); font-size: .9rem;
+    }
+    .teacher-home .feed-text { font-size: .9rem; }
+    .teacher-home .feed-time { font-size: .78rem; color: var(--th-faint); }
+
+    /* ---------- Calendar ---------- */
+    .teacher-home .cal-nav { display: flex; align-items: center; gap: 8px; }
+    .teacher-home .cal-nav button {
+        width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--th-border); background: var(--th-surface);
+        color: var(--th-text); cursor: pointer;
+    }
+    .teacher-home .cal-nav button:hover { background: var(--th-surface-alt); }
+    .teacher-home .cal-title { font-weight: 600; font-size: .95rem; min-width: 120px; text-align: center; }
+    .teacher-home .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+    .teacher-home .cal-dow { font-size: .72rem; color: var(--th-faint); font-weight: 600; padding: 4px 0; }
+    .teacher-home .cal-day { padding: 8px 0; border-radius: 8px; font-size: .85rem; cursor: default; }
+    .teacher-home .cal-day:not(.blank):hover { background: var(--th-surface-alt); }
+    .teacher-home .cal-day.today { background: var(--primary-color, #4361ee); color: #fff; font-weight: 700; }
 </style>
 
 <div class="teacher-home">
+
+    <!-- ================= HERO ================= -->
     <div class="hero">
-        <h1>Welcome, {{ firstname }} {{ lastname }}</h1>
-        <p>This is your teacher dashboard.</p>
+        <div class="hero-top">
+            <div>
+                <div class="greeting" id="th-greeting">Hello</div>
+                <h1>Welcome, {{ firstname }} {{ lastname }}</h1>
+                <p>This is your teacher dashboard.</p>
+            </div>
+            <div class="hero-clock">
+                <div class="time" id="th-time">--:--:--</div>
+                <div class="date" id="th-date"></div>
+            </div>
+        </div>
+        <div class="hero-actions">
+            <a class="hero-btn primary" href="/teacher-upload"><i class="fas fa-cloud-upload-alt"></i> Upload resource</a>
+            <a class="hero-btn ghost" href="/teacher-live"><i class="fas fa-video"></i> Start a live class</a>
+            <a class="hero-btn ghost" href="/progres"><i class="fas fa-chart-line"></i> View progress</a>
+        </div>
     </div>
 
+    <!-- ================= STATS ================= -->
+    <div class="stats">
+        <div class="stat" style="--c:#4361ee;">
+            <div class="stat-icon"><i class="fas fa-user-graduate"></i></div>
+            <div><div class="num" data-count="{{ total_students|default(0) }}">0</div><div class="label">Students</div></div>
+        </div>
+        <div class="stat" style="--c:#8b5cf6;">
+            <div class="stat-icon"><i class="fas fa-book-open"></i></div>
+            <div><div class="num" data-count="{{ total_courses|default(0) }}">0</div><div class="label">Courses</div></div>
+        </div>
+        <div class="stat" style="--c:#f59e0b;">
+            <div class="stat-icon"><i class="fas fa-clipboard-check"></i></div>
+            <div><div class="num" data-count="{{ pending_reviews|default(0) }}">0</div><div class="label">Ratings</div></div>
+        </div>
+        <div class="stat" style="--c:#10b981;">
+            <div class="stat-icon"><i class="fas fa-envelope"></i></div>
+            <div><div class="num" data-count="{{ unread_messages|default(0) }}">0</div><div class="label">Unread messages</div></div>
+        </div>
+    </div>
+
+    <!-- ================= QUICK LINKS ================= -->
+    <div class="section-title"><h2>Quick access</h2></div>
     <div class="cards">
-        <a class="card" href="/resourses">
+        <a class="card" href="/resourses" style="--c:#4361ee;">
+            <div class="card-icon"><i class="fas fa-folder-open"></i></div>
+            <i class="fas fa-arrow-right go"></i>
             <h3>Resources</h3>
             <p>Upload and manage learning materials.</p>
         </a>
-        <a class="card" href="/messages">
+        <a class="card" href="/messages" style="--c:#10b981;">
+            <div class="card-icon"><i class="fas fa-comments"></i></div>
+            <i class="fas fa-arrow-right go"></i>
             <h3>Messages</h3>
             <p>Talk with learners and colleagues.</p>
         </a>
-        <a class="card" href="/schedule">
+        <a class="card" href="/schedule" style="--c:#06b6d4;">
+            <div class="card-icon"><i class="fas fa-calendar-alt"></i></div>
+            <i class="fas fa-arrow-right go"></i>
             <h3>Schedule</h3>
             <p>Plan your classes and events.</p>
         </a>
     </div>
+
+    <!-- ================= TODAY + TO-DO ================= -->
+    <div class="section-title"><h2>Today</h2><span id="th-today-label"></span></div>
+    <div class="grid-2">
+        <div class="panel">
+            <div class="panel-head">
+                <h3>Today at a glance</h3>
+                <div class="tabs">
+                    <button class="tab-btn active" type="button" data-tab="th-classes">Classes</button>
+                    <button class="tab-btn" type="button" data-tab="th-notes">Announcements</button>
+                </div>
+            </div>
+
+            <div class="tab-pane active" id="th-classes">
+                {% for c in todays_classes|default([]) %}
+                <div class="class-item" data-start="{{ c.time }}">
+                    <button class="class-head" type="button">
+                        <span>
+                            <span class="time">{{ c.time }}</span>{{ c.title }}
+                            {% if c.room %}<span class="badge">{{ c.room }}</span>{% endif %}
+                            <span class="badge status" style="display:none;"></span>
+                        </span>
+                        <i class="fas fa-chevron-down arrow"></i>
+                    </button>
+                    <div class="class-body">{{ c.topic|default('No details added for this class.') }}</div>
+                </div>
+                {% else %}
+                <div class="empty"><i class="far fa-calendar-check"></i>No classes scheduled for today.</div>
+                {% endfor %}
+            </div>
+
+            <div class="tab-pane" id="th-notes">
+                {% for a in announcements|default([]) %}
+                <div class="note">
+                    <strong>{{ a.title }}</strong>
+                    <small>{{ a.text }}</small>
+                    {% if a.date %}<span class="when">{{ a.date }}</span>{% endif %}
+                </div>
+                {% else %}
+                <div class="empty"><i class="far fa-bell-slash"></i>No announcements right now.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>My to-do list</h3>
+            <form class="todo-form" id="th-todo-form">
+                <input type="text" id="th-todo-input" placeholder="Add a task..." autocomplete="off" maxlength="120">
+                <button type="submit">Add</button>
+            </form>
+            <div class="todo-filters">
+                <div class="tabs">
+                    <button class="tab-btn active" type="button" data-filter="all">All</button>
+                    <button class="tab-btn" type="button" data-filter="active">Active</button>
+                    <button class="tab-btn" type="button" data-filter="done">Done</button>
+                </div>
+                <button class="clear-done" type="button" id="th-clear-done">Clear completed</button>
+            </div>
+            <ul class="todo-list" id="th-todo-list"></ul>
+            <div class="progress"><div id="th-progress-bar"></div></div>
+            <div class="progress-text" id="th-progress-text">No tasks yet</div>
+        </div>
+    </div>
+
+    <!-- ================= ACTIVITY + CALENDAR ================= -->
+    <div class="section-title"><h2>Insights</h2></div>
+    <div class="grid-2">
+        <div class="panel">
+            <div class="panel-head">
+                <h3>Learner activity</h3>
+                <div class="tabs">
+                    <button class="tab-btn active" type="button" data-range="this">This week</button>
+                    <button class="tab-btn" type="button" data-range="last">Last week</button>
+                </div>
+            </div>
+            <div class="chart" id="th-chart"></div>
+            <div class="chart-summary" id="th-chart-summary"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-head">
+                <h3>Calendar</h3>
+                <div class="cal-nav">
+                    <button type="button" id="th-cal-prev" aria-label="Previous month"><i class="fas fa-chevron-left"></i></button>
+                    <button type="button" id="th-cal-next" aria-label="Next month"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="cal-title" id="th-cal-title" style="margin-bottom:10px;"></div>
+            <div class="cal-grid" id="th-cal-grid"></div>
+        </div>
+    </div>
+
+    <!-- ================= COURSES + FEED ================= -->
+    <div class="grid-2 even">
+        <div class="panel">
+            <h3>Course overview</h3>
+            {% for c in courses_overview|default([]) %}
+            <div class="course-row">
+                <div class="top">
+                    <span>{{ c.name }}</span>
+                    <small>{{ c.students|default(0) }} students &middot; {{ c.completion|default(0) }}%</small>
+                </div>
+                <div class="progress"><div class="course-fill" data-width="{{ c.completion|default(0) }}"></div></div>
+            </div>
+            {% else %}
+            <div class="empty"><i class="fas fa-book"></i>No course data to show yet.</div>
+            {% endfor %}
+        </div>
+
+        <div class="panel">
+            <h3>Recent activity</h3>
+            {% for r in recent_activity|default([]) %}
+            <div class="feed-item">
+                <div class="feed-icon"><i class="fas {{ r.icon|default('fa-bell') }}"></i></div>
+                <div>
+                    <div class="feed-text">{{ r.text }}</div>
+                    <div class="feed-time">{{ r.time }}</div>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty"><i class="far fa-clock"></i>Nothing has happened yet.</div>
+            {% endfor %}
+        </div>
+    </div>
 </div>
+
+<script>
+(function () {
+    var root = document.querySelector('.teacher-home');
+    if (!root) return;
+
+    /* ---------- Greeting + live clock ---------- */
+    var greetEl = document.getElementById('th-greeting');
+    var timeEl = document.getElementById('th-time');
+    var dateEl = document.getElementById('th-date');
+    var todayLabel = document.getElementById('th-today-label');
+
+    function updateClock() {
+        var now = new Date();
+        var h = now.getHours();
+        greetEl.textContent = h < 12 ? 'Good morning' : (h < 18 ? 'Good afternoon' : 'Good evening');
+        timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        dateEl.textContent = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        if (todayLabel) todayLabel.textContent = now.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    /* ---------- Count-up stats ---------- */
+    root.querySelectorAll('[data-count]').forEach(function (el) {
+        var target = parseInt(el.getAttribute('data-count'), 10) || 0;
+        var current = 0;
+        var step = Math.max(1, Math.ceil(target / 40));
+        if (target === 0) { el.textContent = '0'; return; }
+        var timer = setInterval(function () {
+            current += step;
+            if (current >= target) { current = target; clearInterval(timer); }
+            el.textContent = current;
+        }, 25);
+    });
+
+    /* ---------- Course progress bars ---------- */
+    setTimeout(function () {
+        root.querySelectorAll('.course-fill').forEach(function (el) {
+            var w = Math.max(0, Math.min(100, parseInt(el.getAttribute('data-width'), 10) || 0));
+            el.style.width = w + '%';
+        });
+    }, 100);
+
+    /* ---------- Tabs (classes / announcements) ---------- */
+    root.querySelectorAll('.tab-btn[data-tab]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            root.querySelectorAll('.tab-btn[data-tab]').forEach(function (b) { b.classList.remove('active'); });
+            root.querySelectorAll('.tab-pane').forEach(function (p) { p.classList.remove('active'); });
+            btn.classList.add('active');
+            document.getElementById(btn.getAttribute('data-tab')).classList.add('active');
+        });
+    });
+
+    /* ---------- Class accordion + live status ---------- */
+    root.querySelectorAll('.class-head').forEach(function (head) {
+        head.addEventListener('click', function () { head.parentElement.classList.toggle('open'); });
+    });
+
+    function updateClassStatus() {
+        var now = new Date();
+        var nowMin = now.getHours() * 60 + now.getMinutes();
+        var nextMarked = false;
+        root.querySelectorAll('.class-item[data-start]').forEach(function (item) {
+            var m = /^(\d{1,2}):(\d{2})/.exec(item.getAttribute('data-start') || '');
+            var badge = item.querySelector('.badge.status');
+            item.classList.remove('next', 'done');
+            if (!m || !badge) return;
+            var startMin = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+            badge.className = 'badge status';
+            if (startMin + 60 <= nowMin) {
+                item.classList.add('done');
+                badge.textContent = 'Done';
+                badge.classList.add('status-done');
+                badge.style.display = '';
+            } else if (!nextMarked) {
+                nextMarked = true;
+                item.classList.add('next');
+                badge.textContent = startMin <= nowMin ? 'Now' : 'Up next';
+                badge.classList.add('status-next');
+                badge.style.display = '';
+            } else {
+                badge.style.display = 'none';
+            }
+        });
+    }
+    updateClassStatus();
+    setInterval(updateClassStatus, 60000);
+
+    /* ---------- To-do list (saved in this browser, per user) ---------- */
+    var STORAGE_KEY = 'teacher_todos.' + {{ session.get('email', 'anonymous') | tojson }};
+    var form = document.getElementById('th-todo-form');
+    var input = document.getElementById('th-todo-input');
+    var list = document.getElementById('th-todo-list');
+    var bar = document.getElementById('th-progress-bar');
+    var barText = document.getElementById('th-progress-text');
+    var clearBtn = document.getElementById('th-clear-done');
+    var todos = [];
+    var filter = 'all';
+
+    try { todos = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch (e) { todos = []; }
+    if (!Array.isArray(todos)) todos = [];
+
+    function save() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(todos)); } catch (e) {}
+    }
+
+    function renderTodos() {
+        list.innerHTML = '';
+        var shown = 0;
+        todos.forEach(function (t, i) {
+            if (filter === 'active' && t.done) return;
+            if (filter === 'done' && !t.done) return;
+            shown++;
+
+            var li = document.createElement('li');
+            if (t.done) li.className = 'done';
+
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = !!t.done;
+            cb.addEventListener('change', function () { todos[i].done = cb.checked; save(); renderTodos(); });
+
+            var span = document.createElement('span');
+            span.textContent = t.text;
+
+            var del = document.createElement('button');
+            del.className = 'del';
+            del.type = 'button';
+            del.setAttribute('aria-label', 'Delete task');
+            del.innerHTML = '&times;';
+            del.addEventListener('click', function () { todos.splice(i, 1); save(); renderTodos(); });
+
+            li.appendChild(cb);
+            li.appendChild(span);
+            li.appendChild(del);
+            list.appendChild(li);
+        });
+
+        if (!shown) {
+            var empty = document.createElement('li');
+            empty.style.cssText = 'justify-content:center;color:var(--th-muted);font-size:.88rem;border-bottom:none;';
+            empty.textContent = todos.length ? 'No tasks in this view.' : 'Nothing to do. Add your first task above.';
+            list.appendChild(empty);
+        }
+
+        var done = todos.filter(function (t) { return t.done; }).length;
+        var pct = todos.length ? Math.round((done / todos.length) * 100) : 0;
+        bar.style.width = pct + '%';
+        barText.textContent = todos.length ? (done + ' of ' + todos.length + ' completed (' + pct + '%)') : 'No tasks yet';
+    }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var text = input.value.trim();
+        if (!text) return;
+        todos.push({ text: text, done: false });
+        input.value = '';
+        save();
+        renderTodos();
+    });
+
+    root.querySelectorAll('.tab-btn[data-filter]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            root.querySelectorAll('.tab-btn[data-filter]').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            filter = btn.getAttribute('data-filter');
+            renderTodos();
+        });
+    });
+
+    clearBtn.addEventListener('click', function () {
+        todos = todos.filter(function (t) { return !t.done; });
+        save();
+        renderTodos();
+    });
+    renderTodos();
+
+    /* ---------- Activity chart (real data from the route) ---------- */
+    var days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    var chartData = {
+        'this': {{ activity_this_week|default([])|tojson }},
+        'last': {{ activity_last_week|default([])|tojson }}
+    };
+    var chart = document.getElementById('th-chart');
+    var summary = document.getElementById('th-chart-summary');
+
+    function drawChart(range) {
+        var values = (chartData[range] || []).slice(0, 7);
+        chart.innerHTML = '';
+        summary.innerHTML = '';
+
+        var hasData = values.length && values.some(function (v) { return Number(v) > 0; });
+        if (!hasData) {
+            chart.style.height = 'auto';
+            chart.innerHTML = '<div class="empty" style="width:100%;"><i class="fas fa-chart-column"></i>No activity data for this period.</div>';
+            return;
+        }
+        chart.style.height = '190px';
+
+        var max = Math.max.apply(null, values.map(Number));
+        values.forEach(function (v, i) {
+            var wrap = document.createElement('div');
+            wrap.className = 'bar-wrap';
+            var b = document.createElement('div');
+            b.className = 'bar';
+            b.setAttribute('data-value', v + ' active');
+            var label = document.createElement('div');
+            label.className = 'bar-label';
+            label.textContent = days[i];
+            wrap.appendChild(b);
+            wrap.appendChild(label);
+            chart.appendChild(wrap);
+            setTimeout(function () { b.style.height = Math.round((Number(v) / max) * 100) + '%'; }, 50);
+        });
+
+        var total = values.reduce(function (a, b) { return a + Number(b); }, 0);
+        var peakIdx = values.map(Number).indexOf(max);
+        summary.innerHTML =
+            '<span>Total: <strong>' + total + '</strong></span>' +
+            '<span>Daily average: <strong>' + Math.round(total / values.length) + '</strong></span>' +
+            '<span>Busiest day: <strong>' + days[peakIdx] + '</strong></span>';
+    }
+
+    root.querySelectorAll('.tab-btn[data-range]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            root.querySelectorAll('.tab-btn[data-range]').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            drawChart(btn.getAttribute('data-range'));
+        });
+    });
+    drawChart('this');
+
+    /* ---------- Mini calendar ---------- */
+    var calTitle = document.getElementById('th-cal-title');
+    var calGrid = document.getElementById('th-cal-grid');
+    var viewDate = new Date();
+    viewDate.setDate(1);
+
+    function drawCalendar() {
+        var year = viewDate.getFullYear();
+        var month = viewDate.getMonth();
+        calTitle.textContent = viewDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
+        calGrid.innerHTML = '';
+
+        ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d) {
+            var el = document.createElement('div');
+            el.className = 'cal-dow';
+            el.textContent = d;
+            calGrid.appendChild(el);
+        });
+
+        var firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Monday first
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
+        var today = new Date();
+
+        for (var b = 0; b < firstDow; b++) {
+            var blank = document.createElement('div');
+            blank.className = 'cal-day blank';
+            calGrid.appendChild(blank);
+        }
+        for (var d = 1; d <= daysInMonth; d++) {
+            var cell = document.createElement('div');
+            cell.className = 'cal-day';
+            cell.textContent = d;
+            if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                cell.classList.add('today');
+            }
+            calGrid.appendChild(cell);
+        }
+    }
+    document.getElementById('th-cal-prev').addEventListener('click', function () {
+        viewDate.setMonth(viewDate.getMonth() - 1);
+        drawCalendar();
+    });
+    document.getElementById('th-cal-next').addEventListener('click', function () {
+        viewDate.setMonth(viewDate.getMonth() + 1);
+        drawCalendar();
+    });
+    drawCalendar();
+})();
+</script>
 {% endblock %}

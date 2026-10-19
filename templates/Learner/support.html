@@ -1,0 +1,1197 @@
+{% extends "Learner/body.html" %}
+
+{% block allcontent %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Hub - eSchool</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --primary-dark: #3a0ca3;
+            --secondary-color: #7209b7;
+            --accent-color: #4cc9f0;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --info-color: #3b82f6;
+            --dark-color: #1e293b;
+            --light-color: #f8fafc;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --border-radius: 20px;
+            --border-radius-sm: 12px;
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+            --hover-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, white 0%, 100%);
+            min-height: 100vh;
+            
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            
+        }
+
+        /* Header Styles */
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 30px 120px;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }
+
+        .page-icon {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            font-size: 3rem;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .page-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 3rem;
+            margin-bottom: 15px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .page-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Tabs Navigation */
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 50px;
+            margin-bottom: 40px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            padding: 5px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 16px 25px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border-radius: 45px;
+            min-width: 150px;
+        }
+
+        .tab-btn:hover {
+            background: var(--gray-100);
+            color: var(--primary-color);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* FAQ Section */
+        .faq-container {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .faq-category {
+            margin-bottom: 30px;
+        }
+
+        .faq-category h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .faq-item {
+            border-bottom: 1px solid var(--gray-200);
+            margin-bottom: 15px;
+        }
+
+        .faq-question {
+            padding: 15px 0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: var(--gray-700);
+            transition: var(--transition);
+        }
+
+        .faq-question:hover {
+            color: var(--primary-color);
+        }
+
+        .faq-question i {
+            transition: var(--transition);
+        }
+
+        .faq-answer {
+            padding: 0 0 15px 0;
+            color: var(--gray-600);
+            line-height: 1.6;
+            display: none;
+        }
+
+        .faq-answer.active {
+            display: block;
+        }
+
+        /* Ticket Form */
+        .ticket-form {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .form-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--border-radius-sm);
+            font-size: 1rem;
+            transition: var(--transition);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+
+        .form-group button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Tickets Grid */
+        .tickets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .ticket-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .ticket-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .ticket-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--dark-color);
+        }
+
+        .ticket-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-open {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-in-progress {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-resolved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .ticket-category {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--gray-100);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-bottom: 15px;
+        }
+
+        .ticket-message {
+            color: var(--gray-600);
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .ticket-response {
+            background: var(--gray-50);
+            border-left: 3px solid var(--success-color);
+            border-radius: var(--border-radius-sm);
+            padding: 12px 15px;
+            margin-bottom: 15px;
+        }
+
+        .ticket-response-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 700;
+            color: var(--success-color);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ticket-response-text {
+            color: var(--gray-700);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .ticket-response-time {
+            font-size: 0.75rem;
+            color: var(--gray-400);
+            margin-top: 6px;
+        }
+
+        .ticket-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: var(--gray-500);
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        /* Knowledge Base Articles */
+        .articles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .article-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .article-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .article-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--primary-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .article-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--dark-color);
+        }
+
+        .article-description {
+            color: var(--gray-600);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Live Chat Widget */
+        .chat-widget {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+        }
+
+        .chat-button {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            transition: var(--transition);
+        }
+
+        .chat-button:hover {
+            transform: scale(1.1);
+        }
+
+        .chat-window {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--hover-shadow);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1001;
+        }
+
+        .chat-window.active {
+            display: flex;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: var(--gray-50);
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .chat-message.support {
+            justify-content: flex-start;
+        }
+
+        .chat-message.user {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            font-size: 0.9rem;
+        }
+
+        .chat-message.support .message-bubble {
+            background: white;
+            color: var(--dark-color);
+            border-bottom-left-radius: 5px;
+        }
+
+        .chat-message.user .message-bubble {
+            background: var(--primary-color);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--gray-200);
+            border-radius: 25px;
+            font-size: 0.9rem;
+        }
+
+        .chat-input button {
+            padding: 10px 15px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border-radius: var(--border-radius-sm);
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+        }
+
+        .empty-icon {
+            width: 100px;
+            height: 100px;
+            background: var(--gray-100);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            font-size: 3rem;
+            color: var(--gray-400);
+        }
+
+        /* Responsive */
+        @media (max-width: 968px) {
+            .tickets-grid,
+            .articles-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2.2rem;
+            }
+            
+            .tabs {
+                flex-direction: column;
+                border-radius: var(--border-radius);
+            }
+            
+            .chat-window {
+                width: 90%;
+                right: 5%;
+                left: 5%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="page-header">
+            <div class="header-content">
+                <div class="page-icon">
+                    <i class="fas fa-headset"></i>
+                </div>
+                <h1 class="page-title">Support Hub</h1>
+                <p class="page-subtitle">Get help with anything about the web. Submit tickets, browse FAQs, and connect with our support team</p>
+            </div>
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('tickets')">
+                <i class="fas fa-ticket-alt"></i> My Tickets
+            </button>
+            <button class="tab-btn" onclick="switchTab('faq')">
+                <i class="fas fa-question-circle"></i> FAQ
+            </button>
+            <button class="tab-btn" onclick="switchTab('knowledge')">
+                <i class="fas fa-book"></i> Knowledge Base
+            </button>
+            <button class="tab-btn" onclick="switchTab('new')">
+                <i class="fas fa-plus-circle"></i> New Ticket
+            </button>
+        </div>
+
+        <!-- My Tickets Tab -->
+        <div id="tickets-tab" class="tab-content active">
+            <div class="tickets-grid" id="ticketsContainer">
+                <!-- Tickets will be loaded here -->
+            </div>
+        </div>
+
+        <!-- FAQ Tab -->
+        <div id="faq-tab" class="tab-content">
+            <div class="faq-container">
+                <div class="faq-category">
+                    <h3><i class="fas fa-graduation-cap"></i> About Eschool FAQs</h3>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            What is Eschool?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                         Eschool is a modern digital learning platform built to make high-quality education accessible to every learner, everywhere                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            Is Eschool Free?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Yes! Eschool offers free courses, resources, career development and skills learning. You can upgrade to unlock unlimited features and free Ad learning.
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            Does it work on mobile devices?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Yes, Eschool works seamlessly across all devices- phones, tablets and Laptop. Eschool ensures you can study anywhere, anytime.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-category">
+                    <h3><i class="fas fa-book-open"></i> Learning & Courses</h3>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            How do I track my course progress?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Your progress is automatically saved as you complete modules and exercises. Check the "Progress" tab to see your overall progress and completed modules for each course.
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            Can I retake quizzes and exercises?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Yes! You can retake exercises only as many times as you want to improve your score and understanding. Quizes are taken daily and you should keep your quiz streak!
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            How do I get certificates?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Certificates are awarded upon completing all modules, exercises, and passing the final assessment. You can download your certificate from the course completion page.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-category">
+                    <h3><i class="fas fa-cog"></i> Technical Issues</h3>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            The uploaded resource is taking long to upload?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            This is actualy normal and if you are uploading a file with a very big storage this is very normal. Just wait and don't close that window.
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            My progress isn't being saved. How can I fix this?
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            Ensure you're logged in and have cookies enabled. Try logging out and back in, or contact support if the issue continues. Your progress is automatically saved in the cloud.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Knowledge Base Tab -->
+        <div id="knowledge-tab" class="tab-content">
+            <div class="articles-grid" id="articlesContainer">
+                <!-- Knowledge base articles will be loaded here -->
+            </div>
+        </div>
+
+        <!-- New Ticket Tab -->
+        <div id="new-tab" class="tab-content">
+            <div class="ticket-form">
+                <div class="form-title">
+                    <i class="fas fa-pen-alt"></i>
+                    Submit a Support Ticket
+                </div>
+                <form id="ticketForm">
+                    <div class="form-group">
+                        <label for="ticketTitle">Subject *</label>
+                        <input type="text" id="ticketTitle" required placeholder="Brief summary of your issue">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ticketCategory">Category *</label>
+                        <select id="ticketCategory" required>
+                            <option value="">Select a category</option>
+                            <option value="technical">Technical Issue</option>
+                            <option value="account">Account Problem</option>
+                            <option value="course">Course Question</option>
+                            <option value="billing">Billing/Subscription</option>
+                            <option value="feature">Feature Request</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ticketPriority">Priority *</label>
+                        <select id="ticketPriority" required>
+                            <option value="low">Low - General question</option>
+                            <option value="medium">Medium - Minor issue</option>
+                            <option value="high">High - Blocking my work</option>
+                            <option value="urgent">Urgent - Critical issue</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ticketMessage">Message *</label>
+                        <textarea id="ticketMessage" rows="6" required placeholder="Describe your issue in detail. Include steps to reproduce, screenshots, and any error messages..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary" id="ticketSubmitBtn">
+                            <i class="fas fa-paper-plane"></i> Submit Ticket
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Chat Widget -->
+    <div class="chat-widget">
+        <div class="chat-button" onclick="toggleChat()">
+            <i class="fas fa-comment-dots"></i>
+        </div>
+        <div class="chat-window" id="chatWindow">
+            <div class="chat-header">
+                <span><i class="fas fa-headset"></i> Support Chat</span>
+                <i class="fas fa-times" onclick="toggleChat()" style="cursor: pointer;"></i>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-message support">
+                    <div class="message-bubble">
+                        Hi! 👋 This support assistant is not available right now. Try reaching out through our ticket.
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="chatInput" placeholder="Type your message...">
+                <button onclick="sendChatMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // EmailJS CONFIGURATION
+        // ============================================
+        // Tickets are now persisted server-side (see below) and show up for
+        // admins in /admin_support automatically. EmailJS is kept as a
+        // best-effort secondary notification straight to the support inbox —
+        // if it fails, the ticket is still saved and visible to admins, so we
+        // never let it block the user-facing flow.
+        const EMAILJS_PUBLIC_KEY = "pONGzo5pWq5jJzaMM";
+        const EMAILJS_SERVICE_ID = "service_49v69xj";
+        const EMAILJS_TEMPLATE_ID = "template_3grdzv9";
+        const SUPPORT_EMAIL = "kibetdan4114@gmail.com";
+
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+
+        // Tickets are now loaded from (and saved to) the server via /api/complaints
+        let tickets = [];
+
+        let currentUser = "{{ firstname }} {{ lastname }}" || "Student User";
+
+        // Knowledge Base Articles
+        const knowledgeBase = [
+            {
+                id: 1,
+                title: "Getting Started with the courses",
+                description: "Make sure to stay consistent to get a certificate.",
+                icon: "fas fa-book-open",
+            },
+            {
+                id: 2,
+                title: "Advancing Your Learning Skills",
+                description: "Advance daily in any course and learn atleast one skill.",
+                icon: "fa-brain",
+            },
+            {
+                id: 3,
+                title: "Tracking Your academic Progress",
+                description: "Visit the progress page and view all your progress.",
+                icon: "fa-chart-line",
+            },
+            {
+                id: 4,
+                title: "Finishing the Modules",
+                description: "Pass all tests to unlock the next level to have a good GPA.",
+                icon: "fa-star",
+            },
+            {
+                id: 5,
+                title: "Setting Up Your Study Plan",
+                description: "Visit the schedule page and plan your studies.",
+                icon: "fa-bullseye",
+            },
+            {
+                id: 6,
+                title: "Unlocking New achievements",
+                description: "view what it needs to be done inorder to achieve the achievement.",
+                icon: "fa-trophy",
+            }
+        ];
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTickets();
+            loadKnowledgeBase();
+            setupTicketForm();
+        });
+
+        // ============================================
+        // TICKETS — backed by GET/POST /api/complaints
+        // ============================================
+        function loadTickets() {
+            const container = document.getElementById('ticketsContainer');
+
+            fetch('/api/complaints/mine')
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) {
+                        console.error('Failed to load tickets:', data.message);
+                        return;
+                    }
+                    tickets = data.complaints;
+                    renderTickets();
+                })
+                .catch(err => {
+                    console.error('Error loading tickets:', err);
+                    container.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1/-1;">
+                            <div class="empty-icon"><i class="fas fa-triangle-exclamation"></i></div>
+                            <h3 class="empty-title">Couldn't load your tickets</h3>
+                            <p class="empty-text">Please refresh the page to try again.</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function renderTickets() {
+            const container = document.getElementById('ticketsContainer');
+
+            if (tickets.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="empty-icon"><i class="fas fa-ticket-alt"></i></div>
+                        <h3 class="empty-title">No Tickets Yet</h3>
+                        <p class="empty-text">Submit your first support ticket to get help from our team.</p>
+                        <button class="btn btn-primary" onclick="switchTab('new')">
+                            <i class="fas fa-plus"></i> Create Ticket
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tickets.map(ticket => createTicketCard(ticket)).join('');
+        }
+
+        // Backend statuses are pending / in-progress / resolved.
+        // Map them onto the existing status-open / status-in-progress / status-resolved CSS.
+        function statusInfo(status) {
+            if (status === 'resolved') return { cls: 'status-resolved', label: 'Resolved' };
+            if (status === 'in-progress') return { cls: 'status-in-progress', label: 'In Progress' };
+            return { cls: 'status-open', label: 'Open' };
+        }
+
+        function createTicketCard(ticket) {
+            const { cls: statusClass, label: statusText } = statusInfo(ticket.status);
+            const description = ticket.description || '';
+
+            const priorityColors = {
+                low: '#10b981',
+                medium: '#f59e0b',
+                high: '#ef4444',
+                urgent: '#dc2626'
+            };
+            const priority = ticket.priority || 'medium';
+            const responseCount = ticket.response ? 1 : 0;
+
+            const responseBlock = ticket.response ? `
+                <div class="ticket-response">
+                    <div class="ticket-response-label"><i class="fas fa-headset"></i> Support Response</div>
+                    <div class="ticket-response-text">${escapeHtml(ticket.response)}</div>
+                    ${ticket.response_date ? `<div class="ticket-response-time">${formatDate(ticket.response_date)}</div>` : ''}
+                </div>
+            ` : '';
+
+            return `
+                <div class="ticket-card" onclick="viewTicketDetails(${ticket.id})">
+                    <div class="ticket-header">
+                        <div class="ticket-title">${escapeHtml(ticket.subject)}</div>
+                        <div class="ticket-status ${statusClass}">${statusText}</div>
+                    </div>
+                    <div class="ticket-category">
+                        <i class="fas ${getCategoryIcon(ticket.category)}"></i> ${escapeHtml((ticket.category || 'other').toUpperCase())}
+                    </div>
+                    <div class="ticket-message">${escapeHtml(description.substring(0, 100))}${description.length > 100 ? '...' : ''}</div>
+                    ${responseBlock}
+                    <div class="ticket-meta">
+                        <span><i class="fas fa-calendar"></i> ${formatDate(ticket.created_at)}</span>
+                        <span><i class="fas fa-flag" style="color: ${priorityColors[priority]}"></i> ${priority}</span>
+                        <span><i class="fas fa-comment"></i> ${responseCount} response${responseCount === 1 ? '' : 's'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function viewTicketDetails(id) {
+            const ticket = tickets.find(t => t.id === id);
+            if (!ticket) return;
+
+            const { label: statusText } = statusInfo(ticket.status);
+            let details = `Ticket: ${ticket.subject}\n\nStatus: ${statusText}\nPriority: ${ticket.priority || 'medium'}\n\nMessage: ${ticket.description || ''}`;
+
+            if (ticket.response) {
+                details += `\n\n--- Support Response ---\n${ticket.response}`;
+            } else {
+                details += `\n\nOur team hasn't responded yet — we'll notify you here once they do.`;
+            }
+
+            alert(details);
+        }
+
+        // ============================================
+        // KNOWLEDGE BASE (static content)
+        // ============================================
+        function loadKnowledgeBase() {
+            const container = document.getElementById('articlesContainer');
+            container.innerHTML = knowledgeBase.map(article => `
+                <div class="article-card" onclick="viewArticle(${article.id})">
+                    <div class="article-icon">
+                        <i class="fas ${article.icon}"></i>
+                    </div>
+                    <div class="article-title">${article.title}</div>
+                    <div class="article-description">${article.description}</div>
+                </div>
+            `).join('');
+        }
+
+        
+
+        // ============================================
+        // NEW TICKET FORM — POSTs to /api/complaints
+        // ============================================
+        function setupTicketForm() {
+            document.getElementById('ticketForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                const submitBtn = document.getElementById('ticketSubmitBtn');
+                const originalBtnHTML = submitBtn.innerHTML;
+
+                const payload = {
+                    subject: document.getElementById('ticketTitle').value.trim(),
+                    category: document.getElementById('ticketCategory').value,
+                    priority: document.getElementById('ticketPriority').value,
+                    description: document.getElementById('ticketMessage').value.trim()
+                };
+
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+                fetch('/api/complaints', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.message || 'Failed to submit ticket');
+                    }
+
+                    const savedTicket = data.complaint;
+
+                    // Best-effort email alert to the support inbox — failure here
+                    // does not affect the ticket, which is already saved.
+                    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                        to_email: SUPPORT_EMAIL,
+                        ticket_id: savedTicket.id,
+                        from_user: currentUser,
+                        subject: savedTicket.subject,
+                        category: savedTicket.category,
+                        priority: savedTicket.priority,
+                        message: savedTicket.description,
+                        created_at: savedTicket.created_at
+                    }).catch(err => console.error('EmailJS alert failed (ticket still saved):', err));
+
+                    
+                    loadTickets();
+                    switchTab('tickets');
+                })
+                .catch(err => {
+                    console.error('Failed to submit ticket:', err);
+                    alert("⚠️ We couldn't submit your ticket right now. Please try again in a moment.");
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnHTML;
+                });
+            });
+        }
+
+        function toggleFAQ(element) {
+            const answer = element.nextElementSibling;
+            const icon = element.querySelector('i');
+            
+            answer.classList.toggle('active');
+            icon.style.transform = answer.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0)';
+        }
+
+        // Live Chat Functions
+        function toggleChat() {
+            const chatWindow = document.getElementById('chatWindow');
+            chatWindow.classList.toggle('active');
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            addChatMessage(message, 'user');
+            input.value = '';
+            
+            // Simulate support response
+            setTimeout(() => {
+                const response = getSupportResponse(message);
+                addChatMessage(response, 'support');
+            }, 1000);
+        }
+
+        function addChatMessage(message, sender) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender}`;
+            messageDiv.innerHTML = `
+                <div class="message-bubble">
+                    ${message}
+                </div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => 
+                btn.innerHTML.toLowerCase().includes(tabName === 'tickets' ? 'tickets' :
+                                                   tabName === 'faq' ? 'faq' :
+                                                   tabName === 'knowledge' ? 'knowledge' : 'new')
+            );
+            if (activeBtn) activeBtn.classList.add('active');
+            
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        function getCategoryIcon(category) {
+            const icons = {
+                technical: 'fa-code',
+                account: 'fa-user',
+                course: 'fa-book',
+                billing: 'fa-credit-card',
+                feature: 'fa-star',
+                other: 'fa-question'
+            };
+            return icons[category] || 'fa-tag';
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7) return `${diffDays} days ago`;
+            return date.toLocaleDateString();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Allow Enter key in chat
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && document.activeElement.id === 'chatInput') {
+                sendChatMessage();
+            }
+        });
+    </script>
+</body>
+</html>
+{% endblock %}
