@@ -1,904 +1,1280 @@
-{% extends "admin.html" %}
+{% extends "Admin/admin_body.html" %}
 
 {% block allcontent %}
-<div class="admin-content">
-    <div class="page-title-row">
-        <h2><i class="fas fa-file-alt" style="color: var(--primary-color); margin-right: 10px;"></i>Uploaded Resources</h2>
-        <span class="count-pill" id="resourceCountPill">Loading…</span>
-    </div>
-
-    <div class="toolbar">
-        <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" id="resourceSearch" placeholder="Search by title or uploader...">
-        </div>
-        <button class="refresh-btn" id="refreshBtn">
-            <i class="fas fa-rotate"></i>
-            <span>Refresh</span>
-        </button>
-    </div>
-
-    <div class="panel">
-        <table class="resources-table">
-            <thead>
-                <tr>
-                    <th>Resource</th>
-                    <th>Uploaded by</th>
-                    <th>Privacy</th>
-                    <th>Size</th>
-                    <th>Uploaded</th>
-                    <th>Stats</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody id="resourcesTableBody">
-                <tr class="loading-row">
-                    <td colspan="7">
-                        <i class="fas fa-spinner fa-spin"></i> Loading resources…
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- ===== RESOURCE PREVIEW MODAL ===== -->
-<div class="resource-preview-overlay" id="resourcePreviewOverlay">
-    <div class="resource-preview-modal">
-        <button class="preview-close" id="previewCloseBtn" aria-label="Close preview">
-            <i class="fas fa-times"></i>
-        </button>
-        <div id="previewBody"></div>
-    </div>
-</div>
-
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
-    /* Additional styles specific to resources page */
-    .toolbar {
-        background: white;
-        border-radius: 12px;
-        padding: 16px 20px;
-        box-shadow: var(--card-shadow);
-        margin-bottom: 20px;
-        display: flex;
-        gap: 14px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-
-    .toolbar .search-box {
-        position: relative;
-        flex: 1;
-        min-width: 220px;
-    }
-
-    .toolbar .search-box i {
-        position: absolute;
-        left: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--gray-color);
-        font-size: 0.9rem;
-    }
-
-    .toolbar .search-box input {
-        width: 100%;
-        padding: 10px 14px 10px 38px;
-        border: 2px solid #e2e8f0;
-        border-radius: 25px;
-        font-size: 0.9rem;
-        background: #fafcfd;
-        transition: var(--transition);
-    }
-
-    .toolbar .search-box input:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-    }
-
-    .toolbar .refresh-btn {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 18px;
-        border: 2px solid #e2e8f0;
-        background: white;
-        border-radius: 25px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: var(--dark-color);
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .toolbar .refresh-btn:hover {
-        border-color: var(--primary-color);
-        color: var(--primary-color);
-    }
-
-    .panel {
-        background: white;
-        border-radius: 12px;
-        padding: 15px 25px 25px;
-        box-shadow: var(--card-shadow);
-        overflow-x: auto;
-    }
-
-    .resources-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .resources-table th,
-    .resources-table td {
-        text-align: left;
-        padding: 14px 10px;
-        font-size: 0.88rem;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-    }
-
-    .resources-table th {
-        color: var(--gray-color);
-        font-weight: 600;
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-    }
-
-    /* Whole row (except the delete button) opens the preview modal */
-    .resources-table tbody tr {
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .resources-table tbody tr:hover {
-        background-color: #f9fafb;
-    }
-
-    .resource-cell {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .resource-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.05rem;
-        flex-shrink: 0;
-    }
-
-    .resource-icon.video { background: #ef4444; }
-    .resource-icon.audio { background: #8b5cf6; }
-    .resource-icon.image { background: #ec4899; }
-    .resource-icon.pdf { background: #dc2626; }
-    .resource-icon.doc { background: #2563eb; }
-    .resource-icon.presentation { background: #ea580c; }
-    .resource-icon.spreadsheet { background: #059669; }
-    .resource-icon.code { background: #4361ee; }
-    .resource-icon.zip { background: #78716c; }
-    .resource-icon.other { background: #6b7280; }
-
-    .resource-title {
-        font-weight: 600;
-        font-size: 0.92rem;
-        color: var(--dark-color);
-        max-width: 320px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .resource-category {
-        font-size: 0.78rem;
-        color: var(--gray-color);
-        text-transform: capitalize;
-    }
-
-    .privacy-pill {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 12px;
-        font-size: 0.72rem;
-        font-weight: 600;
-        text-transform: capitalize;
-        background: #f1f5f9;
-        color: var(--gray-color);
-    }
-
-    .privacy-pill.public {
-        background: #dcfce7;
-        color: #059862;
-    }
-
-    .privacy-pill.private {
-        background: #fef3c7;
-        color: #d97706;
-    }
-
-    .stats-mini {
-        font-size: 0.8rem;
-        color: var(--gray-color);
-        white-space: nowrap;
-    }
-
-    .stats-mini i {
-        margin-right: 4px;
-    }
-
-    .delete-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 7px 14px;
-        border-radius: 8px;
-        border: 1px solid #fecaca;
-        background: #fef2f2;
-        color: var(--danger-color);
-        font-size: 0.82rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: var(--transition);
-        white-space: nowrap;
-    }
-
-    .delete-btn:hover {
-        background: var(--danger-color);
-        border-color: var(--danger-color);
-        color: white;
-    }
-
-    .delete-btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    .empty-row td {
-        text-align: center;
-        padding: 50px 20px;
-        color: var(--gray-color);
-    }
-
-    .empty-row i {
-        display: block;
-        font-size: 2.2rem;
-        margin-bottom: 10px;
-        opacity: 0.4;
-    }
-
-    .loading-row td {
-        text-align: center;
-        padding: 40px 20px;
-        color: var(--gray-color);
-    }
-
-    /* ===== RESOURCE PREVIEW MODAL ===== */
-    .resource-preview-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(4px);
-        z-index: 100000;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-    }
-
-    .resource-preview-overlay.active {
-        display: flex;
-    }
-
-    .resource-preview-modal {
-        position: relative;
-        background: white;
-        border-radius: 16px;
-        max-width: 720px;
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
-        padding: 30px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
-
-    .preview-close {
-        position: absolute;
-        top: 16px;
-        right: 16px;
-        width: 36px;
-        height: 36px;
-        border: none;
-        background: #f1f5f9;
-        color: var(--dark-color);
-        border-radius: 50%;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        transition: var(--transition);
-    }
-
-    .preview-close:hover {
-        background: #e2e8f0;
-    }
-
-    .preview-header {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        margin-bottom: 20px;
-        padding-right: 40px;
-    }
-
-    .preview-header .resource-icon {
-        width: 48px;
-        height: 48px;
-        font-size: 1.2rem;
-    }
-
-    .preview-header h3 {
-        font-size: 1.15rem;
-        margin-bottom: 4px;
-        word-break: break-word;
-    }
-
-    .preview-meta {
-        font-size: 0.82rem;
-        color: var(--gray-color);
-    }
-
-    .preview-media {
-        margin-bottom: 18px;
-        border-radius: 12px;
-        overflow: hidden;
-        background: #f1f5f9;
-    }
-
-    .preview-media-image {
-        display: block;
-        width: 100%;
-        max-height: 420px;
-        object-fit: contain;
-        background: #0f172a;
-    }
-
-    .preview-media-video {
-        display: block;
-        width: 100%;
-        max-height: 420px;
-        background: #000;
-    }
-
-    .preview-media-audio {
-        display: block;
-        width: 100%;
-        padding: 20px;
-    }
-
-    .preview-media-frame {
-        display: block;
-        width: 100%;
-        height: 420px;
-        border: none;
-        background: white;
-    }
-
-    .preview-no-inline {
-        text-align: center;
-        padding: 40px 20px;
-        color: var(--gray-color);
-    }
-
-    .preview-no-inline i {
-        display: block;
-        font-size: 2.4rem;
-        margin-bottom: 12px;
-        opacity: 0.5;
-    }
-
-    .preview-description {
-        font-size: 0.9rem;
-        color: var(--dark-color);
-        line-height: 1.6;
-        margin-bottom: 20px;
-        white-space: pre-wrap;
-    }
-
-    .preview-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 14px;
-        padding-top: 16px;
-        border-top: 1px solid #f1f5f9;
-    }
-
-    .preview-footer .refresh-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 9px 18px;
-        border: 2px solid var(--primary-color);
-        background: white;
-        color: var(--primary-color);
-        border-radius: 25px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .preview-footer .refresh-btn:hover {
-        background: var(--primary-color);
-        color: white;
-    }
-
-    /* Dark mode styles */
-    body.dark-mode .toolbar {
-        background-color: #1e293b;
-    }
-
-    body.dark-mode .toolbar .search-box input {
-        background-color: #0f172a;
-        border-color: #334155;
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .toolbar .search-box input::placeholder {
-        color: #64748b;
-    }
-
-    body.dark-mode .toolbar .refresh-btn {
-        background-color: #0f172a;
-        border-color: #334155;
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .toolbar .refresh-btn:hover {
-        border-color: var(--primary-color);
-        color: var(--primary-color);
-    }
-
-    body.dark-mode .panel {
-        background-color: #1e293b;
-    }
-
-    body.dark-mode .resources-table tbody tr:hover {
-        background-color: #263449;
-    }
-
-    body.dark-mode .resources-table td {
-        border-bottom-color: #334155;
-    }
-
-    body.dark-mode .resources-table th {
-        color: #94a3b8;
-    }
-
-    body.dark-mode .resource-title {
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .resource-category {
-        color: #94a3b8;
-    }
-
-    body.dark-mode .stats-mini {
-        color: #94a3b8;
-    }
-
-    body.dark-mode .delete-btn {
-        background: #3a1a1a;
-        border-color: #5a2a2a;
-        color: #ef4444;
-    }
-
-    body.dark-mode .delete-btn:hover {
-        background: #ef4444;
-        border-color: #ef4444;
-        color: white;
-    }
-
-    body.dark-mode .privacy-pill {
-        background: #263449;
-        color: #94a3b8;
-    }
-
-    body.dark-mode .privacy-pill.public {
-        background: #1a3a2a;
-        color: #4ade80;
-    }
-
-    body.dark-mode .privacy-pill.private {
-        background: #3a2a1a;
-        color: #f59e0b;
-    }
-
-    body.dark-mode .resource-preview-modal {
-        background: #1e293b;
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .preview-close {
-        background: #263449;
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .preview-close:hover {
-        background: #334155;
-    }
-
-    body.dark-mode .preview-media {
-        background: #0f172a;
-    }
-
-    body.dark-mode .preview-description {
-        color: #e2e8f0;
-    }
-
-    body.dark-mode .preview-footer {
-        border-top-color: #334155;
-    }
-
-    body.dark-mode .preview-no-inline {
-        color: #94a3b8;
-    }
-
-    /* Responsive */
-    @media (max-width: 700px) {
-        .resources-table thead {
-            display: none;
-        }
-        .resources-table, .resources-table tbody, .resources-table tr, .resources-table td {
-            display: block;
-            width: 100%;
-        }
-        .resources-table tr {
-            border-bottom: 1px solid #f1f5f9;
-            padding: 12px 0;
-        }
-        .resources-table td {
-            border-bottom: none;
-            padding: 4px 0;
-        }
-        .resource-title {
-            max-width: none;
-            white-space: normal;
-        }
-        .delete-btn {
-            padding: 5px 12px;
-            font-size: 0.78rem;
-        }
-        .stats-mini {
-            font-size: 0.75rem;
-        }
-        .toolbar {
-            flex-direction: column;
-            align-items: stretch;
-            padding: 12px 16px;
-        }
-        .toolbar .search-box {
-            min-width: auto;
-        }
-        .toolbar .refresh-btn {
-            justify-content: center;
-        }
-        .panel {
-            padding: 12px 16px 16px;
-        }
-        .resource-icon {
-            width: 32px;
-            height: 32px;
-            font-size: 0.85rem;
-        }
-        .resource-title {
-            font-size: 0.85rem;
-        }
-        .resource-preview-modal {
-            padding: 20px;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .resource-title {
-            font-size: 0.8rem;
-        }
-        .resource-category {
-            font-size: 0.7rem;
-        }
-        .delete-btn {
-            padding: 4px 10px;
-            font-size: 0.7rem;
-        }
-        .page-title-row h2 {
-            font-size: 1rem;
-        }
-    }
+/* ======================================================================
+   ADMIN RESOURCES: upload + analytics + management on one page.
+   Only Eschool admins post resources. Everything is drawn with
+   textContent / escaped strings; no inline onclick with data in it.
+   ====================================================================== */
+.ar {
+    --ar-accent: var(--primary-color, #4f46e5);
+    --ar-accent-soft: #eef0ff;
+    --ar-bg: #f4f6fb; --ar-card: #fff; --ar-line: #e3e7f1; --ar-line-2: #f0f2f7;
+    --ar-text: #1c2333; --ar-text-2: #4b5468; --ar-text-3: #6b7385;
+    --ar-ok: #137333; --ar-ok-bg: #e6f4ea; --ar-bad: #b3261e; --ar-bad-bg: #fce8e6; --ar-warn: #8a5300; --ar-warn-bg: #fff4e0;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ar-text);
+    max-width: 1280px; margin: 0 auto; padding: 4px 0 40px;
+}
+body.dark-mode .ar {
+    --ar-accent-soft: #24264a; --ar-bg: #0b1220; --ar-card: #111a2e; --ar-line: #263149; --ar-line-2: #1b2539;
+    --ar-text: #e8ecf5; --ar-text-2: #b8c1d6; --ar-text-3: #8d97ae;
+    --ar-ok: #6fd391; --ar-ok-bg: #12301f; --ar-bad: #ff8b80; --ar-bad-bg: #3a1714; --ar-warn: #f5c46a; --ar-warn-bg: #33260c;
+}
+body.dark-mode .ar-drop { background: #151d33; border-color: #3b3f7a; }
+body.dark-mode .ar-file.bad { background: #2a1513; border-color: #6b2a24; }
+body.dark-mode .ar-tbl tr.sel td { background: #1a2240; }
+body.dark-mode .ar-dlg { background: #111a2e; color: #e8ecf5; }
+.ar *, .ar *::before, .ar *::after { box-sizing: border-box; }
+.ar h1 { font-size: 1.6rem; margin: 0; font-weight: 800; }
+.ar h2 { font-size: 1.05rem; margin: 0; }
+.ar h3 { font-size: .95rem; margin: 0 0 10px; }
+.ar p { margin: 0; }
+.ar button, .ar input, .ar select, .ar textarea { font: inherit; color: inherit; }
+.ar-sub { color: var(--ar-text-3); margin: 4px 0 16px; }
+.ar-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.ar-tabs { display: flex; gap: 8px; margin: 0 0 18px; flex-wrap: wrap; }
+.ar-tab { border: 1px solid var(--ar-line); background: var(--ar-card); border-radius: 999px; padding: 9px 18px; font-weight: 600; cursor: pointer; }
+.ar-tab[aria-selected="true"] { background: var(--ar-accent); border-color: var(--ar-accent); color: #fff; }
+.ar-tab small { opacity: .8; font-weight: 600; }
+.ar-panel[hidden] { display: none !important; }
+
+.ar-card { background: var(--ar-card); border: 1px solid var(--ar-line); border-radius: 14px; padding: 16px; min-width: 0; }
+.ar-grid { display: grid; gap: 14px; margin-bottom: 14px; }
+.ar-k5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.ar-c21 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.ar-c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ar-kl { font-size: .72rem; color: var(--ar-text-3); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.ar-kv { font-size: 1.6rem; font-weight: 800; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.ar-kn { font-size: .78rem; color: var(--ar-text-3); }
+.ar-gain { color: var(--ar-ok); font-weight: 600; } .ar-loss { color: var(--ar-bad); font-weight: 600; }
+
+.ar-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ar-chip { border: 1px solid var(--ar-line); background: var(--ar-card); border-radius: 999px; padding: 5px 12px; font-size: .8rem; font-weight: 600; cursor: pointer; color: var(--ar-text-2); }
+.ar-chip[aria-pressed="true"] { background: var(--ar-accent-soft); border-color: var(--ar-accent); color: var(--ar-accent); }
+.ar-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.ar-head h3 { margin: 0; }
+
+.ar-chart { position: relative; height: 190px; }
+.ar-chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.ar-tip { position: absolute; pointer-events: none; background: var(--ar-text); color: #fff; font-size: .75rem; padding: 6px 9px; border-radius: 8px; white-space: nowrap; transform: translate(-50%, -110%); opacity: 0; transition: opacity .1s; }
+.ar-tip b { display: block; font-size: .85rem; }
+.ar-chart-foot { display: flex; justify-content: space-between; font-size: .75rem; color: var(--ar-text-3); margin-top: 6px; }
+.ar-chart-foot span:nth-child(2) { flex: 1; text-align: center; padding: 0 8px; }
+@media (max-width: 560px) { .ar-chart-foot { flex-wrap: wrap; } .ar-chart-foot span:nth-child(2) { order: 3; flex-basis: 100%; padding: 4px 0 0; } }
+
+.ar-att { display: grid; gap: 6px; }
+.ar-att button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: none; border: 1px solid var(--ar-line-2); border-radius: 10px; padding: 9px 10px; cursor: pointer; }
+.ar-att button:hover { border-color: var(--ar-accent); }
+.ar-att i { width: 18px; text-align: center; color: var(--ar-warn); }
+.ar-att .n { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ar-att button.zero { opacity: .55; }
+.ar-att button.zero i { color: var(--ar-ok); }
+
+.ar-list { list-style: none; margin: 0; padding: 0; }
+.ar-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--ar-line-2); font-size: .88rem; }
+.ar-list li:last-child { border: 0; }
+.ar-list .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-list b { font-variant-numeric: tabular-nums; }
+.ar-empty { color: var(--ar-text-3); font-size: .85rem; padding: 10px 0; }
+.ar-tag { font-size: .7rem; background: var(--ar-accent-soft); color: var(--ar-accent); padding: 2px 7px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
+
+.ar-hb { display: grid; grid-template-columns: 96px minmax(0, 1fr) 44px; align-items: center; gap: 8px; font-size: .85rem; margin: 7px 0; }
+.ar-hb .tr { height: 12px; background: var(--ar-line-2); border-radius: 4px; overflow: hidden; }
+.ar-hb .tr span { display: block; height: 100%; background: var(--ar-accent); border-radius: 0 4px 4px 0; }
+.ar-hb b { text-align: right; font-size: .8rem; color: var(--ar-text-2); font-variant-numeric: tabular-nums; }
+.ar-hb .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* buttons + fields */
+.ar-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--ar-line); background: var(--ar-card); font-weight: 600; font-size: .85rem; cursor: pointer; text-decoration: none; color: var(--ar-text); white-space: nowrap; }
+.ar-btn:hover { border-color: var(--ar-accent); color: var(--ar-accent); }
+.ar-btn.primary { background: var(--ar-accent); border-color: var(--ar-accent); color: #fff; }
+.ar-btn.primary:hover { filter: brightness(1.08); color: #fff; }
+.ar-btn.danger { color: var(--ar-bad); }
+.ar-btn.danger.solid { background: var(--ar-bad); border-color: var(--ar-bad); color: #fff; }
+.ar-btn.sm { height: 32px; padding: 0 10px; font-size: .8rem; }
+.ar-btn.big { height: 46px; padding: 0 20px; font-size: .95rem; }
+.ar-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ar-btn:focus-visible, .ar-chip:focus-visible, .ar-tab:focus-visible, .ar-in:focus-visible, .ar-att button:focus-visible, .ar-drop:focus-visible { outline: 3px solid color-mix(in srgb, var(--ar-accent) 45%, transparent); outline-offset: 2px; }
+.ar-in { width: 100%; height: 40px; border: 1px solid var(--ar-line); border-radius: 10px; padding: 0 11px; background: var(--ar-card); }
+textarea.ar-in { height: 96px; padding: 10px 11px; resize: vertical; }
+.ar-field label, .ar-lbl { display: block; font-size: .82rem; font-weight: 600; margin-bottom: 5px; color: var(--ar-text-2); }
+.ar-field .req { color: var(--ar-bad); }
+.ar-err { color: var(--ar-bad); font-size: .78rem; min-height: 0; margin-top: 4px; }
+.ar-err:empty { display: none; }
+.ar-hint { display: flex; justify-content: space-between; font-size: .75rem; color: var(--ar-text-3); margin-top: 4px; }
+.ar-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ar-fields .wide { grid-column: 1 / -1; }
+.has-err .ar-in { border-color: var(--ar-bad); }
+
+/* upload */
+.ar-up { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+.ar-col { display: grid; gap: 14px; }
+.ar-step { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+.ar-step .num { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--ar-accent-soft); color: var(--ar-accent); display: grid; place-items: center; font-weight: 700; font-size: .85rem; }
+.ar-step .num.done { background: var(--ar-ok); color: #fff; }
+.ar-step p { color: var(--ar-text-3); font-size: .82rem; margin-top: 2px; }
+.ar-drop { border: 2px dashed #a5b4fc; border-radius: 14px; text-align: center; padding: 28px 16px; background: #f7f7ff; cursor: pointer; transition: background .15s; }
+.ar-drop.over { background: var(--ar-accent-soft); border-color: var(--ar-accent); }
+.ar-drop.compact { padding: 14px; }
+.ar-drop .ic { font-size: 1.8rem; color: var(--ar-accent); }
+.ar-drop.compact .ic { display: none; }
+.ar-drop h4 { margin: 6px 0 2px; font-size: 1rem; color: var(--ar-accent); }
+.ar-drop small { color: var(--ar-text-3); }
+.ar-files { display: grid; gap: 8px; margin-top: 10px; }
+.ar-file { position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 1px solid var(--ar-line); border-radius: 12px; padding: 8px; overflow: hidden; }
+.ar-file.bad { border-color: #f3b6b0; background: #fff8f7; }
+.ar-file.ok { border-color: #b7dfc3; }
+.ar-thumb { width: 64px; height: 44px; border-radius: 8px; background: var(--ar-accent-soft); display: grid; place-items: center; color: var(--ar-accent); overflow: hidden; }
+.ar-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ar-file input { height: 34px; }
+.ar-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: .75rem; color: var(--ar-text-3); margin-top: 4px; }
+.ar-meta .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.ar-fmsg { font-size: .78rem; margin-top: 4px; }
+.ar-fmsg.bad { color: var(--ar-bad); } .ar-fmsg.ok { color: var(--ar-ok); } .ar-fmsg.info { color: var(--ar-text-2); }
+.ar-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ar-accent); transition: width .2s; }
+.ar-file.ok .ar-bar { background: var(--ar-ok); } .ar-file.bad .ar-bar { background: var(--ar-bad); }
+.ar-x { width: 34px; height: 34px; border-radius: 9px; border: 0; background: none; cursor: pointer; color: var(--ar-text-3); }
+.ar-x:hover { background: var(--ar-bad-bg); color: var(--ar-bad); }
+.ar-ffoot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: .82rem; color: var(--ar-text-3); }
+.ar-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ar-opt { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--ar-line); border-radius: 12px; padding: 10px; cursor: pointer; }
+.ar-opt:has(input:checked) { border-color: var(--ar-accent); background: var(--ar-accent-soft); }
+.ar-opt input { margin-top: 3px; accent-color: var(--ar-accent); }
+.ar-opt b { display: block; font-size: .88rem; }
+.ar-opt span { font-size: .78rem; color: var(--ar-text-3); }
+.ar-switch { display: flex; gap: 12px; align-items: center; justify-content: space-between; border: 1px solid var(--ar-line); border-radius: 12px; padding: 12px; }
+.ar-switch.off { opacity: .6; }
+.ar-switch b { display: block; font-size: .9rem; }
+.ar-switch span { font-size: .8rem; color: var(--ar-text-3); }
+.ar-tg { position: relative; flex: none; width: 46px; height: 26px; }
+.ar-tg input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.ar-tg i { position: absolute; inset: 0; border-radius: 999px; background: #c9cfdc; transition: background .15s; }
+.ar-tg i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.ar-tg input:checked + i { background: var(--ar-accent); }
+.ar-tg input:checked + i::after { transform: translateX(20px); }
+.ar-tg input:focus-visible + i { outline: 3px solid color-mix(in srgb, var(--ar-accent) 45%, transparent); outline-offset: 2px; }
+.ar-cover { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.ar-cover-box { width: 150px; height: 96px; border-radius: 12px; border: 2px dashed var(--ar-line); display: grid; place-items: center; color: var(--ar-text-3); font-size: 1.5rem; cursor: pointer; overflow: hidden; background: var(--ar-bg); }
+.ar-cover-box img { width: 100%; height: 100%; object-fit: cover; }
+.ar-cover-side { flex: 1; min-width: 200px; font-size: .85rem; color: var(--ar-text-2); }
+.ar-cover-side .ar-btns { margin-top: 8px; }
+.ar-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.ar-submit { position: sticky; bottom: 12px; z-index: 3; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--ar-card); border: 1px solid var(--ar-line); border-radius: 14px; padding: 12px 14px; box-shadow: 0 8px 24px rgba(20, 30, 60, .1); flex-wrap: wrap; }
+.ar-submit b { display: block; }
+.ar-submit span { font-size: .82rem; color: var(--ar-text-3); }
+.ar-total { height: 6px; background: var(--ar-line-2); border-radius: 999px; overflow: hidden; margin-top: 6px; width: min(320px, 60vw); }
+.ar-total div { height: 100%; width: 0; background: var(--ar-accent); transition: width .2s; }
+.ar-note { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; padding: 10px 12px; font-size: .85rem; }
+.ar-note.info { background: var(--ar-accent-soft); color: var(--ar-text); }
+.ar-note.warn { background: var(--ar-warn-bg); color: var(--ar-warn); }
+.ar-note.ok { background: var(--ar-ok-bg); color: var(--ar-ok); }
+.ar-note.bad { background: var(--ar-bad-bg); color: var(--ar-bad); }
+.ar-pv-img { position: relative; height: 150px; border-radius: 12px; overflow: hidden; background: var(--ar-accent-soft); display: grid; place-items: center; color: var(--ar-accent); font-size: 2rem; }
+.ar-pv-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ar-pv-badge, .ar-pv-len { position: absolute; font-size: .72rem; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: rgba(15, 20, 35, .75); color: #fff; }
+.ar-pv-badge { left: 8px; top: 8px; } .ar-pv-len { right: 8px; bottom: 8px; }
+.ar-pv-t { font-weight: 700; margin: 10px 0 6px; }
+.ar-pv-t.empty { color: var(--ar-text-3); font-weight: 500; }
+.ar-pv-d { font-size: .82rem; color: var(--ar-text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-top: 6px; }
+.ar-pv-more { font-size: .78rem; color: var(--ar-text-3); margin-top: 8px; }
+.ar-check { list-style: none; margin: 0; padding: 0; }
+.ar-check li { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: .86rem; color: var(--ar-text-3); }
+.ar-check li i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--ar-line); display: grid; place-items: center; font-size: .6rem; color: transparent; }
+.ar-check li.on { color: var(--ar-text); }
+.ar-check li.on i { background: var(--ar-ok); border-color: var(--ar-ok); color: #fff; }
+.ar-check em { margin-left: auto; font-style: normal; font-size: .75rem; color: var(--ar-text-3); }
+.ar-meter { height: 6px; background: var(--ar-line-2); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+.ar-meter div { height: 100%; background: var(--ar-ok); width: 0; transition: width .2s; }
+.ar-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: .82rem; color: var(--ar-text-2); }
+.ar-rules li { display: flex; gap: 8px; }
+.ar-rules i { color: var(--ar-accent); margin-top: 3px; width: 14px; }
+.ar-done { text-align: center; padding: 30px 20px; }
+.ar-done .big { width: 64px; height: 64px; border-radius: 50%; background: var(--ar-ok); color: #fff; display: grid; place-items: center; font-size: 1.7rem; margin: 0 auto 12px; }
+.ar-done p { color: var(--ar-text-2); margin: 6px auto 14px; max-width: 520px; }
+.ar-done ul { list-style: none; padding: 0; margin: 0 auto 14px; max-width: 520px; text-align: left; }
+.ar-done li { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--ar-line-2); font-size: .88rem; }
+.ar-done li i { color: var(--ar-ok); }
+.ar-done .ar-note { max-width: 520px; margin: 0 auto 14px; text-align: left; }
+.ar-done .ar-btns { justify-content: center; }
+
+/* all resources */
+.ar-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ar-search { position: relative; flex: 2 1 240px; }
+.ar-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ar-text-3); }
+.ar-search input { padding-left: 34px; }
+.ar-tools select { flex: 1 1 130px; width: auto; }
+.ar-filter-on { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; font-size: .85rem; }
+.ar-filter-on[hidden] { display: none; }
+.ar-bulk { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--ar-accent-soft); border-radius: 12px; padding: 8px 10px; margin-bottom: 10px; font-size: .88rem; font-weight: 600; }
+.ar-bulk[hidden] { display: none; }
+.ar-bulk .sp { flex: 1; }
+.ar-tbl-wrap { overflow-x: auto; }
+.ar-tbl { width: 100%; border-collapse: collapse; font-size: .86rem; min-width: 900px; }
+.ar-tbl th { text-align: left; color: var(--ar-text-3); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; padding: 8px; border-bottom: 1px solid var(--ar-line); white-space: nowrap; }
+.ar-tbl td { padding: 9px 8px; border-bottom: 1px solid var(--ar-line-2); vertical-align: middle; }
+.ar-tbl td.n, .ar-tbl th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.ar-tbl tr.sel td { background: #f7f7ff; }
+.ar-tbl input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--ar-accent); cursor: pointer; }
+.ar-res { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.ar-res .ar-thumb { width: 56px; height: 38px; flex: none; position: relative; }
+.ar-res .ar-thumb i { position: absolute; }
+.ar-res .ar-thumb img { position: relative; }
+.ar-res b { display: block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-res button.ttl { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; color: inherit; font-weight: 700; }
+.ar-res button.ttl:hover b { color: var(--ar-accent); text-decoration: underline; }
+.ar-res small { display: block; color: var(--ar-text-3); font-size: .75rem; }
+.ar-res button.ttl { display: block; max-width: 300px; }
+.ar-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700; }
+.ar-pill.public { background: var(--ar-ok-bg); color: var(--ar-ok); }
+.ar-pill.private { background: var(--ar-bad-bg); color: var(--ar-bad); }
+.ar-acts { display: flex; gap: 6px; justify-content: flex-end; }
+.ar-pager { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; font-size: .85rem; color: var(--ar-text-3); flex-wrap: wrap; }
+
+/* dialog */
+.ar-dlg { border: 0; border-radius: 16px; padding: 0; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 40px); box-shadow: 0 24px 60px rgba(15, 20, 40, .3); color: var(--ar-text); font-family: Inter, system-ui, sans-serif; }
+.ar-dlg.wide { width: min(860px, calc(100vw - 32px)); }
+.ar-dlg::backdrop { background: rgba(15, 20, 35, .55); }
+.ar-dlg-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--ar-line); }
+.ar-dlg-h h2 { font-size: 1.05rem; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-dlg-b { padding: 18px; overflow: auto; }
+.ar-dlg-f[hidden] { display: none; }
+.ar-dlg-f { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--ar-line); }
+.ar-dlg-b video, .ar-dlg-b img, .ar-dlg-b iframe { width: 100%; border-radius: 10px; background: #000; display: block; }
+.ar-dlg-b img { background: none; max-height: 70vh; object-fit: contain; }
+.ar-dlg-b iframe { height: 70vh; border: 0; background: #fff; }
+.ar-dlg-b audio { width: 100%; }
+.ar-mini { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.ar-mini div { background: var(--ar-bg); border-radius: 10px; padding: 10px; }
+.ar-mini b { display: block; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.ar-mini span { font-size: .72rem; color: var(--ar-text-3); }
+
+.ar-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: var(--ar-text, #1c2333); color: #fff; padding: 11px 16px; border-radius: 12px; font-size: .88rem; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 1000; max-width: calc(100vw - 32px); font-family: Inter, system-ui, sans-serif; }
+.ar-toast.on { opacity: 1; transform: translateX(-50%); }
+.ar-skel { color: var(--ar-text-3); font-size: .85rem; padding: 20px 0; text-align: center; }
+.ar-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 1100px) {
+    .ar-k5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ar-c3 { grid-template-columns: 1fr 1fr; }
+    .ar-up { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+    .ar-k5, .ar-c21, .ar-c3 { grid-template-columns: minmax(0, 1fr); }
+    .ar-k5 { grid-template-columns: 1fr 1fr; }
+    .ar-fields, .ar-seg { grid-template-columns: minmax(0, 1fr); }
+    .ar-mini { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ar-submit .ar-btns, .ar-submit .ar-btn { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .ar * { transition: none !important; } }
 </style>
 
-<script>
-    // ===== SIDEBAR ACTIVE STATE =====
-    // Ensure the Resources link stays active
-    document.addEventListener('DOMContentLoaded', function() {
-        // Remove active from all nav items
-        document.querySelectorAll('.admin-sidebar .nav-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        // Add active to Resources
-        const resourcesLink = document.querySelector('.admin-sidebar .nav-item[href*="admin_resources"]');
-        if (resourcesLink) {
-            resourcesLink.classList.add('active');
-        }
-    });
+<div class="ar" id="ar">
+    <div class="ar-top">
+        <div>
+            <h1>Resources</h1>
+            <p class="ar-sub">Upload learning materials, see how learners use them, and manage everything in one place.</p>
+        </div>
+    </div>
 
-    const categoryIcons = {
-        video: 'fa-video',
-        audio: 'fa-music',
-        image: 'fa-image',
-        pdf: 'fa-file-pdf',
-        doc: 'fa-file-word',
-        presentation: 'fa-file-powerpoint',
-        spreadsheet: 'fa-file-excel',
-        code: 'fa-file-code',
-        zip: 'fa-file-archive',
-        other: 'fa-file'
-    };
+    <div class="ar-tabs" role="tablist" aria-label="Resources sections">
+        <button class="ar-tab" role="tab" id="tab-overview" aria-controls="p-overview" aria-selected="true" data-tab="overview"><i class="fas fa-chart-column" aria-hidden="true"></i> Overview</button>
+        <button class="ar-tab" role="tab" id="tab-upload" aria-controls="p-upload" aria-selected="false" data-tab="upload" tabindex="-1"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Upload</button>
+        <button class="ar-tab" role="tab" id="tab-all" aria-controls="p-all" aria-selected="false" data-tab="all" tabindex="-1"><i class="fas fa-folder-open" aria-hidden="true"></i> All resources <small id="tabCount"></small></button>
+    </div>
 
-    // File extensions the /uploads/<user_id>/<filename> route serves
-    // inline (see inline_exts in app.py) rather than forcing a
-    // download - safe to drop straight into an <iframe>.
-    const inlineFrameExts = ['pdf', 'txt', 'md', 'json', 'xml', 'csv', 'html', 'css', 'js'];
+    <!-- ============ OVERVIEW ============ -->
+    <section class="ar-panel" id="p-overview" role="tabpanel" aria-labelledby="tab-overview">
+        <div class="ar-head" style="margin-bottom:12px">
+            <span class="ar-kn" id="ovNote">Loading…</span>
+            <div class="ar-chips" role="group" aria-label="Time period">
+                <button class="ar-chip" data-days="7" aria-pressed="false">7 days</button>
+                <button class="ar-chip" data-days="30" aria-pressed="true">30 days</button>
+                <button class="ar-chip" data-days="90" aria-pressed="false">90 days</button>
+            </div>
+        </div>
+        <div class="ar-grid ar-k5" id="kpis"></div>
+        <div class="ar-grid ar-c21">
+            <div class="ar-card">
+                <div class="ar-head">
+                    <h3 id="chartTitle">Activity</h3>
+                    <div class="ar-chips" role="group" aria-label="What to show" id="metricChips">
+                        <button class="ar-chip" data-metric="views" aria-pressed="true">New viewers</button>
+                        <button class="ar-chip" data-metric="likes" aria-pressed="false">Likes</button>
+                        <button class="ar-chip" data-metric="saves" aria-pressed="false">Saves</button>
+                        <button class="ar-chip" data-metric="downloads" aria-pressed="false">Downloads</button>
+                        <button class="ar-chip" data-metric="uploads" aria-pressed="false">Uploads</button>
+                    </div>
+                </div>
+                <div class="ar-chart" id="chart"></div>
+                <div class="ar-chart-foot"><span id="chartFrom"></span><span id="chartSum"></span><span id="chartTo"></span></div>
+            </div>
+            <div class="ar-card">
+                <h3>Needs attention</h3>
+                <div class="ar-att" id="attention"><div class="ar-skel">Loading…</div></div>
+            </div>
+        </div>
+        <div class="ar-grid ar-c3">
+            <div class="ar-card">
+                <div class="ar-head">
+                    <h3>Top resources</h3>
+                    <div class="ar-chips" role="group" aria-label="Top resources by">
+                        <button class="ar-chip" data-top="recent" aria-pressed="true">This period</button>
+                        <button class="ar-chip" data-top="all" aria-pressed="false">All time</button>
+                    </div>
+                </div>
+                <ol class="ar-list" id="topList"></ol>
+            </div>
+            <div class="ar-card"><h3>By subject <span class="ar-kn">(resources)</span></h3><div id="bySubject"></div></div>
+            <div class="ar-card"><h3>By type <span class="ar-kn">(resources · space)</span></h3><div id="byType"></div></div>
+        </div>
+        <div class="ar-grid">
+            <div class="ar-card"><h3>By grade <span class="ar-kn">(resources)</span></h3><div id="byGrade" style="columns:2;column-gap:28px"></div></div>
+        </div>
+    </section>
 
-    let allResources = [];
+    <!-- ============ UPLOAD ============ -->
+    <section class="ar-panel" id="p-upload" role="tabpanel" aria-labelledby="tab-upload" hidden>
+        <div class="ar-up">
+            <div class="ar-col" id="formCol">
+                <div id="pageNote" hidden></div>
 
-    function formatFileSize(bytes) {
-        if (!bytes) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-    }
+                <section class="ar-card" aria-labelledby="h-files">
+                    <div class="ar-step"><span class="num" id="st1">1</span><div><h2 id="h-files">Choose files</h2><p>Up to 10 files at a time, each up to 2 GB. Every file becomes its own resource.</p></div></div>
+                    <div class="ar-drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
+                        <div class="ic"><i class="fas fa-cloud-arrow-up" aria-hidden="true"></i></div>
+                        <h4>Drag videos or files here, or tap to choose</h4>
+                        <small id="dropHelp">Videos, PDFs, documents, slides, audio, pictures and zip files. Keep this page open while big videos upload.</small>
+                    </div>
+                    <input type="file" id="fileInput" multiple hidden>
+                    <div class="ar-files" id="files" aria-live="polite"></div>
+                    <div class="ar-ffoot" id="filesFoot" hidden><span id="filesSum"></span><button type="button" class="ar-btn sm" id="clearFiles"><i class="fas fa-xmark"></i> Remove all</button></div>
+                    <div class="ar-err" id="err-files"></div>
+                </section>
 
-    function formatDate(raw) {
-        if (!raw) return '—';
-        const iso = raw.includes('T') ? raw : raw.replace(' ', 'T') + 'Z';
-        const d = new Date(iso);
-        if (isNaN(d.getTime())) return raw;
-        return d.toLocaleString(undefined, {
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
-    }
-
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str || '';
-        return div.innerHTML;
-    }
-
-    function renderResources(resources) {
-        const tbody = document.getElementById('resourcesTableBody');
-        const countPill = document.getElementById('resourceCountPill');
-
-        countPill.textContent = `${resources.length} resource${resources.length === 1 ? '' : 's'}`;
-
-        if (resources.length === 0) {
-            tbody.innerHTML = `
-                <tr class="empty-row">
-                    <td colspan="7">
-                        <i class="fas fa-folder-open"></i>
-                        No resources found.
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        tbody.innerHTML = resources.map(r => {
-            const icon = categoryIcons[r.file_category] || categoryIcons.other;
-            const title = escapeHtml(r.title || r.file_name || 'Untitled');
-            const author = escapeHtml(r.author || 'Unknown');
-            return `
-                <tr data-resource-id="${r.id}" onclick="openResourcePreview(${r.id})">
-                    <td>
-                        <div class="resource-cell">
-                            <div class="resource-icon ${r.file_category || 'other'}">
-                                <i class="fas ${icon}"></i>
-                            </div>
-                            <div>
-                                <div class="resource-title" title="${title}">${title}</div>
-                                <div class="resource-category">${escapeHtml(r.category || 'general')}</div>
+                <section class="ar-card" aria-labelledby="h-details">
+                    <div class="ar-step"><span class="num" id="st2">2</span><div><h2 id="h-details">Describe it</h2><p>These details apply to every file in this upload. You can change each one later in All resources.</p></div></div>
+                    <div class="ar-fields">
+                        <div class="ar-field" id="f-category">
+                            <label for="category">Subject <span class="req">*</span></label>
+                            <select id="category" class="ar-in"><option value="">Choose a subject</option></select>
+                            <div class="ar-err" id="err-category"></div>
+                        </div>
+                        <div class="ar-field" id="f-difficulty">
+                            <label for="difficulty">Grade <span class="req">*</span></label>
+                            <select id="difficulty" class="ar-in"><option value="">Choose a grade</option></select>
+                            <div class="ar-err" id="err-difficulty"></div>
+                        </div>
+                        <div class="ar-field wide" id="f-description">
+                            <label for="description">Description <span class="req">*</span></label>
+                            <textarea id="description" class="ar-in" maxlength="2000" placeholder="What does it cover, and how should learners use it? e.g. “Worked examples on factorising quadratics, then 10 practice questions with answers at the end.”"></textarea>
+                            <div class="ar-hint"><span>At least 20 characters. Words here are searchable.</span><span id="descCount">0 / 2000</span></div>
+                            <div class="ar-err" id="err-description"></div>
+                        </div>
+                        <div class="ar-field wide">
+                            <span class="ar-lbl" id="lblVis">Who can see it</span>
+                            <div class="ar-seg" role="radiogroup" aria-labelledby="lblVis">
+                                <label class="ar-opt"><input type="radio" name="privacy" value="public" checked><div><b><i class="fas fa-globe" aria-hidden="true"></i> All learners</b><span>Shows in Resources and search as soon as it finishes.</span></div></label>
+                                <label class="ar-opt"><input type="radio" name="privacy" value="private"><div><b><i class="fas fa-lock" aria-hidden="true"></i> Admins only (draft)</b><span>Hidden from learners. Make it public later in All resources.</span></div></label>
                             </div>
                         </div>
-                    </td>
-                    <td>${author}</td>
-                    <td><span class="privacy-pill ${r.privacy || 'public'}">${escapeHtml(r.privacy || 'public')}</span></td>
-                    <td>${formatFileSize(r.file_size)}</td>
-                    <td>${formatDate(r.upload_date)}</td>
-                    <td class="stats-mini">
-                        <i class="fas fa-eye"></i>${r.views || 0}
-                        &nbsp;&nbsp;<i class="fas fa-download"></i>${r.downloads || 0}
-                    </td>
-                    <td>
-                        <button class="delete-btn" onclick="event.stopPropagation(); deleteResource(${r.id}, '${title.replace(/'/g, "\\'")}')">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
+                        <div class="ar-field wide">
+                            <div class="ar-switch" id="notifyRow">
+                                <div><b>Tell all learners</b><span id="notifyText">Every learner gets one notification for this upload.</span></div>
+                                <label class="ar-tg"><input type="checkbox" id="notify" checked aria-label="Tell all learners"><i></i></label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
-    function applySearchFilter() {
-        const term = document.getElementById('resourceSearch').value.toLowerCase().trim();
-        if (!term) {
-            renderResources(allResources);
-            return;
-        }
-        const filtered = allResources.filter(r =>
-            (r.title || '').toLowerCase().includes(term) ||
-            (r.author || '').toLowerCase().includes(term) ||
-            (r.category || '').toLowerCase().includes(term)
-        );
-        renderResources(filtered);
-    }
+                <section class="ar-card" aria-labelledby="h-cover">
+                    <div class="ar-step"><span class="num" id="st3">3</span><div><h2 id="h-cover">Cover picture <span class="ar-kn">(optional)</span></h2><p>Shown on the resource card. JPG, PNG, GIF or WEBP, up to 5 MB.</p></div></div>
+                    <div class="ar-cover">
+                        <div class="ar-cover-box" id="coverBox" role="button" tabindex="0" aria-label="Choose a cover picture"><i class="fas fa-image" aria-hidden="true"></i></div>
+                        <div class="ar-cover-side">
+                            <p id="coverText">No cover chosen. Videos get a frame from the video, pictures use themselves, and everything else gets a picture for its subject.</p>
+                            <div class="ar-btns">
+                                <button type="button" class="ar-btn sm" id="coverPick"><i class="fas fa-image"></i> Choose picture</button>
+                                <button type="button" class="ar-btn sm danger" id="coverRemove" hidden><i class="fas fa-trash-can"></i> Remove</button>
+                            </div>
+                            <div class="ar-err" id="err-cover"></div>
+                        </div>
+                        <input type="file" id="coverInput" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+                    </div>
+                </section>
 
-    async function loadResources() {
-        const tbody = document.getElementById('resourcesTableBody');
-        tbody.innerHTML = `
-            <tr class="loading-row">
-                <td colspan="7"><i class="fas fa-spinner fa-spin"></i> Loading resources…</td>
-            </tr>
-        `;
-
-        try {
-            const res = await fetch('/api/resources?sort=newest&limit=100');
-            const data = await res.json();
-
-            if (!data.success) {
-                throw new Error(data.message || 'Failed to load resources');
-            }
-
-            allResources = data.resources || [];
-            applySearchFilter();
-        } catch (err) {
-            tbody.innerHTML = `
-                <tr class="empty-row">
-                    <td colspan="7">
-                        <i class="fas fa-triangle-exclamation"></i>
-                        Couldn't load resources. Try refreshing.
-                    </td>
-                </tr>
-            `;
-        }
-    }
-
-    async function deleteResource(id, title) {
-        if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
-
-        const row = document.querySelector(`tr[data-resource-id="${id}"]`);
-        const btn = row ? row.querySelector('.delete-btn') : null;
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting…';
-        }
-
-        try {
-            const res = await fetch(`/api/resources/${id}`, { method: 'DELETE' });
-            const data = await res.json();
-
-            if (!data.success) {
-                alert(data.message || 'Failed to delete resource.');
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-trash"></i> Delete';
-                }
-                return;
-            }
-
-            allResources = allResources.filter(r => r.id !== id);
-            applySearchFilter();
-        } catch (err) {
-            alert('Failed to delete resource. Please try again.');
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-trash"></i> Delete';
-            }
-        }
-    }
-
-    // ===== RESOURCE PREVIEW MODAL =====
-    function openResourcePreview(id) {
-        const r = allResources.find(x => x.id === id);
-        if (!r) return;
-        renderPreview(r);
-        document.getElementById('resourcePreviewOverlay').classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeResourcePreview() {
-        document.getElementById('resourcePreviewOverlay').classList.remove('active');
-        document.body.style.overflow = 'auto';
-        // Stop any playing media when the modal closes
-        const body = document.getElementById('previewBody');
-        body.querySelectorAll('video, audio').forEach(el => el.pause());
-    }
-
-    function renderPreview(r) {
-        const body = document.getElementById('previewBody');
-        const icon = categoryIcons[r.file_category] || categoryIcons.other;
-        const title = escapeHtml(r.title || r.file_name || 'Untitled');
-        const author = escapeHtml(r.author || 'Unknown');
-        const desc = escapeHtml(r.description || 'No description provided.');
-        const url = r.file_url || '';
-
-        let mediaHtml = '';
-        if (r.file_category === 'image') {
-            mediaHtml = `<img src="${url}" alt="${title}" class="preview-media-image">`;
-        } else if (r.file_category === 'video') {
-            mediaHtml = `<video src="${url}" controls class="preview-media-video"></video>`;
-        } else if (r.file_category === 'audio') {
-            mediaHtml = `<audio src="${url}" controls class="preview-media-audio"></audio>`;
-        } else if (inlineFrameExts.includes(r.file_extension)) {
-            // PDFs and text-ish files - the server serves these inline
-            // rather than forcing a download, so an iframe can render them.
-            mediaHtml = `<iframe src="${url}" class="preview-media-frame"></iframe>`;
-        } else {
-            mediaHtml = `
-                <div class="preview-no-inline">
-                    <i class="fas ${icon}"></i>
-                    <p>This file type can't be previewed inline. Use "Open in new tab" below.</p>
-                </div>
-            `;
-        }
-
-        body.innerHTML = `
-            <div class="preview-header">
-                <div class="resource-icon ${r.file_category || 'other'}"><i class="fas ${icon}"></i></div>
-                <div>
-                    <h3>${title}</h3>
-                    <div class="preview-meta">${author} • ${escapeHtml(r.category || 'general')} • ${formatFileSize(r.file_size)} • ${formatDate(r.upload_date)}</div>
+                <div class="ar-submit">
+                    <div>
+                        <b id="subTitle">Add a file to get started</b>
+                        <span id="subText">Choose files, a subject, a grade and a description.</span>
+                        <div class="ar-total" id="totalBar" hidden><div id="totalFill"></div></div>
+                    </div>
+                    <div class="ar-btns">
+                        <button type="button" class="ar-btn" id="cancelBtn" hidden><i class="fas fa-stop"></i> Stop</button>
+                        <button type="button" class="ar-btn primary big" id="uploadBtn"><i class="fas fa-paper-plane"></i> <span>Upload</span></button>
+                    </div>
                 </div>
             </div>
-            <div class="preview-media">${mediaHtml}</div>
-            <p class="preview-description">${desc}</p>
-            <div class="preview-footer">
-                <span class="stats-mini">
-                    <i class="fas fa-eye"></i>${r.views || 0} views
-                    &nbsp;&nbsp;<i class="fas fa-download"></i>${r.downloads || 0} downloads
-                </span>
-                <a href="${url}" target="_blank" rel="noopener" class="refresh-btn">
-                    <i class="fas fa-up-right-from-square"></i> Open in new tab
-                </a>
+
+            <section class="ar-card ar-done" id="donePanel" hidden aria-live="polite"></section>
+
+            <aside class="ar-col" aria-label="Preview and help">
+                <section class="ar-card">
+                    <h3><i class="fas fa-eye" aria-hidden="true"></i> How learners will see it</h3>
+                    <div id="pv"></div>
+                    <div class="ar-pv-more" id="pvMore" hidden></div>
+                </section>
+                <section class="ar-card">
+                    <h3><i class="fas fa-list-check" aria-hidden="true"></i> Ready to upload? <span class="ar-kn" id="chkScore">0 of 5</span></h3>
+                    <ul class="ar-check" id="checklist"></ul>
+                    <div class="ar-meter"><div id="chkMeter"></div></div>
+                </section>
+                <section class="ar-card">
+                    <h3><i class="fas fa-clock-rotate-left" aria-hidden="true"></i> Latest uploads</h3>
+                    <ul class="ar-list" id="recent"><li class="ar-empty">Loading…</li></ul>
+                </section>
+                <section class="ar-card">
+                    <h3><i class="fas fa-circle-info" aria-hidden="true"></i> Good to know</h3>
+                    <ul class="ar-rules">
+                        <li><i class="fas fa-play"></i><span>MP4 and WebM videos play everywhere. AVI, MKV and MOV may not play in every browser.</span></li>
+                        <li><i class="fas fa-magnifying-glass"></i><span>Learners search by title, subject, grade and description, so be specific: “Grade 9 Algebra: linear equations” beats “Notes”.</span></li>
+                        <li><i class="fas fa-bell"></i><span>Learners are told once per upload, never once per file, and never twice about the same resource.</span></li>
+                        <li><i class="fas fa-shield-halved"></i><span>Only upload material Eschool has the right to share, and nothing with learners’ personal details.</span></li>
+                    </ul>
+                </section>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ============ ALL RESOURCES ============ -->
+    <section class="ar-panel" id="p-all" role="tabpanel" aria-labelledby="tab-all" hidden>
+        <div class="ar-card">
+            <div class="ar-tools">
+                <label class="ar-search"><span class="ar-sr">Search resources</span><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input class="ar-in" id="q" type="search" placeholder="Search titles, descriptions and file names" maxlength="100"></label>
+                <select class="ar-in" id="fSubject" aria-label="Subject"><option value="">All subjects</option></select>
+                <select class="ar-in" id="fType" aria-label="Type"><option value="">All types</option></select>
+                <select class="ar-in" id="fGrade" aria-label="Grade"><option value="">All grades</option></select>
+                <select class="ar-in" id="fPrivacy" aria-label="Visibility"><option value="">Public and private</option><option value="public">Public</option><option value="private">Private (admins only)</option></select>
+                <select class="ar-in" id="fSort" aria-label="Sort">
+                    <option value="newest">Newest first</option><option value="oldest">Oldest first</option>
+                    <option value="views">Most viewed</option><option value="downloads">Most downloaded</option>
+                    <option value="likes">Most liked</option><option value="title">Title A–Z</option><option value="size">Largest files</option>
+                </select>
             </div>
-        `;
+            <div class="ar-filter-on" id="attOn" hidden><span class="ar-tag" id="attLabel"></span><button type="button" class="ar-btn sm" id="attClear"><i class="fas fa-xmark"></i> Show everything</button></div>
+            <div class="ar-bulk" id="bulk" hidden>
+                <span id="bulkCount"></span><span class="sp"></span>
+                <button type="button" class="ar-btn sm" data-bulk="public"><i class="fas fa-globe"></i> Make public</button>
+                <button type="button" class="ar-btn sm" data-bulk="private"><i class="fas fa-lock"></i> Make private</button>
+                <button type="button" class="ar-btn sm danger" data-bulk="delete"><i class="fas fa-trash-can"></i> Delete</button>
+                <button type="button" class="ar-btn sm" id="bulkClear">Clear</button>
+            </div>
+            <div class="ar-tbl-wrap">
+                <table class="ar-tbl">
+                    <thead><tr>
+                        <th style="width:34px"><input type="checkbox" id="selAll" aria-label="Select all on this page"></th>
+                        <th>Resource</th><th>Subject · grade</th><th>Visibility</th>
+                        <th class="n">Views</th><th class="n">Downloads</th><th class="n">Likes</th><th class="n">Saves</th><th>Added</th><th class="n"><span class="ar-sr">Actions</span></th>
+                    </tr></thead>
+                    <tbody id="rows"><tr><td colspan="10" class="ar-skel">Loading…</td></tr></tbody>
+                </table>
+            </div>
+            <div class="ar-pager">
+                <span id="pagerInfo"></span>
+                <div class="ar-btns"><button type="button" class="ar-btn sm" id="prevPg"><i class="fas fa-chevron-left"></i> Previous</button><button type="button" class="ar-btn sm" id="nextPg">Next <i class="fas fa-chevron-right"></i></button></div>
+            </div>
+        </div>
+    </section>
+
+    <dialog class="ar-dlg" id="dlg" aria-labelledby="dlgTitle">
+        <div class="ar-dlg-h"><h2 id="dlgTitle"></h2><button type="button" class="ar-x" id="dlgClose" aria-label="Close"><i class="fas fa-xmark"></i></button></div>
+        <div class="ar-dlg-b" id="dlgBody"></div>
+        <div class="ar-dlg-f" id="dlgFoot"></div>
+    </dialog>
+    <div class="ar-toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+{% raw %}
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const MAX_FILES = 10, MAX_SIZE = 2 * 1024 ** 3, MAX_COVER = 5 * 1024 ** 2;
+const SUBJECTS = { mathematics: "Mathematics", science: "Science", programming: "Physics", arts: "Chemistry", business: "Business", languages: "Languages", general: "General" };
+const GRADES = Array.from({ length: 11 }, (_, i) => ["grade-" + (i + 1), "Grade " + (i + 1)]);
+const TYPES = {
+    video: ["Videos", ["mp4", "webm", "mov", "m4v", "avi", "mkv"]],
+    pdf: ["PDF", ["pdf"]],
+    doc: ["Documents", ["doc", "docx", "txt", "rtf", "odt", "epub", "md"]],
+    presentation: ["Slides", ["ppt", "pptx", "key", "odp"]],
+    spreadsheet: ["Spreadsheets", ["xls", "xlsx", "csv", "ods"]],
+    audio: ["Audio", ["mp3", "wav", "m4a", "aac", "ogg", "flac"]],
+    image: ["Pictures", ["jpg", "jpeg", "png", "gif", "webp"]],
+    code: ["Code", ["py", "js", "html", "css", "java", "c", "cpp", "php", "sql", "json", "xml"]],
+    zip: ["Archives", ["zip", "rar", "7z"]]
+};
+const KIND = {
+    video: ["Video", "fa-play"], audio: ["Audio", "fa-headphones"], image: ["Picture", "fa-image"], pdf: ["PDF", "fa-file-pdf"],
+    doc: ["Document", "fa-file-lines"], presentation: ["Slides", "fa-file-powerpoint"], spreadsheet: ["Spreadsheet", "fa-file-excel"],
+    code: ["Code", "fa-file-code"], zip: ["Archive", "fa-file-zipper"], other: ["File", "fa-file"]
+};
+const kindKey = k => KIND[k] ? k : "other";
+const ATT = {
+    missing: ["fa-file-circle-xmark", "file is missing on the server", "files missing on the server", "No missing files"],
+    unseen: ["fa-eye-slash", "public resource with no views after 14 days", "public resources with no views after 14 days", "Every older public resource has views"],
+    nocover: ["fa-image", "video has no cover picture", "videos have no cover picture", "Every video has a cover picture"],
+    nodesc: ["fa-align-left", "resource has no description", "resources have no description", "Every resource has a description"],
+    private: ["fa-lock", "resource is private (admins only)", "resources are private (admins only)", "Nothing is private"]
+};
+
+/* ---------------- helpers ---------------- */
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+const fmt = n => num(n).toLocaleString();
+function size(b) { b = num(b); if (!b) return "0 B"; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + " " + u[i]; }
+function clock(s) { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); }
+function parseDate(d) { const s = String(d || ""); return Date.parse(s.replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? "" : "Z")); }
+function shortDate(d) { const t = parseDate(d); return t ? new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : "numeric" }) : ""; }
+function dayLabel(iso) { const t = Date.parse(iso + "T00:00:00Z"); return t ? new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" }) : iso; }
+function gradeName(g) { const m = /^grade-(\d+)$/.exec(g || ""); return m ? "Grade " + m[1] : (g ? g.charAt(0).toUpperCase() + g.slice(1) : "No grade"); }
+function niceTitle(name) { let t = name.replace(/\.[^.]+$/, "").replace(/[_\-.]+/g, " ").replace(/\s+/g, " ").trim(); return (t.charAt(0).toUpperCase() + t.slice(1)).slice(0, 150) || "Untitled"; }
+const safeUrl = u => (typeof u === "string" && (/^\/(?!\/)/.test(u) || /^https:\/\//.test(u))) ? u : "";
+async function api(url, opts = {}) {
+    const o = { credentials: "same-origin", ...opts };
+    if (o.body && typeof o.body !== "string") { o.body = JSON.stringify(o.body); o.headers = { "Content-Type": "application/json", ...(o.headers || {}) }; }
+    const r = await fetch(url, o);
+    if (r.status === 401) { location.href = "/login"; throw new Error("signed out"); }
+    let d = {}; try { d = await r.json(); } catch (e) {}
+    if (!r.ok || d.success === false) throw new Error(d.message || `Something went wrong (error ${r.status}).`);
+    return d;
+}
+let toastT;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 4200); }
+function fill(sel, pairs) { pairs.forEach(([v, l]) => { const o = document.createElement("option"); o.value = v; o.textContent = l; sel.appendChild(o); }); }
+
+fill($("category"), Object.entries(SUBJECTS)); fill($("fSubject"), Object.entries(SUBJECTS));
+fill($("difficulty"), GRADES); fill($("fGrade"), GRADES);
+fill($("fType"), Object.keys(KIND).map(k => [k, KIND[k][0]]));
+
+/* ---------------- tabs ---------------- */
+const TABS = ["overview", "upload", "all"];
+let current = null, loadedAll = false;
+function showTab(name, focus) {
+    if (!TABS.includes(name)) name = "overview";
+    current = name;
+    TABS.forEach(t => {
+        const b = $("tab-" + t), on = t === name;
+        b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1;
+        $("p-" + t).hidden = !on;
+    });
+    if (focus) $("tab-" + name).focus();
+    if (location.hash !== "#" + name) history.replaceState(null, "", "#" + name);
+    if (name === "all" && !loadedAll) { loadedAll = true; loadList(); }
+    if (name === "overview" && ovStale) loadOverview();
+}
+document.querySelector(".ar-tabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) showTab(b.dataset.tab); });
+document.querySelector(".ar-tabs").addEventListener("keydown", e => {
+    const i = TABS.indexOf(current);
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); showTab(TABS[(i + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length], true); }
+});
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (h !== current) showTab(h); });
+
+/* ================= OVERVIEW ================= */
+let ov = null, ovDays = 30, metric = "views", topMode = "recent", ovStale = false, learnerCount = null;
+const METRIC = { views: "new viewers", likes: "likes", saves: "saves", downloads: "downloads", uploads: "uploads" };
+
+function delta(pair) {
+    const [a, b] = (pair || [0, 0]).map(num);
+    if (!b) return a ? `<span class="ar-gain">${fmt(a)} in the last ${ovDays} days</span>` : `none in the last ${ovDays} days`;
+    const p = Math.round((a - b) / b * 100);
+    const txt = p > 300 ? `${(a / b).toFixed(a / b < 10 ? 1 : 0)}× more` : `${p >= 0 ? "▲" : "▼"} ${Math.abs(p)}%`;
+    return `<span class="${p >= 0 ? "ar-gain" : "ar-loss"}">${txt}</span> than the ${ovDays} days before (${fmt(a)})`;
+}
+async function loadOverview() {
+    ovStale = false;
+    try {
+        ov = await api(`/api/admin/resources/overview?days=${ovDays}`);
+        learnerCount = num(ov.totals.learners);
+        renderOverview();
+        refresh();
+    } catch (e) {
+        $("ovNote").textContent = "Couldn’t load the numbers: " + e.message;
     }
+}
+function renderOverview() {
+    const t = ov.totals, p = ov.period;
+    $("tabCount").textContent = `(${fmt(t.resources)})`;
+    $("ovNote").textContent = `${fmt(t.public)} public · ${fmt(t.private)} private · ${fmt(t.learners)} learners on Eschool`;
+    const reach = t.learners ? Math.round(num(p.reached) / t.learners * 100) : 0;
+    const cards = [
+        ["Resources", fmt(t.resources), `<span class="${p.new ? "ar-gain" : ""}">+${fmt(p.new)}</span> in the last ${ovDays} days`],
+        ["Views", fmt(t.views), `${fmt(p.reached)} learners (${reach}%) opened something in the last ${ovDays} days`],
+        ["Downloads", fmt(t.downloads), delta(p.downloads)],
+        ["Likes · saves", `${fmt(t.likes)} · ${fmt(t.saves)}`, "Likes: " + delta(p.likes)],
+        ["Space used", size(t.storage), `Videos: ${size(t.video_storage)}`]
+    ];
+    $("kpis").innerHTML = cards.map(c => `<div class="ar-card"><div class="ar-kl">${c[0]}</div><div class="ar-kv">${c[1]}</div><div class="ar-kn">${c[2]}</div></div>`).join("");
+    drawChart();
+    // attention
+    const a = ov.attention || {};
+    $("attention").innerHTML = Object.keys(ATT).map(k => {
+        const n = num(a[k]);
+        return `<button type="button" data-att="${k}" class="${n ? "" : "zero"}" ${n ? "" : "disabled"}><i class="fas ${n ? ATT[k][0] : "fa-circle-check"}" aria-hidden="true"></i><span>${n === 1 ? "1 " + ATT[k][1] : n ? fmt(n) + " " + ATT[k][2] : ATT[k][3]}</span><span class="n">${n ? '<i class="fas fa-chevron-right" aria-hidden="true" style="color:inherit"></i>' : ""}</span></button>`;
+    }).join("");
+    drawTop();
+    const bars = (el, list, label, val, sub) => {
+        const max = Math.max(1, ...list.map(val));
+        el.innerHTML = list.length ? list.map(x => `<div class="ar-hb" title="${esc(label(x))}: ${fmt(val(x))}${sub ? " · " + esc(sub(x)) : ""}"><span class="nm">${esc(label(x))}</span><span class="tr"><span style="width:${Math.max(2, val(x) / max * 100)}%"></span></span><b>${fmt(val(x))}</b></div>`).join("")
+            : '<div class="ar-empty">Nothing yet.</div>';
+    };
+    bars($("bySubject"), ov.by_subject, x => x.name, x => num(x.count), x => fmt(x.views) + " views");
+    bars($("byType"), ov.by_type, x => KIND[kindKey(x.key)][0], x => num(x.count), x => size(x.size));
+    $("byType").querySelectorAll(".ar-hb b").forEach((b, i) => { b.textContent = fmt(ov.by_type[i].count); b.title = size(ov.by_type[i].size); });
+    const gl = [...ov.by_grade].sort((x, y) => (parseInt(String(x.key).replace(/\D/g, "")) || 99) - (parseInt(String(y.key).replace(/\D/g, "")) || 99));
+    bars($("byGrade"), gl, x => gradeName(x.key), x => num(x.count), x => fmt(x.views) + " views");
+}
+function drawTop() {
+    const list = topMode === "recent" ? ov.top_recent : ov.top_views;
+    $("topList").innerHTML = list.length ? list.map((r, i) => `<li><span class="t">${i + 1}. ${esc(r.title)} <span class="ar-tag">${esc(KIND[kindKey(r.file_category)][0])}</span></span><b title="${topMode === "recent" ? "new viewers this period" : "views"}">${fmt(r.value)}</b></li>`).join("")
+        : `<li class="ar-empty">${topMode === "recent" ? `No views in the last ${ovDays} days yet.` : "No views yet."}</li>`;
+}
 
-    document.getElementById('previewCloseBtn').addEventListener('click', closeResourcePreview);
-
-    document.getElementById('resourcePreviewOverlay').addEventListener('click', function(e) {
-        if (e.target === this) closeResourcePreview();
+/* single-series bar chart with hover tooltip, drawn as SVG */
+function barChart(box, days, values, label) {
+    const W = Math.max(280, box.clientWidth || 600), H = box.clientHeight || 190, padL = 34, padB = 4, padT = 8;
+    const max = Math.max(1, ...values), step = niceStep(max), top = Math.ceil(max / step) * step;
+    const iw = W - padL, ih = H - padB - padT, bw = iw / values.length, gap = Math.min(4, bw * 0.25);
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("role", "img");
+    const total = values.reduce((a, b) => a + b, 0);
+    svg.setAttribute("aria-label", `${label} per day: ${fmt(total)} in total, highest ${fmt(Math.max(...values))} in one day`);
+    for (let v = 0; v <= top; v += step) {
+        const y = padT + ih - v / top * ih;
+        const l = document.createElementNS(ns, "line");
+        l.setAttribute("x1", padL); l.setAttribute("x2", W); l.setAttribute("y1", y); l.setAttribute("y2", y);
+        l.setAttribute("stroke", getComputedStyle($("ar")).getPropertyValue(v ? "--ar-line-2" : "--ar-line").trim()); l.setAttribute("stroke-width", "1");
+        svg.appendChild(l);
+        const tx = document.createElementNS(ns, "text");
+        tx.setAttribute("x", padL - 6); tx.setAttribute("y", y + 4); tx.setAttribute("text-anchor", "end");
+        tx.setAttribute("font-size", "10"); tx.setAttribute("fill", getComputedStyle($("ar")).getPropertyValue("--ar-text-3").trim()); tx.textContent = fmt(v);
+        svg.appendChild(tx);
+    }
+    const color = getComputedStyle($("ar")).getPropertyValue("--ar-accent").trim() || "#4f46e5";
+    values.forEach((v, i) => {
+        const h = v / top * ih, x = padL + i * bw + gap / 2, w = Math.max(1, bw - gap), y = padT + ih - h;
+        if (v > 0) {
+            const r = Math.min(4, w / 2, h);
+            const p = document.createElementNS(ns, "path");
+            p.setAttribute("d", `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h} Z`);
+            p.setAttribute("fill", color); p.setAttribute("data-i", i);
+            svg.appendChild(p);
+        }
+        const hit = document.createElementNS(ns, "rect");
+        hit.setAttribute("x", padL + i * bw); hit.setAttribute("y", padT); hit.setAttribute("width", bw); hit.setAttribute("height", ih);
+        hit.setAttribute("fill", "transparent"); hit.setAttribute("data-i", i);
+        svg.appendChild(hit);
     });
+    const tip = document.createElement("div"); tip.className = "ar-tip";
+    box.replaceChildren(svg, tip);
+    const show = i => {
+        const scale = box.clientWidth / W;
+        tip.innerHTML = `<b>${fmt(values[i])}</b>${esc(label)} · ${esc(dayLabel(days[i]))}`;
+        tip.style.left = (padL + (i + 0.5) * bw) * scale + "px";
+        tip.style.top = (padT + ih - values[i] / top * ih) * (box.clientHeight / H) + "px";
+        tip.style.opacity = 1;
+        svg.querySelectorAll("path").forEach(p => p.setAttribute("opacity", p.dataset.i == i ? 1 : .45));
+    };
+    svg.addEventListener("pointermove", e => { const i = e.target.dataset && e.target.dataset.i; if (i !== undefined) show(Number(i)); });
+    svg.addEventListener("pointerleave", () => { tip.style.opacity = 0; svg.querySelectorAll("path").forEach(p => p.setAttribute("opacity", 1)); });
+    return total;
+}
+function niceStep(max) { const raw = max / 4, mag = 10 ** Math.floor(Math.log10(raw || 1)); const n = raw / mag; return Math.max(1, (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag); }
+function drawChart() {
+    if (!ov) return;
+    const ch = ov.chart, vals = (ch[metric] || []).map(num);
+    const total = barChart($("chart"), ch.days, vals, METRIC[metric]);
+    $("chartTitle").textContent = `Last ${ovDays} days`;
+    $("chartFrom").textContent = dayLabel(ch.days[0]); $("chartTo").textContent = dayLabel(ch.days[ch.days.length - 1]);
+    $("chartSum").textContent = `${fmt(total)} ${METRIC[metric]}` + (metric === "downloads" ? " (counted from when this page was added)" : metric === "views" ? " (first time each learner opened a resource)" : "");
+}
+document.querySelector('[aria-label="Time period"]').addEventListener("click", e => {
+    const b = e.target.closest("[data-days]"); if (!b) return;
+    ovDays = Number(b.dataset.days);
+    b.parentNode.querySelectorAll("[data-days]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    loadOverview();
+});
+$("metricChips").addEventListener("click", e => {
+    const b = e.target.closest("[data-metric]"); if (!b) return;
+    metric = b.dataset.metric;
+    $("metricChips").querySelectorAll("[data-metric]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    drawChart();
+});
+document.querySelector('[aria-label="Top resources by"]').addEventListener("click", e => {
+    const b = e.target.closest("[data-top]"); if (!b) return;
+    topMode = b.dataset.top;
+    b.parentNode.querySelectorAll("[data-top]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    drawTop();
+});
+$("attention").addEventListener("click", e => {
+    const b = e.target.closest("[data-att]"); if (!b || b.disabled) return;
+    setAttention(b.dataset.att); showTab("all");
+});
+let resizeT; window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(drawChart, 150); });
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeResourcePreview();
+/* ================= UPLOAD ================= */
+const extOf = n => (n.includes(".") ? n.split(".").pop() : "").toLowerCase();
+const typeOf = ext => Object.keys(TYPES).find(k => TYPES[k][1].includes(ext)) || null;
+let items = [], seq = 0, cover = null, coverUrl = null, busy = false, stopAsked = false, activeXhr = null;
+const val = id => $(id).value.trim();
+const privacy = () => document.querySelector('input[name="privacy"]:checked').value;
+const ready = () => items.filter(i => i.state === "ready" || i.state === "failed");
+
+function note(text, kind) {
+    const n = $("pageNote");
+    if (!text) { n.hidden = true; n.textContent = ""; return; }
+    n.className = "ar-note " + (kind || "info"); n.hidden = false;
+    n.innerHTML = `<i class="fas ${kind === "warn" || kind === "bad" ? "fa-circle-exclamation" : kind === "ok" ? "fa-circle-check" : "fa-circle-info"}" aria-hidden="true"></i><div>${esc(text)}</div>`;
+}
+function addFiles(list) {
+    if (busy) return;
+    const skipped = [];
+    for (const file of Array.from(list || [])) {
+        if (items.filter(i => i.state !== "done").length >= MAX_FILES) { skipped.push(`${file.name} (only ${MAX_FILES} at a time)`); continue; }
+        if (items.some(i => i.state !== "done" && i.file.name === file.name && i.file.size === file.size)) { skipped.push(`${file.name} (already added)`); continue; }
+        const ext = extOf(file.name), kind = typeOf(ext);
+        const it = { id: ++seq, file, ext, kind: kind || "other", title: niceTitle(file.name), size: file.size, secs: 0, state: "ready", msg: "", pct: 0 };
+        if (!kind) { it.state = "invalid"; it.msg = ext ? `.${ext} files can’t be uploaded.` : "This file has no type (.pdf, .mp4…), so it can’t be uploaded."; }
+        else if (file.size > MAX_SIZE) { it.state = "invalid"; it.msg = `This file is ${size(file.size)}; the limit is 2 GB.`; }
+        else if (!file.size) { it.state = "invalid"; it.msg = "This file is empty."; }
+        items.push(it);
+        if (it.state === "ready") inspect(it);
+    }
+    $("err-files").textContent = "";
+    note(skipped.length ? "Not added: " + skipped.join("; ") + "." : "", "warn");
+    renderFiles(); refresh();
+}
+/* real length and a cover frame for videos, measured in the browser */
+function inspect(it) {
+    if (it.kind === "image") { it.posterUrl = URL.createObjectURL(it.file); renderFiles(); refresh(); return; }
+    if (it.kind !== "video" && it.kind !== "audio") return;
+    const el = document.createElement(it.kind);
+    el.preload = "metadata"; el.muted = true; el.playsInline = true;
+    const url = URL.createObjectURL(it.file);
+    let finished = false;
+    const done = () => { if (finished) return; finished = true; clearTimeout(timer); el.removeAttribute("src"); el.load(); URL.revokeObjectURL(url); renderFiles(); refresh(); };
+    const timer = setTimeout(done, 8000);
+    el.addEventListener("error", done);
+    el.addEventListener("loadedmetadata", () => {
+        if (isFinite(el.duration) && el.duration > 0) it.secs = el.duration;
+        if (it.kind !== "video" || !el.videoWidth) return done();
+        el.currentTime = Math.min(Math.max(1, el.duration * 0.1), 5, el.duration / 2);
     });
+    el.addEventListener("seeked", () => {
+        try {
+            const w = 640, h = Math.round(w * el.videoHeight / el.videoWidth) || 360;
+            const c = document.createElement("canvas"); c.width = w; c.height = h;
+            c.getContext("2d").drawImage(el, 0, 0, w, h);
+            c.toBlob(b => { if (b) { it.poster = b; it.posterUrl = URL.createObjectURL(b); } done(); }, "image/jpeg", 0.85);
+        } catch (e) { done(); }
+    });
+    el.src = url;
+}
+function removeItem(id) {
+    const it = items.find(i => i.id === id); if (!it || it.state === "uploading") return;
+    if (it.posterUrl) URL.revokeObjectURL(it.posterUrl);
+    items = items.filter(i => i.id !== id); renderFiles(); refresh();
+}
+function fileHTML(it) {
+    const cls = it.state === "invalid" || it.state === "failed" ? "bad" : it.state === "done" ? "ok" : "";
+    const img = coverUrl || it.posterUrl;
+    const tags = [KIND[it.kind][0], size(it.size)]; if (it.secs) tags.push(clock(it.secs));
+    const lock = it.state === "uploading" || it.state === "done" || it.state === "waiting";
+    let msg = it.msg;
+    if (it.state === "uploading") msg = `Uploading… ${it.pct}% (${size(it.size * it.pct / 100)} of ${size(it.size)})`;
+    const mc = it.state === "done" ? "ok" : it.state === "uploading" || it.state === "waiting" ? "info" : "bad";
+    return `<div class="ar-file ${cls}" data-id="${it.id}">
+        <div class="ar-thumb">${img ? `<img src="${esc(img)}" alt="">` : `<i class="fas ${KIND[it.kind][1]}" aria-hidden="true"></i>`}</div>
+        <div style="min-width:0">
+            ${it.state === "invalid" ? `<b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.file.name)}</b>`
+              : `<input class="ar-in" data-title="${it.id}" value="${esc(it.title)}" maxlength="150" aria-label="Title for ${esc(it.file.name)}" ${lock ? "disabled" : ""}>`}
+            <div class="ar-meta">${tags.map(t => `<span class="ar-tag">${esc(t)}</span>`).join("")}<span class="nm" title="${esc(it.file.name)}">${esc(it.file.name)}</span></div>
+            ${msg ? `<div class="ar-fmsg ${mc}">${esc(msg)}</div>` : ""}
+        </div>
+        ${it.state === "done" ? '<i class="fas fa-circle-check" style="color:var(--ar-ok);font-size:1.2rem;padding:0 8px" aria-label="Uploaded"></i>'
+          : lock ? '<span style="width:34px"></span>' : `<button type="button" class="ar-x" data-remove="${it.id}" aria-label="Remove ${esc(it.file.name)}"><i class="fas fa-xmark"></i></button>`}
+        <div class="ar-bar" style="width:${it.state === "done" || it.state === "failed" ? 100 : it.pct}%"></div>
+    </div>`;
+}
+function renderFiles() {
+    const box = $("files"), ae = document.activeElement, focused = ae && ae.dataset ? ae.dataset.title : null;
+    const caret = focused ? ae.selectionStart : null;
+    box.innerHTML = items.map(fileHTML).join("");
+    if (focused) { const f = box.querySelector(`[data-title="${focused}"]`); if (f) { f.focus(); try { f.setSelectionRange(caret, caret); } catch (e) {} } }
+    const good = items.filter(i => i.state !== "invalid");
+    $("filesFoot").hidden = !items.length;
+    $("filesSum").textContent = items.length ? `${good.length} file${good.length === 1 ? "" : "s"} · ${size(good.reduce((a, i) => a + i.size, 0))}` + (items.length > good.length ? ` · ${items.length - good.length} can’t be uploaded` : "") : "";
+    $("drop").classList.toggle("compact", items.length > 0);
+    $("drop").querySelector("h4").textContent = items.length ? "Add more files" : "Drag videos or files here, or tap to choose";
+    $("clearFiles").disabled = busy;
+}
+function updateRow(it) { const row = document.querySelector(`.ar-file[data-id="${it.id}"]`); if (row) row.outerHTML = fileHTML(it); }
+function preview() {
+    const first = items.find(i => i.state !== "invalid");
+    const kind = first ? first.kind : "video", img = coverUrl || (first && first.posterUrl), title = first ? first.title.trim() : "";
+    const chips = [];
+    if (val("category")) chips.push(SUBJECTS[val("category")]);
+    if (val("difficulty")) chips.push(gradeName(val("difficulty")));
+    $("pv").innerHTML = `
+        <div class="ar-pv-img">${img ? `<img src="${esc(img)}" alt="">` : `<i class="fas ${KIND[kind][1]}" aria-hidden="true"></i>`}
+            <span class="ar-pv-badge"><i class="fas ${KIND[kind][1]}" aria-hidden="true"></i> ${esc(KIND[kind][0])}</span>
+            ${first && first.secs ? `<span class="ar-pv-len">${clock(first.secs)}</span>` : ""}</div>
+        <div class="ar-pv-t ${title ? "" : "empty"}">${esc(title || "Your title appears here")}</div>
+        <div class="ar-btns">${(chips.length ? chips : ["Subject", "Grade"]).map(c => `<span class="ar-tag">${esc(c)}</span>`).join("")}${privacy() === "private" ? '<span class="ar-pill private"><i class="fas fa-lock" aria-hidden="true"></i> Admins only</span>' : ""}</div>
+        <div class="ar-pv-d">${esc(val("description") || "Your description appears here.")}</div>
+        <div class="ar-kn" style="margin-top:8px"><i class="fas fa-graduation-cap" aria-hidden="true"></i> Eschool</div>`;
+    const n = items.filter(i => i.state !== "invalid").length;
+    $("pvMore").hidden = n < 2; $("pvMore").textContent = `+ ${n - 1} more resource${n - 1 === 1 ? "" : "s"} with the same details`;
+}
+function checks() {
+    const good = ready(), d = val("description").length;
+    return [
+        ["Files added", good.length > 0 && !items.some(i => i.state === "invalid"), good.length ? String(good.length) : ""],
+        ["Clear titles", good.length > 0 && good.every(i => i.title.trim().length >= 4), ""],
+        ["Subject and grade", !!(val("category") && val("difficulty")), ""],
+        ["Description (20+ characters)", d >= 20, d ? String(d) : ""],
+        ["Cover picture", !!cover || (good.length > 0 && good.every(i => i.posterUrl)), "optional"]
+    ];
+}
+function refresh() {
+    const c = checks(), on = c.filter(x => x[1]).length;
+    $("checklist").innerHTML = c.map(x => `<li class="${x[1] ? "on" : ""}"><i class="fas fa-check" aria-hidden="true"></i>${esc(x[0])}${x[2] ? `<em>${esc(x[2])}</em>` : ""}</li>`).join("");
+    $("chkScore").textContent = `${on} of ${c.length}`;
+    $("chkMeter").style.width = on / c.length * 100 + "%";
+    const st = (id, ok, n) => { $(id).classList.toggle("done", ok); $(id).textContent = ok ? "✓" : n; };
+    st("st1", c[0][1], "1");
+    st("st2", !!(val("category") && val("difficulty") && val("description").length >= 20), "2");
+    st("st3", !!cover, "3");
+    $("descCount").textContent = `${$("description").value.length} / 2000`;
+    const priv = privacy() === "private", nt = $("notify");
+    nt.disabled = priv || busy;
+    $("notifyRow").classList.toggle("off", priv);
+    const who = learnerCount === null ? "Every learner" : `All ${fmt(learnerCount)} learner${learnerCount === 1 ? "" : "s"}`;
+    $("notifyText").textContent = priv ? "Drafts aren’t announced. Learners are told when you make them public."
+        : nt.checked ? `${who} get one notification for this upload, however many files it has.`
+        : "Learners won’t be told. Use this for small fixes, like re-uploading a corrected file.";
+    if (!busy) {
+        const g = ready();
+        $("subTitle").textContent = g.length ? `Upload ${g.length} resource${g.length === 1 ? "" : "s"} · ${size(g.reduce((a, i) => a + i.size, 0))}` : "Add a file to get started";
+        $("subText").textContent = g.length ? (priv ? "Only admins will see " + (g.length === 1 ? "it" : "them") + " until made public." : "Learners can open " + (g.length === 1 ? "it" : "them") + " as soon as the upload finishes.") : "Choose files, a subject, a grade and a description.";
+        $("uploadBtn").querySelector("span").textContent = g.some(i => i.state === "failed") ? "Try again" : "Upload";
+    }
+    preview();
+}
+function setCover(file) {
+    $("err-cover").textContent = "";
+    if (!file) return;
+    if (!/^image\/(jpeg|png|gif|webp)$/.test(file.type)) { $("err-cover").textContent = "Use a JPG, PNG, GIF or WEBP picture."; return; }
+    if (file.size > MAX_COVER) { $("err-cover").textContent = `That picture is ${size(file.size)}; the limit is 5 MB.`; return; }
+    if (coverUrl) URL.revokeObjectURL(coverUrl);
+    cover = file; coverUrl = URL.createObjectURL(file);
+    const im = document.createElement("img"); im.src = coverUrl; im.alt = "Chosen cover";
+    $("coverBox").replaceChildren(im);
+    $("coverRemove").hidden = false;
+    $("coverText").textContent = `${file.name} (${size(file.size)}) will be the cover for every file in this upload.`;
+    renderFiles(); refresh();
+}
+function clearCover() {
+    if (coverUrl) URL.revokeObjectURL(coverUrl);
+    cover = null; coverUrl = null; $("coverInput").value = "";
+    $("coverBox").innerHTML = '<i class="fas fa-image" aria-hidden="true"></i>';
+    $("coverRemove").hidden = true;
+    $("coverText").textContent = "No cover chosen. Videos get a frame from the video, pictures use themselves, and everything else gets a picture for its subject.";
+    renderFiles(); refresh();
+}
+function validate() {
+    const errs = {};
+    if (!items.length) errs.files = "Add at least one file.";
+    else if (!ready().length) errs.files = "None of these files can be uploaded. Remove them and add a supported file.";
+    else if (items.some(i => i.state === "invalid")) errs.files = "Remove the files marked in red first.";
+    else if (ready().some(i => !i.title.trim())) errs.files = "Every file needs a title.";
+    if (!val("category")) errs.category = "Choose the subject.";
+    if (!val("difficulty")) errs.difficulty = "Choose the grade it is for.";
+    const d = val("description").length;
+    if (!d) errs.description = "Add a short description so learners know what it is.";
+    else if (d < 20) errs.description = `A little more, please: ${20 - d} more character${20 - d === 1 ? "" : "s"}.`;
+    ["files", "category", "difficulty", "description"].forEach(k => {
+        $("err-" + k).textContent = errs[k] || "";
+        const f = $("f-" + k); if (f) f.classList.toggle("has-err", !!errs[k]);
+    });
+    const first = Object.keys(errs)[0];
+    if (first) { const el = first === "files" ? $("drop") : $(first); el.scrollIntoView({ behavior: "smooth", block: "center" }); el.focus({ preventScroll: true }); }
+    return !first;
+}
+function send(it) {
+    return new Promise(resolve => {
+        const fd = new FormData();
+        fd.append("file", it.file);
+        fd.append("title", it.title.trim());
+        fd.append("description", val("description"));
+        fd.append("category", val("category"));
+        fd.append("difficulty", val("difficulty"));
+        fd.append("privacy", privacy());
+        if (it.secs) fd.append("duration", String(Math.round(it.secs)));
+        if (cover) fd.append("thumbnail", cover);
+        else if (it.poster) fd.append("thumbnail", it.poster, "frame.jpg");
+        const x = new XMLHttpRequest(); activeXhr = x;
+        x.open("POST", "/api/upload");
+        x.upload.onprogress = e => { if (!e.lengthComputable) return; it.pct = Math.min(99, Math.round(e.loaded / e.total * 100)); updateRow(it); totals(); };
+        x.onload = () => {
+            activeXhr = null;
+            let d = {}; try { d = JSON.parse(x.responseText); } catch (e) {}
+            if (x.status === 401) { location.href = "/login"; return; }
+            if (x.status >= 200 && x.status < 300 && d.success) { it.state = "done"; it.pct = 100; it.msg = "Uploaded"; it.resId = d.resource && d.resource.id; }
+            else { it.state = "failed"; it.msg = x.status === 413 ? "This file is bigger than the server allows." : (d.message ? "Not uploaded: " + d.message : `Not uploaded (error ${x.status}). Try again.`); }
+            resolve();
+        };
+        x.onerror = () => { activeXhr = null; it.state = "failed"; it.msg = "The connection dropped. Check the internet and try again."; resolve(); };
+        x.onabort = () => { activeXhr = null; it.state = "ready"; it.pct = 0; it.msg = "Stopped before it finished."; resolve(); };
+        x.send(fd);
+    });
+}
+function totals() {
+    const list = items.filter(i => i.batch), all = list.reduce((a, i) => a + i.size, 0) || 1;
+    const sent = list.reduce((a, i) => a + i.size * (i.state === "done" || i.state === "failed" ? 1 : i.pct / 100), 0);
+    $("totalFill").style.width = Math.round(sent / all * 100) + "%";
+    const doneN = list.filter(i => i.state === "done").length;
+    $("subTitle").textContent = `Uploading ${Math.min(doneN + 1, list.length)} of ${list.length} · ${Math.round(sent / all * 100)}%`;
+    $("subText").textContent = `${size(sent)} of ${size(all)} sent. Keep this page open.`;
+}
+function lockForm(on) {
+    busy = on;
+    ["category", "difficulty", "description", "coverPick", "clearFiles"].forEach(id => { $(id).disabled = on; });
+    document.querySelectorAll('input[name="privacy"]').forEach(r => { r.disabled = on; });
+    $("notify").disabled = on || privacy() === "private";
+    $("uploadBtn").disabled = on; $("cancelBtn").hidden = !on; $("totalBar").hidden = !on;
+    $("uploadBtn").innerHTML = on ? '<i class="fas fa-spinner fa-spin"></i> <span>Uploading…</span>' : '<i class="fas fa-paper-plane"></i> <span>Upload</span>';
+    $("drop").style.pointerEvents = on ? "none" : ""; $("drop").style.opacity = on ? ".6" : "";
+}
+window.addEventListener("beforeunload", e => { if (busy) { e.preventDefault(); e.returnValue = ""; } });
+async function start() {
+    if (busy || !validate()) return;
+    note("");
+    const batch = ready(), pub = privacy() === "public", tell = pub && $("notify").checked;
+    items.forEach(i => { i.batch = batch.includes(i); });
+    batch.forEach(i => { i.state = "waiting"; i.msg = "Waiting…"; i.pct = 0; });
+    stopAsked = false; lockForm(true); renderFiles(); totals();
+    for (const it of batch) {
+        if (stopAsked) { it.state = "ready"; it.msg = "Not started."; continue; }
+        it.state = "uploading"; it.msg = ""; updateRow(it);
+        await send(it);
+        updateRow(it); totals();
+    }
+    lockForm(false);
+    const done = batch.filter(i => i.state === "done"), failed = batch.filter(i => i.state === "failed"), stopped = batch.filter(i => i.state === "ready");
+    let notified = null;
+    if (done.length && pub) {
+        // always sent: with notify off it just marks them as handled, so they are never announced later
+        try { const d = await api("/api/admin/resources/announce", { method: "POST", body: { ids: done.map(i => i.resId).filter(Boolean), notify: tell } }); notified = tell ? num(d.notified) : null; } catch (e) { notified = -1; }
+    }
+    ovStale = true; loadedAll = false; loadRecent();
+    if (!failed.length && !stopped.length) showDone(done, pub, notified);
+    else {
+        if (done.length) items = items.filter(i => i.state !== "done");
+        renderFiles(); refresh();
+        note(`${done.length ? `${done.length} uploaded${notified > 0 ? ` and ${fmt(notified)} learners told` : ""}. ` : ""}${failed.length ? `${failed.length} didn’t upload: see the red message on ${failed.length === 1 ? "it" : "each"}, then press “Try again”.` : ""}${stopped.length ? ` ${stopped.length} stopped; press Upload to send ${stopped.length === 1 ? "it" : "them"}.` : ""}`, failed.length ? "warn" : "info");
+        $("formCol").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
+function showDone(done, pub, notified) {
+    const one = done.length === 1;
+    const tell = notified === null ? "" : notified < 0 ? '<div class="ar-note warn"><i class="fas fa-bell-slash" aria-hidden="true"></i><div>The upload worked, but learners couldn’t be told just now.</div></div>'
+        : `<div class="ar-note ok"><i class="fas fa-bell" aria-hidden="true"></i><div>${notified ? `${fmt(notified)} learner${notified === 1 ? " was" : "s were"} sent one notification about ${one ? "it" : "them"}.` : "No learners to tell yet."}</div></div>`;
+    $("donePanel").innerHTML = `
+        <div class="big"><i class="fas fa-check" aria-hidden="true"></i></div>
+        <h2>${one ? "Your resource is up" : `${done.length} resources are up`}</h2>
+        <p>${pub ? `Learners can find ${one ? "it" : "them"} in Resources now.` : `${one ? "It’s" : "They’re"} a draft, so only admins can see ${one ? "it" : "them"}. Make ${one ? "it" : "them"} public in All resources; learners are told then.`}</p>
+        <ul>${done.map(i => `<li><i class="fas fa-circle-check" aria-hidden="true"></i><div><b>${esc(i.title)}</b> <span class="ar-kn">${esc([KIND[i.kind][0], size(i.size), i.secs ? clock(i.secs) : ""].filter(Boolean).join(" · "))}</span></div></li>`).join("")}</ul>
+        ${tell}
+        <div class="ar-btns"><button type="button" class="ar-btn primary big" id="againBtn"><i class="fas fa-plus"></i> Upload more</button><button type="button" class="ar-btn big" id="seeAllBtn"><i class="fas fa-folder-open"></i> See all resources</button></div>`;
+    $("formCol").hidden = true; $("donePanel").hidden = false;
+    $("donePanel").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("againBtn").addEventListener("click", resetAll);
+    $("seeAllBtn").addEventListener("click", () => { $("fSort").value = "newest"; showTab("all"); });
+    $("againBtn").focus({ preventScroll: true });
+}
+function resetAll() {
+    items.forEach(i => { if (i.posterUrl) URL.revokeObjectURL(i.posterUrl); });
+    items = []; $("fileInput").value = ""; $("description").value = ""; clearCover(); note("");
+    $("donePanel").hidden = true; $("formCol").hidden = false;
+    renderFiles(); refresh();
+}
+async function loadRecent() {
+    try {
+        const d = await api("/api/admin/resources/list?sort=newest&page=1");
+        const list = d.items.slice(0, 5);
+        $("recent").innerHTML = list.length ? list.map(r => `<li><span class="t">${r.privacy === "private" ? '<i class="fas fa-lock" aria-label="Private"></i> ' : ""}${esc(r.title)}</span><span class="ar-kn">${esc(shortDate(r.uploaded))}</span></li>`).join("")
+            : '<li class="ar-empty">Nothing yet. Your first upload shows here.</li>';
+    } catch (e) { $("recent").innerHTML = '<li class="ar-empty">Couldn’t load the latest uploads.</li>'; }
+}
+const drop = $("drop");
+drop.addEventListener("click", () => { if (!busy) $("fileInput").click(); });
+drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!busy) $("fileInput").click(); } });
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); if (!busy) drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+window.addEventListener("dragover", e => e.preventDefault());
+window.addEventListener("drop", e => e.preventDefault());
+$("fileInput").accept = Object.values(TYPES).flatMap(t => t[1]).map(x => "." + x).join(",");
+$("fileInput").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
+$("files").addEventListener("click", e => { const b = e.target.closest("[data-remove]"); if (b) removeItem(Number(b.dataset.remove)); });
+$("files").addEventListener("input", e => { const t = e.target.closest("[data-title]"); if (!t) return; const it = items.find(i => i.id === Number(t.dataset.title)); if (it) { it.title = t.value; refresh(); } });
+$("clearFiles").addEventListener("click", () => { if (busy) return; items.forEach(i => { if (i.posterUrl) URL.revokeObjectURL(i.posterUrl); }); items = []; note(""); renderFiles(); refresh(); });
+["category", "difficulty", "description"].forEach(id => $(id).addEventListener("input", () => {
+    if ($("err-" + id).textContent) { $("err-" + id).textContent = ""; $("f-" + id).classList.remove("has-err"); }
+    refresh();
+}));
+document.querySelectorAll('input[name="privacy"]').forEach(r => r.addEventListener("change", refresh));
+$("notify").addEventListener("change", refresh);
+const cb = $("coverBox");
+cb.addEventListener("click", () => { if (!busy) $("coverInput").click(); });
+cb.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!busy) $("coverInput").click(); } });
+["dragenter", "dragover"].forEach(ev => cb.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
+cb.addEventListener("drop", e => { e.preventDefault(); e.stopPropagation(); if (!busy) setCover(e.dataTransfer.files[0]); });
+$("coverPick").addEventListener("click", () => $("coverInput").click());
+$("coverInput").addEventListener("change", e => setCover(e.target.files[0]));
+$("coverRemove").addEventListener("click", clearCover);
+$("uploadBtn").addEventListener("click", start);
+$("cancelBtn").addEventListener("click", () => { stopAsked = true; if (activeXhr) activeXhr.abort(); });
 
-    document.getElementById('resourceSearch').addEventListener('input', applySearchFilter);
-    document.getElementById('refreshBtn').addEventListener('click', loadResources);
+/* ================= ALL RESOURCES ================= */
+let page = 1, pages = 1, rows = [], selected = new Set(), attention = "", qTimer, lastTotal = 0;
+function setAttention(k) {
+    attention = ATT[k] ? k : "";
+    $("attOn").hidden = !attention;
+    $("attLabel").textContent = attention ? "Showing: " + ATT[attention][2] : "";
+    page = 1; selected.clear();
+    if (current === "all") loadList(); else loadedAll = false;   // showTab("all") loads it
+}
+function params() {
+    const p = new URLSearchParams({ page, sort: $("fSort").value });
+    [["q", "q"], ["fSubject", "category"], ["fType", "type"], ["fGrade", "grade"], ["fPrivacy", "privacy"]].forEach(([id, k]) => { const v = $(id).value.trim(); if (v) p.set(k, v); });
+    if (attention) p.set("attention", attention);
+    return p;
+}
+let listReq = 0;
+async function loadList() {
+    const my = ++listReq;
+    $("rows").innerHTML = '<tr><td colspan="10" class="ar-skel"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Loading…</td></tr>';
+    try {
+        const d = await api("/api/admin/resources/list?" + params());
+        if (my !== listReq) return;
+        rows = d.items; page = d.page; pages = d.pages;
+        if (page > pages && pages >= 1 && d.total) { page = pages; return loadList(); }
+        renderRows(d.total);
+    } catch (e) {
+        if (my !== listReq) return;
+        $("rows").innerHTML = `<tr><td colspan="10" class="ar-skel">Couldn’t load resources: ${esc(e.message)} <button type="button" class="ar-btn sm" id="retryList">Try again</button></td></tr>`;
+        $("retryList").addEventListener("click", loadList);
+    }
+}
+function rowHTML(r) {
+    const k = kindKey(r.file_category), th = safeUrl(r.thumb);
+    const extra = [r.ext ? r.ext.toUpperCase() : KIND[k][0], size(r.size), r.duration, r.pages ? r.pages + " pages" : ""].filter(Boolean).join(" · ");
+    return `<tr data-id="${num(r.id)}" class="${selected.has(r.id) ? "sel" : ""}">
+        <td><input type="checkbox" data-sel="${num(r.id)}" ${selected.has(r.id) ? "checked" : ""} aria-label="Select ${esc(r.title)}"></td>
+        <td><div class="ar-res">
+            <div class="ar-thumb"><i class="fas ${KIND[k][1]}" aria-hidden="true"></i>${th ? `<img src="${esc(th)}" alt="" loading="lazy" data-hide-broken>` : ""}</div>
+            <div style="min-width:0"><button type="button" class="ttl" data-act="open"><b title="${esc(r.title)}">${esc(r.title)}</b></button><small>${esc(extra)}${r.description ? "" : ' · <span style="color:var(--ar-warn)">no description</span>'}</small></div>
+        </div></td>
+        <td>${esc(r.subject)}<br><small class="ar-kn">${esc(gradeName(r.grade))}</small></td>
+        <td><span class="ar-pill ${r.privacy === "private" ? "private" : "public"}"><i class="fas ${r.privacy === "private" ? "fa-lock" : "fa-globe"}" aria-hidden="true"></i> ${r.privacy === "private" ? "Private" : "Public"}</span></td>
+        <td class="n">${fmt(r.views)}</td><td class="n">${fmt(r.downloads)}</td><td class="n">${fmt(r.likes)}</td><td class="n">${fmt(r.saves)}</td>
+        <td title="${esc(r.uploaded)}">${esc(shortDate(r.uploaded))}</td>
+        <td><div class="ar-acts">
+            <button type="button" class="ar-btn sm" data-act="stats"><i class="fas fa-chart-simple" aria-hidden="true"></i> Stats</button>
+            <button type="button" class="ar-btn sm" data-act="edit"><i class="fas fa-pen" aria-hidden="true"></i> Edit</button>
+            <button type="button" class="ar-btn sm danger" data-act="delete" aria-label="Delete ${esc(r.title)}"><i class="fas fa-trash-can" aria-hidden="true"></i> Delete</button>
+        </div></td></tr>`;
+}
+function renderRows(total) {
+    lastTotal = total;
+    $("tabCount").textContent = `(${fmt(ov ? ov.totals.resources : total)})`;
+    const filtered = [...params().keys()].some(k => !["page", "sort"].includes(k));
+    $("rows").innerHTML = rows.length ? rows.map(rowHTML).join("")
+        : `<tr><td colspan="10" class="ar-skel">${filtered ? "Nothing matches these filters." : "No resources yet. Use the Upload tab to add the first one."}</td></tr>`;
+    $("rows").querySelectorAll("img[data-hide-broken]").forEach(im => im.addEventListener("error", () => im.remove(), { once: true }));
+    const from = total ? (page - 1) * 25 + 1 : 0, to = (page - 1) * 25 + rows.length;
+    $("pagerInfo").textContent = total ? `${fmt(from)}–${fmt(to)} of ${fmt(total)}${filtered ? " matching" : ""}` : "";
+    $("prevPg").disabled = page <= 1; $("nextPg").disabled = page >= pages;
+    syncBulk();
+}
+function syncBulk() {
+    $("bulk").hidden = !selected.size;
+    $("bulkCount").textContent = `${selected.size} selected`;
+    const onPage = rows.map(r => r.id), allOn = onPage.length && onPage.every(id => selected.has(id));
+    $("selAll").checked = !!allOn; $("selAll").indeterminate = !allOn && onPage.some(id => selected.has(id));
+}
+$("q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = setTimeout(() => { page = 1; loadList(); }, 300); });
+["fSubject", "fType", "fGrade", "fPrivacy", "fSort"].forEach(id => $(id).addEventListener("change", () => { page = 1; loadList(); }));
+$("attClear").addEventListener("click", () => setAttention(""));
+$("prevPg").addEventListener("click", () => { if (page > 1) { page--; loadList(); } });
+$("nextPg").addEventListener("click", () => { if (page < pages) { page++; loadList(); } });
+$("selAll").addEventListener("change", e => { rows.forEach(r => e.target.checked ? selected.add(r.id) : selected.delete(r.id)); renderRows(lastTotal); });
+$("bulkClear").addEventListener("click", () => { selected.clear(); $("rows").querySelectorAll("[data-sel]").forEach(c => { c.checked = false; c.closest("tr").classList.remove("sel"); }); syncBulk(); });
+$("rows").addEventListener("change", e => {
+    const c = e.target.closest("[data-sel]"); if (!c) return;
+    const id = Number(c.dataset.sel); c.checked ? selected.add(id) : selected.delete(id);
+    c.closest("tr").classList.toggle("sel", c.checked); syncBulk();
+});
+$("rows").addEventListener("click", e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const r = rows.find(x => x.id === Number(b.closest("tr").dataset.id)); if (!r) return;
+    ({ open: openPreview, stats: openStats, edit: openEdit, delete: askDelete })[b.dataset.act](r);
+});
+$("bulk").addEventListener("click", e => { const b = e.target.closest("[data-bulk]"); if (b) askBulk(b.dataset.bulk); });
 
-    document.addEventListener('DOMContentLoaded', loadResources);
+/* ---------------- dialog ---------------- */
+const dlg = $("dlg");
+let lastFocus = null;
+function openDlg(title, bodyHTML, footHTML, wide) {
+    lastFocus = document.activeElement;
+    $("dlgTitle").textContent = title;
+    $("dlgBody").innerHTML = bodyHTML; $("dlgFoot").innerHTML = footHTML || "";
+    $("dlgFoot").hidden = !footHTML;
+    dlg.classList.toggle("wide", !!wide);
+    if (!dlg.open) dlg.showModal();
+}
+function closeDlg() { $("dlgBody").querySelectorAll("video,audio").forEach(m => m.pause()); if (dlg.open) dlg.close(); }
+dlg.addEventListener("close", () => { $("dlgBody").innerHTML = ""; if (lastFocus && lastFocus.isConnected) lastFocus.focus(); });
+$("dlgClose").addEventListener("click", closeDlg);
+dlg.addEventListener("click", e => { if (e.target === dlg) closeDlg(); });
+
+function openPreview(r) {
+    const u = safeUrl(r.url), k = r.file_category;
+    let body;
+    if (!u) body = '<div class="ar-note bad"><i class="fas fa-file-circle-xmark"></i><div>This resource has no file.</div></div>';
+    else if (!r.preview) body = `<div class="ar-note info"><i class="fas fa-circle-info" aria-hidden="true"></i><div>${esc(KIND[kindKey(k)][0])} files can’t be shown here. Download it to open it on your device.</div></div>`;
+    else if (k === "video") body = `<video src="${esc(u)}" controls preload="metadata" ${safeUrl(r.thumb) ? `poster="${esc(safeUrl(r.thumb))}"` : ""}></video>`;
+    else if (k === "audio") body = `<audio src="${esc(u)}" controls preload="metadata"></audio>`;
+    else if (k === "image") body = `<img src="${esc(u)}" alt="${esc(r.title)}">`;
+    else body = `<iframe src="${esc(u)}" title="${esc(r.title)}"></iframe>`;
+    body += `<p class="ar-kn" style="margin-top:10px">${esc(r.description || "No description.")}</p>`;
+    openDlg(r.title, body, `<a class="ar-btn" href="/api/resources/${num(r.id)}/download"><i class="fas fa-download" aria-hidden="true"></i> Download</a><button type="button" class="ar-btn" data-x="stats">Stats</button><button type="button" class="ar-btn primary" data-x="edit">Edit</button>`, true);
+    $("dlgFoot").querySelector('[data-x="stats"]').addEventListener("click", () => openStats(r));
+    $("dlgFoot").querySelector('[data-x="edit"]').addEventListener("click", () => { closeDlg(); openEdit(r); });
+}
+
+let statDays = 30, statMetric = "views";
+async function openStats(r) {
+    openDlg("Stats: " + r.title, '<div class="ar-skel"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Loading…</div>', "", true);
+    try {
+        const d = await api(`/api/admin/resources/${num(r.id)}/stats?days=${statDays}`);
+        if (!dlg.open) return;
+        const t = d.totals;
+        $("dlgBody").innerHTML = `
+            <div class="ar-mini">
+                <div><b>${fmt(t.views)}</b><span>views</span></div>
+                <div><b>${fmt(t.reached)}</b><span>learners reached (${num(t.reach_pct)}%)</span></div>
+                <div><b>${fmt(t.downloads)}</b><span>downloads</span></div>
+                <div><b>${fmt(t.likes)}</b><span>likes</span></div>
+                <div><b>${fmt(t.saves)}</b><span>saves</span></div>
+            </div>
+            <div class="ar-head">
+                <div class="ar-chips" role="group" aria-label="What to show" id="sMetric">${["views", "likes", "saves", "downloads"].map(m => `<button type="button" class="ar-chip" data-m="${m}" aria-pressed="${m === statMetric}">${m === "views" ? "New viewers" : m[0].toUpperCase() + m.slice(1)}</button>`).join("")}</div>
+                <div class="ar-chips" role="group" aria-label="Time period" id="sDays">${[7, 30, 90].map(n => `<button type="button" class="ar-chip" data-d="${n}" aria-pressed="${n === statDays}">${n} days</button>`).join("")}</div>
+            </div>
+            <div class="ar-chart" id="sChart"></div>
+            <div class="ar-chart-foot"><span>${esc(dayLabel(d.chart.days[0]))}</span><span id="sSum"></span><span>${esc(dayLabel(d.chart.days[d.chart.days.length - 1]))}</span></div>
+            <p class="ar-kn" style="margin-top:10px">Added ${esc(shortDate(d.uploaded))}. Views count each learner once.</p>`;
+        const draw = () => { const n = barChart($("sChart"), d.chart.days, d.chart[statMetric].map(num), statMetric === "views" ? "new viewers" : statMetric); $("sSum").textContent = `${fmt(n)} in ${d.days} days`; };
+        requestAnimationFrame(draw);
+        $("sMetric").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return; statMetric = b.dataset.m; $("sMetric").querySelectorAll("[data-m]").forEach(x => x.setAttribute("aria-pressed", x === b)); draw(); });
+        $("sDays").addEventListener("click", e => { const b = e.target.closest("[data-d]"); if (!b) return; statDays = Number(b.dataset.d); openStats(r); });
+    } catch (e) {
+        $("dlgBody").innerHTML = `<div class="ar-note bad"><i class="fas fa-circle-exclamation" aria-hidden="true"></i><div>${esc(e.message)}</div></div>`;
+    }
+}
+
+function openEdit(r) {
+    const opts = (pairs, cur) => pairs.map(([v, l]) => `<option value="${esc(v)}" ${v === cur ? "selected" : ""}>${esc(l)}</option>`).join("");
+    openDlg("Edit resource", `
+        <div class="ar-fields">
+            <div class="ar-field wide"><label for="eTitle">Title</label><input class="ar-in" id="eTitle" maxlength="150" value="${esc(r.title)}"></div>
+            <div class="ar-field"><label for="eCat">Subject</label><select class="ar-in" id="eCat">${opts(Object.entries(SUBJECTS), r.category)}</select></div>
+            <div class="ar-field"><label for="eGrade">Grade</label><select class="ar-in" id="eGrade">${/^grade-/.test(r.grade) ? "" : '<option value="">Choose a grade</option>'}${opts(GRADES, r.grade)}</select></div>
+            <div class="ar-field wide"><label for="eDesc">Description</label><textarea class="ar-in" id="eDesc" maxlength="2000">${esc(r.description)}</textarea></div>
+            <div class="ar-field wide"><span class="ar-lbl">Who can see it</span>
+                <div class="ar-seg">
+                    <label class="ar-opt"><input type="radio" name="ePriv" value="public" ${r.privacy !== "private" ? "checked" : ""}><div><b>All learners</b></div></label>
+                    <label class="ar-opt"><input type="radio" name="ePriv" value="private" ${r.privacy === "private" ? "checked" : ""}><div><b>Admins only (draft)</b></div></label>
+                </div></div>
+            <div class="ar-field wide" id="eTellRow" hidden><div class="ar-switch"><div><b>Tell all learners</b><span>This hasn’t been announced yet. Learners get one notification when it goes public.</span></div><label class="ar-tg"><input type="checkbox" id="eTell" checked aria-label="Tell all learners"><i></i></label></div></div>
+            <div class="ar-err wide" id="eErr"></div>
+        </div>`, '<button type="button" class="ar-btn" data-x="cancel">Cancel</button><button type="button" class="ar-btn primary" data-x="save"><i class="fas fa-check" aria-hidden="true"></i> Save</button>');
+    const tellRow = () => { $("eTellRow").hidden = !(document.querySelector('input[name="ePriv"]:checked').value === "public" && !r.announced); };
+    document.querySelectorAll('input[name="ePriv"]').forEach(x => x.addEventListener("change", tellRow)); tellRow();
+    $("dlgFoot").querySelector('[data-x="cancel"]').addEventListener("click", closeDlg);
+    $("dlgFoot").querySelector('[data-x="save"]').addEventListener("click", async e => {
+        const btn = e.currentTarget, priv = document.querySelector('input[name="ePriv"]:checked').value;
+        const body = { title: $("eTitle").value, description: $("eDesc").value, category: $("eCat").value, difficulty: $("eGrade").value, privacy: priv };
+        if (priv === "public" && !r.announced) body.announce = $("eTell").checked;
+        btn.disabled = true; $("eErr").textContent = "";
+        try {
+            const d = await api(`/api/resources/${num(r.id)}`, { method: "PATCH", body });
+            closeDlg();
+            toast(d.notified ? `Saved. ${fmt(d.notified)} learners were told about it.` : "Saved.");
+            ovStale = true; loadList();
+        } catch (err) { $("eErr").textContent = err.message; btn.disabled = false; }
+    });
+    $("eTitle").focus();
+}
+
+function askDelete(r) {
+    openDlg("Delete this resource?", `<p><b>${esc(r.title)}</b> and its file (${esc(size(r.size))}) will be removed for everyone, with its ${fmt(r.views)} views, ${fmt(r.likes)} likes and ${fmt(r.saves)} saves. This can’t be undone.</p>`,
+        '<button type="button" class="ar-btn" data-x="keep">Keep it</button><button type="button" class="ar-btn danger solid" data-x="del"><i class="fas fa-trash-can" aria-hidden="true"></i> Delete</button>');
+    const keep = $("dlgFoot").querySelector('[data-x="keep"]'); keep.focus();
+    keep.addEventListener("click", closeDlg);
+    $("dlgFoot").querySelector('[data-x="del"]').addEventListener("click", async e => {
+        e.currentTarget.disabled = true;
+        try {
+            await api(`/api/resources/${num(r.id)}`, { method: "DELETE" });
+            closeDlg(); selected.delete(r.id); toast(`“${r.title}” was deleted.`);
+            ovStale = true; loadList();
+        } catch (err) { closeDlg(); toast("Not deleted: " + err.message); }
+    });
+}
+function askBulk(action) {
+    const ids = [...selected], n = ids.length; if (!n) return;
+    const what = `${n} resource${n === 1 ? "" : "s"}`;
+    const text = {
+        delete: [`Delete ${what}?`, `${n === 1 ? "Its file" : "Their files"}, views, likes and saves will be removed for everyone. This can’t be undone.`, "Delete " + what, "danger solid"],
+        public: [`Make ${what} public?`, "Learners will see them in Resources straight away.", "Make public", "primary"],
+        private: [`Make ${what} private?`, "Learners won’t see them any more. Their counts are kept.", "Make private", "primary"]
+    }[action];
+    const tell = action === "public" ? '<div class="ar-switch" style="margin-top:12px"><div><b>Tell all learners</b><span>One notification for the ones never announced before.</span></div><label class="ar-tg"><input type="checkbox" id="bTell" checked aria-label="Tell all learners"><i></i></label></div>' : "";
+    openDlg(text[0], `<p>${esc(text[1])}</p>${tell}`, `<button type="button" class="ar-btn" data-x="no">Cancel</button><button type="button" class="ar-btn ${text[3]}" data-x="yes">${esc(text[2])}</button>`);
+    const no = $("dlgFoot").querySelector('[data-x="no"]'); no.focus(); no.addEventListener("click", closeDlg);
+    $("dlgFoot").querySelector('[data-x="yes"]').addEventListener("click", async e => {
+        e.currentTarget.disabled = true;
+        const body = { ids, action }; if (action === "public") body.announce = $("bTell").checked;
+        try {
+            const d = await api("/api/admin/resources/bulk", { method: "POST", body });
+            closeDlg(); selected.clear();
+            toast(`${fmt(d.done)} ${action === "delete" ? "deleted" : "made " + action}${d.notified ? `; ${fmt(d.notified)} learners told` : ""}.`);
+            ovStale = true; loadList();
+        } catch (err) { closeDlg(); toast("Nothing changed: " + err.message); }
+    });
+}
+
+/* ---------------- start ---------------- */
+const qs = new URLSearchParams(location.search);
+if (SUBJECTS[qs.get("subject")]) $("category").value = qs.get("subject");
+if (/^(?:[1-9]|1[01])$/.test(qs.get("grade") || "")) $("difficulty").value = "grade-" + qs.get("grade");
+renderFiles(); refresh(); loadRecent(); loadOverview();
+showTab(location.hash.slice(1) || "overview");
+})();
 </script>
+{% endraw %}
 {% endblock %}

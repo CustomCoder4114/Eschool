@@ -1,2500 +1,914 @@
 {% extends "Teacher/teacher-body.html" %}
 
 {% block allcontent %}
-<!--
-    PROFILE PAGE — expects these variables from your Flask route, e.g.:
-
-        return render_template(
-            'profile.html',
-            profile_user_id=user.id,
-            username=user.username,
-            firstname=user.firstname,
-            lastname=user.lastname,
-            avatar_url=user.avatar_url,
-            is_own_profile=(user.id == session.get('user_id')),
-            is_following=current_user_follows_this_profile,  # bool, only used when is_own_profile is False
-            posts_count=posts_count,
-            followers_count=followers_count,
-            following_count=following_count,
-            bio_lines=["NEVER AVERAGE", "1% \U0001F464\U0001F464", "ROMANS 8:18"],  # or bio.split('\n')
-        )
-
-    OPTIONAL extras (the page works without them; each one only shows if sent):
-        profile_role="teacher" or "learner"   # role badge of the PROFILE OWNER
-        location="Iten, Kenya"
-        joined_date="October 2026"
-        status_note="..."                     # small bubble next to the avatar
-        highlights=[{"url": "...", "cover_url": "...", "label": "..."}]
-
-    DATA FETCHED CLIENT-SIDE (nothing else is needed from the route):
-        Uploads       GET  /api/resources/user/<profile_user_id>
-        Live classes  GET  /api/users/<profile_user_id>/live-classes
-        Ratings       GET  /api/users/<profile_user_id>/ratings
-                      POST /api/users/<profile_user_id>/ratings   (visitors leave a review)
-
-    Expected JSON shapes:
-        live-classes -> { "classes": [ { "id", "title", "description", "scheduled_at" (ISO),
-                                         "duration_minutes", "join_url", "attendees_count" } ] }
-        ratings      -> { "average_out_of_ten": 8.4, "count": 12,
-                          "distribution": {"1":0,"2":0,"3":1,"4":3,"5":8},
-                          "reviews": [ { "id", "reviewer_name", "reviewer_avatar_url",
-                                         "stars" (1-5), "comment", "created_at" } ],
-                          "my_review": null or {"stars", "comment"} }
--->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-    :root {
-        --primary-color: #4361ee;
-        --primary-dark: #3a0ca3;
-        --secondary-color: #7209b7;
-        --accent-color: #4cc9f0;
-        --success-color: #10b981;
-        --warning-color: #f59e0b;
-        --danger-color: #ef4444;
-        --info-color: #3b82f6;
-        --dark-color: #1e293b;
-        --light-color: #f8fafc;
-        --gray-50: #f9fafb;
-        --gray-100: #f3f4f6;
-        --gray-200: #e5e7eb;
-        --gray-300: #d1d5db;
-        --gray-400: #9ca3af;
-        --gray-500: #6b7280;
-        --gray-600: #4b5563;
-        --gray-700: #374151;
-        --gray-800: #1f2937;
-        --border-radius: 20px;
-        --border-radius-sm: 12px;
-        --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-        --hover-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
-        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    /* Theme tokens used by this page. Light by default, dark when the site is in dark mode. */
-    .profile-page {
-        --ig-bg: transparent;
-        --ig-surface: #ffffff;
-        --ig-border: #e5e7eb;
-        --ig-text: #1e293b;
-        --ig-text-dim: #64748b;
-        --ig-pill: #eef2f7;
-        --ig-pill-hover: #e2e8f0;
-    }
-
-    body.dark-mode .profile-page {
-        --ig-bg: transparent;
-        --ig-surface: #1e293b;
-        --ig-border: #334155;
-        --ig-text: #f1f5f9;
-        --ig-text-dim: #94a3b8;
-        --ig-pill: #334155;
-        --ig-pill-hover: #475569;
-    }
-
-    .profile-page {
-        background: var(--ig-bg);
-        color: var(--ig-text);
-        min-height: 100vh;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        padding: 10px 24px 0;
-    }
-
-    .profile-page * {
-        box-sizing: border-box;
-    }
-
-    .profile-shell {
-        max-width: 935px;
-        margin: 0 auto;
-    }
-
-    /* ---------- User search bar ---------- */
-    .profile-search-section {
-        max-width: 480px;
-        margin: 4px auto 32px;
-    }
-
-    .profile-search-wrapper {
-        position: relative;
-    }
-
-    .profile-search-icon {
-        position: absolute;
-        left: 18px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--gray-400);
-        font-size: 0.95rem;
-        pointer-events: none;
-    }
-
-    .profile-search-input {
-        width: 100%;
-        padding: 14px 18px 14px 44px;
-        border-radius: 999px;
-        border: 1.5px solid var(--gray-200);
-        background: #ffffff;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        font-size: 0.95rem;
-        color: var(--dark-color);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-        transition: var(--transition);
-    }
-
-    .profile-search-input::placeholder {
-        color: var(--gray-400);
-    }
-
-    .profile-search-input:hover {
-        border-color: var(--gray-300);
-    }
-
-    .profile-search-input:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.12);
-    }
-
-    .profile-search-results {
-        position: absolute;
-        top: calc(100% + 10px);
-        left: 0;
-        right: 0;
-        background: #ffffff;
-        border: 1px solid var(--gray-200);
-        border-radius: var(--border-radius-sm);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-        max-height: 320px;
-        overflow-y: auto;
-        z-index: 50;
-        display: none;
-    }
-
-    .profile-search-results.show {
-        display: block;
-    }
-
-    .profile-search-result-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        cursor: pointer;
-        text-decoration: none;
-        color: var(--dark-color);
-        transition: var(--transition);
-    }
-
-    .profile-search-result-item:not(:last-child) {
-        border-bottom: 1px solid var(--gray-100);
-    }
-
-    .profile-search-result-item:hover {
-        background: var(--gray-50);
-    }
-
-    .profile-search-result-avatar {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 0.85rem;
-        color: #fff;
-        background: var(--primary-color);
-        overflow: hidden;
-        flex-shrink: 0;
-    }
-
-    .profile-search-result-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .profile-search-result-name {
-        font-size: 0.9rem;
-        font-weight: 500;
-    }
-
-    .profile-search-empty {
-        padding: 16px;
-        text-align: center;
-        font-size: 0.85rem;
-        color: var(--gray-400);
-    }
-
-    body.dark-mode .profile-search-input {
-        background: #1e293b;
-        border-color: #334155;
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .profile-search-input::placeholder {
-        color: #64748b;
-    }
-
-    body.dark-mode .profile-search-input:hover {
-        border-color: #475569;
-    }
-
-    body.dark-mode .profile-search-results {
-        background: #1e293b;
-        border-color: #334155;
-    }
-
-    body.dark-mode .profile-search-result-item:not(:last-child) {
-        border-bottom-color: #334155;
-    }
-
-    body.dark-mode .profile-search-result-item {
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .profile-search-result-item:hover {
-        background: #263449;
-    }
-
-    /* ---------- Profile card: cover + header + stats ---------- */
-    .profile-card {
-        background: var(--ig-surface);
-        border: 1px solid var(--ig-border);
-        border-radius: var(--border-radius);
-        box-shadow: var(--card-shadow);
-        overflow: hidden;
-        margin-bottom: 24px;
-    }
-
-    .profile-cover {
-        height: 150px;
-        position: relative;
-        overflow: hidden;
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    }
-
-    .profile-cover::before,
-    .profile-cover::after {
-        content: "";
-        position: absolute;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.1);
-    }
-
-    .profile-cover::before {
-        width: 220px;
-        height: 220px;
-        right: -50px;
-        top: -90px;
-    }
-
-    .profile-cover::after {
-        width: 140px;
-        height: 140px;
-        left: 22%;
-        bottom: -80px;
-    }
-
-    /* ---------- Header row: avatar + identity ---------- */
-    .profile-header {
-        display: flex;
-        align-items: flex-start;
-        gap: 32px;
-        padding: 0 32px 26px;
-        margin-top: -70px;
-        flex-wrap: wrap;
-        position: relative;
-        z-index: 2;
-    }
-
-    .profile-avatar-wrap {
-        position: relative;
-        flex-shrink: 0;
-    }
-
-    .profile-avatar {
-        width: 140px;
-        height: 140px;
-        border-radius: 50%;
-        overflow: hidden;
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        border: 5px solid var(--ig-surface);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 52px;
-        font-weight: 700;
-        color: #fff;
-        flex-shrink: 0;
-    }
-
-    .profile-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-    }
-
-    .avatar-note {
-        position: absolute;
-        top: -6px;
-        right: -18px;
-        background: var(--ig-surface);
-        color: var(--ig-text);
-        border-radius: 16px;
-        padding: 6px 12px 6px 14px;
-        font-size: 12px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        max-width: 110px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        border: 1px solid var(--ig-border);
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
-    }
-
-    .profile-identity {
-        flex: 1;
-        min-width: 260px;
-        padding-top: 84px;
-    }
-
-    .profile-username-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 6px;
-    }
-
-    .profile-username {
-        font-size: 24px;
-        font-weight: 700;
-        color: var(--ig-text);
-        letter-spacing: -0.2px;
-    }
-
-    .profile-settings-icon {
-        color: var(--ig-text-dim);
-        font-size: 18px;
-        cursor: pointer;
-        text-decoration: none;
-        transition: var(--transition);
-    }
-
-    .profile-settings-icon:hover {
-        color: var(--primary-color);
-        transform: rotate(45deg);
-    }
-
-    .profile-actions {
-        display: flex;
-        gap: 8px;
-        margin-left: auto;
-    }
-
-    .pill-btn {
-        background: var(--ig-pill);
-        color: var(--ig-text);
-        border: none;
-        border-radius: 999px;
-        padding: 9px 20px;
-        font-size: 14px;
-        font-weight: 600;
-        font-family: inherit;
-        cursor: pointer;
-        white-space: nowrap;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        transition: var(--transition);
-    }
-
-    .pill-btn:hover {
-        background: var(--ig-pill-hover);
-    }
-
-    .pill-btn.primary {
-        background: var(--primary-color);
-        color: #fff;
-    }
-
-    .pill-btn.primary:hover {
-        background: var(--primary-dark);
-    }
-
-    .pill-btn:disabled {
-        opacity: 0.7;
-        cursor: wait;
-    }
-
-    .profile-fullname {
-        font-weight: 500;
-        font-size: 15px;
-        color: var(--ig-text-dim);
-        margin-bottom: 10px;
-    }
-
-    .profile-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 14px;
-    }
-
-    .meta-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 12px;
-        border-radius: 999px;
-        background: var(--ig-pill);
-        color: var(--ig-text-dim);
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    .meta-chip.role {
-        background: rgba(67, 97, 238, 0.12);
-        color: var(--primary-color);
-    }
-
-    .profile-bio {
-        font-size: 14px;
-        line-height: 1.6;
-        color: var(--ig-text);
-        white-space: pre-line;
-        padding-left: 12px;
-        border-left: 3px solid var(--primary-color);
-    }
-
-    .profile-bio .bio-muted {
-        color: var(--ig-text-dim);
-    }
-
-    /* ---------- Stats strip ---------- */
-    .profile-stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        border-top: 1px solid var(--ig-border);
-    }
-
-    .profile-stats .stat {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        padding: 16px 8px;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        color: var(--ig-text-dim);
-    }
-
-    .profile-stats .stat + .stat {
-        border-left: 1px solid var(--ig-border);
-    }
-
-    .profile-stats .stat strong {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: 0;
-        color: var(--ig-text);
-        line-height: 1.2;
-    }
-
-    @keyframes statCountPop {
-        0%   { transform: scale(1); }
-        40%  { transform: scale(1.2); }
-        100% { transform: scale(1); }
-    }
-
-    .profile-stats .stat strong.pop {
-        display: inline-block;
-        animation: statCountPop 0.3s ease;
-    }
-
-    /* ---------- Highlights / New row ---------- */
-    .profile-highlights {
-        display: flex;
-        gap: 26px;
-        padding: 22px 32px;
-        overflow-x: auto;
-        border-top: 1px solid var(--ig-border);
-    }
-
-    .highlight-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        flex-shrink: 0;
-        text-decoration: none;
-        color: var(--ig-text);
-    }
-
-    .highlight-circle {
-        width: 66px;
-        height: 66px;
-        border-radius: 50%;
-        border: 2px solid var(--primary-color);
-        padding: 3px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        background: var(--ig-pill);
-    }
-
-    .highlight-circle img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: 50%;
-    }
-
-    .highlight-circle.new-circle {
-        border: 1px solid var(--ig-border);
-        color: var(--ig-text);
-        font-size: 24px;
-    }
-
-    .highlight-label {
-        font-size: 12px;
-        color: var(--ig-text-dim);
-        max-width: 74px;
-        text-align: center;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* ---------- Tabs ---------- */
-    .profile-tabs {
-        display: flex;
-        justify-content: center;
-        gap: 6px;
-        background: var(--ig-surface);
-        border: 1px solid var(--ig-border);
-        border-radius: 999px;
-        padding: 6px;
-        max-width: 520px;
-        margin: 0 auto 24px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-    }
-
-    .profile-tab {
-        flex: 1;
-        justify-content: center;
-        background: none;
-        border: none;
-        padding: 10px 18px;
-        border-radius: 999px;
-        color: var(--ig-text-dim);
-        font-size: 13px;
-        font-weight: 600;
-        font-family: inherit;
-        letter-spacing: 0.3px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .profile-tab i {
-        font-size: 15px;
-    }
-
-    .profile-tab:hover {
-        color: var(--ig-text);
-        background: var(--ig-pill);
-    }
-
-    .profile-tab.active {
-        color: #fff;
-        background: var(--primary-color);
-        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.35);
-    }
-
-    /* ---------- Tab panels ---------- */
-    .tab-panel {
-        display: none;
-    }
-
-    .tab-panel.active {
-        display: block;
-    }
-
-    /* ---------- Uploads: insights + toolbar ---------- */
-    .uploads-insights {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-bottom: 18px;
-    }
-
-    .insight-card {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        background: var(--ig-surface);
-        border: 1px solid var(--ig-border);
-        border-radius: var(--border-radius-sm);
-        padding: 14px 16px;
-        min-width: 0;
-    }
-
-    .insight-card > i {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 15px;
-        color: var(--c, var(--primary-color));
-        background: color-mix(in srgb, var(--c, var(--primary-color)) 15%, transparent);
-        flex-shrink: 0;
-    }
-
-    .insight-card > div {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .insight-card strong {
-        font-size: 18px;
-        font-weight: 700;
-        line-height: 1.2;
-        color: var(--ig-text);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .insight-card span {
-        font-size: 12px;
-        color: var(--ig-text-dim);
-    }
-
-    .uploads-toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 14px;
-    }
-
-    .filter-chips {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .filter-chip {
-        border: 1px solid var(--ig-border);
-        background: var(--ig-surface);
-        color: var(--ig-text-dim);
-        border-radius: 999px;
-        padding: 6px 14px;
-        font-size: 13px;
-        font-weight: 600;
-        font-family: inherit;
-        cursor: pointer;
-        transition: var(--transition);
-    }
-
-    .filter-chip span {
-        margin-left: 4px;
-        opacity: 0.7;
-        font-weight: 500;
-    }
-
-    .filter-chip:hover {
-        border-color: var(--primary-color);
-        color: var(--primary-color);
-    }
-
-    .filter-chip.active {
-        background: var(--primary-color);
-        border-color: var(--primary-color);
-        color: #fff;
-    }
-
-    .sort-select {
-        border: 1px solid var(--ig-border);
-        background: var(--ig-surface);
-        color: var(--ig-text);
-        border-radius: 999px;
-        padding: 7px 14px;
-        font-size: 13px;
-        font-family: inherit;
-        cursor: pointer;
-        outline: none;
-    }
-
-    .sort-select:focus {
-        border-color: var(--primary-color);
-    }
-
-    /* ---------- Posts / uploads grid ---------- */
-    .posts-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        padding: 0 0 40px;
-    }
-
-    .post-tile {
-        display: block;
-        position: relative;
-        aspect-ratio: 1 / 1;
-        overflow: hidden;
-        background: var(--ig-surface);
-        cursor: pointer;
-        border: 1px solid var(--ig-border);
-        border-radius: var(--border-radius-sm);
-        padding: 0;
-        transition: var(--transition);
-    }
-
-    .post-tile:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--hover-shadow);
-    }
-
-    .post-tile img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-        transition: transform 0.4s ease;
-    }
-
-    .post-tile:hover img {
-        transform: scale(1.06);
-    }
-
-    .post-badge {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        background: rgba(0, 0, 0, 0.75);
-        color: #fff;
-        font-size: 10px;
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 999px;
-        letter-spacing: 0.2px;
-        z-index: 2;
-    }
-
-    .post-overlay {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.7));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 22px;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-        color: #fff;
-        font-weight: 700;
-        font-size: 15px;
-    }
-
-    .post-tile:hover .post-overlay,
-    .post-tile:focus-visible .post-overlay {
-        opacity: 1;
-    }
-
-    .post-overlay span {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-    }
-
-    .post-caption {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        padding: 10px 12px;
-        color: #fff;
-        font-size: 12.5px;
-        font-weight: 600;
-        text-align: left;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        z-index: 2;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-    }
-
-    .post-tile:hover .post-caption,
-    .post-tile:focus-visible .post-caption {
-        opacity: 1;
-    }
-
-    .posts-empty {
-        padding: 60px 20px;
-        text-align: center;
-        color: var(--ig-text-dim);
-        background: var(--ig-surface);
-        border: 1px dashed var(--ig-border);
-        border-radius: var(--border-radius);
-        margin-bottom: 40px;
-    }
-
-    .posts-empty i {
-        font-size: 44px;
-        margin-bottom: 14px;
-        display: block;
-        opacity: 0.6;
-    }
-
-    .posts-empty .pill-btn {
-        margin-top: 16px;
-    }
-
-    .posts-loading {
-        padding: 60px 20px;
-        text-align: center;
-        color: var(--ig-text-dim);
-    }
-
-    .posts-loading i {
-        font-size: 28px;
-        margin-bottom: 10px;
-        display: block;
-    }
-
-    /* ---------- Preview modal ---------- */
-    .rp-modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.8);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 3000;
-        padding: 20px;
-    }
-
-    .rp-modal-overlay.show {
-        display: flex;
-    }
-
-    .rp-modal-box {
-        background: var(--ig-surface, #fff);
-        border: 1px solid var(--ig-border, #e5e7eb);
-        border-radius: 12px;
-        max-width: 720px;
-        width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
-        color: var(--ig-text, #1e293b);
-    }
-
-    .rp-modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px 20px;
-        border-bottom: 1px solid var(--ig-border, #e5e7eb);
-        gap: 12px;
-    }
-
-    .rp-modal-header h2 {
-        font-size: 16px;
-        font-weight: 600;
-        margin: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .rp-modal-header button {
-        background: none;
-        border: none;
-        color: var(--ig-text-dim, #64748b);
-        font-size: 18px;
-        cursor: pointer;
-        flex-shrink: 0;
-    }
-
-    .rp-modal-header button:hover {
-        color: var(--ig-text, #1e293b);
-    }
-
-    .rp-modal-body {
-        padding: 0;
-    }
-
-    .rp-modal-body img,
-    .rp-modal-body video {
-        width: 100%;
-        max-height: 65vh;
-        object-fit: contain;
-        display: block;
-        background: #000;
-    }
-
-    .rp-modal-body audio {
-        width: 100%;
-        padding: 30px 20px;
-    }
-
-    .rp-modal-body iframe {
-        width: 100%;
-        height: 65vh;
-        border: none;
-    }
-
-    .rp-modal-fallback {
-        padding: 40px 20px;
-        text-align: center;
-        color: var(--ig-text-dim, #64748b);
-    }
-
-    .rp-modal-fallback a {
-        color: var(--primary-color);
-        text-decoration: none;
-        font-weight: 600;
-    }
-
-    .rp-modal-footer {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 14px 20px;
-        border-top: 1px solid var(--ig-border, #e5e7eb);
-        font-size: 13px;
-        color: var(--ig-text-dim, #64748b);
-        flex-wrap: wrap;
-    }
-
-    .rp-modal-footer span {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    /* =========================================================
-       LIVE CLASSES TAB
-       ========================================================= */
-    .lc-summary {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin-bottom: 18px;
-    }
-
-    .lc-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding-bottom: 40px;
-    }
-
-    .lc-card {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        background: var(--ig-surface);
-        border: 1px solid var(--ig-border);
-        border-radius: var(--border-radius-sm);
-        padding: 16px 18px;
-        transition: var(--transition);
-    }
-
-    .lc-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--card-shadow);
-    }
-
-    .lc-card.live {
-        border-color: var(--danger-color);
-    }
-
-    .lc-card.ended {
-        opacity: 0.8;
-    }
-
-    .lc-date {
-        width: 58px;
-        flex-shrink: 0;
-        text-align: center;
-        border-radius: 12px;
-        padding: 8px 0;
-        background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-        color: var(--primary-color);
-    }
-
-    .lc-card.live .lc-date {
-        background: color-mix(in srgb, var(--danger-color) 12%, transparent);
-        color: var(--danger-color);
-    }
-
-    .lc-card.ended .lc-date {
-        background: var(--ig-pill);
-        color: var(--ig-text-dim);
-    }
-
-    .lc-date .m {
-        display: block;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.6px;
-        text-transform: uppercase;
-    }
-
-    .lc-date .d {
-        display: block;
-        font-size: 22px;
-        font-weight: 700;
-        line-height: 1.1;
-    }
-
-    .lc-main {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .lc-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--ig-text);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 4px;
-    }
-
-    .lc-status {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 2px 10px;
-        border-radius: 999px;
-        letter-spacing: 0.3px;
-    }
-
-    .lc-status.upcoming { background: rgba(67, 97, 238, 0.12); color: var(--primary-color); }
-    .lc-status.ended { background: var(--ig-pill); color: var(--ig-text-dim); }
-    .lc-status.live { background: var(--danger-color); color: #fff; }
-    .lc-status.live::before {
-        content: "";
-        display: inline-block;
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #fff;
-        margin-right: 6px;
-        animation: lcPulse 1.2s infinite;
-    }
-
-    @keyframes lcPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.3; }
-    }
-
-    .lc-desc {
-        font-size: 13px;
-        color: var(--ig-text-dim);
-        line-height: 1.45;
-        margin-bottom: 8px;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-
-    .lc-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
-        font-size: 12.5px;
-        color: var(--ig-text-dim);
-    }
-
-    .lc-meta span {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .lc-action {
-        flex-shrink: 0;
-    }
-
-    /* =========================================================
-       RATINGS TAB
-       ========================================================= */
-    .rt-summary {
-        display: grid;
-        grid-template-columns: 220px 1fr;
-        gap: 28px;
-        align-items: center;
-        background: var(--ig-surface);
-        border: 1px solid var(--ig-border);
-        border-radius: var(--border-radius);
-        padding: 26px 28px;
-        margin-bottom: 18px;
-    }
-
-    .rt-score {
-        text-align: center;
-    }
-
-    .rt-score-number {
-        font-size: 52px;
-        font-weight: 800;
-        line-height: 1;
-        color: var(--ig-text);
-    }
-
-    .rt-score-number small {
-        font-size: 20px;
-        font-weight: 600;
-        color: var(--ig-text-dim);
-    }
-
-    .rt-score-count {
-        font-size: 13px;
-        color: var(--ig-text-dim);
-        margin-top: 8px;
-    }
-
-    .stars {
-        position: relative;
-        display: inline-block;
-        font-size: 20px;
-        letter-spacing: 2px;
-        line-height: 1;
-        margin-top: 10px;
-    }
-
-    .stars-bg {
-        color: var(--ig-border);
-    }
-
-    .stars-fg {
-        position: absolute;
-        left: 0;
-        top: 0;
-        overflow: hidden;
-        white-space: nowrap;
-        color: #f59e0b;
-    }
-
-    .stars.sm {
-        font-size: 15px;
-        margin-top: 0;
-    }
-
-    .rt-bars {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .rt-bar-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-size: 13px;
-        color: var(--ig-text-dim);
-    }
-
-    .rt-bar-label {
-        width: 44px;
-        flex-shrink: 0;
-        font-weight: 600;
-        color: var(--ig-text);
-    }
-
-    .rt-bar-label i {
-        color: #f59e0b;
-        font-size: 11px;
-        margin-left: 2px;
-    }
-
-    .rt-bar-track {
-        flex: 1;
-        height: 8px;
-        border-radius: 999px;
-        background: var(--ig-pill);
-        overflow: hidden;
-    }
-
-    .rt-bar-fill {
-        height: 100%;
-        border-radius: 999px;
-        background: linear-gradient(90deg, #f59e0b, #fbbf24);
-        transition: width 0.6s ease;
-    }
-
-    .rt-bar-count {
-        width: 28px;
-        text-align: right;
-        flex-shrink: 0;
-    }
-
-    .rt-form {
-        background: var(--ig-surface);
-        border: 1px solid var(--ig-border);
-        border-radius: var(--border-radius-sm);
-        padding: 18px 20px;
-        margin-bottom: 18px;
-    }
-
-    .rt-form h4 {
-        margin: 0 0 12px;
-        font-size: 15px;
-        font-weight: 700;
-    }
-
-    .rt-picker {
-        display: flex;
-        gap: 4px;
-        margin-bottom: 12px;
-    }
-
-    .rt-picker button {
-        background: none;
-        border: none;
-        font-size: 28px;
-        line-height: 1;
-        cursor: pointer;
-        color: var(--ig-border);
-        padding: 0 2px;
-        transition: transform 0.15s ease, color 0.15s ease;
-    }
-
-    .rt-picker button.on {
-        color: #f59e0b;
-    }
-
-    .rt-picker button:hover {
-        transform: scale(1.15);
-    }
-
-    .rt-form textarea {
-        width: 100%;
-        min-height: 80px;
-        resize: vertical;
-        border: 1px solid var(--ig-border);
-        border-radius: 10px;
-        padding: 10px 12px;
-        font-family: inherit;
-        font-size: 14px;
-        background: var(--ig-bg, transparent);
-        color: var(--ig-text);
-        outline: none;
-    }
-
-    .rt-form textarea:focus {
-        border-color: var(--primary-color);
-    }
-
-    .rt-form-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-top: 10px;
-        flex-wrap: wrap;
-    }
-
-    .rt-form-msg {
-        font-size: 13px;
-        color: var(--ig-text-dim);
-    }
-
-    .rt-form-msg.error {
-        color: var(--danger-color);
-    }
-
-    .rt-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding-bottom: 40px;
-    }
-
-    .rt-review {
-        display: flex;
-        gap: 14px;
-        background: var(--ig-surface);
-        border: 1px solid var(--ig-border);
-        border-radius: var(--border-radius-sm);
-        padding: 16px 18px;
-    }
-
-    .rt-avatar {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-weight: 700;
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    }
-
-    .rt-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .rt-body {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .rt-head {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 6px;
-    }
-
-    .rt-name {
-        font-weight: 700;
-        font-size: 14px;
-    }
-
-    .rt-date {
-        font-size: 12px;
-        color: var(--ig-text-dim);
-        margin-left: auto;
-    }
-
-    .rt-score-chip {
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--ig-text-dim);
-    }
-
-    .rt-comment {
-        font-size: 14px;
-        line-height: 1.55;
-        color: var(--ig-text);
-        white-space: pre-line;
-        word-break: break-word;
-    }
-
-    .rt-comment.muted {
-        color: var(--ig-text-dim);
-        font-style: italic;
-    }
-
-    /* ---------- Responsive ---------- */
-    @media (max-width: 800px) {
-        .uploads-insights {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    @media (max-width: 700px) {
-        .rt-summary {
-            grid-template-columns: 1fr;
-            gap: 20px;
-            padding: 22px 18px;
-        }
-        .lc-card {
-            flex-wrap: wrap;
-        }
-        .lc-action {
-            width: 100%;
-        }
-        .lc-action .pill-btn {
-            width: 100%;
-            justify-content: center;
-        }
-    }
-
-    @media (max-width: 600px) {
-        .profile-page {
-            padding: 6px 12px 0;
-        }
-        .profile-cover {
-            height: 110px;
-        }
-        .profile-header {
-            gap: 16px;
-            padding: 0 16px 20px;
-            margin-top: -45px;
-        }
-        .profile-avatar {
-            width: 90px;
-            height: 90px;
-            font-size: 34px;
-            border-width: 4px;
-        }
-        .profile-identity {
-            min-width: 0;
-            padding-top: 52px;
-        }
-        .profile-username {
-            font-size: 20px;
-        }
-        .profile-actions {
-            width: 100%;
-            margin-left: 0;
-            order: 3;
-        }
-        .profile-stats .stat strong {
-            font-size: 18px;
-        }
-        .profile-highlights {
-            padding: 18px 16px;
-        }
-        .avatar-note {
-            display: none;
-        }
-        .profile-tabs {
-            gap: 0;
-            justify-content: space-around;
-        }
-        .profile-tab span {
-            display: none;
-        }
-        .posts-grid {
-            gap: 6px;
-        }
-        .post-caption {
-            display: none;
-        }
-        .lc-summary {
-            grid-template-columns: 1fr;
-        }
-    }
+/* ======================================================================
+   PROFILE (teacher layout)
+   Shown for a teacher's own profile, and when a teacher or parent opens
+   anyone's profile. Everything comes from real records:
+     /api/users/<id>/teacher-overview   header numbers, about, private lessons
+     /api/users/<id>/live-classes       live classes
+     /api/users/<id>/ratings            reviews (+ POST, + replies)
+     /api/users/<id>/learner-profile    when the profile is a learner's
+     /api/tutor-profile                 the teacher edits their About
+   Teachers earn from private lessons families hire them for, so a teacher's
+   profile shows their teaching, lessons, live classes and reviews. Teachers
+   don't upload resources (eSchool does) and can't be followed. Learners are
+   friends with learners; parents can't be followed. Scoped to .pf with its own light/dark colours
+   (data-no-theme); the main colour follows Settings > Appearance.
+   No pop-ups: every message is shown on the page.
+   ====================================================================== */
+.pf {
+    --pf-accent: var(--primary-color, #4361ee);
+    --pf-accent-2: var(--secondary-color, #7209b7);
+    --pf-accent-soft: color-mix(in srgb, var(--pf-accent) 11%, transparent);
+    --pf-accent-line: color-mix(in srgb, var(--pf-accent) 35%, transparent);
+    --pf-surface: #ffffff;
+    --pf-surface-2: #f8fafc;
+    --pf-hover: #f1f5f9;
+    --pf-border: #e5e7eb;
+    --pf-text: #0f172a;
+    --pf-text-2: #475569;
+    --pf-text-3: #64748b;
+    --pf-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 6px 18px rgba(15, 23, 42, .06);
+    --pf-ok: #059669; --pf-ok-soft: #ecfdf5;
+    --pf-bad: #dc2626; --pf-bad-soft: #fef2f2;
+    --pf-warn: #b45309; --pf-warn-soft: #fffbeb;
+    --pf-star: #f59e0b;
+    max-width: 1180px; margin: 0 auto; color: var(--pf-text);
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+body.dark-mode .pf {
+    --pf-accent-soft: color-mix(in srgb, var(--pf-accent) 22%, transparent);
+    --pf-accent-line: color-mix(in srgb, var(--pf-accent) 50%, transparent);
+    --pf-surface: #111827;
+    --pf-surface-2: #0f172a;
+    --pf-hover: #1e293b;
+    --pf-border: #263244;
+    --pf-text: #e5e7eb;
+    --pf-text-2: #cbd5e1;
+    --pf-text-3: #94a3b8;
+    --pf-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+    --pf-ok: #34d399; --pf-ok-soft: rgba(16, 185, 129, .14);
+    --pf-bad: #f87171; --pf-bad-soft: rgba(239, 68, 68, .14);
+    --pf-warn: #fbbf24; --pf-warn-soft: rgba(245, 158, 11, .14);
+}
+.pf *, .pf *::before, .pf *::after { box-sizing: border-box; }
+.pf button, .pf input, .pf select, .pf textarea { font-family: inherit; }
+.pf :focus-visible { outline: 3px solid var(--pf-accent-line); outline-offset: 2px; }
+.pf [hidden] { display: none !important; }
+.pf h1, .pf h2, .pf h3, .pf h4, .pf p { margin: 0; }
+.pf a { color: inherit; }
+
+/* ---------- buttons ---------- */
+.pf-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 11px;
+    border: 1px solid var(--pf-border); background: var(--pf-surface); color: var(--pf-text); font-weight: 600; font-size: .88rem;
+    cursor: pointer; text-decoration: none; white-space: nowrap; transition: background .15s, border-color .15s, color .15s;
+}
+.pf-btn:hover { background: var(--pf-hover); }
+.pf-btn.primary { background: var(--pf-accent); border-color: transparent; color: #fff; }
+.pf-btn.primary:hover { background: var(--primary-dark, var(--pf-accent-2)); }
+.pf-btn.soft { background: var(--pf-accent-soft); border-color: transparent; color: var(--pf-accent); }
+.pf-btn.soft:hover { background: color-mix(in srgb, var(--pf-accent) 20%, transparent); }
+.pf-btn.ghost { border-color: transparent; background: transparent; color: var(--pf-text-2); }
+.pf-btn.ghost:hover { background: var(--pf-hover); color: var(--pf-text); }
+.pf-btn.danger { color: var(--pf-bad); }
+.pf-btn.danger:hover { background: var(--pf-bad-soft); }
+.pf-btn.sm { height: 34px; padding: 0 12px; font-size: .8rem; border-radius: 9px; }
+.pf-btn:disabled { opacity: .55; cursor: not-allowed; }
+.pf-btn.following { background: var(--pf-surface); color: var(--pf-text); border-color: var(--pf-border); }
+.pf-btn.following:hover { background: var(--pf-bad-soft); color: var(--pf-bad); border-color: color-mix(in srgb, var(--pf-bad) 30%, transparent); }
+
+/* ---------- header ---------- */
+.pf-head { background: var(--pf-surface); border: 1px solid var(--pf-border); border-radius: 20px; box-shadow: var(--pf-shadow); overflow: hidden; margin-bottom: 16px; }
+.pf-cover { position: relative; height: 150px; background: linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2)); overflow: hidden; }
+.pf-cover::before { content: ''; position: absolute; right: -60px; top: -100px; width: 280px; height: 280px; border-radius: 50%; background: rgba(255, 255, 255, .1); }
+.pf-cover::after { content: ''; position: absolute; left: 30%; bottom: -120px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255, 255, 255, .07); }
+.pf-cover-tag { position: absolute; right: 18px; bottom: 14px; z-index: 1; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; font-size: .78rem; font-weight: 700; color: #fff; background: rgba(15, 23, 42, .28); border: 1px solid rgba(255, 255, 255, .3); }
+.pf-cover-tag i.dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 0 3px rgba(52, 211, 153, .3); }
+.pf-top { display: flex; gap: 22px; align-items: flex-start; padding: 0 26px; margin-top: -58px; position: relative; z-index: 2; flex-wrap: wrap; }
+.pf-avatar { width: 128px; height: 128px; border-radius: 50%; flex: 0 0 auto; overflow: hidden; display: grid; place-items: center; font: 800 2.6rem 'Poppins', sans-serif; color: #fff; background: linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2)); border: 5px solid var(--pf-surface); box-shadow: 0 8px 22px rgba(15, 23, 42, .2); }
+.pf-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* learners: the profile picture is a badge they have earned */
+.pf-avatar.badge { font-size: 3rem; background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--b) 55%, #fff) 0%, var(--b) 55%, color-mix(in srgb, var(--b) 70%, #000) 100%); box-shadow: 0 0 0 4px var(--t), 0 8px 22px rgba(15, 23, 42, .2); }
+.pf-avatar.badge.empty { background: linear-gradient(135deg, #e2e8f0, #cbd5e1); color: #64748b; }
+.pf-avatar.badge i { filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .25)); }
+.pf-badge-cap { font-size: .8rem; color: var(--pf-text-3); margin-top: 4px; }
+.pf-badge-cap b { color: var(--t); }
+.pf-ubio { margin: 10px 0 0; font-size: .92rem; line-height: 1.55; color: var(--pf-text-2); white-space: pre-line; max-width: 640px; overflow-wrap: anywhere; }
+.pf-id { flex: 1 1 320px; min-width: 0; padding-top: 70px; }
+.pf-name { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pf-name h1 { font: 800 1.65rem/1.2 'Poppins', sans-serif; color: var(--pf-text); overflow-wrap: anywhere; }
+.pf-role { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: .74rem; font-weight: 700; background: var(--pf-accent-soft); color: var(--pf-accent); }
+.pf-role.learner { background: var(--pf-ok-soft); color: var(--pf-ok); }
+.pf-role.parent { background: var(--pf-warn-soft); color: var(--pf-warn); }
+.pf-handle { font-size: .88rem; color: var(--pf-text-3); margin-top: 2px; }
+.pf-headline { margin-top: 8px; font-size: .98rem; font-weight: 600; color: var(--pf-text-2); line-height: 1.45; }
+.pf-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: .83rem; color: var(--pf-text-3); }
+.pf-meta span { display: inline-flex; align-items: center; gap: 6px; }
+.pf-meta .stars-inline { color: var(--pf-star); font-weight: 700; }
+.pf-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 74px; }
+.pf-actnote { padding: 0 26px; margin-top: 10px; font-size: .82rem; font-weight: 600; min-height: 0; }
+.pf-actnote:empty { display: none; }
+.pf-actnote.ok { color: var(--pf-ok); } .pf-actnote.bad { color: var(--pf-bad); }
+
+.pf-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 20px; border-top: 1px solid var(--pf-border); }
+.pf-stat { padding: 14px 10px; text-align: center; border-left: 1px solid var(--pf-border); min-width: 0; background: none; border-top: 0; border-right: 0; border-bottom: 0; font: inherit; color: inherit; }
+.pf-stat:first-child { border-left: 0; }
+button.pf-stat { cursor: pointer; transition: background .15s; }
+button.pf-stat:hover { background: var(--pf-hover); }
+.pf-stat b { display: block; font: 700 1.3rem 'Poppins', sans-serif; color: var(--pf-text); font-variant-numeric: tabular-nums; }
+.pf-stat span { font-size: .76rem; color: var(--pf-text-3); }
+
+/* ---------- tabs ---------- */
+.pf-tabs { position: sticky; top: 0; z-index: 6; display: flex; gap: 4px; padding: 6px; margin-bottom: 16px; border-radius: 14px; background: var(--pf-surface); border: 1px solid var(--pf-border); box-shadow: var(--pf-shadow); overflow-x: auto; scrollbar-width: none; }
+.pf-tabs::-webkit-scrollbar { display: none; }
+.pf-tab { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 16px; border: 0; border-radius: 10px; background: transparent; color: var(--pf-text-2); font-weight: 600; font-size: .9rem; cursor: pointer; transition: background .15s, color .15s; }
+.pf-tab:hover { background: var(--pf-hover); color: var(--pf-text); }
+.pf-tab[aria-selected="true"] { background: var(--pf-accent); color: #fff; }
+.pf-tab .n { padding: 0 7px; border-radius: 999px; font-size: .72rem; background: var(--pf-hover); color: var(--pf-text-2); }
+.pf-tab[aria-selected="true"] .n { background: rgba(255, 255, 255, .22); color: #fff; }
+
+/* ---------- cards ---------- */
+.pf-card { background: var(--pf-surface); border: 1px solid var(--pf-border); border-radius: 18px; box-shadow: var(--pf-shadow); padding: 20px; min-width: 0; }
+.pf-card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.pf-card-h h2 { font: 700 1.02rem 'Poppins', sans-serif; color: var(--pf-text); display: flex; align-items: center; gap: 8px; }
+.pf-card-h h2 i { color: var(--pf-accent); }
+.pf-card-h .r { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.pf-card-h small { color: var(--pf-text-3); font-size: .8rem; }
+.pf-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.pf-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.pf-muted { color: var(--pf-text-3); font-size: .88rem; line-height: 1.5; }
+.pf-link { display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 700; color: var(--pf-accent); text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; }
+.pf-link:hover { text-decoration: underline; }
+.pf-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; font-size: .86rem; line-height: 1.45; }
+.pf-note.ok { background: var(--pf-ok-soft); color: var(--pf-ok); }
+.pf-note.bad { background: var(--pf-bad-soft); color: var(--pf-bad); }
+.pf-note.info { background: var(--pf-accent-soft); color: var(--pf-text); }
+.pf-empty { text-align: center; padding: 40px 16px; color: var(--pf-text-3); }
+.pf-empty i { font-size: 2rem; color: var(--pf-text-3); opacity: .6; margin-bottom: 10px; display: block; }
+.pf-empty h3 { font: 700 1rem 'Poppins', sans-serif; color: var(--pf-text); margin-bottom: 4px; }
+.pf-empty p { font-size: .86rem; max-width: 420px; margin: 0 auto 14px; }
+.pf-skel { height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--pf-hover), var(--pf-surface-2), var(--pf-hover)); background-size: 200% 100%; animation: pfSk 1.2s infinite; margin-bottom: 10px; }
+@keyframes pfSk { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ---------- about ---------- */
+.pf-bio { font-size: .94rem; line-height: 1.65; color: var(--pf-text); white-space: pre-line; overflow-wrap: anywhere; }
+.pf-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+.pf-fact { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--pf-surface-2); border: 1px solid var(--pf-border); min-width: 0; }
+.pf-fact i { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: 0 0 auto; background: var(--pf-accent-soft); color: var(--pf-accent); font-size: .85rem; }
+.pf-fact b { display: block; font-size: .74rem; color: var(--pf-text-3); font-weight: 600; }
+.pf-fact span { font-size: .88rem; font-weight: 600; color: var(--pf-text); overflow-wrap: anywhere; }
+.pf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; font-size: .78rem; font-weight: 600; background: var(--pf-hover); color: var(--pf-text-2); }
+.pf-chip.acc { background: var(--pf-accent-soft); color: var(--pf-accent); }
+.pf-chip.ok { background: var(--pf-ok-soft); color: var(--pf-ok); }
+.pf-chip.warn { background: var(--pf-warn-soft); color: var(--pf-warn); }
+.pf-sub { margin-top: 16px; }
+.pf-sub > b { display: block; font-size: .78rem; color: var(--pf-text-3); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+.pf-quals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pf-quals li { display: flex; gap: 8px; align-items: flex-start; font-size: .88rem; color: var(--pf-text); }
+.pf-quals li i { color: var(--pf-ok); margin-top: 3px; }
+
+/* edit form */
+.pf-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pf-f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pf-f.wide { grid-column: 1 / -1; }
+.pf-f > label, .pf-f > .lbl { font-size: .8rem; font-weight: 700; color: var(--pf-text-2); }
+.pf-in, .pf-sel, .pf-ta { width: 100%; border-radius: 10px; border: 1px solid var(--pf-border); background: var(--pf-surface-2); color: var(--pf-text); font-size: .9rem; }
+.pf-in, .pf-sel { height: 42px; padding: 0 12px; }
+.pf-ta { min-height: 96px; padding: 10px 12px; resize: vertical; line-height: 1.5; }
+.pf-in:focus, .pf-sel:focus, .pf-ta:focus { outline: none; border-color: var(--pf-accent); box-shadow: 0 0 0 3px var(--pf-accent-soft); }
+.pf-hint { font-size: .74rem; color: var(--pf-text-3); }
+.pf-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-pick label { position: relative; cursor: pointer; }
+.pf-pick input { position: absolute; opacity: 0; pointer-events: none; }
+.pf-pick span { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--pf-border); background: var(--pf-surface-2); font-size: .8rem; font-weight: 600; color: var(--pf-text-2); transition: background .15s, border-color .15s, color .15s; }
+.pf-pick label:hover span { border-color: var(--pf-accent-line); }
+.pf-pick input:checked + span { background: var(--pf-accent); border-color: var(--pf-accent); color: #fff; }
+.pf-pick input:focus-visible + span { outline: 3px solid var(--pf-accent-line); outline-offset: 2px; }
+.pf-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--pf-border); background: var(--pf-surface-2); }
+.pf-switch b { display: block; font-size: .88rem; } .pf-switch small { font-size: .76rem; color: var(--pf-text-3); }
+.pf-toggle { position: relative; width: 44px; height: 24px; flex: 0 0 auto; }
+.pf-toggle input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.pf-toggle i { position: absolute; inset: 0; border-radius: 999px; background: var(--pf-border); transition: background .15s; }
+.pf-toggle i::after { content: ''; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+.pf-toggle input:checked + i { background: var(--pf-accent); }
+.pf-toggle input:checked + i::after { transform: translateX(20px); }
+.pf-toggle input:focus-visible + i { outline: 3px solid var(--pf-accent-line); outline-offset: 2px; }
+.pf-form-foot { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+.pf-form-foot .msg { margin-right: auto; font-size: .82rem; font-weight: 600; }
+.pf-form-foot .msg.bad { color: var(--pf-bad); } .pf-form-foot .msg.ok { color: var(--pf-ok); }
+
+/* ---------- strength ---------- */
+.pf-meter { height: 8px; border-radius: 999px; background: var(--pf-hover); overflow: hidden; margin-bottom: 12px; }
+.pf-meter div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--pf-accent), var(--pf-ok)); transition: width .3s; }
+.pf-check { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+.pf-check li { display: flex; align-items: center; gap: 8px; font-size: .84rem; color: var(--pf-text-2); min-width: 0; }
+.pf-check li i { width: 20px; height: 20px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center; font-size: .6rem; border: 2px solid var(--pf-border); color: transparent; }
+.pf-check li.on { color: var(--pf-text-3); text-decoration: line-through; }
+.pf-check li.on i { background: var(--pf-ok); border-color: var(--pf-ok); color: #fff; }
+.pf-check a, .pf-check button { color: var(--pf-accent); font-weight: 600; text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; font-size: .84rem; text-align: left; }
+.pf-check a:hover, .pf-check button:hover { text-decoration: underline; }
+
+/* ---------- bars (subjects/grades) ---------- */
+.pf-bars { display: flex; flex-direction: column; gap: 10px; }
+.pf-bar { display: grid; grid-template-columns: 110px minmax(0, 1fr) 36px; gap: 10px; align-items: center; font-size: .84rem; }
+.pf-bar span:first-child { color: var(--pf-text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-bar .t { height: 8px; border-radius: 999px; background: var(--pf-hover); overflow: hidden; }
+.pf-bar .t div { height: 100%; border-radius: 999px; background: var(--pf-accent); }
+.pf-bar span:last-child { text-align: right; color: var(--pf-text-3); font-variant-numeric: tabular-nums; }
+
+/* ---------- small lists ---------- */
+.pf-mini { display: flex; flex-direction: column; gap: 6px; }
+.pf-mini button { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 12px; align-items: center; padding: 6px; border: 0; border-radius: 12px; background: transparent; text-align: left; cursor: pointer; color: inherit; transition: background .15s; }
+.pf-mini button:hover { background: var(--pf-hover); }
+.pf-mini .th { position: relative; width: 54px; height: 40px; border-radius: 9px; overflow: hidden; display: grid; place-items: center; color: #fff; font-size: .9rem; }
+.pf-mini .th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pf-mini b { display: block; font-size: .88rem; color: var(--pf-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-mini small { font-size: .76rem; color: var(--pf-text-3); }
+.pf-next { display: flex; gap: 14px; align-items: center; }
+.pf-date { width: 56px; flex: 0 0 auto; text-align: center; padding: 8px 0; border-radius: 12px; background: var(--pf-accent-soft); color: var(--pf-accent); }
+.pf-date .m { display: block; font-size: .7rem; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+.pf-date .d { display: block; font: 800 1.35rem/1.1 'Poppins', sans-serif; }
+.pf-date.live { background: var(--pf-bad-soft); color: var(--pf-bad); }
+.pf-date.past { background: var(--pf-hover); color: var(--pf-text-3); }
+
+/* ---------- toolbar ---------- */
+.pf-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.pf-search { position: relative; flex: 1 1 240px; }
+.pf-search i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--pf-text-3); pointer-events: none; }
+.pf-search input { padding-left: 38px; }
+.pf-tools .pf-sel { width: auto; flex: 0 1 190px; min-width: 140px; }
+.pf-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.pf-filter { height: 34px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--pf-border); background: var(--pf-surface); color: var(--pf-text-2); font-size: .82rem; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.pf-filter:hover { border-color: var(--pf-accent-line); color: var(--pf-text); }
+.pf-filter[aria-pressed="true"] { background: var(--pf-accent); border-color: var(--pf-accent); color: #fff; }
+.pf-filter em { font-style: normal; opacity: .75; margin-left: 4px; }
+.pf-count { font-size: .82rem; color: var(--pf-text-3); margin-bottom: 10px; }
+
+/* ---------- resource cards ---------- */
+.pf-res { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.pf-rc { display: flex; flex-direction: column; text-align: left; padding: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--pf-border); background: var(--pf-surface); cursor: pointer; color: inherit; transition: border-color .15s, box-shadow .15s; }
+.pf-rc:hover { border-color: var(--pf-accent-line); box-shadow: var(--pf-shadow); }
+.pf-rc-img { position: relative; aspect-ratio: 16 / 9; display: grid; place-items: center; color: #fff; font-size: 1.6rem; }
+.pf-rc-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pf-rc-badge { position: absolute; left: 8px; top: 8px; z-index: 1; display: inline-flex; gap: 5px; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: .7rem; font-weight: 700; background: rgba(15, 23, 42, .74); color: #fff; }
+.pf-rc-len { position: absolute; right: 8px; bottom: 8px; z-index: 1; padding: 2px 6px; border-radius: 6px; font-size: .7rem; font-weight: 700; background: rgba(15, 23, 42, .78); color: #fff; }
+.pf-rc-priv { position: absolute; right: 8px; top: 8px; z-index: 1; display: inline-flex; gap: 5px; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: .7rem; font-weight: 700; background: #fef3c7; color: #92400e; }
+.pf-rc-b { padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.pf-rc-b b { font-size: .9rem; color: var(--pf-text); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pf-rc-m { display: flex; gap: 6px; flex-wrap: wrap; }
+.pf-rc-m span { padding: 1px 8px; border-radius: 999px; font-size: .7rem; font-weight: 600; background: var(--pf-hover); color: var(--pf-text-2); }
+.pf-rc-n { display: flex; gap: 12px; margin-top: auto; padding-top: 4px; font-size: .76rem; color: var(--pf-text-3); }
+.pf-rc-n span { display: inline-flex; gap: 5px; align-items: center; }
+.k-video { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+.k-pdf { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.k-doc { background: linear-gradient(135deg, #0ea5e9, #0369a1); }
+.k-presentation { background: linear-gradient(135deg, #f97316, #c2410c); }
+.k-spreadsheet { background: linear-gradient(135deg, #10b981, #047857); }
+.k-image { background: linear-gradient(135deg, #14b8a6, #0f766e); }
+.k-audio { background: linear-gradient(135deg, #db2777, #9d174d); }
+.k-code { background: linear-gradient(135deg, #475569, #1e293b); }
+.k-zip { background: linear-gradient(135deg, #a855f7, #6b21a8); }
+.k-other { background: linear-gradient(135deg, #64748b, #334155); }
+
+/* ---------- live ---------- */
+.pf-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.pf-sum div { padding: 14px; border-radius: 14px; background: var(--pf-surface); border: 1px solid var(--pf-border); box-shadow: var(--pf-shadow); }
+.pf-sum b { display: block; font: 700 1.3rem 'Poppins', sans-serif; color: var(--pf-text); }
+.pf-sum span { font-size: .78rem; color: var(--pf-text-3); }
+.pf-lc { display: flex; flex-direction: column; gap: 10px; }
+.pf-lci { display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 14px; background: var(--pf-surface); border: 1px solid var(--pf-border); }
+.pf-lci.live { border-color: color-mix(in srgb, var(--pf-bad) 50%, transparent); }
+.pf-lci-main { flex: 1; min-width: 0; }
+.pf-lci-main h4 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .95rem; color: var(--pf-text); margin-bottom: 4px; }
+.pf-lci-main p { font-size: .84rem; color: var(--pf-text-3); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 6px; }
+.pf-lci-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .78rem; color: var(--pf-text-3); }
+.pf-lci-meta span { display: inline-flex; gap: 6px; align-items: center; }
+.pf-st { padding: 2px 9px; border-radius: 999px; font-size: .7rem; font-weight: 800; }
+.pf-st.upcoming { background: var(--pf-accent-soft); color: var(--pf-accent); }
+.pf-st.past { background: var(--pf-hover); color: var(--pf-text-3); }
+.pf-st.live { background: var(--pf-bad); color: #fff; }
+
+/* ---------- reviews ---------- */
+.pf-rsum { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 24px; align-items: center; }
+.pf-score { text-align: center; }
+.pf-score b { display: block; font: 800 3rem/1 'Poppins', sans-serif; color: var(--pf-text); }
+.pf-score b small { font-size: 1.1rem; color: var(--pf-text-3); font-weight: 600; }
+.pf-score > span:not(.stars) { display: block; margin-top: 6px; font-size: .8rem; color: var(--pf-text-3); }
+.stars { position: relative; display: inline-block; font-size: 1.15rem; letter-spacing: 2px; line-height: 1; margin-top: 8px; }
+.stars .bg { color: var(--pf-border); }
+.stars .fg { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: var(--pf-star); }
+.stars.sm { font-size: .9rem; margin-top: 0; letter-spacing: 1px; }
+.pf-dist { display: flex; flex-direction: column; gap: 8px; }
+.pf-dist div { display: grid; grid-template-columns: 34px minmax(0, 1fr) 30px; gap: 10px; align-items: center; font-size: .82rem; color: var(--pf-text-3); }
+.pf-dist div b { color: var(--pf-text); font-weight: 700; }
+.pf-dist .t { height: 8px; border-radius: 999px; background: var(--pf-hover); overflow: hidden; }
+.pf-dist .t i { display: block; height: 100%; background: var(--pf-star); border-radius: 999px; }
+.pf-picker { display: flex; gap: 2px; margin-bottom: 10px; }
+.pf-picker button { width: 40px; height: 40px; border: 0; background: none; font-size: 1.7rem; line-height: 1; color: var(--pf-border); cursor: pointer; border-radius: 8px; transition: color .1s; }
+.pf-picker button.on { color: var(--pf-star); }
+.pf-picker button:hover { background: var(--pf-hover); }
+.pf-reviews { display: flex; flex-direction: column; gap: 10px; }
+.pf-rv { display: flex; gap: 12px; padding: 14px 16px; border-radius: 14px; background: var(--pf-surface); border: 1px solid var(--pf-border); }
+.pf-rv-av { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex: 0 0 auto; display: grid; place-items: center; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--pf-accent), var(--pf-accent-2)); }
+.pf-rv-av img { width: 100%; height: 100%; object-fit: cover; }
+.pf-rv-b { flex: 1; min-width: 0; }
+.pf-rv-h { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-bottom: 6px; }
+.pf-rv-h b { font-size: .9rem; color: var(--pf-text); }
+.pf-rv-h small { font-size: .76rem; color: var(--pf-text-3); }
+.pf-rv-h .when { margin-left: auto; }
+.pf-rv-t { font-size: .9rem; line-height: 1.55; color: var(--pf-text); white-space: pre-line; overflow-wrap: anywhere; }
+.pf-rv-t.none { color: var(--pf-text-3); font-style: italic; }
+.pf-reply { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--pf-surface-2); border-left: 3px solid var(--pf-accent); }
+.pf-reply b { display: block; font-size: .78rem; color: var(--pf-accent); margin-bottom: 4px; }
+.pf-reply p { font-size: .86rem; line-height: 1.5; color: var(--pf-text); white-space: pre-line; overflow-wrap: anywhere; }
+.pf-reply-form { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.pf-reply-form .row { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+.pf-reply-form .row .msg { margin-right: auto; font-size: .78rem; font-weight: 600; color: var(--pf-bad); }
+
+/* ---------- learner view ---------- */
+.pf-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.pf-kpi { padding: 16px; border-radius: 16px; background: var(--pf-surface); border: 1px solid var(--pf-border); box-shadow: var(--pf-shadow); min-width: 0; }
+.pf-kpi i { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 10px; background: color-mix(in srgb, var(--c, var(--pf-accent)) 14%, transparent); color: var(--c, var(--pf-accent)); }
+.pf-kpi b { display: block; font: 700 1.35rem 'Poppins', sans-serif; color: var(--pf-text); }
+.pf-kpi span { font-size: .78rem; color: var(--pf-text-3); }
+.pf-kpi.dull { opacity: .55; filter: grayscale(.7); }
+.pf-ach { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.pf-ach div { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 12px; border: 1px solid var(--pf-border); background: var(--pf-surface-2); min-width: 0; }
+.pf-ach i { width: 34px; height: 34px; flex: 0 0 auto; border-radius: 10px; display: grid; place-items: center; color: #fff; }
+.pf-ach b { font-size: .8rem; color: var(--pf-text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 960px) {
+    .pf-grid { grid-template-columns: minmax(0, 1fr); }
+    .pf-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+    .pf-cover { height: 110px; }
+    .pf-top { padding: 0 16px; margin-top: -48px; gap: 14px; }
+    .pf-avatar { width: 96px; height: 96px; font-size: 2rem; border-width: 4px; }
+    .pf-name h1 { font-size: 1.3rem; }
+    .pf-id { padding-top: 0; flex-basis: 100%; }
+    .pf-actions { width: 100%; padding-top: 0; }
+    .pf-actions .pf-btn { flex: 1 1 auto; }
+    .pf-actnote { padding: 0 16px; }
+    .pf-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .pf-stat:nth-child(4) { border-left: 0; }
+    .pf-stat:nth-child(n+4) { border-top: 1px solid var(--pf-border); }
+    .pf-card { padding: 16px; border-radius: 16px; }
+    .pf-facts, .pf-form, .pf-check { grid-template-columns: minmax(0, 1fr); }
+    .pf-sum { grid-template-columns: minmax(0, 1fr); }
+    .pf-rsum { grid-template-columns: minmax(0, 1fr); }
+    .pf-lci { flex-wrap: wrap; }
+    .pf-lci > .pf-btn { width: 100%; }
+    .pf-tab { padding: 0 12px; font-size: .84rem; }
+    .pf-res { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .pf-rv-h .when { margin-left: 0; width: 100%; }
+    .pf-cover-tag { right: 10px; bottom: 10px; font-size: .72rem; }
+    .pf-tools .pf-sel { flex: 1 1 140px; }
+}
+@media (max-width: 420px) {
+    .pf-res { grid-template-columns: minmax(0, 1fr); }
+}
 </style>
 
-<div class="profile-page">
-    <div class="profile-shell">
+{% set viewer_role = session.get('role') or 'student' %}
+{% set full_name = ((firstname or '') ~ ' ' ~ (lastname or '')) | trim %}
+{% set hidden = hidden_parts or [] %}
+<div class="pf" data-no-theme id="pf"
+     data-user="{{ profile_user_id }}" data-role="{{ profile_role or 'student' }}"
+     data-own="{{ 'true' if is_own_profile else 'false' }}" data-viewer="{{ viewer_role }}">
 
-        <div class="profile-card">
-            <div class="profile-cover"></div>
-
-            <!-- ===== Header ===== -->
-            <div class="profile-header">
-                <div class="profile-avatar-wrap">
-                    {% if status_note %}
-                    <div class="avatar-note">
-                        <i class="fas fa-chevron-up" style="font-size:9px;"></i>
-                        <span>{{ status_note }}</span>
-                        <i class="fas fa-chevron-down" style="font-size:9px;"></i>
-                    </div>
-                    {% endif %}
-                    <div class="profile-avatar">
-                        {% if avatar_url %}
-                            <img src="{{ avatar_url }}" alt="{{ username }}'s profile photo">
-                        {% else %}
-                            <span>{{ (firstname[0] if firstname else username[0]) | upper }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="profile-identity">
-                    <div class="profile-username-row">
-                        <span class="profile-username">{{ username }}</span>
-                        {% if is_own_profile %}
-                        <a class="profile-settings-icon" href="/settings" title="Settings">
-                            <i class="fas fa-cog"></i>
-                        </a>
-                        {% endif %}
-
-                        <div class="profile-actions">
-                            {% if is_own_profile %}
-                                <a class="pill-btn" href="/settings">Edit Profile</a>
-                            {% else %}
-                                <button
-                                    class="pill-btn primary"
-                                    type="button"
-                                    data-action="follow"
-                                    data-follow-btn="{{ profile_user_id }}"
-                                    data-user-id="{{ profile_user_id }}"
-                                    data-following="{{ 'true' if is_following else 'false' }}"
-                                >{{ 'Following' if is_following else 'Follow' }}</button>
-                                <a class="pill-btn" href="/messages?user={{ profile_user_id }}">Message</a>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    {% if firstname or lastname %}
-                    <div class="profile-fullname">{{ firstname }} {{ lastname }}</div>
-                    {% endif %}
-
-                    {% if profile_role or location or joined_date %}
-                    <div class="profile-meta">
-                        {% if profile_role %}
-                        <span class="meta-chip role">
-                            <i class="fas {{ 'fa-chalkboard-teacher' if profile_role == 'teacher' else 'fa-user-graduate' }}"></i>
-                            {{ 'Teacher' if profile_role == 'teacher' else 'Learner' }}
-                        </span>
-                        {% endif %}
-                        {% if location %}
-                        <span class="meta-chip"><i class="fas fa-location-dot"></i> {{ location }}</span>
-                        {% endif %}
-                        {% if joined_date %}
-                        <span class="meta-chip"><i class="far fa-calendar"></i> Joined {{ joined_date }}</span>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-
-                    {% if bio_lines %}
-                    <div class="profile-bio">{% for line in bio_lines %}{{ line }}{% if not loop.last %}
-{% endif %}{% endfor %}</div>
-                    {% elif bio %}
-                    <div class="profile-bio">{{ bio }}</div>
-                    {% endif %}
-                </div>
+    <!-- ================= HEADER ================= -->
+    <section class="pf-head">
+        <div class="pf-cover">
+            <span class="pf-cover-tag" id="acceptTag" hidden><i class="dot"></i> Taking private students</span>
+        </div>
+        <div class="pf-top">
+            {% if profile_role == 'student' %}
+            {% set b = dp.badge if dp else None %}
+            <div class="pf-avatar badge {{ '' if b else 'empty' }}" style="--b:{{ b.color if b else '#94a3b8' }};--t:{{ b.tier_color if b else '#cbd5e1' }}"
+                 role="img" aria-label="{{ ('Profile picture: the ' ~ b.title ~ ' badge') if b else 'No badge yet' }}" {% if b %}title="{{ b.title }}: {{ b.description }}"{% endif %}>
+                <i class="fas {{ b.icon if b else 'fa-seedling' }}" aria-hidden="true"></i>
             </div>
-
-            <!-- ===== Stats ===== -->
-            <div class="profile-stats">
-                <span class="stat"><strong id="postsCountStat">{{ posts_count | default(0) }}</strong> posts</span>
-                <span class="stat" data-followers-stat="{{ profile_user_id }}">
-                    <strong data-followers-count="{{ profile_user_id }}">{{ followers_count | default(0) }}</strong> Students
-                </span>
-                <span class="stat"><strong>{{ following_count | default(0) }}</strong> following</span>
-            </div>
-
-            <!-- ===== Highlights / New ===== -->
-            {% if highlights %}
-            <div class="profile-highlights">
-                {% if is_own_profile %}
-                {% endif %}
-                {% for h in highlights | default([]) %}
-                <a class="highlight-item" href="{{ h.url }}">
-                    <div class="highlight-circle"><img src="{{ h.cover_url }}" alt="{{ h.label }}"></div>
-                    <span class="highlight-label">{{ h.label }}</span>
-                </a>
-                {% endfor %}
+            {% else %}
+            <div class="pf-avatar">
+                {% if avatar_url %}<img src="{{ avatar_url }}" alt="{{ full_name or username }}">{% else %}{{ ((firstname or username or '?')[0]) | upper }}{{ ((lastname or '')[:1]) | upper }}{% endif %}
             </div>
             {% endif %}
-        </div>
-
-        <!-- ===== Tabs ===== -->
-        <div class="profile-tabs">
-            <button class="profile-tab active" data-tab="uploads" type="button">
-                <i class="fas fa-th"></i><span>Uploads</span>
-            </button>
-            <button class="profile-tab" data-tab="strength" type="button">
-                <i class="fas fa-video"></i><span>Live classes</span>
-            </button>
-            <button class="profile-tab" data-tab="achievements" type="button">
-                <i class="fas fa-star"></i><span>Ratings</span>
-            </button>
-        </div>
-
-        <!-- ===== Uploads panel — real resources, fetched client-side ===== -->
-        <div class="tab-panel active" id="panel-uploads">
-            <div class="posts-loading" id="postsLoading">
-                <i class="fas fa-spinner fa-spin"></i>
-                <div>Loading uploads…</div>
+            <div class="pf-id">
+                <div class="pf-name">
+                    <h1>{{ full_name or username }}</h1>
+                    {% if profile_role == 'teacher' %}<span class="pf-role"><i class="fas fa-chalkboard-teacher"></i> Teacher</span>
+                    {% elif profile_role == 'parent' %}<span class="pf-role parent"><i class="fas fa-user-group"></i> Parent</span>
+                    {% elif profile_role == 'admin' %}<span class="pf-role"><i class="fas fa-shield-halved"></i> eSchool team</span>
+                    {% else %}<span class="pf-role learner"><i class="fas fa-user-graduate"></i> Learner</span>{% endif %}
+                </div>
+                <div class="pf-handle">@{{ username }}</div>
+                {% if profile_role == 'student' and dp and dp.badge %}
+                <div class="pf-badge-cap" style="--t:{{ dp.badge.tier_color }}"><i class="fas fa-medal"></i> {{ dp.badge.title }} · <b>{{ dp.badge.tier_label }}</b> · {{ dp.earned }} achievement{{ '' if dp.earned == 1 else 's' }} earned</div>
+                {% endif %}
+                {% if bio and profile_role != 'teacher' %}<p class="pf-ubio">{{ bio }}</p>{% endif %}
+                {% if profile_role == 'teacher' %}
+                <p class="pf-headline" id="headline"><span class="pf-skel" style="display:block;width:60%;margin:0"></span></p>
+                <div class="pf-meta" id="metaLine"></div>
+                {% endif %}
             </div>
-
-            <div class="uploads-insights" id="uploadsInsights" style="display:none;">
-                <div class="insight-card" style="--c:#4361ee;">
-                    <i class="fas fa-eye"></i>
-                    <div><strong id="insightViews">0</strong><span>Total views</span></div>
-                </div>
-                <div class="insight-card" style="--c:#ef4444;">
-                    <i class="fas fa-heart"></i>
-                    <div><strong id="insightLikes">0</strong><span>Total likes</span></div>
-                </div>
-                <div class="insight-card" style="--c:#10b981;">
-                    <i class="fas fa-chart-line"></i>
-                    <div><strong id="insightRate">—</strong><span>Like rate</span></div>
-                </div>
-                <div class="insight-card" style="--c:#f59e0b;">
-                    <i class="fas fa-fire"></i>
-                    <div><strong id="insightTop">—</strong><span>Top upload</span></div>
-                </div>
-            </div>
-
-            <div class="uploads-toolbar" id="uploadsToolbar" style="display:none;">
-                <div class="filter-chips" id="uploadsFilters"></div>
-                <select class="sort-select" id="uploadsSort" aria-label="Sort uploads">
-                    <option value="recent">Newest</option>
-                    <option value="views">Most viewed</option>
-                    <option value="likes">Most liked</option>
-                </select>
-            </div>
-
-            <div class="posts-grid" id="postsGrid" style="display:none;"></div>
-            <div class="posts-empty" id="postsEmpty" style="display:none;">
-                <i class="fas fa-camera"></i>
-                <div>No uploads yet</div>
+            <div class="pf-actions" id="actions">
+                {% if is_own_profile %}
+                    {% if profile_role == 'teacher' %}<button type="button" class="pf-btn primary" id="editAboutTop"><i class="fas fa-pen"></i> Edit profile</button>{% endif %}
+                    <a class="pf-btn" href="/teacher-settings"><i class="fas fa-gear"></i> Settings</a>
+                {% else %}
+                    {% if profile_role == 'teacher' and viewer_role == 'parent' %}
+                    <a class="pf-btn primary" href="/parent-teacher?teacher={{ profile_user_id }}" id="hireBtn"><i class="fas fa-handshake"></i> Ask for lessons</a>
+                    {% endif %}
+                    <a class="pf-btn" href="/messages?user={{ profile_user_id }}"><i class="fas fa-message"></i> Message</a>
+                {% endif %}
             </div>
         </div>
+        <div class="pf-actnote" id="actNote" role="status"></div>
 
-        <!-- ===== Live classes panel — classes this teacher created ===== -->
-        <div class="tab-panel" id="panel-strength">
-            <div class="posts-loading" id="strengthLoading">
-                <i class="fas fa-spinner fa-spin"></i>
-                <div>Loading live classes…</div>
-            </div>
-            <div id="strengthContent" style="display:none;"></div>
+        {% if profile_role == 'teacher' %}
+        <div class="pf-stats">
+            <div class="pf-stat"><b id="sLessons">–</b><span>lessons taught</span></div>
+            <div class="pf-stat"><b id="sStudents">–</b><span>private learners</span></div>
+            <div class="pf-stat"><b id="sAtt">–</b><span>lessons held</span></div>
+            <button type="button" class="pf-stat" data-go="reviews"><b id="sRating">–</b><span id="sRatingL">rating</span></button>
+            <button type="button" class="pf-stat" data-go="live"><b id="sLive">–</b><span>live classes</span></button>
         </div>
+        {% elif profile_role == 'student' %}
+        <div class="pf-stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+            <div class="pf-stat"><b>{{ friends_count if 'follows' not in hidden else '–' }}</b><span>friends</span></div>
+            <div class="pf-stat"><b>{{ dp.earned if dp and 'achievements' not in hidden else '–' }}</b><span>achievements</span></div>
+            <div class="pf-stat"><b id="sLevel">–</b><span>level</span></div>
+        </div>
+        {% endif %}
+    </section>
 
-        <!-- ===== Ratings panel — stars, average out of ten, reviews ===== -->
-        <div class="tab-panel" id="panel-achievements">
-            <div class="posts-loading" id="achievementsLoading">
-                <i class="fas fa-spinner fa-spin"></i>
-                <div>Loading ratings…</div>
+{% if profile_role == 'teacher' %}
+    <!-- ================= TEACHER ================= -->
+    <nav class="pf-tabs" role="tablist" aria-label="Profile sections">
+        <button class="pf-tab" role="tab" data-tab="overview" aria-selected="true"><i class="fas fa-id-card"></i> Overview</button>
+        <button class="pf-tab" role="tab" data-tab="live" aria-selected="false"><i class="fas fa-video"></i> Live classes <span class="n" id="tLive"></span></button>
+        <button class="pf-tab" role="tab" data-tab="reviews" aria-selected="false"><i class="fas fa-star"></i> Reviews <span class="n" id="tRev"></span></button>
+    </nav>
+
+    <!-- overview -->
+    <div data-panel="overview">
+        <div id="ovNote"></div>
+        <div class="pf-grid">
+            <div class="pf-col">
+                {% if is_own_profile %}
+                <section class="pf-card" id="strengthCard" hidden>
+                    <div class="pf-card-h"><h2><i class="fas fa-gauge-high"></i> Profile strength</h2><div class="r"><small id="strengthPct"></small></div></div>
+                    <div class="pf-meter"><div id="strengthBar"></div></div>
+                    <p class="pf-muted" style="margin-bottom:12px">Parents and learners choosing a private teacher read this page. A complete profile gets more lesson requests.</p>
+                    <ul class="pf-check" id="strengthList"></ul>
+                </section>
+                {% endif %}
+                <section class="pf-card" id="aboutCard">
+                    <div class="pf-card-h"><h2><i class="fas fa-user"></i> About</h2>
+                        {% if is_own_profile %}<div class="r"><button type="button" class="pf-btn sm" id="editAbout"><i class="fas fa-pen"></i> Edit</button></div>{% endif %}
+                    </div>
+                    <div id="aboutView"><div class="pf-skel"></div><div class="pf-skel" style="width:80%"></div><div class="pf-skel" style="width:55%"></div></div>
+                    {% if is_own_profile %}<form id="aboutForm" hidden novalidate></form>{% endif %}
+                </section>
             </div>
-            <div id="achievementsContent" style="display:none;"></div>
+            <div class="pf-col">
+                <section class="pf-card">
+                    <div class="pf-card-h"><h2><i class="fas fa-calendar-day"></i> Next live class</h2></div>
+                    <div id="nextLive"><div class="pf-skel"></div></div>
+                </section>
+                <section class="pf-card">
+                    <div class="pf-card-h"><h2><i class="fas fa-chalkboard-user"></i> Private lessons</h2></div>
+                    <div id="teachMix"><div class="pf-skel"></div><div class="pf-skel"></div></div>
+                </section>
+                <section class="pf-card">
+                    <div class="pf-card-h"><h2><i class="fas fa-star"></i> Latest reviews</h2><div class="r"><button type="button" class="pf-link" data-go="reviews">All reviews <i class="fas fa-arrow-right"></i></button></div></div>
+                    <div id="latestRev"><div class="pf-skel"></div><div class="pf-skel" style="width:70%"></div></div>
+                </section>
+            </div>
         </div>
     </div>
+
+    <!-- live -->
+    <div data-panel="live" hidden><div id="liveBox"><div class="pf-skel"></div><div class="pf-skel"></div></div></div>
+
+    <!-- reviews -->
+    <div data-panel="reviews" hidden><div id="revBox"><div class="pf-skel"></div><div class="pf-skel"></div></div></div>
+
+{% elif profile_role == 'student' %}
+    <!-- ================= LEARNER (seen by a teacher or parent) ================= -->
+    <div id="learnerBox"><div class="pf-card"><div class="pf-skel"></div><div class="pf-skel" style="width:70%"></div></div></div>
+
+{% else %}
+    <!-- ================= PARENT / OTHER ================= -->
+    <section class="pf-card">
+        <div class="pf-empty" style="padding:28px 10px">
+            <i class="fas fa-user-group"></i>
+            <h3>{{ 'Your parent account' if is_own_profile else 'Parent account' }}</h3>
+            <p>Parent profiles only show a name and photo. Parents can't be followed or added as friends{{ '' if is_own_profile else ', but you can send them a message' }}.</p>
+        </div>
+    </section>
+{% endif %}
 </div>
 
-<!-- Resource preview modal -->
-<div class="rp-modal-overlay" id="rpModalOverlay">
-    <div class="rp-modal-box" id="rpModalBox"></div>
-</div>
 
 <script>
-(function () {
-    'use strict';
+(() => {
+"use strict";
+const root = document.getElementById("pf");
+const UID = Number(root.dataset.user), ROLE = root.dataset.role, OWN = root.dataset.own === "true", VIEWER = root.dataset.viewer;
+const $ = id => document.getElementById(id);
 
-    const PROFILE_USER_ID = {{ profile_user_id | tojson }};
-    const IS_OWN_PROFILE = {{ is_own_profile | tojson }};
+/* ---------------- helpers ---------------- */
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const count = n => { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K" : String(n); };
+const safeUrl = u => (/^https?:\/\//i.test(u || "") || /^\/(?!\/)/.test(u || "")) ? u : "";
+const parseT = v => { if (!v) return NaN; const s = String(v).replace(" ", "T"); return Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : s + "Z"); };
+function ago(v) {
+    const t = parseT(v); if (isNaN(t)) return "";
+    const s = (Date.now() - t) / 1000;
+    if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago"; if (s < 86400) return Math.floor(s / 3600) + " h ago";
+    if (s < 86400 * 7) return Math.floor(s / 86400) + " day" + (s < 172800 ? "" : "s") + " ago";
+    return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+async function api(url, opts) {
+    const r = await fetch(url, Object.assign({ credentials: "same-origin" }, opts || {}));
+    if (r.status === 401) { location.href = "/login"; throw new Error("Please sign in again."); }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.success === false) throw Object.assign(new Error(d.message || d.error || `Something went wrong (${r.status}).`), { data: d, status: r.status });
+    return d;
+}
+const postJSON = (url, body, method) => api(url, { method: method || "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+function actNote(text, kind) {
+    const n = $("actNote"); n.textContent = text || ""; n.className = "pf-actnote " + (kind || "");
+    clearTimeout(actNote.t); if (text) actNote.t = setTimeout(() => { n.textContent = ""; }, 5000);
+}
+const SUBJ = { mathematics: "Mathematics", science: "Science", programming: "Physics", arts: "Chemistry", business: "Business", languages: "Languages", general: "General" };
+const LIVE_SUBJ = { math: "Mathematics", english: "English", kiswahili: "Kiswahili", csl: "CSL" };
+const subjName = v => LIVE_SUBJ[String(v || "").toLowerCase()] || String(v || "").replace(/^./, c => c.toUpperCase());
+const gradeLabel = g => /^grade-(\d+)$/.test(g || "") ? "Grade " + g.split("-")[1] : "";
+function starsHTML(outOf5, sm) {
+    const pct = Math.max(0, Math.min(100, (Number(outOf5) || 0) / 5 * 100));
+    return `<span class="stars ${sm ? "sm" : ""}" role="img" aria-label="${(Number(outOf5) || 0).toFixed(1)} out of 5 stars"><span class="bg">★★★★★</span><span class="fg" style="width:${pct}%">★★★★★</span></span>`;
+}
 
-    // ---------------------------------------------------------------
-    // USER SEARCH — same /messages/search_users?q= endpoint the
-    // messages page uses to find accounts by name. Selecting a result
-    // navigates straight to that person's profile.
-    // ---------------------------------------------------------------
-    const userSearchInput = document.getElementById('profileUserSearchInput');
-    const userSearchResults = document.getElementById('profileUserSearchResults');
-    let userSearchDebounceTimer = null;
+/* ======================================================================
+   TEACHER PROFILE
+   ====================================================================== */
+if (ROLE === "teacher") {
+    let ov = null, live = null, ratings = null;
+    let pickedStars = 0, editingReply = new Set();
+    const TABS = ["overview", "live", "reviews"];
 
-    function closeUserSearchResults() {
-        userSearchResults.classList.remove('show');
-        userSearchResults.innerHTML = '';
+    /* ---------- tabs ---------- */
+    function showTab(name, push) {
+        if (!TABS.includes(name)) name = "overview";
+        document.querySelectorAll(".pf-tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.tab === name)));
+        document.querySelectorAll("[data-panel]").forEach(p => { p.hidden = p.dataset.panel !== name; });
+        if (push !== false) history.replaceState(null, "", "#" + name);
+        if (name === "live" && !live) loadLive();
+        if (name === "reviews" && !ratings) loadRatings();
     }
+    document.querySelectorAll(".pf-tab").forEach(t => t.addEventListener("click", () => showTab(t.dataset.tab)));
+    root.addEventListener("click", e => {
+        const g = e.target.closest("[data-go]"); if (!g) return;
+        showTab(g.dataset.go);
+        document.querySelector(".pf-tabs").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
 
-    function renderUserSearchResults(users) {
-        if (!users || users.length === 0) {
-            userSearchResults.innerHTML = `<div class="profile-search-empty">No users found.</div>`;
-            userSearchResults.classList.add('show');
+    /* ---------- overview ---------- */
+    async function loadOverview() {
+        try { ov = await api(`/api/users/${UID}/teacher-overview`); }
+        catch (e) {
+            $("headline").textContent = "";
+            $("ovNote").innerHTML = `<div class="pf-note bad" style="margin-bottom:16px"><i class="fas fa-circle-exclamation"></i><div>Couldn’t load this profile: ${esc(e.message)}</div></div>`;
+            ["aboutView", "nextLive", "teachMix", "latestRev"].forEach(id => { $(id).innerHTML = '<p class="pf-muted">Not available right now.</p>'; });
             return;
         }
-
-        userSearchResults.innerHTML = users.map(u => `
-            <a class="profile-search-result-item" href="/profile/${u.id}">
-                <div class="profile-search-result-avatar">
-                    ${u.avatar_url
-                        ? `<img src="${u.avatar_url}" alt="${u.name}">`
-                        : (u.avatar || '?')}
-                </div>
-                <span class="profile-search-result-name">${u.name}</span>
-            </a>
-        `).join('');
-        userSearchResults.classList.add('show');
+        drawHeader(); drawAbout(); drawStrength(); drawNext(); drawMix();
+        loadRatings(true);
     }
-
-    if (userSearchInput) {
-        userSearchInput.addEventListener('input', function () {
-            const query = this.value.trim();
-            clearTimeout(userSearchDebounceTimer);
-
-            if (query.length === 0) {
-                closeUserSearchResults();
-                return;
-            }
-
-            userSearchDebounceTimer = setTimeout(() => {
-                fetch(`/messages/search_users?q=${encodeURIComponent(query)}`)
-                    .then(res => res.json())
-                    .then(users => renderUserSearchResults(users))
-                    .catch(err => {
-                        console.error('Error searching users:', err);
-                        userSearchResults.innerHTML = `<div class="profile-search-empty">Something went wrong.</div>`;
-                        userSearchResults.classList.add('show');
-                    });
-            }, 300);
-        });
-
-        document.addEventListener('click', function (e) {
-            if (!userSearchInput.contains(e.target) && !userSearchResults.contains(e.target)) {
-                closeUserSearchResults();
-            }
-        });
+    function drawHeader() {
+        const a = ov.about, s = ov.stats;
+        $("headline").textContent = a.headline || "";
+        const meta = [];
+        if (s.rating_count) meta.push(`<span class="stars-inline"><i class="fas fa-star"></i> ${(s.rating_avg * 2).toFixed(1)}/10</span><span>${s.rating_count} review${s.rating_count === 1 ? "" : "s"}</span>`);
+        if (a.experience_label) meta.push(`<span><i class="fas fa-briefcase"></i> ${a.experience_years ? esc(a.experience_label) + " on eSchool" : "New on eSchool"}</span>`);
+        if (s.private_students) meta.push(`<span><i class="fas fa-user-graduate"></i> ${s.private_students} private learner${s.private_students === 1 ? "" : "s"}</span>`);
+        $("metaLine").innerHTML = meta.join("");
+        $("acceptTag").hidden = !(a.has_profile && a.accepting);
+        $("sLessons").textContent = count(s.lessons_done);
+        $("sStudents").textContent = count(s.private_students);
+        $("sAtt").textContent = s.attendance_rate != null ? s.attendance_rate + "%" : "–";
+        $("sRating").textContent = s.rating_count ? (s.rating_avg * 2).toFixed(1) : "–";
+        $("sRatingL").textContent = s.rating_count ? `rating · ${s.rating_count} review${s.rating_count === 1 ? "" : "s"}` : "no reviews yet";
+        $("sLive").textContent = count(s.live_total);
+        $("tLive").textContent = s.live_total || ""; $("tRev").textContent = s.rating_count || "";
     }
-
-    // ---------------------------------------------------------------
-    // TABS — three panels; live classes and ratings load on first open.
-    // ---------------------------------------------------------------
-    const tabs = document.querySelectorAll('.profile-tab');
-    const panels = document.querySelectorAll('.tab-panel');
-    let liveLoaded = false;
-    let ratingsLoaded = false;
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function () {
-            const target = this.dataset.tab;
-
-            tabs.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-
-            panels.forEach(p => p.classList.toggle('active', p.id === `panel-${target}`));
-
-            if (target === 'strength' && !liveLoaded) {
-                liveLoaded = true;
-                loadLiveClasses();
-            }
-            if (target === 'achievements' && !ratingsLoaded) {
-                ratingsLoaded = true;
-                loadRatings();
-            }
-        });
-    });
-
-    // ---------------------------------------------------------------
-    // SHARED HELPERS
-    // ---------------------------------------------------------------
-    function escapeAttr(str) {
-        const div = document.createElement('div');
-        div.textContent = str == null ? '' : String(str);
-        return div.innerHTML.replace(/"/g, '&quot;');
+    function drawAbout() {
+        const a = ov.about, s = ov.stats;
+        const facts = [];
+        if (a.experience_label) facts.push(["fa-briefcase", "Teaching on eSchool", a.experience_years || a.experience_label !== "New this month" ? a.experience_label : "Joined this month"]);
+        const empty = !a.bio && !a.subjects.length && !a.levels.length && !a.qualifications.length && !facts.length;
+        $("aboutView").innerHTML = empty
+            ? `<div class="pf-empty" style="padding:20px 10px"><i class="fas fa-user-pen"></i><h3>${OWN ? "Tell people about yourself" : "No details yet"}</h3><p>${OWN ? "Add what you teach, the grades you teach, your experience and qualifications. Parents and learners read this before asking you for lessons." : "This teacher hasn’t added their details yet. Their live classes and reviews are below."}</p>${OWN ? '<button type="button" class="pf-btn primary" data-edit-about><i class="fas fa-pen"></i> Add your details</button>' : ""}</div>`
+            : `${a.bio ? `<p class="pf-bio">${esc(a.bio)}</p>` : (OWN ? '<p class="pf-muted">Add a few sentences about how you teach. <button type="button" class="pf-link" data-edit-about>Add now</button></p>' : "")}
+               ${facts.length ? `<div class="pf-facts">${facts.map(f => `<div class="pf-fact"><i class="fas ${f[0]}" aria-hidden="true"></i><div><b>${esc(f[1])}</b><span>${esc(f[2])}</span></div></div>`).join("")}</div>` : ""}
+               ${a.subjects.length ? `<div class="pf-sub"><b>Subjects</b><div class="pf-chips">${a.subjects.map(x => `<span class="pf-chip acc">${esc(x)}</span>`).join("")}</div></div>` : ""}
+               ${a.levels.length ? `<div class="pf-sub"><b>Grades</b><div class="pf-chips">${a.levels.map(x => `<span class="pf-chip">${esc(x)}</span>`).join("")}</div></div>` : ""}
+               ${a.qualifications.length ? `<div class="pf-sub"><b>Qualifications</b><ul class="pf-quals">${a.qualifications.map(x => `<li><i class="fas fa-certificate" aria-hidden="true"></i>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+               `;
     }
-
-    function formatCount(n) {
-        n = n || 0;
-        if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-        if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-        return n.toString();
+    function drawStrength() {
+        if (!OWN || !ov.checklist) return;
+        const c = ov.checklist, done = c.filter(x => x.done).length, pct = Math.round(done / c.length * 100);
+        $("strengthCard").hidden = pct === 100;
+        $("strengthPct").textContent = `${pct}% · ${done} of ${c.length}`;
+        $("strengthBar").style.width = pct + "%";
+        $("strengthList").innerHTML = c.map(x => `<li class="${x.done ? "on" : ""}"><i class="fas fa-check" aria-hidden="true"></i>${x.done ? esc(x.label)
+            : x.href ? `<a href="${x.href}">${esc(x.label)}</a>` : `<button type="button" data-edit-about>${esc(x.label)}</button>`}</li>`).join("");
     }
-
-    function safeUrl(url) {
-        return /^https?:\/\//i.test(url || '') || /^\//.test(url || '') ? url : '';
-    }
-
-    // ---------------------------------------------------------------
-    // UPLOADS GRID — real data from /api/resources/user/<id>.
-    // ---------------------------------------------------------------
-    let uploads = [];
-    let activeFilter = 'all';
-    let activeSort = 'recent';
-
-    const FILTER_ORDER = ['video', 'document', 'image', 'audio', 'other'];
-    const FILTER_LABELS = { video: 'Videos', document: 'Documents', image: 'Images', audio: 'Audio', other: 'Other' };
-
-    function viewsOf(r) { return r.views_count ?? r.views ?? 0; }
-    function likesOf(r) { return r.likes_count ?? r.likes ?? 0; }
-
-    function filterGroup(r) {
-        const c = resolveCategory(r);
-        return (c === 'pdf' || c === 'doc') ? 'document' : c;
-    }
-
-    function updateInsights() {
-        const totalViews = uploads.reduce((s, r) => s + viewsOf(r), 0);
-        const totalLikes = uploads.reduce((s, r) => s + likesOf(r), 0);
-        const top = uploads.reduce((best, r) => (!best || viewsOf(r) > viewsOf(best)) ? r : best, null);
-
-        document.getElementById('insightViews').textContent = formatCount(totalViews);
-        document.getElementById('insightLikes').textContent = formatCount(totalLikes);
-        document.getElementById('insightRate').textContent =
-            totalViews > 0 ? Math.min(100, Math.round((totalLikes / totalViews) * 100)) + '%' : '—';
-
-        const topEl = document.getElementById('insightTop');
-        topEl.textContent = (top && totalViews > 0) ? (top.title || 'Untitled') : '—';
-        topEl.title = topEl.textContent;
-    }
-
-    function renderFilters() {
-        const el = document.getElementById('uploadsFilters');
-        const counts = {};
-        uploads.forEach(r => {
-            const g = filterGroup(r);
-            counts[g] = (counts[g] || 0) + 1;
-        });
-        if (activeFilter !== 'all' && !counts[activeFilter]) activeFilter = 'all';
-
-        const chip = (key, label, n) =>
-            `<button type="button" class="filter-chip ${activeFilter === key ? 'active' : ''}" data-filter="${key}">${label}<span>${n}</span></button>`;
-
-        let html = chip('all', 'All', uploads.length);
-        FILTER_ORDER.forEach(key => {
-            if (counts[key]) html += chip(key, FILTER_LABELS[key], counts[key]);
-        });
-        el.innerHTML = html;
-    }
-
-    function renderGrid() {
-        const grid = document.getElementById('postsGrid');
-        let list = uploads.filter(r => activeFilter === 'all' || filterGroup(r) === activeFilter);
-
-        if (activeSort === 'views') {
-            list = list.slice().sort((a, b) => viewsOf(b) - viewsOf(a));
-        } else if (activeSort === 'likes') {
-            list = list.slice().sort((a, b) => likesOf(b) - likesOf(a));
-        }
-
-        grid.innerHTML = list.map(renderTile).join('');
-    }
-
-    function renderUploadsUI() {
-        updateInsights();
-        renderFilters();
-        renderGrid();
-    }
-
-    document.getElementById('uploadsFilters').addEventListener('click', function (e) {
-        const btn = e.target.closest('[data-filter]');
-        if (!btn) return;
-        activeFilter = btn.dataset.filter;
-        renderFilters();
-        renderGrid();
-    });
-
-    document.getElementById('uploadsSort').addEventListener('change', function () {
-        activeSort = this.value;
-        renderGrid();
-    });
-
-    async function loadUploads() {
-        const loading = document.getElementById('postsLoading');
-        const grid = document.getElementById('postsGrid');
-        const empty = document.getElementById('postsEmpty');
-        const insights = document.getElementById('uploadsInsights');
-        const toolbar = document.getElementById('uploadsToolbar');
-
-        loading.style.display = 'block';
-        grid.style.display = 'none';
-        empty.style.display = 'none';
-
-        try {
-            const res = await fetch(`/api/resources/user/${PROFILE_USER_ID}`);
-            if (!res.ok) throw new Error(`Failed to load uploads (${res.status})`);
-            const data = await res.json();
-            uploads = data.resources || [];
-        } catch (err) {
-            console.error('Failed to load uploads:', err);
-            uploads = [];
-        }
-
-        loading.style.display = 'none';
-
-        const postsCountStat = document.getElementById('postsCountStat');
-        if (postsCountStat) postsCountStat.textContent = uploads.length;
-
-        if (!uploads.length) {
-            insights.style.display = 'none';
-            toolbar.style.display = 'none';
-            empty.style.display = 'block';
+    function drawNext() {
+        const n = ov.next_live;
+        if (!n) {
+            $("nextLive").innerHTML = `<p class="pf-muted">${OWN ? 'No class scheduled. <a class="pf-link" href="/teacher-live">Schedule one</a>' : "No upcoming live class."}</p>`
+                + (ov.stats.live_total ? `<p class="pf-muted" style="margin-top:6px">${ov.stats.live_total} past class${ov.stats.live_total === 1 ? "" : "es"}. <button type="button" class="pf-link" data-go="live">See them</button></p>` : "");
             return;
         }
-
-        insights.style.display = 'grid';
-        toolbar.style.display = 'flex';
-        grid.style.display = 'grid';
-        renderUploadsUI();
+        const t = parseT(n.start_time), d = new Date(t), st = classStatus({ scheduled_at: n.start_time, duration_minutes: n.duration_min, state: n.state });
+        $("nextLive").innerHTML = `<div class="pf-next"><div class="pf-date ${st === "live" ? "live" : ""}"><span class="m">${d.toLocaleDateString(undefined, { month: "short" })}</span><span class="d">${d.getDate()}</span></div>
+            <div style="min-width:0"><b style="display:block;font-size:.95rem">${esc(n.title)}</b>
+            <span class="pf-muted" style="font-size:.82rem">${st === "live" ? '<span class="pf-st live">LIVE NOW</span> ' : ""}${d.toLocaleDateString(undefined, { weekday: "long" })}, ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${n.duration_min || 60} min${n.subject ? " · " + esc(subjName(n.subject)) : ""}${n.grade ? " · " + esc(n.grade) : ""}</span></div></div>
+            <button type="button" class="pf-link" data-go="live" style="margin-top:12px">All live classes <i class="fas fa-arrow-right"></i></button>`;
     }
-
-    function renderTile(r) {
-        const views = viewsOf(r);
-        const likes = likesOf(r);
-        const thumb = r.thumbnail_url || getDefaultThumbnail();
-
-        return `
-            <button class="post-tile" type="button" onclick="window.__openResourcePreview(${r.id})" title="${escapeAttr(r.title)}">
-                <span class="post-badge">${getFileTypeText(r.file_category)}</span>
-                <img src="${thumb}" alt="${escapeAttr(r.title)}" loading="lazy" onerror="this.onerror=null;this.src=window.__fallbackThumb;">
-                <span class="post-overlay">
-                    <span><i class="fas fa-eye"></i> ${formatCount(views)}</span>
-                    <span><i class="fas fa-heart"></i> ${formatCount(likes)}</span>
-                </span>
-                <span class="post-caption">${escapeAttr(r.title)}</span>
-            </button>
-        `;
-    }
-
-    function getFileTypeText(type) {
-        return {
-            video: 'Video',
-            pdf: 'Document',
-            doc: 'Document',
-            image: 'Image',
-            audio: 'Audio'
-        }[type] || 'File';
-    }
-
-    // Inline placeholder (the old unsplash source URL no longer serves images).
-    function getDefaultThumbnail() {
-        return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Crect width='600' height='600' fill='%23cbd5e1'/%3E%3Cpath d='M220 170h120l60 60v200H220z' fill='%2394a3b8'/%3E%3Cpath d='M340 170v60h60z' fill='%2364748b'/%3E%3C/svg%3E";
-    }
-    window.__fallbackThumb = getDefaultThumbnail();
-
-    function resolveCategory(r) {
-        const known = ['video', 'audio', 'image', 'pdf', 'doc'];
-        const raw = (r.file_category || '').toString().toLowerCase().trim();
-        if (known.includes(raw)) return raw;
-        return 'other';
-    }
-
-    // ---------------------------------------------------------------
-    // PREVIEW MODAL — opens the real file, tracks one view per user
-    // via POST /api/resources/<id>/view.
-    // ---------------------------------------------------------------
-    const rpOverlay = document.getElementById('rpModalOverlay');
-    const rpBox = document.getElementById('rpModalBox');
-
-    window.__openResourcePreview = async function (id) {
-        try {
-            const res = await fetch(`/api/resources/${id}`);
-            if (!res.ok) throw new Error(`Failed to load resource (${res.status})`);
-            const data = await res.json();
-            const r = data.resource;
-            if (!r) return;
-
-            const category = resolveCategory(r);
-            let media;
-
-            if (!r.file_url) {
-                media = `<div class="rp-modal-fallback">This file is missing its URL.</div>`;
-            } else if (category === 'video') {
-                media = `<video controls autoplay><source src="${r.file_url}">Your browser can't play this video.</video>`;
-            } else if (category === 'audio') {
-                media = `<audio controls autoplay><source src="${r.file_url}">Your browser can't play this audio.</audio>`;
-            } else if (category === 'image') {
-                media = `<img src="${r.file_url}" alt="${escapeAttr(r.title)}">`;
-            } else if (category === 'pdf') {
-                media = `<iframe src="${r.file_url}" title="${escapeAttr(r.title)}"></iframe>`;
-            } else {
-                media = `
-                    <div class="rp-modal-fallback">
-                        <p>No inline preview for this file type.</p>
-                        <a href="/api/resources/${r.id}/download"><i class="fas fa-download"></i> Download</a>
-                    </div>`;
-            }
-
-            const views = r.views_count ?? r.views ?? 0;
-            const likes = r.likes_count ?? r.likes ?? 0;
-
-            rpBox.innerHTML = `
-                <div class="rp-modal-header">
-                    <h2>${escapeAttr(r.title)}</h2>
-                    <button type="button" onclick="window.__closeResourcePreview()">✕</button>
-                </div>
-                <div class="rp-modal-body">${media}</div>
-                <div class="rp-modal-footer">
-                    <span><i class="fas fa-eye"></i> ${formatCount(views)} views</span>
-                    <span><i class="fas fa-heart"></i> ${formatCount(likes)} likes</span>
-                </div>
-            `;
-
-            rpOverlay.classList.add('show');
-            document.body.style.overflow = 'hidden';
-
-            fetch(`/api/resources/${id}/view`, { method: 'POST' }).catch(() => {});
-        } catch (err) {
-            console.error('Failed to open resource preview:', err);
+    function drawMix() {
+        // the private lessons this teacher offers: what families pay for
+        const a = ov.about, s = ov.stats, rows = [];
+        if (!a.has_profile) {
+            $("teachMix").innerHTML = `<p class="pf-muted">${OWN ? 'Set your price, lesson length and when you’re free so parents and learners can ask you for lessons. <button type="button" class="pf-link" data-edit-about>Set it up</button>' : "This teacher hasn’t set up private lessons yet."}</p>`;
+            return;
         }
-    };
+        if (a.rate) rows.push(["fa-coins", "Price", `KES ${Number(a.rate).toLocaleString()} a lesson`]);
+        rows.push(["fa-circle-check", "Lessons taught", s.lessons_done ? `${count(s.lessons_done)}${s.attendance_rate != null ? ` · ${s.attendance_rate}% of booked lessons held` : ""}` : "None yet"]);
+        rows.push(["fa-user-graduate", "Private learners now", count(s.private_students)]);
+        $("teachMix").innerHTML = `<div class="pf-facts">${rows.map(f => `<div class="pf-fact"><i class="fas ${f[0]}" aria-hidden="true"></i><div><b>${esc(f[1])}</b><span>${esc(f[2])}</span></div></div>`).join("")}</div>
+            <div class="pf-sub"><span class="pf-chip ${a.accepting ? "ok" : "warn"}"><i class="fas ${a.accepting ? "fa-circle-check" : "fa-circle-pause"}"></i> ${a.accepting ? "Taking new private learners" : "Not taking new private learners right now"}</span></div>
+            ${!OWN && VIEWER === "parent" && a.accepting ? `<a class="pf-btn primary" style="margin-top:12px" href="/parent-teacher?teacher=${UID}"><i class="fas fa-handshake"></i> Ask for lessons</a>` : ""}
+            ${OWN ? '<p class="pf-muted" style="margin-top:12px;font-size:.8rem">Lessons count as taught when the eSchool call shows they happened. Families pay through eSchool.</p>' : ""}`;
+    }
 
-    window.__closeResourcePreview = function () {
-        rpOverlay.querySelectorAll('video, audio').forEach(m => {
-            m.pause();
-            m.currentTime = 0;
-            m.src = '';
-            m.load();
-        });
-        rpOverlay.classList.remove('show');
-        rpBox.innerHTML = '';
-        document.body.style.overflow = '';
-        loadUploads();
-    };
-
-    rpOverlay.addEventListener('click', function (e) {
-        if (e.target === rpOverlay) window.__closeResourcePreview();
-    });
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && rpOverlay.classList.contains('show')) window.__closeResourcePreview();
-    });
-
-    loadUploads();
-
-    // ---------------------------------------------------------------
-    // FOLLOW / UNFOLLOW — POST/DELETE /api/users/<id>/follow with an
-    // optimistic update that reconciles with the server's total.
-    // ---------------------------------------------------------------
-    const followBtn = document.querySelector('[data-action="follow"]');
-    if (followBtn) {
-        followBtn.addEventListener('click', async function () {
-            const userId = this.getAttribute('data-user-id');
-            const wasFollowing = this.dataset.following === 'true';
-            const newFollowing = !wasFollowing;
-
-            const countEl = document.querySelector(`[data-followers-count="${userId}"]`);
-            const currentCount = countEl ? parseInt(countEl.textContent.replace(/[^\d]/g, ''), 10) || 0 : 0;
-            const optimisticCount = Math.max(0, currentCount + (wasFollowing ? -1 : 1));
-
-            this.disabled = true;
-            applyFollowState(this, newFollowing);
-            updateFollowerCount(userId, optimisticCount, { animate: true });
-
-            let res;
+    /* ---------- edit about (own) ---------- */
+    const GRADES = Array.from({ length: 11 }, (_, i) => "Grade " + (i + 1));
+    let tutor = null;
+    async function openEdit() {
+        const f = $("aboutForm"); if (!f) return;
+        showTab("overview");
+        f.hidden = false; $("aboutView").hidden = true; $("editAbout").hidden = true;
+        f.innerHTML = '<div class="pf-skel"></div><div class="pf-skel"></div>';
+        try { tutor = await api("/api/tutor-profile"); }
+        catch (e) { f.innerHTML = `<div class="pf-note bad"><i class="fas fa-circle-exclamation"></i><div>${esc(e.message)}</div></div>`; return; }
+        const p = tutor.profile || {}, parse = v => { try { const x = JSON.parse(v || "[]"); return Array.isArray(x) ? x : []; } catch (e) { return []; } };
+        const subs = parse(p.subjects), lv = parse(p.levels), quals = parse(p.qualifications);
+        const allSubs = Array.from(new Set([...(tutor.subjects || []), ...subs]));
+        const allLv = Array.from(new Set([...GRADES, ...lv]));
+        f.innerHTML = `<div class="pf-form">
+            <div class="pf-f wide"><label for="aHeadline">Headline</label><input class="pf-in" id="aHeadline" maxlength="120" value="${esc(p.headline || "")}" placeholder="e.g. Mathematics & Physics teacher · KCSE examiner"><span class="pf-hint">One line shown under your name.</span></div>
+            <div class="pf-f wide"><label for="aBio">About you</label><textarea class="pf-ta" id="aBio" maxlength="1500" placeholder="How you teach, what learners can expect, results you’re proud of.">${esc(p.bio || "")}</textarea><span class="pf-hint"><span id="aBioN">${(p.bio || "").length}</span> / 1500</span></div>
+            <div class="pf-f wide"><span class="lbl">Subjects you teach</span><div class="pf-pick" id="aSubs">${allSubs.map(x => `<label><input type="checkbox" value="${esc(x)}" ${subs.includes(x) ? "checked" : ""}><span>${esc(x)}</span></label>`).join("")}</div></div>
+            <div class="pf-f wide"><span class="lbl">Grades you teach</span><div class="pf-pick" id="aLvls">${allLv.map(x => `<label><input type="checkbox" value="${esc(x)}" ${lv.includes(x) ? "checked" : ""}><span>${esc(x)}</span></label>`).join("")}</div></div>
+            <div class="pf-f"><label for="aRate">Private lesson fee (KES)</label><input class="pf-in" id="aRate" type="number" min="50" max="100000" inputmode="numeric" value="${p.rate ?? ""}" placeholder="e.g. 800"><span class="pf-hint">Parents and learners see this before asking you for lessons.</span></div>
+            <div class="pf-f wide"><label for="aQuals">Qualifications</label><textarea class="pf-ta" id="aQuals" style="min-height:76px" placeholder="One per line, e.g.&#10;B.Ed Mathematics, Moi University&#10;TSC registered">${esc(quals.join("\n"))}</textarea></div>
+            <div class="pf-f wide"><div class="pf-switch"><div><b>Taking new private learners</b><small>Parents and learners can ask you for lessons.</small></div><label class="pf-toggle"><input type="checkbox" id="aAccept" ${p.accepting === 0 ? "" : "checked"} aria-label="Taking new private learners"><i></i></label></div></div>
+            <div class="pf-form-foot"><span class="msg" id="aMsg" role="status"></span><button type="button" class="pf-btn" id="aCancel">Cancel</button><button type="submit" class="pf-btn primary" id="aSave"><i class="fas fa-floppy-disk"></i> Save</button></div>
+        </div>`;
+        $("aBio").addEventListener("input", e => { $("aBioN").textContent = e.target.value.length; });
+        $("aHeadline").focus();
+    }
+    function closeEdit() {
+        const f = $("aboutForm"); if (!f) return;
+        f.hidden = true; f.innerHTML = ""; $("aboutView").hidden = false; $("editAbout").hidden = false;
+    }
+    if (OWN) {
+        $("editAbout").addEventListener("click", openEdit);
+        $("editAboutTop").addEventListener("click", () => { openEdit(); $("aboutCard").scrollIntoView({ behavior: "smooth", block: "start" }); });
+        root.addEventListener("click", e => { if (e.target.closest("[data-edit-about]")) { openEdit(); $("aboutCard").scrollIntoView({ behavior: "smooth", block: "start" }); } if (e.target.id === "aCancel") closeEdit(); });
+        $("aboutForm").addEventListener("submit", async e => {
+            e.preventDefault();
+            const msg = $("aMsg"), btn = $("aSave"), num = id => { const v = $(id).value.trim(); return v === "" ? null : Number(v); };
+            const rate = num("aRate");
+            msg.className = "msg bad";
+            if (rate != null && (rate < 50 || rate > 100000)) { msg.textContent = "The fee must be between KES 50 and 100,000, or left empty."; $("aRate").focus(); return; }
+            const picked = id => [...document.querySelectorAll(`#${id} input:checked`)].map(i => i.value);
+            const body = {
+                headline: $("aHeadline").value.trim(), bio: $("aBio").value.trim(), subjects: picked("aSubs"), levels: picked("aLvls"),
+                rate: rate, qualifications: $("aQuals").value.split("\n").map(s => s.trim()).filter(Boolean),
+                accepting: $("aAccept").checked
+            };
+            btn.disabled = true; msg.className = "msg"; msg.textContent = "Saving…";
             try {
-                res = await fetch(`/api/users/${userId}/follow`, {
-                    method: wasFollowing ? 'DELETE' : 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin'
-                });
-            } catch (networkErr) {
-                console.warn('[follow] request did not reach the server; keeping local state.', networkErr);
-                this.disabled = false;
-                return;
-            }
-
-            if (res.status === 401) {
-                window.location.href = '/Login';
-                return;
-            }
-
-            if (res.status === 404 || res.status === 405) {
-                console.warn(`[follow] "/api/users/${userId}/follow" isn't available yet (${res.status}); keeping local state.`);
-                this.disabled = false;
-                return;
-            }
-
-            try {
-                if (!res.ok) throw new Error(`Follow request failed (${res.status})`);
-
-                const data = await res.json();
-                const finalFollowing = typeof data.following === 'boolean' ? data.following : newFollowing;
-                const finalCount = typeof data.followers_count === 'number' ? data.followers_count : optimisticCount;
-
-                applyFollowState(this, finalFollowing);
-                updateFollowerCount(userId, finalCount, { animate: false });
-            } catch (err) {
-                console.error('Failed to toggle follow:', err);
-                applyFollowState(this, wasFollowing);
-                updateFollowerCount(userId, currentCount, { animate: false });
-            } finally {
-                this.disabled = false;
-            }
+                await postJSON("/api/tutor-profile", body);
+                closeEdit(); await loadOverview();
+                actNote("Profile saved. This is what everyone sees now.", "ok");
+            } catch (err) { btn.disabled = false; msg.className = "msg bad"; msg.textContent = err.message; }
         });
     }
 
-    function applyFollowState(btn, following) {
-        btn.dataset.following = following;
-        btn.textContent = following ? 'Following' : 'Follow';
-        btn.classList.toggle('primary', !following);
-    }
-
-    function updateFollowerCount(userId, count, { animate = false } = {}) {
-        const countEl = document.querySelector(`[data-followers-count="${userId}"]`);
-        if (!countEl) return;
-        countEl.textContent = count;
-        if (animate) {
-            countEl.classList.remove('pop');
-            void countEl.offsetWidth;
-            countEl.classList.add('pop');
-            setTimeout(() => countEl.classList.remove('pop'), 300);
-        }
-    }
-
-    // =================================================================
-    // LIVE CLASSES TAB — GET /api/users/<id>/live-classes
-    // =================================================================
-    let liveClasses = [];
-    let liveFilter = 'all';
-
-    function classWindow(c) {
-        const start = new Date(c.scheduled_at).getTime();
-        const mins = Number(c.duration_minutes) > 0 ? Number(c.duration_minutes) : 60;
-        return { start: start, end: start + mins * 60000, mins: mins };
-    }
-
-    // live / upcoming / ended, worked out from the start time and duration
+    /* ---------- live classes ---------- */
+    let liveFilter = "all";
+    // classes are taught inside eSchool: live only while the teacher is broadcasting from the studio
     function classStatus(c) {
-        const w = classWindow(c);
-        if (isNaN(w.start)) return 'upcoming';
-        const now = Date.now();
-        if (now < w.start) return 'upcoming';
-        if (now <= w.end) return 'live';
-        return 'ended';
+        if (c.state === "live") return "live";
+        const s = parseT(c.scheduled_at), mins = Number(c.duration_minutes) > 0 ? Number(c.duration_minutes) : 60;
+        if (c.state === "ended" || (!isNaN(s) && Date.now() > s + mins * 60000)) return "past";
+        return "upcoming";
     }
-
-    function statusLabel(s) {
-        return { live: 'Live now', upcoming: 'Upcoming', ended: 'Ended' }[s];
+    async function loadLive() {
+        try { live = (await api(`/api/users/${UID}/live-classes`)).classes || []; }
+        catch (e) { $("liveBox").innerHTML = `<div class="pf-note bad"><i class="fas fa-circle-exclamation"></i><div>Couldn’t load live classes: ${esc(e.message)}</div></div>`; return; }
+        drawLive();
     }
-
-    function renderLiveCard(c) {
-        const status = classStatus(c);
-        const w = classWindow(c);
-        const d = new Date(c.scheduled_at);
-        const valid = !isNaN(d.getTime());
-        const month = valid ? d.toLocaleDateString([], { month: 'short' }) : '--';
-        const day = valid ? d.getDate() : '--';
-        const when = valid
-            ? d.toLocaleDateString([], { weekday: 'short' }) + ', ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : 'Time to be announced';
-        const url = safeUrl(c.join_url);
-
-        let action = '';
-        if (status === 'live' && url) {
-            action = `<a class="pill-btn primary" href="${escapeAttr(url)}" target="_blank" rel="noopener"><i class="fas fa-video"></i> Join now</a>`;
-        } else if (status === 'upcoming' && url) {
-            action = `<a class="pill-btn" href="${escapeAttr(url)}" target="_blank" rel="noopener"><i class="fas fa-link"></i> Class link</a>`;
+    function drawLive() {
+        if (!live.length) {
+            $("liveBox").innerHTML = `<div class="pf-card"><div class="pf-empty"><i class="fas fa-video"></i><h3>${OWN ? "No live classes yet" : "No live classes yet"}</h3><p>${OWN ? "Schedule a class and it shows here for learners." : "When this teacher schedules a live class, it will show here."}</p>${OWN ? '<a class="pf-btn primary" href="/teacher-live"><i class="fas fa-plus"></i> Schedule a class</a>' : ""}</div></div>`;
+            return;
         }
-
-        return `
-            <div class="lc-card ${status}">
-                <div class="lc-date"><span class="m">${escapeAttr(month)}</span><span class="d">${escapeAttr(day)}</span></div>
-                <div class="lc-main">
-                    <div class="lc-title">${escapeAttr(c.title || 'Untitled class')}<span class="lc-status ${status}">${statusLabel(status)}</span></div>
-                    ${c.description ? `<div class="lc-desc">${escapeAttr(c.description)}</div>` : ''}
-                    <div class="lc-meta">
-                        <span><i class="far fa-clock"></i> ${escapeAttr(when)}</span>
-                        <span><i class="fas fa-hourglass-half"></i> ${w.mins} min</span>
-                        <span><i class="fas fa-users"></i> ${formatCount(c.attendees_count || 0)} joined</span>
-                    </div>
-                </div>
-                ${action ? `<div class="lc-action">${action}</div>` : ''}
-            </div>
-        `;
-    }
-
-    function renderLivePanel() {
-        const content = document.getElementById('strengthContent');
-        const counts = { all: liveClasses.length, live: 0, upcoming: 0, ended: 0 };
-        let totalAttendees = 0;
-        liveClasses.forEach(c => {
-            counts[classStatus(c)] += 1;
-            totalAttendees += Number(c.attendees_count) || 0;
+        const c = { all: live.length, live: 0, upcoming: 0, past: 0 };
+        live.forEach(x => { c[classStatus(x)]++; });
+        if (liveFilter !== "all" && !c[liveFilter]) liveFilter = "all";
+        const order = { live: 0, upcoming: 1, past: 2 };
+        const list = live.filter(x => liveFilter === "all" || classStatus(x) === liveFilter).sort((a, b) => {
+            const sa = classStatus(a), sb = classStatus(b);
+            if (sa !== sb) return order[sa] - order[sb];
+            return sa === "past" ? parseT(b.scheduled_at) - parseT(a.scheduled_at) : parseT(a.scheduled_at) - parseT(b.scheduled_at);
         });
-
-        if (!liveClasses.length) {
-            content.innerHTML = `
-                <div class="posts-empty">
-                    <i class="fas fa-video"></i>
-                    <div>${IS_OWN_PROFILE ? "You haven't created any live classes yet." : 'No live classes yet.'}</div>
-                    ${IS_OWN_PROFILE ? '<a class="pill-btn primary" href="/teacher-live"><i class="fas fa-plus"></i> Create a live class</a>' : ''}
-                </div>`;
-            return;
-        }
-
-        if (liveFilter !== 'all' && !counts[liveFilter]) liveFilter = 'all';
-
-        const chip = (key, label) =>
-            `<button type="button" class="filter-chip ${liveFilter === key ? 'active' : ''}" data-live-filter="${key}">${label}<span>${counts[key]}</span></button>`;
-
-        // live first, then soonest upcoming, then most recent ended
-        const order = { live: 0, upcoming: 1, ended: 2 };
-        const list = liveClasses
-            .filter(c => liveFilter === 'all' || classStatus(c) === liveFilter)
-            .slice()
-            .sort((a, b) => {
-                const sa = classStatus(a), sb = classStatus(b);
-                if (sa !== sb) return order[sa] - order[sb];
-                const ta = new Date(a.scheduled_at).getTime() || 0;
-                const tb = new Date(b.scheduled_at).getTime() || 0;
-                return sa === 'ended' ? tb - ta : ta - tb;
-            });
-
-        content.innerHTML = `
-            <div class="lc-summary">
-                <div class="insight-card" style="--c:#4361ee;">
-                    <i class="fas fa-video"></i>
-                    <div><strong>${counts.all}</strong><span>Classes created</span></div>
-                </div>
-                <div class="insight-card" style="--c:#f59e0b;">
-                    <i class="far fa-calendar-check"></i>
-                    <div><strong>${counts.upcoming + counts.live}</strong><span>Upcoming</span></div>
-                </div>
-                <div class="insight-card" style="--c:#10b981;">
-                    <i class="fas fa-users"></i>
-                    <div><strong>${formatCount(totalAttendees)}</strong><span>Total attendees</span></div>
-                </div>
-            </div>
-            <div class="uploads-toolbar">
-                <div class="filter-chips" id="liveFilters">
-                    ${chip('all', 'All')}
-                    ${counts.live ? chip('live', 'Live now') : ''}
-                    ${counts.upcoming ? chip('upcoming', 'Upcoming') : ''}
-                    ${counts.ended ? chip('ended', 'Past') : ''}
-                </div>
-                ${IS_OWN_PROFILE ? '<a class="pill-btn primary" href="/teacher-live"><i class="fas fa-plus"></i> New live class</a>' : ''}
-            </div>
-            <div class="lc-list">${list.map(renderLiveCard).join('')}</div>
-        `;
+        const chip = (k, label) => c[k] || k === "all" ? `<button type="button" class="pf-filter" data-lf="${k}" aria-pressed="${liveFilter === k}">${label}<em>${c[k]}</em></button>` : "";
+        $("liveBox").innerHTML = `<div class="pf-sum"><div><b>${c.all}</b><span>classes in total</span></div><div><b>${c.live + c.upcoming}</b><span>${c.live ? `${c.live} live now · ` : ""}upcoming</span></div><div><b>${c.past}</b><span>already taught</span></div></div>
+            <div class="pf-tools" style="justify-content:space-between"><div class="pf-filters" style="margin:0">${chip("all", "All")}${chip("live", "Live now")}${chip("upcoming", "Upcoming")}${chip("past", "Past")}</div>
+            ${OWN ? '<a class="pf-btn primary" href="/teacher-live"><i class="fas fa-plus"></i> New class</a>' : ""}</div>
+            <div class="pf-lc">${list.map(x => {
+                const st = classStatus(x), d = new Date(parseT(x.scheduled_at)), ok = !isNaN(d), url = safeUrl(x.join_url);
+                const mins = Number(x.duration_minutes) > 0 ? Number(x.duration_minutes) : 60;
+                return `<div class="pf-lci ${st}"><div class="pf-date ${st === "live" ? "live" : st === "past" ? "past" : ""}"><span class="m">${ok ? d.toLocaleDateString(undefined, { month: "short" }) : "--"}</span><span class="d">${ok ? d.getDate() : "--"}</span></div>
+                    <div class="pf-lci-main"><h4>${esc(x.title || "Untitled class")}<span class="pf-st ${st}">${st === "live" ? "LIVE NOW" : st === "upcoming" ? "Upcoming" : "Ended"}</span></h4>
+                    ${x.description ? `<p>${esc(x.description)}</p>` : ""}
+                    <div class="pf-lci-meta"><span><i class="far fa-clock"></i>${ok ? `${d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}, ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Time to be announced"}</span><span><i class="fas fa-hourglass-half"></i>${mins} min</span>${x.subject ? `<span><i class="fas fa-book"></i>${esc(subjName(x.subject))}</span>` : ""}${x.grade ? `<span><i class="fas fa-layer-group"></i>${esc(x.grade)}</span>` : ""}</div></div>
+                    ${st === "past" ? "" : OWN ? `<a class="pf-btn ${st === "live" ? "primary" : ""}" href="/teacher-live/studio/${Number(x.id)}"><i class="fas fa-tower-broadcast"></i> ${st === "live" ? "Back to studio" : "Open studio"}</a>`
+                        : url ? `<a class="pf-btn ${st === "live" ? "primary" : ""}" href="${esc(url)}"><i class="fas ${st === "live" ? "fa-play" : "fa-door-open"}"></i> ${st === "live" ? "Watch now" : "Open class"}</a>` : ""}</div>`;
+            }).join("")}</div>`;
     }
+    $("liveBox").addEventListener("click", e => { const b = e.target.closest("[data-lf]"); if (b) { liveFilter = b.dataset.lf; drawLive(); } });
+    setInterval(() => { if (live && live.length && !document.querySelector('[data-panel="live"]').hidden) drawLive(); }, 60000);
 
-    async function loadLiveClasses() {
-        const loading = document.getElementById('strengthLoading');
-        const content = document.getElementById('strengthContent');
-        loading.style.display = 'block';
-        content.style.display = 'none';
-
-        try {
-            const res = await fetch(`/api/users/${PROFILE_USER_ID}/live-classes`, { credentials: 'same-origin' });
-            if (res.status === 401) { window.location.href = '/Login'; return; }
-            if (!res.ok) throw new Error(`Failed to load live classes (${res.status})`);
-            const data = await res.json();
-            liveClasses = data.classes || [];
-            loading.style.display = 'none';
-            content.style.display = 'block';
-            renderLivePanel();
-        } catch (err) {
-            console.error('Failed to load live classes:', err);
-            loading.style.display = 'none';
-            content.style.display = 'block';
-            content.innerHTML = `
-                <div class="posts-empty">
-                    <i class="fas fa-triangle-exclamation"></i>
-                    <div>Couldn't load live classes. Please try again later.</div>
-                </div>`;
-        }
+    /* ---------- reviews ---------- */
+    let revSort = "newest";
+    async function loadRatings(quiet) {
+        try { ratings = await api(`/api/users/${UID}/ratings`); }
+        catch (e) { if (!quiet) $("revBox").innerHTML = `<div class="pf-note bad"><i class="fas fa-circle-exclamation"></i><div>Couldn’t load reviews: ${esc(e.message)}</div></div>`; $("latestRev").innerHTML = '<p class="pf-muted">Not available right now.</p>'; return; }
+        drawLatest(); drawReviews();
     }
-
-    document.getElementById('strengthContent').addEventListener('click', function (e) {
-        const btn = e.target.closest('[data-live-filter]');
-        if (!btn) return;
-        liveFilter = btn.dataset.liveFilter;
-        renderLivePanel();
-    });
-
-    // keep Live now / Upcoming / Past labels correct while the page stays open
-    setInterval(function () {
-        if (liveLoaded && liveClasses.length && document.getElementById('panel-strength').classList.contains('active')) {
-            renderLivePanel();
-        }
-    }, 60000);
-
-    // =================================================================
-    // RATINGS TAB — GET/POST /api/users/<id>/ratings
-    // Stars are 1-5; the average is shown out of ten (stars x 2).
-    // =================================================================
-    let ratingsData = null;
-    let ratingSort = 'newest';
-    let pickedStars = 0;
-
-    function starsHTML(outOfFive, small) {
-        const pct = Math.max(0, Math.min(100, (Number(outOfFive) || 0) / 5 * 100));
-        return `<span class="stars ${small ? 'sm' : ''}" aria-label="${(Number(outOfFive) || 0).toFixed(1)} out of 5 stars">
-            <span class="stars-bg">★★★★★</span>
-            <span class="stars-fg" style="width:${pct}%">★★★★★</span>
-        </span>`;
+    function avatar(r) {
+        const u = safeUrl(r.reviewer_avatar_url);
+        return u ? `<img src="${esc(u)}" alt="">` : esc((r.reviewer_name || "?").trim().charAt(0).toUpperCase() || "?");
     }
-
-    function initialsOf(name) {
-        return (name || '?').trim().charAt(0).toUpperCase() || '?';
+    function drawLatest() {
+        const list = (ratings.reviews || []).slice(0, 2);
+        $("latestRev").innerHTML = list.length ? `<div class="pf-reviews">${list.map(r => `<div class="pf-rv" style="padding:10px 12px"><div class="pf-rv-av" style="width:34px;height:34px">${avatar(r)}</div><div class="pf-rv-b"><div class="pf-rv-h"><b>${esc(r.reviewer_name)}</b>${starsHTML(r.stars, true)}</div><p class="pf-rv-t ${r.comment ? "" : "none"}" style="font-size:.84rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${esc(r.comment || "Rated without a comment.")}</p></div></div>`).join("")}</div>`
+            : `<p class="pf-muted">${OWN ? "No reviews yet. Parents and learners you teach can review you here." : ratings.can_review ? 'No reviews yet. <button type="button" class="pf-link" data-go="reviews">Be the first</button>' : "No reviews yet."}</p>`;
     }
-
-    function renderReview(r) {
-        const stars = Number(r.stars) || 0;
-        const d = new Date(r.created_at);
-        const when = isNaN(d.getTime()) ? '' : d.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
-        const avatar = safeUrl(r.reviewer_avatar_url)
-            ? `<img src="${escapeAttr(r.reviewer_avatar_url)}" alt="${escapeAttr(r.reviewer_name)}">`
-            : escapeAttr(initialsOf(r.reviewer_name));
-
-        return `
-            <div class="rt-review">
-                <div class="rt-avatar">${avatar}</div>
-                <div class="rt-body">
-                    <div class="rt-head">
-                        <span class="rt-name">${escapeAttr(r.reviewer_name || 'Anonymous')}</span>
-                        ${starsHTML(stars, true)}
-                        <span class="rt-score-chip">${stars * 2}/10</span>
-                        <span class="rt-date">${escapeAttr(when)}</span>
-                    </div>
-                    ${r.comment
-                        ? `<div class="rt-comment">${escapeAttr(r.comment)}</div>`
-                        : `<div class="rt-comment muted">No written review.</div>`}
-                </div>
-            </div>
-        `;
-    }
-
-    function sortedReviews() {
-        const list = (ratingsData.reviews || []).slice();
-        if (ratingSort === 'highest') list.sort((a, b) => (b.stars || 0) - (a.stars || 0));
-        else if (ratingSort === 'lowest') list.sort((a, b) => (a.stars || 0) - (b.stars || 0));
-        else list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        return list;
-    }
-
-    function renderReviewForm() {
-        if (IS_OWN_PROFILE) return '';
-        const mine = ratingsData.my_review;
+    function drawReviews() {
+        const n = Number(ratings.count) || 0, avg10 = Number(ratings.average_out_of_ten) || 0, dist = ratings.distribution || {};
+        const mine = ratings.my_review;
         if (mine && !pickedStars) pickedStars = Number(mine.stars) || 0;
-
-        const picker = [1, 2, 3, 4, 5].map(n =>
-            `<button type="button" data-pick="${n}" class="${n <= pickedStars ? 'on' : ''}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`
-        ).join('');
-
-        return `
-            <div class="rt-form">
-                <h4>${mine ? 'Update your review' : 'Leave a review'}</h4>
-                <div class="rt-picker" id="rtPicker">${picker}</div>
-                <textarea id="rtComment" maxlength="500" placeholder="Share your experience with this teacher (optional)">${escapeAttr(mine ? mine.comment : '')}</textarea>
-                <div class="rt-form-footer">
-                    <span class="rt-form-msg" id="rtMsg">${pickedStars ? `${pickedStars * 2}/10` : 'Pick a star rating'}</span>
-                    <button type="button" class="pill-btn primary" id="rtSubmit">${mine ? 'Update review' : 'Submit review'}</button>
-                </div>
-            </div>
-        `;
-    }
-
-    function renderRatingsPanel() {
-        const content = document.getElementById('achievementsContent');
-        const count = Number(ratingsData.count) || 0;
-        const avgTen = Number(ratingsData.average_out_of_ten) || 0;
-        const avgFive = avgTen / 2;
-        const dist = ratingsData.distribution || {};
-
-        if (!count) {
-            content.innerHTML = `
-                ${renderReviewForm()}
-                <div class="posts-empty">
-                    <i class="far fa-star"></i>
-                    <div>${IS_OWN_PROFILE ? 'No ratings yet. Reviews from your learners will appear here.' : 'No ratings yet. Be the first to leave a review.'}</div>
-                </div>`;
+        const form = ratings.can_review ? `<section class="pf-card" style="margin-bottom:14px"><div class="pf-card-h"><h2><i class="fas fa-pen"></i> ${mine ? "Your review" : "Review this teacher"}</h2></div>
+            <div class="pf-picker" id="picker" role="radiogroup" aria-label="Your rating">${[1, 2, 3, 4, 5].map(i => `<button type="button" role="radio" aria-checked="${i === pickedStars}" data-pick="${i}" class="${i <= pickedStars ? "on" : ""}" aria-label="${i} star${i > 1 ? "s" : ""}">★</button>`).join("")}</div>
+            <textarea class="pf-ta" id="rvText" maxlength="500" placeholder="What was it like learning from this teacher? (optional)">${esc(mine ? mine.comment : "")}</textarea>
+            <div class="pf-form-foot" style="margin-top:10px"><span class="msg" id="rvMsg" role="status">${pickedStars ? `${pickedStars * 2}/10` : "Pick 1 to 5 stars"}</span><button type="button" class="pf-btn primary" id="rvSend">${mine ? "Update review" : "Post review"}</button></div></section>` : "";
+        if (!n) {
+            $("revBox").innerHTML = form + `<div class="pf-card"><div class="pf-empty"><i class="far fa-star"></i><h3>No reviews yet</h3><p>${OWN ? "Parents and learners you teach can review you here. You can answer each review." : ratings.can_review ? "Be the first to say what it’s like learning from this teacher." : "Learners and parents can review teachers."}</p></div></div>`;
             return;
         }
-
-        const bars = [5, 4, 3, 2, 1].map(n => {
-            const c = Number(dist[n] ?? dist[String(n)]) || 0;
-            const pct = Math.round((c / count) * 100);
-            return `
-                <div class="rt-bar-row">
-                    <span class="rt-bar-label">${n}<i class="fas fa-star"></i></span>
-                    <div class="rt-bar-track"><div class="rt-bar-fill" style="width:${pct}%"></div></div>
-                    <span class="rt-bar-count">${c}</span>
-                </div>`;
-        }).join('');
-
-        content.innerHTML = `
-            <div class="rt-summary">
-                <div class="rt-score">
-                    <div class="rt-score-number">${avgTen.toFixed(1)}<small>/10</small></div>
-                    ${starsHTML(avgFive, false)}
-                    <div class="rt-score-count">${avgFive.toFixed(1)} of 5 stars · ${count} review${count === 1 ? '' : 's'}</div>
-                </div>
-                <div class="rt-bars">${bars}</div>
-            </div>
-            ${renderReviewForm()}
-            <div class="uploads-toolbar">
-                <strong>Reviews (${count})</strong>
-                <select class="sort-select" id="rtSort" aria-label="Sort reviews">
-                    <option value="newest" ${ratingSort === 'newest' ? 'selected' : ''}>Newest</option>
-                    <option value="highest" ${ratingSort === 'highest' ? 'selected' : ''}>Highest rated</option>
-                    <option value="lowest" ${ratingSort === 'lowest' ? 'selected' : ''}>Lowest rated</option>
-                </select>
-            </div>
-            <div class="rt-list">${sortedReviews().map(renderReview).join('')}</div>
-        `;
+        const list = (ratings.reviews || []).slice();
+        if (revSort === "high") list.sort((a, b) => b.stars - a.stars); else if (revSort === "low") list.sort((a, b) => a.stars - b.stars);
+        else list.sort((a, b) => parseT(b.created_at) - parseT(a.created_at));
+        $("revBox").innerHTML = `<section class="pf-card" style="margin-bottom:14px"><div class="pf-rsum"><div class="pf-score"><b>${avg10.toFixed(1)}<small>/10</small></b>${starsHTML(avg10 / 2)}<span>${(avg10 / 2).toFixed(1)} of 5 · ${n} review${n === 1 ? "" : "s"}</span></div>
+            <div class="pf-dist">${[5, 4, 3, 2, 1].map(s => { const c = Number(dist[s]) || 0; return `<div><b>${s} ★</b><span class="t"><i style="width:${Math.round(c / n * 100)}%"></i></span><span>${c}</span></div>`; }).join("")}</div></div></section>
+            ${form}
+            <div class="pf-tools" style="justify-content:space-between"><b style="font-size:.95rem">${n} review${n === 1 ? "" : "s"}</b>
+            <select class="pf-sel" id="revSort" aria-label="Sort reviews"><option value="newest" ${revSort === "newest" ? "selected" : ""}>Newest first</option><option value="high" ${revSort === "high" ? "selected" : ""}>Highest rated</option><option value="low" ${revSort === "low" ? "selected" : ""}>Lowest rated</option></select></div>
+            <div class="pf-reviews">${list.map(reviewHTML).join("")}</div>`;
     }
-
-    async function loadRatings() {
-        const loading = document.getElementById('achievementsLoading');
-        const content = document.getElementById('achievementsContent');
-        loading.style.display = 'block';
-        content.style.display = 'none';
-
+    function reviewHTML(r) {
+        const editing = editingReply.has(r.id);
+        return `<article class="pf-rv" data-rv="${Number(r.id)}"><div class="pf-rv-av">${avatar(r)}</div><div class="pf-rv-b">
+            <div class="pf-rv-h"><b>${esc(r.reviewer_name)}</b><small>${esc(r.reviewer_role || "")}</small>${starsHTML(r.stars, true)}<small>${r.stars * 2}/10</small><small class="when">${esc(ago(r.created_at))}</small></div>
+            <p class="pf-rv-t ${r.comment ? "" : "none"}">${esc(r.comment || "Rated without a comment.")}</p>
+            ${r.reply && !editing ? `<div class="pf-reply"><b><i class="fas fa-reply"></i> ${OWN ? "Your answer" : "Teacher’s answer"} · ${esc(ago(r.reply_at))}</b><p>${esc(r.reply)}</p></div>` : ""}
+            ${ratings.can_reply ? (editing
+                ? `<div class="pf-reply-form"><textarea class="pf-ta" style="min-height:70px" maxlength="600" data-reply-text="${r.id}" placeholder="Thank them, or answer what they raised. Everyone can read your answer.">${esc(r.reply || "")}</textarea>
+                   <div class="row"><span class="msg" data-reply-msg="${r.id}"></span>${r.reply ? `<button type="button" class="pf-btn sm danger" data-reply-del="${r.id}">Remove answer</button>` : ""}<button type="button" class="pf-btn sm" data-reply-cancel="${r.id}">Cancel</button><button type="button" class="pf-btn sm primary" data-reply-save="${r.id}">Post answer</button></div></div>`
+                : `<button type="button" class="pf-link" style="margin-top:8px" data-reply-open="${r.id}"><i class="fas fa-reply"></i> ${r.reply ? "Edit answer" : "Answer"}</button>`) : ""}
+        </div></article>`;
+    }
+    async function saveReply(id, text) {
+        const msg = document.querySelector(`[data-reply-msg="${id}"]`);
+        document.querySelectorAll(`[data-rv="${id}"] .pf-btn`).forEach(b => { b.disabled = true; });
         try {
-            const res = await fetch(`/api/users/${PROFILE_USER_ID}/ratings`, { credentials: 'same-origin' });
-            if (res.status === 401) { window.location.href = '/Login'; return; }
-            if (!res.ok) throw new Error(`Failed to load ratings (${res.status})`);
-            ratingsData = await res.json();
-            loading.style.display = 'none';
-            content.style.display = 'block';
-            renderRatingsPanel();
-        } catch (err) {
-            console.error('Failed to load ratings:', err);
-            loading.style.display = 'none';
-            content.style.display = 'block';
-            content.innerHTML = `
-                <div class="posts-empty">
-                    <i class="fas fa-triangle-exclamation"></i>
-                    <div>Couldn't load ratings. Please try again later.</div>
-                </div>`;
-        }
+            const d = await postJSON(`/api/ratings/${id}/reply`, { reply: text });
+            const r = ratings.reviews.find(x => x.id === id); r.reply = d.reply; r.reply_at = d.reply_at;
+            editingReply.delete(id); drawReviews();
+            actNote(text ? "Your answer is posted under the review." : "Your answer was removed.", "ok");
+        } catch (e) { if (msg) msg.textContent = e.message; document.querySelectorAll(`[data-rv="${id}"] .pf-btn`).forEach(b => { b.disabled = false; }); }
     }
-
-    async function submitReview() {
-        const msg = document.getElementById('rtMsg');
-        const btn = document.getElementById('rtSubmit');
-        const comment = document.getElementById('rtComment').value.trim();
-
-        if (!pickedStars) {
-            msg.textContent = 'Please pick a star rating first.';
-            msg.classList.add('error');
+    $("revBox").addEventListener("click", async e => {
+        const t = e.target;
+        const pick = t.closest("[data-pick]");
+        if (pick) {
+            pickedStars = Number(pick.dataset.pick);
+            document.querySelectorAll("#picker button").forEach(b => { const on = Number(b.dataset.pick) <= pickedStars; b.classList.toggle("on", on); b.setAttribute("aria-checked", String(Number(b.dataset.pick) === pickedStars)); });
+            $("rvMsg").className = "msg"; $("rvMsg").textContent = `${pickedStars * 2}/10`;
             return;
         }
-
-        btn.disabled = true;
-        msg.classList.remove('error');
-        msg.textContent = 'Saving…';
-
-        try {
-            const res = await fetch(`/api/users/${PROFILE_USER_ID}/ratings`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({ stars: pickedStars, comment: comment })
-            });
-            if (res.status === 401) { window.location.href = '/Login'; return; }
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-
-            pickedStars = 0;
-            await loadRatings();
-        } catch (err) {
-            console.error('Failed to save review:', err);
-            msg.textContent = err.message || "Couldn't save your review.";
-            msg.classList.add('error');
-            btn.disabled = false;
-        }
-    }
-
-    document.getElementById('achievementsContent').addEventListener('click', function (e) {
-        const star = e.target.closest('[data-pick]');
-        if (star) {
-            pickedStars = Number(star.dataset.pick);
-            document.querySelectorAll('#rtPicker button').forEach(b => {
-                b.classList.toggle('on', Number(b.dataset.pick) <= pickedStars);
-            });
-            const msg = document.getElementById('rtMsg');
-            if (msg) { msg.classList.remove('error'); msg.textContent = `${pickedStars * 2}/10`; }
+        if (t.closest("#rvSend")) {
+            const msg = $("rvMsg"), btn = $("rvSend");
+            if (!pickedStars) { msg.className = "msg bad"; msg.textContent = "Pick 1 to 5 stars first."; return; }
+            btn.disabled = true; msg.className = "msg"; msg.textContent = "Saving…";
+            try {
+                await postJSON(`/api/users/${UID}/ratings`, { stars: pickedStars, comment: $("rvText").value.trim() });
+                pickedStars = 0; await loadRatings(); loadOverview();
+                actNote("Thanks, your review is posted.", "ok");
+            } catch (err) { btn.disabled = false; msg.className = "msg bad"; msg.textContent = err.message; }
             return;
         }
-        if (e.target.closest('#rtSubmit')) submitReview();
-    });
-
-    document.getElementById('achievementsContent').addEventListener('change', function (e) {
-        if (e.target.id === 'rtSort') {
-            ratingSort = e.target.value;
-            const keepStars = pickedStars;
-            renderRatingsPanel();
-            pickedStars = keepStars;
+        const o = t.closest("[data-reply-open]"); if (o) { const id = Number(o.dataset.replyOpen); editingReply.add(id); drawReviews(); const ta = document.querySelector(`[data-reply-text="${id}"]`); if (ta) ta.focus(); return; }
+        const c = t.closest("[data-reply-cancel]"); if (c) { editingReply.delete(Number(c.dataset.replyCancel)); drawReviews(); return; }
+        const s = t.closest("[data-reply-save]");
+        if (s) {
+            const id = Number(s.dataset.replySave), text = document.querySelector(`[data-reply-text="${id}"]`).value.trim();
+            if (!text) { document.querySelector(`[data-reply-msg="${id}"]`).textContent = "Write your answer first."; return; }
+            saveReply(id, text); return;
+        }
+        const d = t.closest("[data-reply-del]");
+        if (d) {
+            if (!d.dataset.sure) { d.dataset.sure = "1"; d.textContent = "Tap again to remove"; setTimeout(() => { if (d.isConnected) { delete d.dataset.sure; d.textContent = "Remove answer"; } }, 4000); return; }
+            saveReply(Number(d.dataset.replyDel), "");
         }
     });
+    $("revBox").addEventListener("change", e => { if (e.target.id === "revSort") { revSort = e.target.value; drawReviews(); } });
+
+    showTab((location.hash || "#overview").slice(1), false);
+    loadOverview();
+}
+
+/* ======================================================================
+   LEARNER PROFILE (seen by a teacher or parent)
+   ====================================================================== */
+if (ROLE === "student") {
+    (async () => {
+        const box = $("learnerBox");
+        let d;
+        try { d = await api(`/api/users/${UID}/learner-profile`); }
+        catch (e) {
+            box.innerHTML = `<div class="pf-card"><div class="pf-empty"><i class="fas fa-lock"></i><h3>${e.data && e.data.private ? "This learner’s profile is private" : "Couldn’t load progress"}</h3><p>${esc(e.message)}</p></div></div>`;
+            return;
+        }
+        const st = d.stats || {}, hidden = d.hidden || [];
+        if ($("sLevel")) $("sLevel").textContent = st.level != null && !hidden.includes("progress") ? st.level : "–";
+        if (!d.has_data) {
+            box.innerHTML = `<div class="pf-card"><div class="pf-empty"><i class="fas fa-seedling"></i><h3>Just getting started</h3><p>This learner hasn’t finished any quizzes or modules yet, so there’s no progress to show.</p></div></div>`;
+            return;
+        }
+        const kpi = (icon, color, val, label, dull) => `<div class="pf-kpi ${dull ? "dull" : ""}" style="--c:${color}"><i class="fas ${icon}" aria-hidden="true"></i><b>${val}</b><span>${label}</span></div>`;
+        const cards = [];
+        if (!hidden.includes("progress")) {
+            cards.push(kpi("fa-graduation-cap", "#4361ee", st.score_grade ? esc(st.score_grade) : "–", st.score_grade ? `Overall grade · ${Math.round(st.avg_score)}% average` : "Overall grade · needs more results"));
+            cards.push(kpi("fa-square-poll-vertical", "#0ea5e9", st.total_score != null ? `${count(st.total_score)}<small style="font-size:.8rem;color:var(--pf-text-3)"> / ${count(st.total_possible)}</small>` : "–", "Total score"));
+        }
+        if (st.quiz_streak !== undefined) {
+            cards.push(kpi("fa-bolt", "#f59e0b", st.quiz_streak, `Quiz streak · best ${st.best_quiz_streak || 0}`, !st.quiz_streak));
+            cards.push(kpi("fa-fire", "#ef4444", st.module_streak, `Module streak · best ${st.best_module_streak || 0}`, !st.module_streak));
+        }
+        if (!hidden.includes("progress")) {
+            cards.push(kpi("fa-star", "#7c3aed", `Level ${st.level}`, `${count(st.ep)} EP · ${st.ep_to_next} to next level`));
+            cards.push(kpi("fa-book-open", "#10b981", st.modules_completed || 0, `Modules done · ${st.courses_completed || 0} course${st.courses_completed === 1 ? "" : "s"} finished`));
+        }
+        if (d.rank) cards.push(kpi("fa-trophy", "#eab308", `#${d.rank}`, `This month · top ${d.top_percent}%`));
+        if (!hidden.includes("progress")) cards.push(kpi("fa-calendar-check", "#14b8a6", st.active_days || 0, "Active days"));
+        const unlocked = (d.achievements || []).filter(a => a.unlocked).sort((a, b) => parseT(b.unlocked_at) - parseT(a.unlocked_at));
+        box.innerHTML = `<section class="pf-card" style="margin-bottom:16px"><div class="pf-card-h"><h2><i class="fas fa-chart-line"></i> Progress</h2><div class="r"><small>${d.updated ? "Updated " + esc(d.updated) : ""}</small></div></div>
+            ${cards.length ? `<div class="pf-kpis">${cards.join("")}</div>` : '<p class="pf-muted">This learner keeps their progress private.</p>'}
+            ${hidden.length ? `<p class="pf-muted" style="margin-top:12px;font-size:.8rem"><i class="fas fa-eye-slash"></i> Some parts of this profile are private.</p>` : ""}</section>
+            <section class="pf-card"><div class="pf-card-h"><h2><i class="fas fa-medal"></i> Achievements</h2><div class="r"><small>${d.unlocked_count != null ? `${d.unlocked_count} unlocked` : ""}</small></div></div>
+            ${hidden.includes("achievements") ? '<p class="pf-muted">This learner keeps their achievements private.</p>'
+              : unlocked.length ? `<div class="pf-ach">${unlocked.slice(0, 12).map(a => `<div title="${esc(a.description)}"><i class="fas ${esc(a.icon)}" style="background:${esc(a.color || "#4361ee")}" aria-hidden="true"></i><b>${esc(a.title)}</b></div>`).join("")}</div>`
+              : '<p class="pf-muted">No achievements unlocked yet.</p>'}</section>`;
+    })();
+}
 })();
 </script>
 {% endblock %}

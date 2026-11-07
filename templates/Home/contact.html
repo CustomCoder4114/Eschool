@@ -154,7 +154,7 @@
   font-size:1.15rem; color:var(--muted); max-width:520px; line-height:1.7; margin-bottom:36px;
 }
 
-#eschool-contact .btn-row{ display:flex; gap:16px; flex-wrap:wrap; margin-bottom:56px; }
+#eschool-contact .btn-row{ display:flex; gap:16px; flex-wrap:wrap; margin-bottom:0; }
 #eschool-contact .btn{
   position:relative; overflow:hidden; isolation:isolate;
   font-family:var(--font-display); font-weight:700; font-size:0.98rem;
@@ -225,7 +225,7 @@
    CONTACT METHOD CARDS
    ============================================================ */
 #eschool-contact .method-grid{
-  display:grid; grid-template-columns: repeat(4,1fr); gap:22px;
+  display:grid; grid-template-columns: repeat(3,1fr); gap:22px;
 }
 @media (max-width:980px){ #eschool-contact .method-grid{ grid-template-columns:1fr 1fr; } }
 @media (max-width:560px){ #eschool-contact .method-grid{ grid-template-columns:1fr; } }
@@ -478,25 +478,6 @@
 @media (max-width:560px){ #eschool-contact .why-grid{ grid-template-columns:1fr; } }
 
 /* ============================================================
-   TESTIMONIALS
-   ============================================================ */
-#eschool-contact .testi-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:22px; }
-@media (max-width:900px){ #eschool-contact .testi-grid{ grid-template-columns:1fr; } }
-#eschool-contact .testi-card{ padding:30px; }
-#eschool-contact .stars{ display:flex; gap:3px; margin-bottom:16px; }
-#eschool-contact .stars svg{ width:16px; height:16px; fill:var(--highlight); stroke:none; }
-#eschool-contact .testi-card p.quote{ color:var(--ink); font-size:0.98rem; line-height:1.7; margin-bottom:22px; }
-#eschool-contact .testi-person{ display:flex; align-items:center; gap:12px; }
-#eschool-contact .avatar{
-  width:44px; height:44px; border-radius:50%; flex-shrink:0;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  display:flex; align-items:center; justify-content:center;
-  color:#fff; font-family:var(--font-display); font-weight:700; font-size:0.9rem;
-}
-#eschool-contact .testi-person .name{ font-weight:700; font-size:0.92rem; }
-#eschool-contact .testi-person .country{ font-size:0.8rem; color:var(--muted); }
-
-/* ============================================================
    CTA BAND
    ============================================================ */
 #eschool-contact .cta-band{
@@ -522,55 +503,34 @@
 #eschool-contact .cta-band .btn-outline:hover{ background:rgba(255,255,255,0.12); transform: translateY(-3px); }
 
 /* ============================================================
-   FOOTER
+   FOOTER (standard Eschool footer)
    ============================================================ */
-#eschool-contact .site-footer{
-  background: linear-gradient(180deg, #0F172A, #0B1220);
-  color:#CBD5E1; padding: 70px 0 30px; margin-top:110px; position:relative; overflow:hidden;
+#eschool-contact .site-foot{ background: linear-gradient(180deg, #0F172A, #060b16); color:#fff; padding:70px 0 26px; margin-top:110px; position:relative; z-index:2; }
+#eschool-contact .site-foot .container{ max-width:1200px; margin:0 auto; padding:0 32px; }
+#eschool-contact .foot-grid{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1.2fr; gap:40px; margin-bottom:44px; }
+#eschool-contact .foot-brand{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+#eschool-contact .foot-brand span{ font-family:var(--font-display); font-weight:800; font-size:18px; }
+#eschool-contact .foot-col p{ font-size:13px; color:#94a3b8; line-height:1.7; margin:0; }
+#eschool-contact .foot-col h5{ font-family:var(--font-display); font-size:13.5px; margin:0 0 16px; color:#e2e8f0; }
+#eschool-contact .foot-col ul{ margin:0; padding:0; }
+#eschool-contact .foot-col ul li{ margin-bottom:10px; }
+#eschool-contact .foot-col ul a{ color:#94a3b8; font-size:13px; transition:color .2s ease; }
+#eschool-contact .foot-col ul a:hover{ color:#fff; }
+#eschool-contact .help-box{ border-radius:14px; padding:16px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); }
+#eschool-contact .help-box p{ margin:0 0 12px; }
+#eschool-contact .help-btn{
+  display:flex; align-items:center; justify-content:center; gap:8px; padding:11px 14px; border-radius:10px;
+  background:linear-gradient(100deg, var(--primary), var(--accent)); color:#fff; font-weight:700; font-size:13px;
+  transition:transform .2s ease, box-shadow .2s ease;
 }
-#eschool-contact .site-footer::before{
-  content:''; position:absolute; inset:0;
-  background: radial-gradient(circle at 15% 0%, rgba(37,99,235,0.18), transparent 40%),
-              radial-gradient(circle at 85% 20%, rgba(20,184,166,0.14), transparent 40%);
-}
-#eschool-contact .footer-grid{
-  position:relative; z-index:2;
-  display:grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap:40px;
-  padding-bottom:44px; border-bottom:1px solid rgba(255,255,255,0.08);
-}
-@media (max-width:800px){ #eschool-contact .footer-grid{ grid-template-columns:1fr 1fr; } }
-@media (max-width:520px){ #eschool-contact .footer-grid{ grid-template-columns:1fr; } }
-#eschool-contact .footer-brand h3{ color:#fff; font-size:1.3rem; margin-bottom:12px; }
-#eschool-contact .footer-brand p{ font-size:0.88rem; color:#94A3B8; line-height:1.7; max-width:280px; }
-#eschool-contact .footer-col h4{ color:#fff; font-size:0.9rem; margin-bottom:16px; }
-#eschool-contact .footer-col ul{ display:flex; flex-direction:column; gap:10px; }
-#eschool-contact .footer-col a{ font-size:0.87rem; color:#94A3B8; transition: color .25s, padding-left .25s; }
-#eschool-contact .footer-col a:hover{ color:#fff; padding-left:4px; }
-#eschool-contact .social-row{ display:flex; gap:10px; margin-top:16px; }
-#eschool-contact .social-row a{
-  width:38px; height:38px; border-radius:11px; background: rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.1);
-  display:flex; align-items:center; justify-content:center;
-  transition: background .3s, transform .3s;
-}
-#eschool-contact .social-row a:hover{ background: linear-gradient(135deg, var(--primary), var(--accent)); transform: translateY(-3px); }
-#eschool-contact .social-row svg{ width:16px; height:16px; stroke:#fff; fill:none; stroke-width:1.8; }
-#eschool-contact .newsletter-form{ display:flex; margin-top:14px; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.14); }
-#eschool-contact .newsletter-form input{
-  flex:1; background: rgba(255,255,255,0.05); border:none; padding:12px 14px; color:#fff; font-size:0.85rem;
-}
-#eschool-contact .newsletter-form input::placeholder{ color:#64748B; }
-#eschool-contact .newsletter-form input:focus{ outline:none; }
-#eschool-contact .newsletter-form button{
-  background: linear-gradient(100deg, var(--primary), var(--accent)); color:#fff; border:none;
-  padding:0 18px; font-weight:600; font-size:0.85rem; cursor:pointer;
-}
-#eschool-contact .footer-bottom{
-  position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center;
-  padding-top:26px; font-size:0.82rem; color:#64748B; flex-wrap:wrap; gap:10px;
-}
-#eschool-contact .footer-bottom a{ color:#94A3B8; }
-#eschool-contact .footer-bottom a:hover{ color:#fff; }
+#eschool-contact .help-btn:hover{ transform:translateY(-2px); box-shadow:0 10px 22px -10px rgba(20,184,166,.7); }
+#eschool-contact .help-btn svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; }
+#eschool-contact .copyright{ text-align:center; padding-top:26px; border-top:1px solid rgba(255,255,255,.08); color:#64748B; font-size:12px; }
+#eschool-contact .copyright a{ color:#94a3b8; }
+#eschool-contact .copyright a:hover{ color:#fff; }
+#eschool-contact .site-foot a:focus-visible{ outline:3px solid var(--accent); outline-offset:2px; border-radius:6px; }
+@media (max-width:900px){ #eschool-contact .foot-grid{ grid-template-columns:1fr 1fr; } #eschool-contact .site-foot .container{ padding:0 20px; } }
+@media (max-width:520px){ #eschool-contact .foot-grid{ grid-template-columns:1fr; } }
 </style>
 
 <div id="eschool-contact">
@@ -588,18 +548,13 @@
     <div>
       <span class="eyebrow reveal in-view">Get in touch</span>
       <h1 class="reveal in-view">Let's <span class="accent-word">Connect</span></h1>
-      <p class="lead reveal in-view reveal-delay-1">We're always ready to help students, teachers, schools, and partners succeed &mdash; wherever you are in the world.</p>
+      <p class="lead reveal in-view reveal-delay-1">Questions about your account, a payment, a lesson or a partnership? We're here to help learners, parents, teachers and schools, wherever you are in the world.</p>
 
       <div class="btn-row reveal in-view reveal-delay-2">
         <a href="#send-message" class="btn btn-primary"><span class="shine"></span>Send a Message</a>
+        <a href="/policies#faq" class="btn btn-ghost">Read common questions</a>
       </div>
 
-      <div class="stat-strip reveal in-view reveal-delay-3">
-        <div class="stat"><div class="num" data-count="24" data-suffix="/7">0</div><div class="lbl">Customer support</div></div>
-        <div class="stat"><div class="num" data-count="15000" data-suffix="+">0</div><div class="lbl">Happy students</div></div>
-        <div class="stat"><div class="num" data-count="99" data-suffix="%">0</div><div class="lbl">Satisfaction rate</div></div>
-        <div class="stat"><div class="num" data-count="5" data-suffix=" min">0</div><div class="lbl">Avg. response time</div></div>
-      </div>
     </div>
 
     <div class="signal-wrap reveal in-view reveal-delay-2">
@@ -643,22 +598,23 @@
     <div class="method-grid">
       <div class="glass-card reveal">
         <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M3 6l9 7 9-7M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z"/></svg></div>
-        <h3>Email Us</h3>
-        <p>Professional support through email, usually answered same day.</p>
-        <a href="mailto:support@eschool.com" class="card-link">support@eschool.com <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <h3>Send us a message</h3>
+        <p>Anyone can use the form below, with or without an account. We reply to the email address you give us.</p>
+        <a href="#send-message" class="card-link">Open the form <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
       <div class="glass-card reveal reveal-delay-1">
-        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.12.9.33 1.79.63 2.65a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.43-1.2a2 2 0 012.11-.45c.86.3 1.75.51 2.65.63A2 2 0 0122 16.92z"/></svg></div>
-        <h3>Call Us</h3>
-        <p>Speak directly with our team for urgent or detailed queries.</p>
-        <a href="tel:+254700000000" class="card-link">+254 748 750 419 <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg></div>
+        <h3>Help &amp; Support</h3>
+        <p>Signed in? Open a support ticket, follow our replies, and mark it urgent to report a person or content.</p>
+        <a href="/support" class="card-link">Open Help &amp; Support <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
       <div class="glass-card reveal reveal-delay-2">
-        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
-        <h3>Live Chat</h3>
-        <p>Instant online support for quick questions, day or night.</p>
-        <a href="#" class="card-link">Start a chat <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01"/></svg></div>
+        <h3>Questions &amp; policies</h3>
+        <p>Quick answers about accounts, parents, payments and teachers, plus our privacy policy and terms.</p>
+        <a href="/policies#faq" class="card-link">Read the answers <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
+    </div>
   </div>
 </section>
 
@@ -668,7 +624,7 @@
     <div class="section-head reveal">
       <span class="eyebrow">Send a message</span>
       <h2>Tell us how we can help</h2>
-      <p>Fill in the form and our team will get back to you &mdash; most messages are answered within five minutes during working hours.</p>
+      <p>Fill in the form and our team will reply by email, usually within one working day.</p>
     </div>
 
     <div class="layout">
@@ -676,39 +632,35 @@
         <div class="form-grid">
 
           <div class="field">
-            <input type="text" id="fullName" placeholder=" " required>
+            <input type="text" id="fullName" placeholder=" " maxlength="100" autocomplete="name" required>
             <label for="fullName">Full Name</label>
             <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             <svg class="valid-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>
           </div>
 
           <div class="field">
-            <input type="email" id="email" placeholder=" " required>
+            <input type="email" id="email" placeholder=" " maxlength="150" autocomplete="email" required>
             <label for="email">Email Address</label>
             <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l9 7 9-7M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z"/></svg>
             <svg class="valid-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>
           </div>
 
           <div class="field">
-            <input type="tel" id="phone" placeholder=" ">
-            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" placeholder=" " maxlength="25" autocomplete="tel">
+            <label for="phone">Phone Number (optional)</label>
             <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.12.9.33 1.79.63 2.65a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.43-1.2a2 2 0 012.11-.45c.86.3 1.75.51 2.65.63A2 2 0 0122 16.92z"/></svg>
           </div>
 
           <div class="field">
-            <input type="text" id="subject" placeholder=" " required>
+            <input type="text" id="subject" placeholder=" " maxlength="150" required>
             <label for="subject">Subject</label>
             <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4zM4 9h16M9 4v16"/></svg>
           </div>
 
           <div class="field full">
-            <select id="userType" required>
-              <option value="" disabled selected hidden></option>
-              <option>Kenya</option>
-              <option>United states</option>
-            </select>
-            <label for="userType">Country</label>
-            <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" id="country" placeholder=" " maxlength="60" autocomplete="country-name">
+            <label for="country">Country</label>
+            <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z"/></svg>
           </div>
 
           <div class="field full">
@@ -716,13 +668,6 @@
             <label for="message">Message</label>
             <svg class="field-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             <div class="char-count"><span id="charCount">0</span>/600</div>
-          </div>
-
-          <div class="field full">
-            <label style="position:static; font-size:0.85rem; font-weight:600; color:var(--ink); display:block; margin-bottom:8px;">Your preferred contact method</label>
-            <div class="method-toggle">
-              <label><input type="radio" name="prefContact" checked><span>Email</span></label>
-              </div>
           </div>
 
         </div>
@@ -733,26 +678,22 @@
         </button>
         <div class="form-note">
           <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4M12 3l8 4v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z"/></svg>
-          Your information is encrypted and never shared.
+          We only use your details to answer your message. See our <a href="/policies#privacy" style="color:var(--primary); font-weight:600; margin-left:4px;">Privacy Policy</a>.
         </div>
       </form>
 
       <div class="info-stack reveal reveal-delay-1">
         <div class="info-card">
-          <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M3 6l9 7 9-7M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z"/></svg></div>
-          <div><h4>Email Address</h4><p>support@eschool.com</p></div>
-        </div>
-        <div class="info-card">
-          <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.12.9.33 1.79.63 2.65a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.43-1.2a2 2 0 012.11-.45c.86.3 1.75.51 2.65.63A2 2 0 0122 16.92z"/></svg></div>
-          <div><h4>Phone</h4><p>+254 748 750 419</p></div>
-        </div>
-        <div class="info-card">
           <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
-          <div><h4>Working Hours</h4><p>Monday &ndash; Sunday, open 24 hours</p></div>
+          <div><h4>When we reply</h4><p>Usually within one working day, by email.</p></div>
         </div>
         <div class="info-card">
-          <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z"/></svg></div>
-          <div><h4>Website</h4><p>www.eschool.com</p></div>
+          <div class="icon-badge"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+          <div><h4>Have an account?</h4><p>Sign in and use <a href="/support" style="color:var(--primary); font-weight:600;">Help &amp; Support</a> to see all your tickets and our replies in one place.</p></div>
+        </div>
+        <div class="info-card">
+          <div class="icon-badge"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+          <div><h4>About a payment?</h4><p>Include your payment receipt or reference so we can find it quickly. We never ask for your PIN or password.</p></div>
         </div>
       </div>
     </div>
@@ -765,31 +706,32 @@
     <div class="section-head center reveal" style="margin-left:auto;margin-right:auto;">
       <span class="eyebrow">Support</span>
       <h2>Frequently asked questions</h2>
+      <p>More answers are on our <a href="/policies#faq" style="color:var(--primary); font-weight:600;">support page</a>.</p>
     </div>
     <div class="accordion reveal">
       <div class="accordion-item">
-        <button class="accordion-q" aria-expanded="false">How do I create an account?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="accordion-a"><div class="accordion-a-inner">Click "Sign Up" on the homepage, enter your details, and verify your email to activate your account.</div></div>
+        <button class="accordion-q" type="button" aria-expanded="false">How do I create an account?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Press Register, enter your name, email and a password, and choose learner, parent or teacher. You can also sign in with Google.</div></div>
       </div>
       <div class="accordion-item">
-        <button class="accordion-q" aria-expanded="false">How do I upload educational content?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="accordion-a"><div class="accordion-a-inner">Teachers can go to their Dashboard, select "Upload Content", and add videos or notes directly to a course.</div></div>
+        <button class="accordion-q" type="button" aria-expanded="false">I forgot my password. What do I do?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Send us a message with the form above, using the email address you signed up with, and we will help you get back in. If you signed up with Google, use "Continue with Google" on the sign-in page.</div></div>
       </div>
       <div class="accordion-item">
-        <button class="accordion-q" aria-expanded="false">Do Eschool promote career mentorship?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="accordion-a"><div class="accordion-a-inner">Sign up first at the sign up page, navigate to the career section and explore career choices to learn.</div></div>
+        <button class="accordion-q" type="button" aria-expanded="false">How do teachers share content?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Teachers open Upload from their dashboard and add notes, videos or past papers with a subject and grade. Public uploads appear for learners on the Resources page.</div></div>
       </div>
       <div class="accordion-item">
-        <button class="accordion-q" aria-expanded="false">How can I reset my password?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="accordion-a"><div class="accordion-a-inner">Select "Forgot Password" on the login page and follow the instructions sent to your registered email.</div></div>
+        <button class="accordion-q" type="button" aria-expanded="false">Does Eschool help with careers?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Yes. Signed-in learners have a Careers page that shows how their subjects lead to different careers, and the Study Strategies page has proven ways to study.</div></div>
       </div>
       <div class="accordion-item">
-        <button class="accordion-q" aria-expanded="false">How long does support take?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="accordion-a"><div class="accordion-a-inner">Most requests are answered within five minutes; complex issues are typically resolved within 24 hours.</div></div>
+        <button class="accordion-q" type="button" aria-expanded="false">How do I report a person or content?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Sign in, open Help & Support and send an Urgent ticket under "Report a person or content". Not signed in? Use the form above. We look at every report.</div></div>
       </div>
       <div class="accordion-item">
-        <button class="accordion-q" aria-expanded="false">Can I contact Eschool by phone?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="accordion-a"><div class="accordion-a-inner">Yes, our phone line is open 24/7 &mdash; you'll find the number in the Contact Information section above.</div></div>
+        <button class="accordion-q" type="button" aria-expanded="false">How long does a reply take?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="accordion-a"><div class="accordion-a-inner">Usually within one working day.</div></div>
       </div>
     </div>
   </div>
@@ -801,31 +743,32 @@
     <div class="section-head reveal">
       <span class="eyebrow">Departments</span>
       <h2>Talk to the right team</h2>
+      <p>Put the topic in your subject line so your message reaches the right people.</p>
     </div>
     <div class="support-grid">
       <div class="glass-card reveal">
         <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5zM6 12v5c3 3 9 3 12 0v-5"/></svg></div>
-        <h3>Student Support</h3><p>Help with courses, progress tracking, and learning tools.</p>
+        <h3>Learner Support</h3><p>Help with courses, tests, points, live classes and your progress.</p>
       </div>
       <div class="glass-card reveal reveal-delay-1">
         <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z"/></svg></div>
-        <h3>Teacher Support</h3><p>Guidance on uploading content and managing classrooms.</p>
+        <h3>Teacher Support</h3><p>Help with uploads, live classes, your teaching profile and private lessons.</p>
       </div>
       <div class="glass-card reveal reveal-delay-2">
         <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 100-16 8 8 0 000 16zM12 8v4l3 3"/></svg></div>
-        <h3>Technical Support</h3><p>Troubleshooting for bugs, logins, and platform issues.</p>
+        <h3>Technical Support</h3><p>Problems signing in, pages not loading, calls or anything not working.</p>
       </div>
       <div class="glass-card reveal">
         <div class="icon-badge"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
-        <h3>Billing</h3><p>Questions about payments, plans, and receipts.</p>
+        <h3>Payments</h3><p>Plans, private lesson payments, receipts and refunds.</p>
       </div>
       <div class="glass-card reveal reveal-delay-1">
-        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M20 7h-9M14 17H5M17 3l4 4-4 4M7 13l-4 4 4 4"/></svg></div>
-        <h3>Career Support</h3><p>Explore open roles and opportunities to join our team.</p>
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/><path d="M19 8v6M16 11h6"/></svg></div>
+        <h3>Parent Support</h3><p>Linking to your child, parental controls, goals and private teachers.</p>
       </div>
       <div class="glass-card reveal reveal-delay-2">
         <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/><circle cx="19" cy="8" r="3"/></svg></div>
-        <h3>Business Partnerships</h3><p>Collaboration and integration opportunities for schools.</p>
+        <h3>Schools &amp; Partnerships</h3><p>Schools and organisations who want to work with Eschool.</p>
       </div>
     </div>
   </div>
@@ -841,15 +784,15 @@
     <div class="why-grid">
       <div class="glass-card reveal">
         <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg></div>
-        <h3>Fast Responses</h3><p>Average reply within minutes, any day of the week.</p>
+        <h3>Clear Replies</h3><p>Usually within one working day, by email.</p>
       </div>
       <div class="glass-card reveal reveal-delay-1">
         <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg></div>
-        <h3>Secure Communication</h3><p>Your information is encrypted and protected.</p>
+        <h3>Your Privacy</h3><p>Your details are only used to answer you.</p>
       </div>
       <div class="glass-card reveal reveal-delay-2">
         <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5zM6 12v5c3 3 9 3 12 0v-5"/></svg></div>
-        <h3>Education Experts</h3><p>Talk directly with knowledgeable, trained staff.</p>
+        <h3>Real People</h3><p>A real member of the Eschool team reads and answers every message.</p>
       </div>
       <div class="glass-card reveal reveal-delay-3">
         <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z"/></svg></div>
@@ -859,99 +802,56 @@
   </div>
 </section>
 
-<!-- ============ TESTIMONIALS ============ -->
-<section class="section-pad">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <span class="eyebrow">Testimonials</span>
-      <h2>What people say about our support</h2>
-    </div>
-    <div class="testi-grid">
-      <div class="glass-card testi-card reveal">
-        <div class="stars">
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-        </div>
-        <p class="quote">"Support replied within minutes and solved my login issue right away. It felt effortless."</p>
-        <div class="testi-person"><div class="avatar">AM</div><div><div class="name">Amina M.</div><div class="country">Kenya</div></div></div>
-      </div>
-      <div class="glass-card testi-card reveal reveal-delay-1">
-        <div class="stars">
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-        </div>
-        <p class="quote">"As a teacher, uploading content used to confuse me. One chat with the team and it was clear."</p>
-        <div class="testi-person"><div class="avatar">DK</div><div><div class="name">David K.</div><div class="country">Uganda</div></div></div>
-      </div>
-      <div class="glass-card testi-card reveal reveal-delay-2">
-        <div class="stars">
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-          <svg viewBox="0 0 20 20"><path d="M10 1l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2L10 14.9 4.4 18l1.4-6.2L1 7.5l6.4-.6z"/></svg>
-        </div>
-        <p class="quote">"Our partnership inquiry was handled professionally from the first email. Genuinely impressed."</p>
-        <div class="testi-person"><div class="avatar">SR</div><div><div class="name">Sofia R.</div><div class="country">Philippines</div></div></div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ============ CTA BAND ============ -->
 <section class="section-pad" style="padding-top:20px;">
   <div class="cta-band reveal">
     <h2>Have Questions? We're Ready to Help.</h2>
-    <p>Whatever you're trying to do &mdash; learn, teach, or partner with us &mdash; our team is one message away.</p>
+    <p>Whatever you're trying to do, whether that's learning, teaching, supporting your child or partnering with us, our team is one message away.</p>
     <div class="btn-row">
       <a href="#send-message" class="btn btn-white"><span class="shine"></span>Contact Us Now</a>
-      <a href="#" class="btn btn-outline">Browse Courses</a>
+      <a href="/#categories" class="btn btn-outline">Browse Courses</a>
     </div>
   </div>
 </section>
 
 <!-- ============ FOOTER ============ -->
-<footer class="site-footer">
-  <div class="wrap">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <h3>Eschool</h3>
-        <p>A learning platform connecting students, teachers, and schools across the world.</p>
-        <div class="social-row">
-          <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
-          <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/></svg></a>
-          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
-          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
+<footer class="site-foot">
+    <div class="container foot-grid">
+        <div class="foot-col">
+            <div class="foot-brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3L1 8l11 5 9-4.09V17h2V8L12 3z" fill="url(#lfg1)"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="url(#lfg1)" opacity=".7"/><defs><linearGradient id="lfg1" x1="1" y1="3" x2="23" y2="21"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#14B8A6"/></linearGradient></defs></svg>
+                <span>Eschool</span>
+            </div>
+            <p>Premium online learning built around real skills, clear video lessons, and a path that actually gets you somewhere.</p>
         </div>
-      </div>
-      <div class="footer-col">
-        <h4>Company</h4>
-        <ul><li><a href="#">About</a></li><li><a href="#">Courses</a></li><li><a href="#">Services</a></li><li><a href="#">Contact</a></li></ul>
-      </div>
-      <div class="footer-col">
-        <h4>Support</h4>
-        <ul><li><a href="#faq">Help Center</a></li><li><a href="#">Privacy Policy</a></li><li><a href="#">Terms of Service</a></li></ul>
-      </div>
-      <div class="footer-col">
-        <h4>Newsletter</h4>
-        <p style="font-size:0.85rem; color:#94A3B8;">Get updates on new courses and features.</p>
-        <form class="newsletter-form" onsubmit="return false;">
-          <input type="email" placeholder="Your email">
-          <button type="submit">Join</button>
-        </form>
-      </div>
+        <div class="foot-col">
+            <h5>Quick Links</h5>
+            <ul>
+                <li><a href="/#categories">Courses</a></li>
+                <li><a href="/aboutus">About us</a></li>
+                <li><a href="/services">Services</a></li>
+                <li><a href="/earn">Earn</a></li>
+            </ul>
+        </div>
+        <div class="foot-col">
+            <h5>Support</h5>
+            <ul>
+                <li><a href="/contact">Contact</a></li>
+                <li><a href="/policies#privacy">Privacy Policy</a></li>
+                <li><a href="/policies#terms">Terms of Service</a></li>
+            </ul>
+        </div>
+        <div class="foot-col">
+            <h5>Need help now?</h5>
+            <div class="help-box">
+                <p>Questions about your account, a payment or a lesson? Our team will help, usually within one working day.</p>
+                <a class="help-btn" href="/contact"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Contact support</a>
+            </div>
+        </div>
     </div>
-    <div class="footer-bottom">
-      <span>&copy; 2025 Eschool. All rights reserved.</span>
-      <span><a href="#">Privacy</a> &middot; <a href="#">Terms</a></span>
+    <div class="container">
+        <div class="copyright">&copy; <span data-year>2026</span> Eschool. All rights reserved. &middot; <a href="/policies#privacy">Privacy</a> &middot; <a href="/policies#terms">Terms</a></div>
     </div>
-  </div>
 </footer>
 
 </div>
@@ -972,32 +872,6 @@
     revealEls.forEach(function(el){ el.classList.remove('in-view'); io.observe(el); });
   } else {
     revealEls.forEach(function(el){ el.classList.add('in-view'); });
-  }
-
-  /* Counter animation */
-  var counters = root.querySelectorAll('.num[data-count]');
-  function animateCount(el){
-    var target = parseInt(el.getAttribute('data-count'), 10);
-    var suffix = el.getAttribute('data-suffix') || '';
-    var dur = 1400, start = null;
-    function step(ts){
-      if(!start) start = ts;
-      var p = Math.min((ts - start) / dur, 1);
-      var eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = Math.round(eased * target) + suffix;
-      if(p < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
-  if('IntersectionObserver' in window){
-    var cio = new IntersectionObserver(function(entries){
-      entries.forEach(function(e){
-        if(e.isIntersecting){ animateCount(e.target); cio.unobserve(e.target); }
-      });
-    }, { threshold:0.5 });
-    counters.forEach(function(c){ cio.observe(c); });
-  } else {
-    counters.forEach(animateCount);
   }
 
   /* Floating label helper for browsers without :placeholder-shown edge cases */
@@ -1041,16 +915,6 @@
     });
   }
 
-  /* File drop label */
-  var fileDrop = root.querySelector('#fileDrop');
-  var fileInput = root.querySelector('#fileInput');
-  if(fileDrop && fileInput){
-    fileDrop.addEventListener('click', function(){ fileInput.click(); });
-    fileInput.addEventListener('change', function(){
-      fileDrop.textContent = fileInput.files[0] ? fileInput.files[0].name : 'Click to attach a file, or drag it here';
-    });
-  }
-
   /* Ripple on buttons */
   root.querySelectorAll('.btn, .submit-btn').forEach(function(btn){
     btn.addEventListener('click', function(e){
@@ -1081,7 +945,7 @@
         email: root.querySelector('#email').value,
         phone: root.querySelector('#phone').value,
         subject: root.querySelector('#subject').value,
-        country: root.querySelector('#userType').value,
+        country: root.querySelector('#country').value,
         message: root.querySelector('#message').value
       };
 
@@ -1137,6 +1001,9 @@
       a.style.maxHeight = !isOpen ? a.scrollHeight + 'px' : null;
     });
   });
+
+  /* Footer year */
+  root.querySelectorAll('[data-year]').forEach(function(el){ el.textContent = new Date().getFullYear(); });
 
   /* Mouse parallax on hero signal */
   var hero = root.querySelector('.hero');

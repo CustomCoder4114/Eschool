@@ -1,0 +1,517 @@
+{% extends "Parent/parent-body.html" %}
+
+{% block allcontent %}
+{#
+    PARENT PAGE - Help & Support  (templates/Parent/parent-support.html)
+    Tickets use the same API as everyone else:
+      GET  /api/complaints/mine                 your tickets
+      POST /api/complaints                      new ticket {subject, category, description, child_id?, payment_id?}
+                                                (the category sets the priority on the server)
+      POST /api/complaints/<id>/add             add more to your ticket (reopens it if it was solved lately)
+      POST /api/complaints/<id>/close           mark it solved
+      POST /api/complaints/<id>/seen            you read the team's reply
+    The server tells the support team (bell + email from .env). No email keys or addresses are in this page.
+#}
+<style>
+/* Scoped to .ps: this page never changes the colours you chose in Appearance */
+.ps {
+    --ps-accent: var(--primary-color, #4361ee);
+    --ps-accent-2: var(--secondary-color, #7209b7);
+    --ps-soft: rgba(67, 97, 238, .1);
+    --ps-surface: #ffffff; --ps-surface-2: #f8fafc; --ps-border: #e5e7eb;
+    --ps-text: #0f172a; --ps-text-2: #475569; --ps-text-3: #64748b;
+    --ps-ok: #059669; --ps-ok-soft: #ecfdf5; --ps-warn: #b45309; --ps-warn-soft: #fffbeb; --ps-bad: #dc2626; --ps-bad-soft: #fef2f2;
+    --ps-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 6px 18px rgba(15, 23, 42, .06);
+    max-width: 1200px; margin: 0 auto; padding: 4px 0 30px; font-family: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ps-text);
+}
+@supports (color: color-mix(in srgb, red 50%, blue)) { .ps { --ps-soft: color-mix(in srgb, var(--ps-accent) 11%, transparent); } }
+body.dark-mode .ps {
+    --ps-surface: #111827; --ps-surface-2: #0f172a; --ps-border: #263244;
+    --ps-text: #e5e7eb; --ps-text-2: #cbd5e1; --ps-text-3: #94a3b8;
+    --ps-ok-soft: rgba(16,185,129,.15); --ps-warn-soft: rgba(245,158,11,.14); --ps-bad-soft: rgba(239,68,68,.15);
+}
+.ps *, .ps *::before, .ps *::after { box-sizing: border-box; }
+.ps-hero { background: linear-gradient(135deg, var(--ps-accent), var(--ps-accent-2)); color: #fff; border-radius: 20px; padding: 26px 28px; display: flex; gap: 18px; align-items: center; margin-bottom: 18px; }
+.ps-hero-ic { width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,.18); display: grid; place-items: center; font-size: 1.6rem; flex: none; }
+.ps-hero h1 { margin: 0 0 4px; font-family: 'Poppins', sans-serif; font-size: 1.8rem; font-weight: 800; }
+.ps-hero p { margin: 0; opacity: .92; line-height: 1.5; }
+.ps-tabs { display: flex; gap: 6px; flex-wrap: wrap; background: var(--ps-surface); border: 1px solid var(--ps-border); border-radius: 16px; padding: 6px; margin-bottom: 18px; box-shadow: var(--ps-shadow); }
+.ps-tab { flex: 1 1 140px; border: 0; background: none; padding: 12px 16px; border-radius: 11px; font: inherit; font-weight: 600; color: var(--ps-text-2); cursor: pointer; display: flex; gap: 8px; align-items: center; justify-content: center; }
+.ps-tab:hover { background: var(--ps-surface-2); color: var(--ps-accent); }
+.ps-tab[aria-selected="true"] { background: linear-gradient(135deg, var(--ps-accent), var(--ps-accent-2)); color: #fff; }
+.ps-tab b { font-size: .72rem; background: var(--ps-bad); color: #fff; border-radius: 99px; padding: 1px 7px; }
+.ps-tab[aria-selected="true"] b { background: #fff; color: var(--ps-accent); }
+.ps-panel[hidden] { display: none; }
+.ps-card { background: var(--ps-surface); border: 1px solid var(--ps-border); border-radius: 18px; padding: 20px 22px; box-shadow: var(--ps-shadow); margin-bottom: 16px; }
+.ps-h { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 1.1rem; }
+.ps-h i { color: var(--ps-accent); }
+.ps-sub { color: var(--ps-text-3); font-size: .9rem; margin: -6px 0 14px; line-height: 1.5; }
+.ps-strip { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.ps-strip p { flex: 1; min-width: 220px; margin: 0; color: var(--ps-text-2); line-height: 1.5; }
+.ps-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 11px; border: 1px solid transparent; font: inherit; font-weight: 600; font-size: .92rem; cursor: pointer; text-decoration: none; }
+.ps-btn-primary { background: linear-gradient(135deg, var(--ps-accent), var(--ps-accent-2)); color: #fff; }
+.ps-btn-ghost { background: var(--ps-surface); color: var(--ps-text-2); border-color: var(--ps-border); }
+.ps-btn-ghost:hover { color: var(--ps-accent); border-color: var(--ps-accent); }
+.ps-btn-sm { height: 34px; padding: 0 12px; font-size: .84rem; }
+.ps-btn:disabled { opacity: .6; cursor: default; }
+.ps-search { position: relative; margin-bottom: 14px; }
+.ps-search i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--ps-text-3); }
+.ps-input, .ps-select, .ps-textarea { width: 100%; border: 1.5px solid var(--ps-border); background: var(--ps-surface); color: var(--ps-text); border-radius: 11px; padding: 11px 14px; font: inherit; font-size: .95rem; }
+.ps-search .ps-input { padding-left: 40px; }
+.ps-input:focus, .ps-select:focus, .ps-textarea:focus { outline: none; border-color: var(--ps-accent); box-shadow: 0 0 0 3px var(--ps-soft); }
+.ps-textarea { min-height: 130px; resize: vertical; line-height: 1.5; }
+.ps-field { margin-bottom: 16px; }
+.ps-field label { display: block; font-weight: 600; margin-bottom: 6px; font-size: .92rem; }
+.ps-field small { display: block; color: var(--ps-text-3); margin-top: 5px; font-size: .82rem; }
+.ps-field.bad .ps-input, .ps-field.bad .ps-select, .ps-field.bad .ps-textarea { border-color: var(--ps-bad); }
+.ps-err { color: var(--ps-bad); font-size: .84rem; margin-top: 5px; display: none; }
+.ps-field.bad .ps-err { display: block; }
+.ps-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.ps-note { display: none; padding: 11px 14px; border-radius: 11px; margin-bottom: 14px; font-size: .92rem; line-height: 1.5; }
+.ps-note.show { display: block; }
+.ps-note.ok { background: var(--ps-ok-soft); color: var(--ps-ok); }
+.ps-note.bad { background: var(--ps-bad-soft); color: var(--ps-bad); }
+/* FAQ */
+.ps-cat { margin-bottom: 18px; }
+.ps-cat h3 { font-size: 1rem; margin: 0 0 6px; display: flex; gap: 8px; align-items: center; color: var(--ps-text); }
+.ps-cat h3 i { color: var(--ps-accent); width: 18px; text-align: center; }
+.ps-q { border-bottom: 1px solid var(--ps-border); }
+.ps-q button { width: 100%; text-align: left; background: none; border: 0; padding: 13px 2px; font: inherit; font-weight: 600; color: var(--ps-text); cursor: pointer; display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+.ps-q button:hover { color: var(--ps-accent); }
+.ps-q button i { transition: transform .2s; color: var(--ps-text-3); }
+.ps-q button[aria-expanded="true"] i { transform: rotate(180deg); }
+.ps-a { padding: 0 2px 14px; color: var(--ps-text-2); line-height: 1.6; font-size: .93rem; }
+.ps-a a, .ps-guide a { color: var(--ps-accent); font-weight: 600; }
+.ps-empty { text-align: center; padding: 40px 16px; color: var(--ps-text-3); }
+.ps-empty i { font-size: 2rem; display: block; margin-bottom: 10px; opacity: .6; }
+.ps-empty h3 { color: var(--ps-text); margin: 0 0 6px; font-size: 1.05rem; }
+.ps-empty p { margin: 0 0 14px; }
+/* guides */
+.ps-guides { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 14px; }
+.ps-guide { background: var(--ps-surface); border: 1px solid var(--ps-border); border-radius: 16px; padding: 18px; box-shadow: var(--ps-shadow); }
+.ps-guide-ic { width: 44px; height: 44px; border-radius: 12px; background: var(--ps-soft); color: var(--ps-accent); display: grid; place-items: center; font-size: 1.2rem; margin-bottom: 10px; }
+.ps-guide h3 { margin: 0 0 4px; font-size: 1rem; }
+.ps-guide p { margin: 0 0 10px; color: var(--ps-text-2); font-size: .9rem; line-height: 1.5; }
+.ps-guide ol { margin: 0 0 6px; padding-left: 20px; color: var(--ps-text-2); font-size: .9rem; line-height: 1.6; }
+.ps-guide ol[hidden] { display: none; }
+.ps-more { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; font-size: .86rem; color: var(--ps-accent); cursor: pointer; }
+/* tickets */
+.ps-tickets { display: grid; gap: 14px; }
+.ps-t { background: var(--ps-surface); border: 1px solid var(--ps-border); border-left: 4px solid var(--ps-accent); border-radius: 16px; box-shadow: var(--ps-shadow); }
+.ps-t.resolved { border-left-color: var(--ps-ok); }
+.ps-t-head { width: 100%; text-align: left; background: none; border: 0; font: inherit; color: inherit; cursor: pointer; padding: 16px 18px; display: grid; gap: 6px; }
+.ps-t-top { display: flex; gap: 10px; align-items: flex-start; }
+.ps-t-top b { font-size: 1.02rem; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ps-pill { font-size: .74rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+.ps-pill.pending { background: var(--ps-warn-soft); color: var(--ps-warn); }
+.ps-pill.in-progress { background: var(--ps-soft); color: var(--ps-accent); }
+.ps-pill.resolved { background: var(--ps-ok-soft); color: var(--ps-ok); }
+.ps-pill.new { background: var(--ps-bad); color: #fff; }
+.ps-t-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: .82rem; color: var(--ps-text-3); }
+.ps-t-body { padding: 0 18px 18px; }
+.ps-t-body[hidden] { display: none; }
+.ps-msg { border-radius: 12px; padding: 11px 13px; margin-bottom: 10px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; font-size: .92rem; }
+.ps-msg small { display: block; font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; white-space: normal; }
+.ps-msg.me { background: var(--ps-surface-2); border: 1px solid var(--ps-border); color: var(--ps-text-2); }
+.ps-msg.me small { color: var(--ps-text-3); }
+.ps-msg.team { background: var(--ps-ok-soft); color: var(--ps-text); border-left: 3px solid var(--ps-ok); }
+.ps-msg.team small { color: var(--ps-ok); }
+.ps-wait { font-size: .88rem; color: var(--ps-text-3); margin: 4px 0 12px; }
+.ps-add { display: grid; gap: 8px; margin-top: 6px; }
+.ps-add .ps-textarea { min-height: 80px; }
+.ps-t-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+    .ps-hero { padding: 20px 18px; } .ps-hero h1 { font-size: 1.4rem; } .ps-hero-ic { display: none; }
+    .ps-row { grid-template-columns: 1fr; } .ps-card { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .ps-q button i { transition: none; } }
+</style>
+
+<div class="ps" data-no-theme>
+    <header class="ps-hero">
+        <div class="ps-hero-ic" aria-hidden="true"><i class="fas fa-headset"></i></div>
+        <div>
+            <h1>Help &amp; Support</h1>
+            <p>Answers for parents and guardians, step-by-step guides, and a direct line to the Eschool team.</p>
+        </div>
+    </header>
+
+    <div class="ps-tabs" role="tablist" aria-label="Help sections">
+        <button class="ps-tab" role="tab" id="tab-tickets" aria-controls="panel-tickets" data-tab="tickets"><i class="fas fa-ticket" aria-hidden="true"></i> My tickets <b id="newCount" hidden></b></button>
+        <button class="ps-tab" role="tab" id="tab-faq" aria-controls="panel-faq" data-tab="faq"><i class="fas fa-circle-question" aria-hidden="true"></i> Questions</button>
+        <button class="ps-tab" role="tab" id="tab-guides" aria-controls="panel-guides" data-tab="guides"><i class="fas fa-book-open" aria-hidden="true"></i> Guides</button>
+        <button class="ps-tab" role="tab" id="tab-new" aria-controls="panel-new" data-tab="new"><i class="fas fa-plus" aria-hidden="true"></i> New ticket</button>
+    </div>
+
+    <!-- My tickets -->
+    <section class="ps-panel" id="panel-tickets" role="tabpanel" aria-labelledby="tab-tickets">
+        <div class="ps-card ps-strip">
+            <p><strong>Need a person?</strong> Send a ticket and the Eschool team answers here. You also get a notice in your bell when they reply.</p>
+            <button type="button" class="ps-btn ps-btn-primary" data-go="new"><i class="fas fa-plus" aria-hidden="true"></i> New ticket</button>
+        </div>
+        <div class="ps-note" id="ticketsNote" role="status"></div>
+        <div class="ps-tickets" id="tickets"><div class="ps-empty"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i>Loading your tickets…</div></div>
+    </section>
+
+    <!-- Questions -->
+    <section class="ps-panel" id="panel-faq" role="tabpanel" aria-labelledby="tab-faq" hidden>
+        <div class="ps-card">
+            <div class="ps-search"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input type="search" class="ps-input" id="faqSearch" placeholder="Search questions, e.g. code, M-Pesa, unlink" aria-label="Search questions"></div>
+            <div id="faqList"></div>
+            <div class="ps-empty" id="faqNone" hidden><i class="fas fa-magnifying-glass" aria-hidden="true"></i><h3>No question matches</h3><p>Try another word, or ask the team directly.</p><button type="button" class="ps-btn ps-btn-primary" data-go="new">Ask the team</button></div>
+        </div>
+    </section>
+
+    <!-- Guides -->
+    <section class="ps-panel" id="panel-guides" role="tabpanel" aria-labelledby="tab-guides" hidden>
+        <div class="ps-search"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input type="search" class="ps-input" id="guideSearch" placeholder="Search guides" aria-label="Search guides"></div>
+        <div class="ps-guides" id="guides"></div>
+    </section>
+
+    <!-- New ticket -->
+    <section class="ps-panel" id="panel-new" role="tabpanel" aria-labelledby="tab-new" hidden>
+        <div class="ps-card">
+            <h2 class="ps-h"><i class="fas fa-pen" aria-hidden="true"></i> Send a ticket</h2>
+            <p class="ps-sub">Tell us what happened. Payment and safety tickets are answered first.</p>
+            <div class="ps-note" id="formNote" role="alert"></div>
+            <form id="ticketForm" novalidate>
+                <div class="ps-row">
+                    <div class="ps-field" id="fCategory">
+                        <label for="tCategory">What is it about?</label>
+                        <select id="tCategory" class="ps-select">
+                            <option value="">Choose a topic</option>
+                            <option value="linking">Linking my child</option>
+                            <option value="payments">A payment or plan</option>
+                            <option value="progress">My child's progress or grades</option>
+                            <option value="safety">Safety: someone or something worries me</option>
+                            <option value="teachers">Teachers and live classes</option>
+                            <option value="account">My account</option>
+                            <option value="technical">Something isn't working</option>
+                            <option value="other">Something else</option>
+                        </select>
+                        <div class="ps-err">Choose a topic.</div>
+                    </div>
+                    <div class="ps-field" id="fChild">
+                        <label for="tChild">Which child? <span style="font-weight:500;color:var(--ps-text-3)">(optional)</span></label>
+                        <select id="tChild" class="ps-select"><option value="">Not about one child</option></select>
+                    </div>
+                </div>
+                <div class="ps-field" id="fPayment" hidden>
+                    <label for="tPayment">Which payment?</label>
+                    <select id="tPayment" class="ps-select"><option value="">Not about a payment I made</option></select>
+                    <small>The team sees the plan, amount and M-Pesa code straight away.</small>
+                </div>
+                <div class="ps-field" id="fSubject">
+                    <label for="tSubject">Subject</label>
+                    <input id="tSubject" class="ps-input" maxlength="150" placeholder="A short summary, e.g. Payment not confirmed yet">
+                    <div class="ps-err">Add a short subject.</div>
+                </div>
+                <div class="ps-field" id="fMessage">
+                    <label for="tMessage">Message</label>
+                    <textarea id="tMessage" class="ps-textarea" maxlength="5000" placeholder="What were you doing, what happened, and anything you saw on the screen…"></textarea>
+                    <div class="ps-err">Tell us a little more (at least 10 characters).</div>
+                </div>
+                <div class="ps-note" id="safetyNote" style="display:none"></div>
+                <button type="submit" class="ps-btn ps-btn-primary" id="tSend"><i class="fas fa-paper-plane" aria-hidden="true"></i> Send ticket</button>
+            </form>
+        </div>
+    </section>
+</div>
+
+<script>
+(function () {
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    async function api(url, opt) {
+        var r = await fetch(url, Object.assign({ credentials: 'same-origin' }, opt || {}));
+        if (r.status === 401) { location.href = '/Login'; throw new Error('Please sign in again.'); }
+        var d = null; try { d = await r.json(); } catch (e) {}
+        if (!r.ok || !d || d.success === false) throw new Error((d && d.message) || 'Something went wrong. Please try again.');
+        return d;
+    }
+    function post(url, body) { return api(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }); }
+    function note(id, msg, kind) {
+        var el = $(id); el.className = 'ps-note' + (msg ? ' show ' + (kind || 'ok') : ''); el.textContent = msg || '';
+        clearTimeout(el._t); if (msg && kind !== 'bad') el._t = setTimeout(function () { el.className = 'ps-note'; }, 7000);
+    }
+    function when(iso) {
+        var d = new Date(iso); if (!iso || isNaN(d)) return '';
+        var days = Math.floor((Date.now() - d) / 86400000);
+        if (days <= 0) return 'Today'; if (days === 1) return 'Yesterday'; if (days < 7) return days + ' days ago';
+        return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    /* ---------- tabs (links like /parent-support#new open the right tab) ---------- */
+    var TABS = ['tickets', 'faq', 'guides', 'new'];
+    var ALIAS = { billing: 'new', ticket: 'new', tickets: 'tickets', knowledge: 'guides', help: 'faq', questions: 'faq' };
+    function tabFromHash() { var h = (location.hash || '').slice(1).toLowerCase(); return TABS.indexOf(h) > -1 ? h : (ALIAS[h] || 'tickets'); }
+    function show(tab, push) {
+        TABS.forEach(function (t) {
+            $('tab-' + t).setAttribute('aria-selected', String(t === tab));
+            $('tab-' + t).tabIndex = t === tab ? 0 : -1;
+            $('panel-' + t).hidden = t !== tab;
+        });
+        if (push && tabFromHash() !== tab) { try { history.pushState(null, '', '#' + tab); } catch (e) {} }
+        if (tab === 'new' && !formLoaded) loadFormLists();
+    }
+    document.querySelector('.ps-tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab, true); });
+    document.querySelector('.ps-tabs').addEventListener('keydown', function (e) {
+        var i = TABS.indexOf(document.activeElement.dataset.tab); if (i < 0) return;
+        var n = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : null; if (n === null) return;
+        n = (n + TABS.length) % TABS.length; show(TABS[n], true); $('tab-' + TABS[n]).focus(); e.preventDefault();
+    });
+    document.addEventListener('click', function (e) { var g = e.target.closest('[data-go]'); if (g) { show(g.dataset.go, true); window.scrollTo({ top: 0, behavior: 'smooth' }); } });
+    window.addEventListener('popstate', function () { show(tabFromHash(), false); });
+    // a hash like #billing also picks the topic
+    var HASH_TOPIC = { billing: 'payments', payments: 'payments', linking: 'linking', safety: 'safety' };
+
+    /* ---------- questions ---------- */
+    var FAQ = [
+        ['fa-link', 'Linking your child', [
+            ['How do I link my child?', 'Ask your child for their link code: they make one in their account under <strong>Link a parent</strong>. Then open <a href="/parent-link">Link a child</a>, enter their email and the code. A code works for 15 minutes, so use it straight away.'],
+            ['The code says it has expired or is wrong.', 'Codes last 15 minutes and work once. Ask your child to make a new one and type it with the dashes, e.g. ABC-DEF-GHJ. After several wrong tries you have to wait 15 minutes before trying again.'],
+            ['Can both parents link to the same child?', 'Yes. Each parent or guardian links with their own account, and each one can ask for their own access.'],
+            ['How do I unlink a child?', 'Open <a href="/parent-children">My children</a> and choose Unlink on their card. Your child can also unlink you from their own Settings. Paid plans keep running.']
+        ]],
+        ['fa-user-shield', 'What you can see', [
+            ['Why can\'t I see my child\'s grades?', 'Your child decides what to share with you. On <a href="/parent-children">My children</a>, open <strong>Manage access</strong> and switch on what you would like to see. Your child gets a request and can allow it in their Settings. Until then you see their name, level and plan.'],
+            ['Is my child told when I ask for something?', 'Yes. Every request and every change is shown to both of you in an access history, so nothing happens behind anyone\'s back.'],
+            ['When does progress show up?', 'As soon as your child passes a module test or quiz. They don\'t need to open their dashboard first. Your <a href="/parent-dashboard">dashboard</a> shows the latest each time you open it.']
+        ]],
+        ['fa-credit-card', 'Plans and payments', [
+            ['How do I pay for a plan?', 'On <a href="/parent-children">My children</a>, choose <strong>Pay</strong> on your child\'s card, pick Basic or Pro and how long, then pay with M-Pesa and type the code from the confirmation SMS.'],
+            ['I paid but the plan hasn\'t started.', 'Each payment is checked by the Eschool team before the plan starts, and you get a notice when it is confirmed. If it is taking long, send a ticket about that payment: the team sees the code straight away.'],
+            ['I typed the wrong M-Pesa code.', 'While a payment is still waiting, you can withdraw it on My children and send it again with the right code. Each M-Pesa code can only be used once.'],
+            ['What do Basic and Pro add?', 'Basic adds live classes with Eschool teachers and removes ads. Pro adds everything in Basic plus the Pro-only courses. Paying for the same plan again adds the time to the end of the current one.']
+        ]],
+        ['fa-shield-halved', 'Parental controls and safety', [
+            ['What can parental controls do?', 'On <a href="/parent-controls">Parental controls</a> you can choose who can talk to your child, approve or block people, switch features like messaging or calls on and off, and pause Eschool for a while. Your child is told when a rule changes.'],
+            ['Someone is bothering my child.', 'Block them on <a href="/parent-controls#contacts">Parental controls</a> straight away, then send a ticket with the topic <strong>Safety</strong>. Safety tickets go to the top of the team\'s list.'],
+            ['Can I read my child\'s messages?', 'Only if your child allows it. You can always see who they talk to and how much. Reading the messages themselves needs their permission, which you can ask for.']
+        ]],
+        ['fa-bullseye', 'Goals and rewards', [
+            ['How do goals work?', 'On <a href="/parent-goals">Goals &amp; rewards</a>, pick a goal for your child (for example passing modules or a course), a date and a reward. Eschool checks their progress and tells you both when it\'s reached.'],
+            ['My child reached a goal. Now what?', 'Give the reward you promised, then mark it as given on Goals &amp; rewards. Your child gets a message from you.']
+        ]],
+        ['fa-user-gear', 'Your account', [
+            ['How do I change my email or password?', 'Open <a href="/parent-settings">Settings</a> and go to Account &amp; Security.'],
+            ['Does Eschool work on phones?', 'Yes, on phones, tablets and computers, in any modern browser.']
+        ]]
+    ];
+    function renderFaq(q) {
+        q = (q || '').trim().toLowerCase();
+        var any = false, n = 0;
+        $('faqList').innerHTML = FAQ.map(function (cat) {
+            var items = cat[2].filter(function (x) { return !q || (x[0] + ' ' + x[1].replace(/<[^>]+>/g, '')).toLowerCase().indexOf(q) > -1; });
+            if (!items.length) return '';
+            any = true;
+            return '<div class="ps-cat"><h3><i class="fas ' + cat[0] + '" aria-hidden="true"></i>' + esc(cat[1]) + '</h3>' + items.map(function (x) {
+                var id = 'qa' + (n++);
+                return '<div class="ps-q"><button type="button" aria-expanded="' + (q ? 'true' : 'false') + '" aria-controls="' + id + '">' + esc(x[0]) + '<i class="fas fa-chevron-down" aria-hidden="true"></i></button>' +
+                       '<div class="ps-a" id="' + id + '"' + (q ? '' : ' hidden') + '>' + x[1] + '</div></div>';   // answers are our own text (with links)
+            }).join('') + '</div>';
+        }).join('');
+        $('faqNone').hidden = any;
+    }
+    $('faqList').addEventListener('click', function (e) {
+        var b = e.target.closest('.ps-q button'); if (!b) return;
+        var open = b.getAttribute('aria-expanded') !== 'true';
+        b.setAttribute('aria-expanded', String(open)); $(b.getAttribute('aria-controls')).hidden = !open;
+    });
+    $('faqSearch').addEventListener('input', function () { renderFaq(this.value); });
+
+    /* ---------- guides ---------- */
+    var GUIDES = [
+        ['fa-link', 'Link your child', 'Connect your account to your child\'s in a minute.', [
+            'Ask your child to open their account and make a link code under <strong>Link a parent</strong>.',
+            'Open <a href="/parent-link">Link a child</a> and type their email and the code (it works for 15 minutes).',
+            'Choose how you are related, then send. Your child appears on <a href="/parent-children">My children</a>.']],
+        ['fa-eye', 'Ask to see grades and more', 'Your child decides what to share; here\'s how to ask.', [
+            'Open <a href="/parent-children">My children</a> and press <strong>Manage access</strong> on their card.',
+            'Switch on what you would like to see, e.g. Grades. It shows <em>Waiting for</em> your child.',
+            'Your child allows it in their Settings. You both get a notice, and it shows in the access history.']],
+        ['fa-mobile-screen', 'Pay for a plan with M-Pesa', 'Basic or Pro for one child.', [
+            'On <a href="/parent-children">My children</a>, press <strong>Pay</strong> on your child\'s card.',
+            'Choose the plan and how long. The page shows the business or till number and the exact amount.',
+            'Pay on your phone, then type the 10-character M-Pesa code from the SMS.',
+            'The team checks it and you get a notice when the plan starts.']],
+        ['fa-bullseye', 'Set a goal and a reward', 'Keep your child motivated.', [
+            'Open <a href="/parent-goals">Goals &amp; rewards</a> and press <strong>New goal</strong>.',
+            'Pick your child, the goal and an end date, then add a reward they\'ll love.',
+            'Eschool tracks it. When it\'s reached, give the reward and mark it as given.']],
+        ['fa-shield-halved', 'Use parental controls', 'Who your child can talk to, and what they can use.', [
+            'Open <a href="/parent-controls">Parental controls</a> and choose your child.',
+            'Under <strong>Contacts</strong>, choose who can talk to them and approve or block people.',
+            'Under <strong>Features</strong>, switch messaging, calls, following, posting or uploads on or off, then press Save.',
+            'Need a break? <strong>Pause</strong> stops Eschool for a while, with a message for your child.']],
+        ['fa-chart-line', 'Read your child\'s progress', 'What the numbers on your dashboard mean.', [
+            'Open your <a href="/parent-dashboard">dashboard</a> and press <strong>Report</strong> next to your child.',
+            'Course progress is how much of each course is done; the score is their average on module tests and quizzes.',
+            '"Worth your attention" points out anything to talk about, like a course they haven\'t touched for a while.']]
+    ];
+    function renderGuides(q) {
+        q = (q || '').trim().toLowerCase();
+        var list = GUIDES.filter(function (g) { return !q || (g[1] + ' ' + g[2] + ' ' + g[3].join(' ').replace(/<[^>]+>/g, '')).toLowerCase().indexOf(q) > -1; });
+        $('guides').innerHTML = list.length ? list.map(function (g, i) {
+            return '<article class="ps-guide"><div class="ps-guide-ic"><i class="fas ' + g[0] + '" aria-hidden="true"></i></div><h3>' + esc(g[1]) + '</h3><p>' + esc(g[2]) + '</p>' +
+                   '<ol id="gd' + i + '"' + (q ? '' : ' hidden') + '>' + g[3].map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ol>' +
+                   '<button type="button" class="ps-more" aria-expanded="' + (q ? 'true' : 'false') + '" aria-controls="gd' + i + '">' + (q ? 'Show less' : 'Show the steps') + '</button></article>';
+        }).join('') : '<div class="ps-card ps-empty" style="grid-column:1/-1"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><h3>No guide matches</h3><p>Try another word.</p></div>';
+    }
+    $('guides').addEventListener('click', function (e) {
+        var b = e.target.closest('.ps-more'); if (!b) return;
+        var open = b.getAttribute('aria-expanded') !== 'true', ol = $(b.getAttribute('aria-controls'));
+        ol.hidden = !open; b.setAttribute('aria-expanded', String(open)); b.textContent = open ? 'Show less' : 'Show the steps';
+    });
+    $('guideSearch').addEventListener('input', function () { renderGuides(this.value); });
+
+    /* ---------- tickets ---------- */
+    var CAT = { linking: 'Linking', payments: 'Payment', billing: 'Payment', progress: 'Progress', safety: 'Safety', teachers: 'Teachers',
+                account: 'Account', technical: 'Not working', other: 'Other', course: 'Course', feature: 'Idea' };
+    var STATUS = { pending: 'Waiting for the team', 'in-progress': 'The team replied', resolved: 'Solved' };
+    var tickets = [];
+    // the conversation is kept in one text: split it at the "--- Added ... ---" / "--- Support replied ... ---" lines
+    // stamps in the text look like "06 Nov 2026, 14:28 (Nairobi time)"
+    var MON = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+    function stampTime(s) {
+        var m = /(\d{1,2}) (\w{3}) (\d{4}), (\d{1,2}):(\d{2})/.exec(s || ''); if (!m || !(m[2] in MON)) return null;
+        return Date.UTC(+m[3], MON[m[2]], +m[1], +m[4] - 3, +m[5]);      // Nairobi is UTC+3
+    }
+    function thread(t) {
+        var parts = String(t.description || '').split(/\n*--- (Added|Support replied) ([^\n]*?) ---\n/);
+        var out = [{ who: 'me', when: when(t.created_at), text: parts[0], at: new Date(t.created_at).getTime() || 0 }];
+        for (var i = 1; i < parts.length; i += 3) {
+            var at = stampTime(parts[i + 1]);
+            out.push({ who: parts[i] === 'Added' ? 'me' : 'team', when: at ? when(new Date(at).toISOString()) + ' ' + new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '', text: parts[i + 2], at: at || 0 });
+        }
+        if (t.response) {
+            // the team's latest reply goes in time order, before anything you added after it
+            var rAt = new Date(t.response_date).getTime() || Infinity, msg = { who: 'team', when: when(t.response_date), text: t.response, at: rAt };
+            var k = out.findIndex(function (m, idx) { return idx > 0 && m.at > rAt; });
+            if (k < 0) out.push(msg); else out.splice(k, 0, msg);
+        }
+        return out.filter(function (m) { return (m.text || '').trim(); });
+    }
+    function ticketHTML(t) {
+        var st = t.status || 'pending', msgs = thread(t);
+        return '<article class="ps-t ' + esc(st) + '" data-id="' + Number(t.id) + '">' +
+            '<button type="button" class="ps-t-head" aria-expanded="false" aria-controls="tb' + Number(t.id) + '">' +
+                '<span class="ps-t-top"><b>' + esc(t.subject) + '</b>' + (t.new_reply ? '<span class="ps-pill new">New reply</span>' : '') +
+                '<span class="ps-pill ' + esc(st) + '">' + esc(STATUS[st] || st) + '</span></span>' +
+                '<span class="ps-t-meta"><span><i class="fas fa-tag" aria-hidden="true"></i> ' + esc(CAT[t.category] || 'Other') + '</span>' +
+                '<span><i class="far fa-calendar" aria-hidden="true"></i> ' + esc(when(t.created_at)) + '</span>' +
+                '<span><i class="far fa-comments" aria-hidden="true"></i> ' + msgs.length + ' message' + (msgs.length === 1 ? '' : 's') + '</span></span>' +
+            '</button>' +
+            '<div class="ps-t-body" id="tb' + Number(t.id) + '" hidden>' +
+                msgs.map(function (m) { return '<div class="ps-msg ' + m.who + '"><small>' + (m.who === 'me' ? 'You' : 'Eschool team') + (m.when ? ' · ' + esc(m.when) : '') + '</small>' + esc(m.text.trim()) + '</div>'; }).join('') +
+                (st === 'pending' ? '<p class="ps-wait"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting for the team. You\'ll get a notice in your bell when they reply.</p>' : '') +
+                '<div class="ps-note" id="tn' + Number(t.id) + '" role="status"></div>' +
+                '<div class="ps-add"><label class="sr-only" for="ta' + Number(t.id) + '">Add to this ticket</label>' +
+                '<textarea class="ps-textarea" id="ta' + Number(t.id) + '" maxlength="2000" placeholder="' + (st === 'resolved' ? 'Still not sorted? Write here to reopen it.' : 'Reply or add more information…') + '"></textarea>' +
+                '<div class="ps-t-acts"><button type="button" class="ps-btn ps-btn-primary ps-btn-sm" data-add="' + Number(t.id) + '"><i class="fas fa-reply" aria-hidden="true"></i> Send</button>' +
+                (st !== 'resolved' ? '<button type="button" class="ps-btn ps-btn-ghost ps-btn-sm" data-close="' + Number(t.id) + '"><i class="fas fa-check" aria-hidden="true"></i> It\'s solved</button>' : '') +
+                '</div></div>' +
+            '</div></article>';
+    }
+    async function loadTickets(openId) {
+        try { tickets = (await api('/api/complaints/mine')).complaints || []; }
+        catch (e) { $('tickets').innerHTML = '<div class="ps-card ps-empty"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><h3>Couldn\'t load your tickets</h3><p>' + esc(e.message) + '</p></div>'; return; }
+        var fresh = tickets.filter(function (t) { return t.new_reply; }).length;
+        $('newCount').hidden = !fresh; $('newCount').textContent = fresh;
+        $('tickets').innerHTML = tickets.length ? tickets.map(ticketHTML).join('') :
+            '<div class="ps-card ps-empty"><i class="fas fa-ticket" aria-hidden="true"></i><h3>No tickets yet</h3><p>If something isn\'t right, the team is one message away.</p><button type="button" class="ps-btn ps-btn-primary" data-go="new"><i class="fas fa-plus" aria-hidden="true"></i> New ticket</button></div>';
+        if (openId) toggleTicket(openId, true);
+    }
+    function toggleTicket(id, force) {
+        var card = document.querySelector('.ps-t[data-id="' + id + '"]'); if (!card) return;
+        var head = card.querySelector('.ps-t-head'), body = card.querySelector('.ps-t-body');
+        var open = force === true ? true : head.getAttribute('aria-expanded') !== 'true';
+        head.setAttribute('aria-expanded', String(open)); body.hidden = !open;
+        var t = tickets.filter(function (x) { return x.id === id; })[0];
+        if (open && t && t.new_reply) {
+            t.new_reply = false; var p = card.querySelector('.ps-pill.new'); if (p) p.remove();
+            post('/api/complaints/' + id + '/seen').catch(function () {});
+            var left = tickets.filter(function (x) { return x.new_reply; }).length; $('newCount').hidden = !left; $('newCount').textContent = left;
+        }
+    }
+    $('tickets').addEventListener('click', async function (e) {
+        var h = e.target.closest('.ps-t-head'); if (h) { toggleTicket(Number(h.closest('.ps-t').dataset.id)); return; }
+        var a = e.target.closest('[data-add]');
+        if (a) {
+            var id = Number(a.dataset.add), box = $('ta' + id), text = box.value.trim();
+            if (text.length < 2) { box.focus(); return; }
+            a.disabled = true;
+            try { await post('/api/complaints/' + id + '/add', { text: text }); await loadTickets(id); note('tn' + id, 'Sent. The team has been told.', 'ok'); }
+            catch (err) { note('tn' + id, err.message, 'bad'); a.disabled = false; }
+            return;
+        }
+        var c = e.target.closest('[data-close]');
+        if (c) {
+            c.disabled = true;
+            try { await post('/api/complaints/' + Number(c.dataset.close) + '/close'); note('ticketsNote', 'Glad it\'s sorted. The ticket is marked as solved.', 'ok'); await loadTickets(); }
+            catch (err) { c.disabled = false; note('tn' + c.dataset.close, err.message, 'bad'); }
+        }
+    });
+
+    /* ---------- new ticket ---------- */
+    var formLoaded = false, payments = [];
+    async function loadFormLists() {
+        formLoaded = true;
+        var kidsReq = api('/api/parent/children'), payReq = api('/api/parent/payments');   // both at once
+        kidsReq.catch(function () {}); payReq.catch(function () {});
+        try {
+            var kids = (await kidsReq).children || [];
+            $('tChild').innerHTML = '<option value="">Not about one child</option>' + kids.map(function (k) {
+                return '<option value="' + Number(k.id) + '">' + esc(k.name || k.full_name || ((k.first_name || '') + ' ' + (k.last_name || '')).trim() || 'Child') + '</option>'; }).join('');
+            $('fChild').hidden = !kids.length;
+        } catch (e) { $('fChild').hidden = true; }
+        try {
+            payments = (await payReq).payments || [];
+            $('tPayment').innerHTML = '<option value="">Not about a payment I made</option>' + payments.map(function (p) {
+                return '<option value="' + Number(p.id) + '">' + esc(p.student_name + ' · ' + p.plan_name + ' · KES ' + Number(p.amount).toLocaleString() + ' · ' + p.reference + ' (' + p.status + ')') + '</option>'; }).join('');
+        } catch (e) { payments = []; }
+        topicChanged();
+    }
+    function topicChanged() {
+        var cat = $('tCategory').value;
+        $('fPayment').hidden = !(cat === 'payments' && payments.length);
+        var sn = $('safetyNote');
+        if (cat === 'safety') {
+            sn.style.display = 'block'; sn.className = 'ps-note show bad';
+            sn.innerHTML = '<strong>If your child is in danger right now, contact your local emergency services first.</strong> On Eschool you can block anyone straight away on <a href="/parent-controls#contacts">Parental controls</a>.';
+        } else { sn.style.display = 'none'; }
+    }
+    $('tCategory').addEventListener('change', topicChanged);
+    ['fCategory', 'fSubject', 'fMessage'].forEach(function (f) { $(f).addEventListener('input', function () { $(f).classList.remove('bad'); }); $(f).addEventListener('change', function () { $(f).classList.remove('bad'); }); });
+    $('ticketForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var body = { category: $('tCategory').value, subject: $('tSubject').value.trim(), description: $('tMessage').value.trim() };
+        if ($('tChild').value) body.child_id = Number($('tChild').value);
+        if (body.category === 'payments' && $('tPayment').value) body.payment_id = Number($('tPayment').value);
+        var bad = null;
+        [['fCategory', !!body.category, 'tCategory'], ['fSubject', !!body.subject, 'tSubject'], ['fMessage', body.description.length >= 10, 'tMessage']].forEach(function (c) {
+            $(c[0]).classList.toggle('bad', !c[1]); if (!c[1] && !bad) bad = c[2];
+        });
+        if (bad) { $(bad).focus(); return; }
+        var btn = $('tSend'), html = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Sending…';
+        try {
+            var d = await post('/api/complaints', body);
+            $('ticketForm').reset(); topicChanged();
+            show('tickets', true); await loadTickets(d.complaint && d.complaint.id);
+            note('ticketsNote', 'Ticket sent. The team will reply here, and you\'ll get a notice in your bell.', 'ok');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (err) {
+            note('formNote', err.message + ' What you typed is still here.', 'bad');
+        } finally { btn.disabled = false; btn.innerHTML = html; }
+    });
+
+    /* ---------- start ---------- */
+    renderFaq(''); renderGuides('');
+    var h = (location.hash || '').slice(1).toLowerCase();
+    show(tabFromHash(), false);
+    if (HASH_TOPIC[h]) { $('tCategory').value = HASH_TOPIC[h]; }
+    loadTickets();
+})();
+</script>
+<style>.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }</style>
+{% endblock %}

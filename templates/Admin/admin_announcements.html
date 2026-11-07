@@ -1,0 +1,100 @@
+{% extends "Admin/admin_body.html" %}
+{% block title %}Announcements{% endblock %}
+{% block allcontent %}
+{#
+    ADMIN - Announcements  (templates/Admin/admin_announcements.html)   Route: /admin-announcements
+    GET    /api/admin/announcements       history, and how many people are in each group
+    POST   /api/admin/announcements       {audience: all|student|teacher|parent, title, message, link}
+    DELETE /api/admin/announcements/<id>  withdraw: removes it from everyone's bell
+    Sent to the notification bell. People who switched off "News from eSchool" don't get it.
+#}
+<div class="ad-page-h">
+    <div><h1>Announcements</h1><p>Send news to everyone, or just to learners, teachers or parents. It arrives in their notification bell.</p></div>
+</div>
+<div class="ad-split half">
+    <form class="ad-card" id="nForm" novalidate>
+        <div class="ad-card-h"><h2>New announcement</h2></div>
+        <div class="ad-form">
+            <div class="ad-field full"><span class="lbl">Send to</span><div class="ad-tabs" role="radiogroup" aria-label="Send to" id="nAud" style="margin:0"></div></div>
+            <div class="ad-field full"><label for="nTitle">Title</label><input class="ad-input" id="nTitle" maxlength="100" placeholder="e.g. New Grade 10 Chemistry course is live"><small><span id="nTitleN">0</span> / 100</small></div>
+            <div class="ad-field full"><label for="nMsg">Message</label><textarea class="ad-textarea" id="nMsg" maxlength="500" placeholder="Keep it short and clear. Say what changed and what people should do."></textarea><small><span id="nMsgN">0</span> / 500</small></div>
+            <div class="ad-field full"><label for="nLink">Link to an eSchool page <span class="ad-muted">(optional)</span></label><input class="ad-input" id="nLink" maxlength="200" placeholder="/courses"><small>Must start with "/". It's added to the end of the message.</small></div>
+        </div>
+        <div class="ad-sec-t">Preview</div>
+        <div id="nPrev" style="display:flex;gap:10px;padding:12px;border:1px solid var(--ab-border);border-radius:12px;background:var(--ab-surface-2)"></div>
+        <div class="ad-note" id="nNote" role="status" aria-live="polite" style="margin-top:12px"></div>
+        <div id="nConfirm"></div>
+        <div class="ad-actions" style="justify-content:flex-end;margin-top:12px"><button type="reset" class="ad-btn">Clear</button><button type="submit" class="ad-btn primary" id="nSend"><i class="fas fa-paper-plane"></i> Review and send</button></div>
+    </form>
+    <div class="ad-card">
+        <div class="ad-card-h"><h2>Sent</h2><p>"Seen" counts people who opened it in their bell.</p></div>
+        <div id="nList"><div class="ad-skel"></div><div class="ad-skel"></div></div>
+    </div>
+</div>
+<style>
+.an-item { border: 1px solid var(--ab-border); border-radius: 12px; padding: 12px 14px; }
+.an-item + .an-item { margin-top: 10px; }
+.an-item.gone { opacity: .6; }
+.an-item b { color: var(--ab-text); }
+.an-item p { font-size: .84rem; color: var(--ab-text-2); margin-top: 4px; line-height: 1.5; overflow-wrap: anywhere; }
+.an-meta { display: flex; gap: 6px 12px; flex-wrap: wrap; font-size: .74rem; color: var(--ab-text-3); margin-top: 8px; align-items: center; }
+.an-seen { height: 6px; border-radius: 99px; background: var(--ab-hover); overflow: hidden; width: 90px; display: inline-block; vertical-align: middle; }
+.an-seen i { display: block; height: 100%; background: #10b981; }
+</style>
+<script>
+(function () {
+    'use strict';
+    var A = window.AD, $ = function (id) { return document.getElementById(id); };
+    var AUD = [['all', 'Everyone', 'fa-globe'], ['student', 'Learners', 'fa-user-graduate'], ['teacher', 'Teachers', 'fa-chalkboard-user'], ['parent', 'Parents', 'fa-people-roof']];
+    var S = { aud: 'all', sizes: {}, list: [] };
+    function drawAud() {
+        $('nAud').innerHTML = AUD.map(function (a) { return '<button type="button" class="ad-tab" role="radio" data-a="' + a[0] + '" aria-pressed="' + (S.aud === a[0]) + '" aria-checked="' + (S.aud === a[0]) + '"><i class="fas ' + a[2] + '"></i>' + a[1] + (S.sizes[a[0]] != null ? ' <em>' + S.sizes[a[0]] + '</em>' : '') + '</button>'; }).join('');
+    }
+    function prev() {
+        var t = $('nTitle').value.trim() || 'Title', m = $('nMsg').value.trim() || 'Your message shows here.', l = $('nLink').value.trim();
+        $('nTitleN').textContent = $('nTitle').value.length; $('nMsgN').textContent = $('nMsg').value.length;
+        $('nPrev').innerHTML = '<span style="width:34px;height:34px;border-radius:9px;background:rgba(245,158,11,.15);color:#f59e0b;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-bullhorn"></i></span>' +
+            '<span style="min-width:0"><b style="display:block;color:var(--ab-text);font-size:.88rem">' + A.esc(t) + '</b><span style="font-size:.82rem;color:var(--ab-text-2);overflow-wrap:anywhere">' + A.esc(m + (l ? ' ' + l : '')) + '</span><br><small class="ad-muted">just now</small></span>';
+        $('nConfirm').innerHTML = '';
+    }
+    async function load() {
+        try { var d = await A.api('/api/admin/announcements'); S.sizes = d.sizes; S.list = d.announcements; drawAud(); drawList(); }
+        catch (e) { A.note('nNote', e.message, 'bad'); }
+    }
+    function drawList() {
+        $('nList').innerHTML = S.list.length ? S.list.map(function (a) {
+            var pct = a.recipients ? Math.round(a.seen / a.recipients * 100) : 0;
+            return '<div class="an-item' + (a.withdrawn_at ? ' gone' : '') + '" data-id="' + a.id + '"><b>' + A.esc(a.title) + '</b>' + (a.withdrawn_at ? ' <span class="ad-pill">Withdrawn</span>' : '') + '<p>' + A.esc(a.message) + (a.link ? ' <span class="ad-mono">' + A.esc(a.link) + '</span>' : '') + '</p>' +
+                '<div class="an-meta"><span class="ad-pill info">' + A.esc(a.audience_label) + '</span><span>' + a.recipients + ' people</span>' +
+                (a.withdrawn_at ? '' : '<span title="' + a.seen + ' of ' + a.recipients + ' opened it"><span class="an-seen"><i style="width:' + pct + '%"></i></span> ' + pct + '% seen</span>') +
+                '<span>' + A.esc(a.by) + ' · ' + A.esc(A.when(a.created_at, true)) + '</span>' + (a.withdrawn_at ? '' : '<button type="button" class="ad-btn sm danger" data-w style="margin-left:auto"><i class="fas fa-rotate-left"></i> Withdraw</button>') + '</div><div data-box></div></div>';
+        }).join('') : '<div class="ad-empty"><i class="fas fa-bullhorn"></i><b>Nothing sent yet</b>Your announcements will be listed here.</div>';
+    }
+    $('nAud').addEventListener('click', function (e) { var b = e.target.closest('[data-a]'); if (b) { S.aud = b.dataset.a; drawAud(); $('nConfirm').innerHTML = ''; } });
+    ['nTitle', 'nMsg', 'nLink'].forEach(function (id) { $(id).addEventListener('input', function () { this.classList.remove('bad'); prev(); }); });
+    var quiet = false;
+    $('nForm').addEventListener('reset', function () { var keep = quiet; quiet = false; setTimeout(function () { S.aud = 'all'; drawAud(); prev(); if (!keep) A.note('nNote', ''); }, 0); });
+    $('nForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var body = { audience: S.aud, title: $('nTitle').value.trim(), message: $('nMsg').value.trim(), link: $('nLink').value.trim() };
+        if (body.title.length < 3) { $('nTitle').classList.add('bad'); $('nTitle').focus(); A.note('nNote', 'Add a title of at least 3 characters.', 'bad'); return; }
+        if (body.message.length < 10) { $('nMsg').classList.add('bad'); $('nMsg').focus(); A.note('nNote', 'Write a message of at least 10 characters.', 'bad'); return; }
+        if (body.link && body.link[0] !== '/') { $('nLink').classList.add('bad'); $('nLink').focus(); A.note('nNote', 'The link must be an eSchool page starting with "/".', 'bad'); return; }
+        A.note('nNote', '');
+        var who = AUD.filter(function (a) { return a[0] === S.aud; })[0][1].toLowerCase(), n = S.sizes[S.aud];
+        A.confirmIn('nConfirm', { title: 'Send to ' + (n != null ? n + ' ' : '') + who + '?', text: 'It goes straight to their notification bell. You can withdraw it later, but people may already have read it.',
+            yes: 'Send now', run: async function () {
+                var d = await A.api('/api/admin/announcements', { method: 'POST', body: body });
+                quiet = true; $('nForm').reset(); A.note('nNote', 'Sent to ' + d.recipients + ' people' + (d.skipped ? ' (' + d.skipped + ' have announcements switched off)' : '') + '.', 'ok', true); load();
+            } });
+    });
+    $('nList').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-w]'); if (!b) return;
+        var card = b.closest('[data-id]'), a = S.list.filter(function (x) { return String(x.id) === card.dataset.id; })[0];
+        A.confirmIn(card.querySelector('[data-box]'), { title: 'Withdraw "' + a.title + '"?', danger: true, text: 'It is removed from everyone\'s notification bell.', yes: 'Withdraw',
+            run: async function () { var d = await A.api('/api/admin/announcements/' + a.id, { method: 'DELETE' }); A.note('nNote', 'Withdrawn from ' + d.removed + ' bells.', 'ok'); load(); } });
+    });
+    drawAud(); prev(); load();
+})();
+</script>
+{% endblock %}

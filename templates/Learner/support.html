@@ -1,1197 +1,686 @@
 {% extends "Learner/body.html" %}
 
 {% block allcontent %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support Hub - eSchool</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- EmailJS SDK -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --primary-dark: #3a0ca3;
-            --secondary-color: #7209b7;
-            --accent-color: #4cc9f0;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --danger-color: #ef4444;
-            --info-color: #3b82f6;
-            --dark-color: #1e293b;
-            --light-color: #f8fafc;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --border-radius: 20px;
-            --border-radius-sm: 12px;
-            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-            --hover-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, white 0%, 100%);
-            min-height: 100vh;
-            
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            
-        }
-
-        /* Header Styles */
-        .page-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 30px 120px;
-            border-radius: var(--border-radius);
-            margin-bottom: 30px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header-content {
-            position: relative;
-            z-index: 2;
-            text-align: center;
-        }
-
-        .page-icon {
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 25px;
-            font-size: 3rem;
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .page-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 3rem;
-            margin-bottom: 15px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
-
-        .page-subtitle {
-            font-size: 1.2rem;
-            opacity: 0.95;
-            max-width: 700px;
-            margin: 0 auto;
-            line-height: 1.6;
-        }
-
-        /* Tabs Navigation */
-        .tabs {
-            display: flex;
-            background: white;
-            border-radius: 50px;
-            margin-bottom: 40px;
-            overflow: hidden;
-            box-shadow: var(--card-shadow);
-            padding: 5px;
-            flex-wrap: wrap;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 16px 25px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-family: 'Inter', sans-serif;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--gray-600);
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            border-radius: 45px;
-            min-width: 150px;
-        }
-
-        .tab-btn:hover {
-            background: var(--gray-100);
-            color: var(--primary-color);
-        }
-
-        .tab-btn.active {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-        }
-
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* FAQ Section */
-        .faq-container {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 30px;
-            margin-bottom: 40px;
-            box-shadow: var(--card-shadow);
-        }
-
-        .faq-category {
-            margin-bottom: 30px;
-        }
-
-        .faq-category h3 {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .faq-item {
-            border-bottom: 1px solid var(--gray-200);
-            margin-bottom: 15px;
-        }
-
-        .faq-question {
-            padding: 15px 0;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 600;
-            color: var(--gray-700);
-            transition: var(--transition);
-        }
-
-        .faq-question:hover {
-            color: var(--primary-color);
-        }
-
-        .faq-question i {
-            transition: var(--transition);
-        }
-
-        .faq-answer {
-            padding: 0 0 15px 0;
-            color: var(--gray-600);
-            line-height: 1.6;
-            display: none;
-        }
-
-        .faq-answer.active {
-            display: block;
-        }
-
-        /* Ticket Form */
-        .ticket-form {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 30px;
-            margin-bottom: 40px;
-            box-shadow: var(--card-shadow);
-        }
-
-        .form-title {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--gray-700);
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--gray-200);
-            border-radius: var(--border-radius-sm);
-            font-size: 1rem;
-            transition: var(--transition);
-            font-family: 'Inter', sans-serif;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        .form-group button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        /* Tickets Grid */
-        .tickets-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 25px;
-            margin-top: 20px;
-        }
-
-        .ticket-card {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 25px;
-            box-shadow: var(--card-shadow);
-            transition: var(--transition);
-            border-left: 4px solid var(--primary-color);
-        }
-
-        .ticket-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--hover-shadow);
-        }
-
-        .ticket-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-        }
-
-        .ticket-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--dark-color);
-        }
-
-        .ticket-status {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .status-open {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .status-in-progress {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .status-resolved {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .ticket-category {
-            display: inline-block;
-            padding: 4px 12px;
-            background: var(--gray-100);
-            border-radius: 20px;
-            font-size: 0.8rem;
-            margin-bottom: 15px;
-        }
-
-        .ticket-message {
-            color: var(--gray-600);
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-
-        .ticket-response {
-            background: var(--gray-50);
-            border-left: 3px solid var(--success-color);
-            border-radius: var(--border-radius-sm);
-            padding: 12px 15px;
-            margin-bottom: 15px;
-        }
-
-        .ticket-response-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-weight: 700;
-            color: var(--success-color);
-            margin-bottom: 6px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .ticket-response-text {
-            color: var(--gray-700);
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
-        .ticket-response-time {
-            font-size: 0.75rem;
-            color: var(--gray-400);
-            margin-top: 6px;
-        }
-
-        .ticket-meta {
-            display: flex;
-            gap: 15px;
-            font-size: 0.85rem;
-            color: var(--gray-500);
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid var(--gray-200);
-        }
-
-        /* Knowledge Base Articles */
-        .articles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px;
-            margin-top: 20px;
-        }
-
-        .article-card {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 25px;
-            box-shadow: var(--card-shadow);
-            transition: var(--transition);
-            cursor: pointer;
-        }
-
-        .article-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--hover-shadow);
-        }
-
-        .article-icon {
-            width: 50px;
-            height: 50px;
-            background: var(--primary-light);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: var(--primary-color);
-            margin-bottom: 15px;
-        }
-
-        .article-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: var(--dark-color);
-        }
-
-        .article-description {
-            color: var(--gray-600);
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-
-        /* Live Chat Widget */
-        .chat-widget {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            z-index: 1000;
-        }
-
-        .chat-button {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-            transition: var(--transition);
-        }
-
-        .chat-button:hover {
-            transform: scale(1.1);
-        }
-
-        .chat-window {
-            position: fixed;
-            bottom: 100px;
-            right: 30px;
-            width: 350px;
-            height: 500px;
-            background: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--hover-shadow);
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 1001;
-        }
-
-        .chat-window.active {
-            display: flex;
-        }
-
-        .chat-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .chat-messages {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            background: var(--gray-50);
-        }
-
-        .chat-message {
-            margin-bottom: 15px;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }
-
-        .chat-message.support {
-            justify-content: flex-start;
-        }
-
-        .chat-message.user {
-            justify-content: flex-end;
-        }
-
-        .message-bubble {
-            max-width: 70%;
-            padding: 10px 15px;
-            border-radius: 18px;
-            font-size: 0.9rem;
-        }
-
-        .chat-message.support .message-bubble {
-            background: white;
-            color: var(--dark-color);
-            border-bottom-left-radius: 5px;
-        }
-
-        .chat-message.user .message-bubble {
-            background: var(--primary-color);
-            color: white;
-            border-bottom-right-radius: 5px;
-        }
-
-        .chat-input {
-            padding: 15px;
-            border-top: 1px solid var(--gray-200);
-            display: flex;
-            gap: 10px;
-        }
-
-        .chat-input input {
-            flex: 1;
-            padding: 10px;
-            border: 2px solid var(--gray-200);
-            border-radius: 25px;
-            font-size: 0.9rem;
-        }
-
-        .chat-input button {
-            padding: 10px 15px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-        }
-
-        /* Buttons */
-        .btn {
-            padding: 12px 24px;
-            border-radius: var(--border-radius-sm);
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.95rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            background: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--card-shadow);
-        }
-
-        .empty-icon {
-            width: 100px;
-            height: 100px;
-            background: var(--gray-100);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 30px;
-            font-size: 3rem;
-            color: var(--gray-400);
-        }
-
-        /* Responsive */
-        @media (max-width: 968px) {
-            .tickets-grid,
-            .articles-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .page-title {
-                font-size: 2.2rem;
-            }
-            
-            .tabs {
-                flex-direction: column;
-                border-radius: var(--border-radius);
-            }
-            
-            .chat-window {
-                width: 90%;
-                right: 5%;
-                left: 5%;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <header class="page-header">
-            <div class="header-content">
-                <div class="page-icon">
-                    <i class="fas fa-headset"></i>
-                </div>
-                <h1 class="page-title">Support Hub</h1>
-                <p class="page-subtitle">Get help with anything about the web. Submit tickets, browse FAQs, and connect with our support team</p>
-            </div>
-        </header>
-
-        <!-- Tabs Navigation -->
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('tickets')">
-                <i class="fas fa-ticket-alt"></i> My Tickets
-            </button>
-            <button class="tab-btn" onclick="switchTab('faq')">
-                <i class="fas fa-question-circle"></i> FAQ
-            </button>
-            <button class="tab-btn" onclick="switchTab('knowledge')">
-                <i class="fas fa-book"></i> Knowledge Base
-            </button>
-            <button class="tab-btn" onclick="switchTab('new')">
-                <i class="fas fa-plus-circle"></i> New Ticket
-            </button>
-        </div>
-
-        <!-- My Tickets Tab -->
-        <div id="tickets-tab" class="tab-content active">
-            <div class="tickets-grid" id="ticketsContainer">
-                <!-- Tickets will be loaded here -->
+{#
+    LEARNER PAGE - Help & Support  (templates/Learner/support.html, route /support)
+      GET  /api/complaints/mine            your tickets and the team's replies
+      POST /api/complaints                 send a ticket
+      POST /api/complaints/<id>/close      you mark your own ticket solved
+      POST /api/complaints/<id>/add        you add more information (reopens a ticket resolved in the last 7 days)
+      POST /api/complaints/<id>/seen       you opened the team's reply (clears "New reply")
+    Staff are alerted by the server (bell, and email to SUPPORT_ALERT_EMAIL if set). Replies arrive in the
+    notification bell too. The admin team answers on /admin_support. /support#t12 opens ticket 12.
+    Same look as the Strategies page: scoped styles, own dark mode, accent from Settings > Appearance, no pop-ups.
+#}
+<style>
+/* ======================================================================
+   HELP & SUPPORT (learners)
+   Scoped to .hs. Own light and dark colours (data-no-theme); the main
+   colour follows Settings > Appearance through --primary-color. No pop-ups.
+   ====================================================================== */
+.hs {
+    --hs-accent: var(--primary-color, #4361ee);
+    --hs-accent-2: var(--secondary-color, #3a0ca3);
+    --hs-accent-dark: var(--primary-dark, #2a44c7);
+    /* plain colours first: older phones (no color-mix) still get soft backgrounds and focus rings */
+    --hs-accent-soft: rgba(67, 97, 238, .11);
+    --hs-accent-line: rgba(67, 97, 238, .35);
+    --hs-accent-text: var(--hs-accent);
+    --hs-surface: #ffffff; --hs-surface-2: #f8fafc; --hs-hover: #f1f5f9;
+    --hs-border: #e5e7eb; --hs-track: #e8edf3; --hs-input: #ffffff;
+    --hs-text: #0f172a; --hs-text-2: #475569; --hs-text-3: #64748b;
+    --hs-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06);
+    --hs-ok: #059669;   --hs-ok-soft: #ecfdf5;
+    --hs-warn: #b45309; --hs-warn-soft: #fffbeb;
+    --hs-bad: #dc2626;  --hs-bad-soft: #fef2f2;
+    --hs-info: #2563eb; --hs-info-soft: #eff6ff;
+    --hs-radius: 16px;
+    max-width: 1360px; margin: 0 auto; padding: 6px 0 40px;
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--hs-text);
+}
+@supports (color: color-mix(in srgb, red, blue)) {
+    .hs {
+        --hs-accent-soft: color-mix(in srgb, var(--hs-accent) 11%, transparent);
+        --hs-accent-line: color-mix(in srgb, var(--hs-accent) 35%, transparent);
+    }
+    body.dark-mode .hs {
+        --hs-accent-soft: color-mix(in srgb, var(--hs-accent) 20%, transparent);
+        --hs-accent-line: color-mix(in srgb, var(--hs-accent) 45%, transparent);
+        --hs-accent-text: color-mix(in srgb, var(--hs-accent) 55%, #ffffff);
+    }
+}
+body.dark-mode .hs {
+    --hs-accent-soft: rgba(99, 125, 255, .2);
+    --hs-accent-line: rgba(99, 125, 255, .45);
+    --hs-accent-text: #a5b4fc;
+    --hs-surface: #111827; --hs-surface-2: #0f172a; --hs-hover: #1e293b;
+    --hs-border: #263244; --hs-track: #263244; --hs-input: #0f172a;
+    --hs-text: #e5e7eb; --hs-text-2: #cbd5e1; --hs-text-3: #94a3b8;
+    --hs-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25);
+    --hs-ok: #34d399;   --hs-ok-soft: rgba(16, 185, 129, .14);
+    --hs-warn: #fbbf24; --hs-warn-soft: rgba(245, 158, 11, .14);
+    --hs-bad: #f87171;  --hs-bad-soft: rgba(239, 68, 68, .14);
+    --hs-info: #60a5fa; --hs-info-soft: rgba(59, 130, 246, .14);
+}
+.hs *, .hs *::before, .hs *::after { box-sizing: border-box; }
+.hs h1, .hs h2, .hs h3, .hs h4, .hs p, .hs ul, .hs ol { margin: 0; }
+.hs button, .hs input, .hs select, .hs textarea { font-family: inherit; }
+.hs :focus-visible { outline: 3px solid var(--hs-accent-line); outline-offset: 2px; }
+.hs [hidden] { display: none !important; }
+.hs a { color: var(--hs-accent-text); }
+
+/* hero */
+.hs-hero { position: relative; overflow: hidden; padding: 28px 28px 24px; margin-bottom: 14px; border-radius: var(--hs-radius); color: #fff;
+    background: linear-gradient(135deg, var(--hs-accent), var(--hs-accent-2)); box-shadow: var(--hs-shadow); }
+.hs-hero::after { content: ""; position: absolute; right: -80px; top: -100px; width: 300px; height: 300px; border-radius: 50%; background: rgba(255, 255, 255, .08); pointer-events: none; }
+.hs-hero-top { display: flex; align-items: center; gap: 16px; position: relative; z-index: 1; flex-wrap: wrap; }
+.hs-hero-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: rgba(255, 255, 255, .18); border: 1px solid rgba(255, 255, 255, .28); flex-shrink: 0; }
+.hs-hero h1 { font-family: 'Poppins', sans-serif; font-size: 1.6rem; font-weight: 700; color: #fff; }
+.hs-hero p { margin-top: 4px; opacity: .93; font-size: .93rem; line-height: 1.55; color: #fff; }
+.hs-hero-top > div:not([class]) { flex: 1; min-width: 220px; }
+
+/* tabs */
+.hs-tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; padding: 4px; border-radius: 14px; background: var(--hs-surface); border: 1px solid var(--hs-border); box-shadow: var(--hs-shadow); }
+.hs-tabs::-webkit-scrollbar { display: none; }
+.hs-tab { flex: 1 1 0; min-width: max-content; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 0; border-radius: 10px; background: transparent; color: var(--hs-text-2); font-weight: 600; font-size: .88rem; cursor: pointer; white-space: nowrap; }
+.hs-tab:hover { background: var(--hs-hover); color: var(--hs-text); }
+.hs-tab[aria-selected="true"] { background: var(--hs-accent); color: #fff; }
+.hs-count { font-size: .7rem; padding: 1px 7px; border-radius: 99px; background: var(--hs-track); color: var(--hs-text-2); }
+.hs-tab[aria-selected="true"] .hs-count { background: rgba(255, 255, 255, .25); color: #fff; }
+
+/* cards, buttons, notes */
+.hs-card { background: var(--hs-surface); border: 1px solid var(--hs-border); border-radius: var(--hs-radius); box-shadow: var(--hs-shadow); padding: 20px; min-width: 0; }
+.hs-card + .hs-card { margin-top: 14px; }
+.hs-card-h { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.hs-card-h .ic { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--hs-accent-soft); color: var(--hs-accent-text); }
+.hs-card-h h2, .hs-card-h h3 { font-family: 'Poppins', sans-serif; font-size: 1.05rem; color: var(--hs-text); }
+.hs-card-h p { font-size: .83rem; color: var(--hs-text-3); margin-top: 2px; line-height: 1.5; }
+.hs-card-h .right { margin-left: auto; }
+.hs-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 15px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; font-weight: 600; font-size: .85rem; text-decoration: none; line-height: 1.2; transition: background-color .15s, border-color .15s, color .15s; }
+.hs-btn-primary { background: var(--hs-accent); color: #fff !important; }
+.hs-btn-primary:hover:not(:disabled) { background: var(--hs-accent-dark); color: #fff; }
+.hs-btn-ghost { background: var(--hs-surface); color: var(--hs-text-2) !important; border-color: var(--hs-border); }
+.hs-btn-ghost:hover:not(:disabled) { background: var(--hs-hover); color: var(--hs-text); border-color: var(--hs-accent-line); }
+.hs-btn-sm { padding: 6px 11px; font-size: .79rem; }
+.hs-btn:disabled { opacity: .55; cursor: default; }
+.hs-note { display: flex; gap: 8px; align-items: flex-start; font-size: .86rem; line-height: 1.5; padding: 11px 14px; border-radius: 12px; margin-bottom: 12px; }
+.hs-note:empty { display: none; }
+.hs-note.ok { background: var(--hs-ok-soft); color: var(--hs-ok); } .hs-note.bad { background: var(--hs-bad-soft); color: var(--hs-bad); } .hs-note.info { background: var(--hs-info-soft); color: var(--hs-info); }
+.hs-note i { margin-top: 3px; }
+.hs-empty { text-align: center; padding: 30px 14px; color: var(--hs-text-3); font-size: .9rem; }
+.hs-empty > i { display: block; font-size: 2rem; opacity: .5; margin-bottom: 10px; }
+.hs-empty h3 { font-family: 'Poppins', sans-serif; font-size: 1.05rem; color: var(--hs-text); margin-bottom: 6px; }
+.hs-empty p { max-width: 460px; margin: 0 auto 12px; line-height: 1.6; }
+.hs-loading { padding: 26px; text-align: center; color: var(--hs-text-3); }
+
+/* layout */
+.hs-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+.hs-side { display: flex; flex-direction: column; gap: 14px; }
+.hs-urgent { border-left: 5px solid var(--hs-bad); }
+.hs-urgent .ic { background: var(--hs-bad-soft) !important; color: var(--hs-bad) !important; }
+.hs-list { display: flex; flex-direction: column; gap: 10px; font-size: .84rem; color: var(--hs-text-2); line-height: 1.5; }
+.hs-list li { display: flex; gap: 10px; align-items: flex-start; }
+.hs-list li i { color: var(--hs-accent-text); margin-top: 3px; width: 16px; text-align: center; }
+.hs-list b { color: var(--hs-text); }
+
+/* tickets */
+.hs-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.hs-fchip { border: 1px solid var(--hs-border); background: var(--hs-surface); color: var(--hs-text-2); padding: 6px 12px; border-radius: 99px; font-size: .8rem; font-weight: 600; cursor: pointer; }
+.hs-fchip:hover { background: var(--hs-hover); color: var(--hs-text); }
+.hs-fchip[aria-pressed="true"] { background: var(--hs-accent-soft); border-color: var(--hs-accent-line); color: var(--hs-accent-text); }
+.hs-tickets { display: flex; flex-direction: column; gap: 10px; }
+.hs-ticket { border: 1px solid var(--hs-border); border-radius: 14px; background: var(--hs-surface); overflow: hidden; }
+.hs-ticket.answered { border-left: 4px solid var(--hs-ok); }
+.hs-ticket-head { display: flex; gap: 12px; align-items: flex-start; width: 100%; padding: 14px 16px; border: 0; background: transparent; text-align: left; cursor: pointer; color: var(--hs-text-2); }
+.hs-ticket-head:hover { background: var(--hs-hover); }
+.hs-ticket-ic { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--hs-accent-soft); color: var(--hs-accent-text); }
+.hs-ticket-main { flex: 1; min-width: 0; }
+.hs-ticket-main b { display: block; color: var(--hs-text); font-size: .93rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hs-ticket-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .76rem; color: var(--hs-text-3); margin-top: 3px; }
+.hs-ticket-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.hs-pill { flex-shrink: 0; font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
+.hs-pill.open { background: var(--hs-warn-soft); color: var(--hs-warn); }
+.hs-pill.progress { background: var(--hs-info-soft); color: var(--hs-info); }
+.hs-pill.resolved { background: var(--hs-ok-soft); color: var(--hs-ok); }
+.hs-chev { color: var(--hs-text-3); transition: transform .2s; margin-top: 10px; }
+.hs-ticket-head[aria-expanded="true"] .hs-chev { transform: rotate(180deg); }
+.hs-ticket-body { padding: 0 16px 16px 66px; display: flex; flex-direction: column; gap: 12px; }
+.hs-steps { display: flex; gap: 0; align-items: center; font-size: .74rem; color: var(--hs-text-3); }
+.hs-step { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.hs-step i { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--hs-track); color: var(--hs-text-3); font-size: .6rem; }
+.hs-step.done { color: var(--hs-ok); } .hs-step.done i { background: var(--hs-ok); color: #fff; }
+.hs-step-line { flex: 1; min-width: 18px; max-width: 70px; height: 2px; background: var(--hs-track); margin: 0 8px; }
+.hs-step-line.done { background: var(--hs-ok); }
+.hs-msg { padding: 12px 14px; border-radius: 12px; font-size: .87rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.hs-msg small { display: block; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; white-space: normal; }
+.hs-msg.me { background: var(--hs-surface-2); border: 1px solid var(--hs-border); color: var(--hs-text-2); }
+.hs-msg.me small { color: var(--hs-text-3); }
+.hs-msg.team { background: var(--hs-ok-soft); color: var(--hs-text); border: 1px solid color-mix(in srgb, var(--hs-ok) 30%, transparent); }
+.hs-msg.team small { color: var(--hs-ok); }
+.hs-pill.new { background: var(--hs-accent); color: #fff; }
+.hs-ticket.fresh { box-shadow: 0 0 0 2px var(--hs-accent-line); }
+.hs-count.new { background: #ef4444; color: #fff; }
+.hs-tab[aria-selected="true"] .hs-count.new { background: #fff; color: #b91c1c; }
+.hs-add { display: flex; flex-direction: column; gap: 8px; }
+.hs-add .hs-textarea { min-height: 80px; }
+.hs-suggest { font-size: .82rem; padding: 10px 12px; border-radius: 10px; background: var(--hs-info-soft); color: var(--hs-text-2); }
+.hs-suggest ul { margin: 4px 0 0; padding-left: 18px; }
+.hs-link { border: 0; background: none; padding: 2px 0; color: var(--hs-accent-text); font: inherit; text-decoration: underline; cursor: pointer; text-align: left; }
+.st-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.hs-wait { font-size: .84rem; color: var(--hs-text-3); display: flex; gap: 8px; align-items: flex-start; }
+.hs-ticket-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* FAQ */
+.hs-faq-group + .hs-faq-group { margin-top: 18px; }
+.hs-faq-group h3 { display: flex; align-items: center; gap: 10px; font-family: 'Poppins', sans-serif; font-size: 1rem; color: var(--hs-text); margin-bottom: 8px; }
+.hs-faq-group h3 i { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); font-size: .8rem; }
+body.dark-mode .hs-faq-group h3 i { color: color-mix(in srgb, var(--c) 60%, #fff); }
+.hs-q { border-bottom: 1px solid var(--hs-border); }
+.hs-q:last-child { border-bottom: 0; }
+.hs-q button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 13px 4px; border: 0; background: transparent; text-align: left; cursor: pointer; font-weight: 600; font-size: .9rem; color: var(--hs-text); }
+.hs-q button:hover { color: var(--hs-accent-text); }
+.hs-q button i { margin-left: auto; color: var(--hs-text-3); transition: transform .2s; }
+.hs-q button[aria-expanded="true"] i { transform: rotate(180deg); }
+.hs-q .a { padding: 0 4px 14px; font-size: .87rem; color: var(--hs-text-2); line-height: 1.65; }
+.hs-q .a ol, .hs-q .a ul { padding-left: 20px; margin-top: 6px; }
+.hs-faq-search { position: relative; margin-bottom: 14px; }
+.hs-faq-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--hs-text-3); pointer-events: none; }
+.hs-faq-search .hs-input { padding-left: 36px; }
+.hs-faq-count { font-size: .78rem; color: var(--hs-text-3); margin: -6px 0 10px; min-height: 1em; }
+
+/* form */
+.hs-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.hs-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hs-field.full { grid-column: 1 / -1; }
+.hs-field label, .hs-field .lbl { font-size: .8rem; font-weight: 700; color: var(--hs-text); }
+.hs-field .opt { font-weight: 500; color: var(--hs-text-3); }
+.hs-input, .hs-select, .hs-textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--hs-border); background: var(--hs-input); color: var(--hs-text); font-size: .9rem; }
+.hs-input:focus, .hs-select:focus, .hs-textarea:focus { outline: none; border-color: var(--hs-accent); box-shadow: 0 0 0 3px var(--hs-accent-soft); }
+.hs-input.bad, .hs-select.bad, .hs-textarea.bad { border-color: var(--hs-bad); }
+.hs-textarea { resize: vertical; min-height: 150px; line-height: 1.55; }
+.hs-hint { font-size: .75rem; color: var(--hs-text-3); line-height: 1.45; display: flex; justify-content: space-between; gap: 10px; }
+.hs-err { font-size: .76rem; color: var(--hs-bad); }
+.hs-err:empty { display: none; }
+.hs-prio { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.hs-prio button { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: left; padding: 10px 12px; border: 2px solid var(--hs-border); border-radius: 12px; background: var(--hs-surface); color: var(--hs-text-3); font-size: .74rem; cursor: pointer; line-height: 1.35; }
+.hs-prio button b { display: flex; align-items: center; gap: 6px; color: var(--hs-text); font-size: .84rem; }
+.hs-prio button b i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.hs-prio button:hover { background: var(--hs-hover); }
+.hs-prio button[aria-checked="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 9%, transparent); }
+.hs-form-foot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--hs-border); }
+.hs-form-foot small { margin-right: auto; color: var(--hs-text-3); font-size: .78rem; }
+
+/* on phones the "Feeling unsafe?" card comes first, where a learner in distress sees it straight away */
+@media (max-width: 1000px) { .hs-grid { grid-template-columns: minmax(0, 1fr); } .hs-side { order: -1; } }
+@media (max-width: 640px) {
+    .hs-hero { padding: 18px; }
+    .hs-hero h1 { font-size: 1.3rem; }
+    .hs-form, .hs-prio { grid-template-columns: minmax(0, 1fr); }
+    .hs-card { padding: 15px; }
+    .hs-ticket-body { padding: 0 14px 14px; }
+    .hs-form-foot .hs-btn { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .hs *, .hs *::before, .hs *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="hs" data-no-theme>
+    <header class="hs-hero">
+        <div class="hs-hero-top">
+            <div class="hs-hero-icon" aria-hidden="true"><i class="fas fa-headset"></i></div>
+            <div>
+                <h1>Help &amp; Support</h1>
+                <p>Find a quick answer, or send a message to the Eschool team.</p>
             </div>
         </div>
+    </header>
 
-        <!-- FAQ Tab -->
-        <div id="faq-tab" class="tab-content">
-            <div class="faq-container">
-                <div class="faq-category">
-                    <h3><i class="fas fa-graduation-cap"></i> About Eschool FAQs</h3>
-                    <div class="faq-item">
-                        <div class="faq-question" onclick="toggleFAQ(this)">
-                            What is Eschool?
-                            <i class="fas fa-chevron-down"></i>
-                        </div>
-                        <div class="faq-answer">
-                         Eschool is a modern digital learning platform built to make high-quality education accessible to every learner, everywhere                        </div>
-                    </div>
-                    <div class="faq-item">
-                        <div class="faq-question" onclick="toggleFAQ(this)">
-                            Is Eschool Free?
-                            <i class="fas fa-chevron-down"></i>
-                        </div>
-                        <div class="faq-answer">
-                            Yes! Eschool offers free courses, resources, career development and skills learning. You can upgrade to unlock unlimited features and free Ad learning.
-                        </div>
-                    </div>
-                    <div class="faq-item">
-                        <div class="faq-question" onclick="toggleFAQ(this)">
-                            Does it work on mobile devices?
-                            <i class="fas fa-chevron-down"></i>
-                        </div>
-                        <div class="faq-answer">
-                            Yes, Eschool works seamlessly across all devices- phones, tablets and Laptop. Eschool ensures you can study anywhere, anytime.
-                        </div>
-                    </div>
+    <div class="hs-tabs" role="tablist" aria-label="Help">
+        <button type="button" class="hs-tab" role="tab" id="tab-tickets" data-tab="tickets" aria-controls="panel-tickets"><i class="fas fa-ticket" aria-hidden="true"></i> My tickets <span class="hs-count" id="hsTicketCount">0</span></button>
+        <button type="button" class="hs-tab" role="tab" id="tab-faq" data-tab="faq" aria-controls="panel-faq"><i class="fas fa-circle-question" aria-hidden="true"></i> Questions</button>
+        <button type="button" class="hs-tab" role="tab" id="tab-new" data-tab="new" aria-controls="panel-new"><i class="fas fa-pen-to-square" aria-hidden="true"></i> Contact us</button>
+    </div>
+
+    <div class="hs-grid">
+        <div>
+            <div class="hs-note" id="hsNote" role="status" aria-live="polite"></div>
+
+            <!-- tickets -->
+            <section id="panel-tickets" role="tabpanel" aria-labelledby="tab-tickets" hidden>
+                <div class="hs-card">
+                    <div class="hs-card-h"><span class="ic"><i class="fas fa-ticket"></i></span><div><h2>My tickets</h2><p>Everything you've sent the team, with their replies.</p></div>
+                        <button type="button" class="hs-btn hs-btn-primary hs-btn-sm right" data-go="new"><i class="fas fa-plus"></i> New ticket</button></div>
+                    <div class="hs-filters" role="group" aria-label="Filter tickets" id="hsFilters"></div>
+                    <div class="hs-tickets" id="hsTickets"><div class="hs-loading">Loading your tickets...</div></div>
                 </div>
+            </section>
 
-                <div class="faq-category">
-                    <h3><i class="fas fa-book-open"></i> Learning & Courses</h3>
-                    <div class="faq-item">
-                        <div class="faq-question" onclick="toggleFAQ(this)">
-                            How do I track my course progress?
-                            <i class="fas fa-chevron-down"></i>
-                        </div>
-                        <div class="faq-answer">
-                            Your progress is automatically saved as you complete modules and exercises. Check the "Progress" tab to see your overall progress and completed modules for each course.
-                        </div>
-                    </div>
-                    <div class="faq-item">
-                        <div class="faq-question" onclick="toggleFAQ(this)">
-                            Can I retake quizzes and exercises?
-                            <i class="fas fa-chevron-down"></i>
-                        </div>
-                        <div class="faq-answer">
-                            Yes! You can retake exercises only as many times as you want to improve your score and understanding. Quizes are taken daily and you should keep your quiz streak!
-                        </div>
-                    </div>
-                    <div class="faq-item">
-                        <div class="faq-question" onclick="toggleFAQ(this)">
-                            How do I get certificates?
-                            <i class="fas fa-chevron-down"></i>
-                        </div>
-                        <div class="faq-answer">
-                            Certificates are awarded upon completing all modules, exercises, and passing the final assessment. You can download your certificate from the course completion page.
-                        </div>
-                    </div>
+            <!-- FAQ -->
+            <section id="panel-faq" role="tabpanel" aria-labelledby="tab-faq" hidden>
+                <div class="hs-card">
+                    <div class="hs-card-h"><span class="ic" aria-hidden="true"><i class="fas fa-circle-question"></i></span><div><h2>Common questions</h2><p>Search, or tap a question to see the answer.</p></div></div>
+                    <label class="hs-faq-search"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input type="search" class="hs-input" id="hsFaqSearch" placeholder="Search questions, e.g. streak, password, parent" aria-label="Search the questions" autocomplete="off"></label>
+                    <div class="hs-faq-count" id="hsFaqCount" role="status" aria-live="polite"></div>
+                    <div id="hsFaq"></div>
                 </div>
+            </section>
 
-                <div class="faq-category">
-                    <h3><i class="fas fa-cog"></i> Technical Issues</h3>
-                    <div class="faq-item">
-                        <div class="faq-question" onclick="toggleFAQ(this)">
-                            The uploaded resource is taking long to upload?
-                            <i class="fas fa-chevron-down"></i>
+            <!-- new ticket -->
+            <section id="panel-new" role="tabpanel" aria-labelledby="tab-new" hidden>
+                <form class="hs-card" id="hsForm" novalidate>
+                    <div class="hs-card-h"><span class="ic"><i class="fas fa-pen-to-square"></i></span><div><h2>Contact the Eschool team</h2><p>We answer here and in your notification bell, usually within one working day.</p></div></div>
+                    <div class="hs-note" id="hsFormNote" role="alert"></div>
+                    <div class="hs-form">
+                        <div class="hs-field full">
+                            <label for="hsSubject">Subject</label>
+                            <input class="hs-input" id="hsSubject" maxlength="150" placeholder="e.g. My M-Pesa payment hasn't been confirmed" autocomplete="off">
+                            <span class="hs-err" id="errSubject"></span>
+                            <div class="hs-suggest" id="hsSuggest" role="status" aria-live="polite" hidden></div>
                         </div>
-                        <div class="faq-answer">
-                            This is actualy normal and if you are uploading a file with a very big storage this is very normal. Just wait and don't close that window.
+                        <div class="hs-field full">
+                            <label for="hsCategory">What is it about?</label>
+                            <select class="hs-select" id="hsCategory">
+                                <option value="">Choose a topic</option>
+                                <option value="course">Courses, modules and quizzes</option>
+                                <option value="academic">Progress, grades and EP</option>
+                                <option value="account">My account, privacy or parents</option>
+                                <option value="billing">Plans and the Points shop</option>
+                                <option value="technical">Something isn't working</option>
+                                <option value="content">Report a person or content</option>
+                                <option value="feature">An idea or request</option>
+                                <option value="other">Something else</option>
+                            </select>
+                            <span class="hs-err" id="errCategory"></span>
+                        </div>
+                        <div class="hs-field full">
+                            <span class="lbl" id="hsPrioLbl">How urgent is it?</span>
+                            <div class="hs-prio" role="radiogroup" aria-labelledby="hsPrioLbl" id="hsPrio">
+                                <button type="button" role="radio" data-p="low" style="--c:#10b981" aria-checked="false"><b><i></i> Low</b>A question, no rush</button>
+                                <button type="button" role="radio" data-p="medium" style="--c:#3b82f6" aria-checked="true"><b><i></i> Normal</b>Something isn't right</button>
+                                <button type="button" role="radio" data-p="high" style="--c:#f59e0b" aria-checked="false"><b><i></i> High</b>I can't carry on learning</button>
+                                <button type="button" role="radio" data-p="urgent" style="--c:#ef4444" aria-checked="false"><b><i></i> Urgent</b>I feel unsafe, or lost access</button>
+                            </div>
+                        </div>
+                        <div class="hs-field full">
+                            <label for="hsMessage">Tell us what happened</label>
+                            <textarea class="hs-textarea" id="hsMessage" maxlength="5000" placeholder="Which page were you on, what did you press, what happened instead, and when? Copy any error message you saw."></textarea>
+                            <span class="hs-hint"><span>The more detail, the faster we can help.</span><span id="hsMsgCount">0 / 5000</span></span>
+                            <span class="hs-err" id="errMessage"></span>
                         </div>
                     </div>
-                    <div class="faq-item">
-                        <div class="faq-question" onclick="toggleFAQ(this)">
-                            My progress isn't being saved. How can I fix this?
-                            <i class="fas fa-chevron-down"></i>
-                        </div>
-                        <div class="faq-answer">
-                            Ensure you're logged in and have cookies enabled. Try logging out and back in, or contact support if the issue continues. Your progress is automatically saved in the cloud.
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Knowledge Base Tab -->
-        <div id="knowledge-tab" class="tab-content">
-            <div class="articles-grid" id="articlesContainer">
-                <!-- Knowledge base articles will be loaded here -->
-            </div>
-        </div>
-
-        <!-- New Ticket Tab -->
-        <div id="new-tab" class="tab-content">
-            <div class="ticket-form">
-                <div class="form-title">
-                    <i class="fas fa-pen-alt"></i>
-                    Submit a Support Ticket
-                </div>
-                <form id="ticketForm">
-                    <div class="form-group">
-                        <label for="ticketTitle">Subject *</label>
-                        <input type="text" id="ticketTitle" required placeholder="Brief summary of your issue">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="ticketCategory">Category *</label>
-                        <select id="ticketCategory" required>
-                            <option value="">Select a category</option>
-                            <option value="technical">Technical Issue</option>
-                            <option value="account">Account Problem</option>
-                            <option value="course">Course Question</option>
-                            <option value="billing">Billing/Subscription</option>
-                            <option value="feature">Feature Request</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="ticketPriority">Priority *</label>
-                        <select id="ticketPriority" required>
-                            <option value="low">Low - General question</option>
-                            <option value="medium">Medium - Minor issue</option>
-                            <option value="high">High - Blocking my work</option>
-                            <option value="urgent">Urgent - Critical issue</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="ticketMessage">Message *</label>
-                        <textarea id="ticketMessage" rows="6" required placeholder="Describe your issue in detail. Include steps to reproduce, screenshots, and any error messages..."></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <button type="submit" class="btn btn-primary" id="ticketSubmitBtn">
-                            <i class="fas fa-paper-plane"></i> Submit Ticket
-                        </button>
+                    <div class="hs-form-foot" style="margin-top:16px;">
+                        <small><i class="fas fa-lock"></i> Only you and the Eschool support team can see this ticket.</small>
+                        <button type="reset" class="hs-btn hs-btn-ghost">Clear</button>
+                        <button type="submit" class="hs-btn hs-btn-primary" id="hsSend"><i class="fas fa-paper-plane"></i> Send ticket</button>
                     </div>
                 </form>
-            </div>
+            </section>
         </div>
+
     </div>
+</div>
 
-    <!-- Live Chat Widget -->
-    <div class="chat-widget">
-        <div class="chat-button" onclick="toggleChat()">
-            <i class="fas fa-comment-dots"></i>
-        </div>
-        <div class="chat-window" id="chatWindow">
-            <div class="chat-header">
-                <span><i class="fas fa-headset"></i> Support Chat</span>
-                <i class="fas fa-times" onclick="toggleChat()" style="cursor: pointer;"></i>
-            </div>
-            <div class="chat-messages" id="chatMessages">
-                <div class="chat-message support">
-                    <div class="message-bubble">
-                        Hi! 👋 This support assistant is not available right now. Try reaching out through our ticket.
-                    </div>
-                </div>
-            </div>
-            <div class="chat-input">
-                <input type="text" id="chatInput" placeholder="Type your message...">
-                <button onclick="sendChatMessage()">Send</button>
-            </div>
-        </div>
-    </div>
+<script>
+(function () {
+    'use strict';
+    // The real EP rules, sent by the server, so the answers below can't drift from them
+    var EP = {{ (ep_rules or {}) | tojson }};
+    function ep(k, d) { return EP && EP[k] != null ? EP[k] : d; }
 
-    <script>
-        // ============================================
-        // EmailJS CONFIGURATION
-        // ============================================
-        // Tickets are now persisted server-side (see below) and show up for
-        // admins in /admin_support automatically. EmailJS is kept as a
-        // best-effort secondary notification straight to the support inbox —
-        // if it fails, the ticket is still saved and visible to admins, so we
-        // never let it block the user-facing flow.
-        const EMAILJS_PUBLIC_KEY = "pONGzo5pWq5jJzaMM";
-        const EMAILJS_SERVICE_ID = "service_49v69xj";
-        const EMAILJS_TEMPLATE_ID = "template_3grdzv9";
-        const SUPPORT_EMAIL = "kibetdan4114@gmail.com";
+    var TOPICS = [
+        { key: 'courses', icon: 'fa-book-open', c: '#4361ee', title: 'Courses & tests' },
+        { key: 'points', icon: 'fa-star', c: '#f59e0b', title: 'EP & rewards' },
+        { key: 'streaks', icon: 'fa-fire', c: '#ea580c', title: 'Streaks' },
+        { key: 'progress', icon: 'fa-chart-line', c: '#10b981', title: 'Progress & grades' },
+        { key: 'parents', icon: 'fa-people-roof', c: '#0ea5e9', title: 'Parents & privacy' },
+        { key: 'account', icon: 'fa-user-gear', c: '#64748b', title: 'Account & problems' }
+    ];
+    var PASS = ep('pass_pct', 60), STEP = ep('streak_step', 10);
+    var FAQ = [
+        ['courses', 'How do I start a course?', 'Open <a href="/courses">Explore Courses</a> and press <b>Enroll</b> on a course. Work through the modules in order: read each one, then take its module test. The next module opens when you finish the one before.'],
+        ['courses', 'What do I need to pass a module test?', '<b>' + PASS + '% or more.</b> Passing earns <b>+' + ep('module', 10) + ' EP</b>. You can retake a module test as many times as you like, and your best score is the one that counts.'],
+        ['courses', 'How often can I take a course quiz?', 'Each course quiz can be taken once a day, and passing it earns <b>+' + ep('quiz', 5) + ' EP</b>. The <b>Daily Quiz Test</b> on the Courses page is a separate quiz you can take once a day for <b>+' + ep('daily_quiz', 5) + ' EP</b>; it keeps your quiz streak going.'],
+        ['courses', 'What happens when I finish a course?', 'When every module in a course is passed, the course is marked finished and you earn <b>+' + ep('course', 200) + ' EP</b>. It also counts towards achievements on <a href="/achievements">Achievements</a>.'],
+        ['points', 'How do I earn EP (Eschool Points)?', '<ul><li>Module test passed (' + PASS + '%+): <b>+' + ep('module', 10) + ' EP</b></li><li>Course quiz or Daily Quiz Test passed: <b>+' + ep('quiz', 5) + ' EP</b></li><li>Course finished: <b>+' + ep('course', 200) + ' EP</b></li><li>Every ' + STEP + ' modules in a row: <b>+' + ep('module_streak', 50) + ' EP</b></li><li>Every ' + STEP + ' days in a row on the quiz streak: <b>+' + ep('quiz_streak', 40) + ' EP</b></li><li>Each Legendary badge earned on <a href="/achievements">Achievements</a>: <b>+' + ep('legendary', 500) + ' EP</b></li></ul>There is no limit on how much you can earn.'],
+        ['points', 'What can I spend EP on?', 'In the <a href="/points">Points shop</a> you can swap EP for profile titles, avatar frames and free days of Eschool Basic. Spending EP never lowers your total EP, your level or your monthly rank.'],
+        ['points', 'How does the leaderboard work?', 'The <a href="/leaderboard">leaderboard</a> ranks everyone by EP earned <b>this month</b> (from the 1st to the last day of the month, Kenya time), so everyone starts fresh on the 1st. Learners with the same EP share a place. You can hide yourself from it in <a href="/settings#privacy">Settings &gt; Privacy</a>.'],
+        ['points', 'What are levels?', 'Every <b>' + ep('per_level', 100) + ' EP</b> you earn in total takes you up one level. Your level and how far you are to the next one show on your profile and Progress page.'],
+        ['streaks', 'How do streaks work?', 'Your <b>quiz streak</b> counts the days in a row you pass a quiz or the Daily Quiz Test. Your <b>module streak</b> counts module tests passed in a row. A streak breaks if a whole day goes by without that activity.'],
+        ['streaks', 'I lost my streak. Can it be restored?', 'Streaks are counted automatically from the days you passed a quiz, so a missed day can\'t be added back. The quickest way to rebuild it is the Daily Quiz Test each day. If you think a streak broke because of a fault on Eschool, send a ticket with the dates.'],
+        ['progress', 'Where can I see my progress and grades?', 'Open <a href="/progres">Progress</a>. <b>Overview</b> shows each course, <b>Grades</b> shows your score in each subject and your weekly EP goal, and <b>Time Tracking</b> shows how long you studied each day. Press <b>Export Report</b> to download a copy.'],
+        ['progress', 'How are my grades worked out?', 'Each course is <b>30% module tests and 70% course quizzes</b>. The Daily Quiz Test is its own subject. Each subject becomes a grade from A (90%+) to F, and your GPA is the average of those grades out of 4.0.'],
+        ['progress', 'How do I set a weekly EP goal?', 'On <a href="/progres">Progress</a>, open <b>Grades</b> and set your weekly EP goal. The bar fills up as you earn EP during the week and starts again each Monday.'],
+        ['parents', 'How does a parent link to my account?', 'Your parent starts the link from their account. Either a one-time code arrives in your notifications (the bell) for you to read to them, or you get a request to accept. Nobody can link to you unless you say yes. You can unlink a parent any time in <a href="/settings#privacy">Settings &gt; Privacy</a>.'],
+        ['parents', 'What can my parent see?', 'See exactly what each linked parent can see in <a href="/settings#privacy">Settings &gt; Privacy</a>, under Parent / Guardian Access. You\'re told whenever it changes. A parent can never see your password or sign in as you.'],
+        ['parents', 'Why is Eschool locked or paused?', 'A linked parent may have set a daily time limit, quiet hours or a pause. The lock screen tells you when Eschool opens again. If you think it\'s a mistake, talk to your parent.'],
+        ['parents', 'Where do goals from my parents show?', 'Goals a parent sets for you show on your <a href="/schedule">Schedule</a> page with a progress bar and the reward. Progress updates by itself as you learn, and you get a notification when you reach one.'],
+        ['account', 'How do I change my password?', 'Go to <a href="/settings#account">Settings &gt; Account &amp; Security</a> and press <b>Change Password</b>. Your other devices are signed out; this one stays signed in.'],
+        ['account', 'How do I choose who can message me or see my profile?', 'In <a href="/settings#privacy">Settings &gt; Privacy</a> you can choose who can open your profile, who can message you, and whether you show in search and on the leaderboard. Changes save straight away. In a chat you can also mute, block or report someone from the ⋮ menu.'],
+        ['account', 'My progress or EP isn\'t showing.', 'EP and progress are saved on Eschool\'s servers when you pass a module test or quiz. Refresh the page and check you are signed in to the right account. If it\'s still missing, send a ticket with the course, the module and roughly when you passed it.'],
+        ['account', 'Can I download my data?', 'Yes. In <a href="/settings#privacy">Settings &gt; Privacy &gt; Your Data</a>, press <b>Download my data</b> for a copy of your account, EP history, achievements, messages and more.']
+    ];
+    // "in-progress" without a reply means the team is looking at it; "Answered" only when there is a reply
+    var STATUS = { pending: ['open', 'Waiting for the team'], 'in-progress': ['progress', 'Being looked at'], answered: ['progress', 'Answered'], resolved: ['resolved', 'Resolved'] };
+    var CAT = { course: ['fa-book-open', 'Courses'], academic: ['fa-chart-line', 'Progress'], account: ['fa-user-gear', 'Account'], billing: ['fa-crown', 'Plans'],
+                technical: ['fa-screwdriver-wrench', 'Not working'], content: ['fa-flag', 'Report'], feature: ['fa-lightbulb', 'Idea'], other: ['fa-circle-question', 'Other'] };
+    var S = { tab: 'tickets', tickets: [], filter: 'all', priority: 'medium', open: {}, autoUrgent: false, faqQ: '' };
 
-        emailjs.init(EMAILJS_PUBLIC_KEY);
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function note(el, msg, type, focus) {
+        el = $(el); el.className = 'hs-note ' + (type || 'info');
+        el.innerHTML = msg ? '<i class="fas ' + (type === 'ok' ? 'fa-circle-check' : type === 'bad' ? 'fa-circle-exclamation' : 'fa-circle-info') + '" aria-hidden="true"></i><span></span>' : '';
+        if (msg) el.querySelector('span').textContent = msg;
+        clearTimeout(el._t); if (msg && type !== 'bad' && !focus) el._t = setTimeout(function () { el.innerHTML = ''; }, 8000);
+        if (msg && focus) { el.tabIndex = -1; el.focus(); }
+    }
+    // "2026-11-03 10:00:00" (no zone) is UTC; Safari can't read it as is
+    function parseTime(v) {
+        if (!v) return new Date(NaN);
+        var s = String(v).trim();
+        if (/^\d{4}-\d{2}-\d{2} \d/.test(s)) s = s.replace(' ', 'T');
+        if (/T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s)) s += 'Z';
+        return new Date(s);
+    }
+    var fmtFull = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Nairobi', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    function when(iso) {
+        var d = parseTime(iso); if (!iso || isNaN(d)) return '';
+        var s = (Date.now() - d) / 1000;
+        if (s < 120) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+        var days = Math.floor(s / 86400); if (days === 1) return 'yesterday'; if (days < 7) return days + ' days ago';
+        return new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Nairobi', day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+    }
+    function fullDate(iso) { var d = parseTime(iso); return isNaN(d) ? '' : fmtFull.format(d) + ' (Nairobi time)'; }
+    async function api(url, opt) {
+        var r;
+        try { r = await fetch(url, Object.assign({ credentials: 'same-origin' }, opt || {})); }
+        catch (e) { throw new Error('Couldn\'t reach Eschool. Check your connection and try again.'); }   // "Failed to fetch", "Load failed"…
+        if (r.status === 401) { location.href = '/login'; throw new Error('Please sign in again.'); }
+        var d = null; try { d = await r.json(); } catch (e) { /* none */ }
+        if (!r.ok || (d && d.success === false)) throw Object.assign(new Error((d && d.message) || 'Something went wrong. Please try again.'), { data: d });
+        return d || {};
+    }
 
-        // Tickets are now loaded from (and saved to) the server via /api/complaints
-        let tickets = [];
+    /* ---------- tabs (arrow keys, Home/End; the address keeps #tab) ---------- */
+    var TABS = ['tickets', 'faq', 'new'];
+    function openTab(name, focus, fromHash) {
+        if (TABS.indexOf(name) < 0) name = 'tickets';
+        S.tab = name;
+        TABS.forEach(function (t) { var on = t === name; $('tab-' + t).setAttribute('aria-selected', String(on)); $('tab-' + t).tabIndex = on ? 0 : -1; $('panel-' + t).hidden = !on; });
+        if (!fromHash && (location.hash || '').slice(1) !== name) { try { history.replaceState(null, '', location.pathname + location.search + '#' + name); } catch (e) { /* ignore */ } }
+        if (focus) $('tab-' + name).focus();
+        if (name === 'new' && !focus) setTimeout(function () { if (!$('hsSubject').value) $('hsSubject').focus(); }, 40);
+    }
+    document.querySelector('.hs-tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) openTab(b.dataset.tab); });
+    document.querySelector('.hs-tabs').addEventListener('keydown', function (e) {
+        var i = TABS.indexOf(S.tab), j = -1;
+        if (e.key === 'ArrowRight') j = (i + 1) % TABS.length;
+        else if (e.key === 'ArrowLeft') j = (i + TABS.length - 1) % TABS.length;
+        else if (e.key === 'Home') j = 0;
+        else if (e.key === 'End') j = TABS.length - 1;
+        if (j < 0) return;
+        e.preventDefault(); openTab(TABS[j], true);
+    });
+    window.addEventListener('hashchange', function () {
+        var h = (location.hash || '').slice(1);
+        var m = /^t(\d+)$/.exec(h);                      // #t12 opens ticket 12 (e.g. from the bell)
+        if (m) { openTicket(m[1]); return; }
+        if (TABS.indexOf(h) > -1 && h !== S.tab) openTab(h, false, true);
+    });
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('.hs [data-go]'); if (!b) return;
+        if (b.dataset.prefill) { $('hsSubject').value = b.dataset.prefill.slice(0, 150); }
+        openTab(b.dataset.go); document.querySelector('.hs-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 
-        let currentUser = "{{ firstname }} {{ lastname }}" || "Student User";
+    /* ---------- FAQ (with search) ---------- */
+    function words(q) { return String(q || '').toLowerCase().split(/[^a-z0-9%+]+/).filter(function (w) { return w.length > 2; }); }
+    function plain(html) { return String(html).replace(/<[^>]+>/g, ' ').toLowerCase(); }
+    // FAQ indexes that match the typed words, best first
+    function matchFaq(q, max) {
+        var ws = words(q); if (!ws.length) return [];
+        return FAQ.map(function (f, i) {
+            var title = f[1].toLowerCase(), body = plain(f[2]), score = 0;
+            ws.forEach(function (w) { if (title.indexOf(w) > -1) score += 3; else if (body.indexOf(w) > -1) score += 1; });
+            return { i: i, score: score };
+        }).filter(function (x) { return x.score >= Math.min(3, ws.length); }).sort(function (a, b) { return b.score - a.score; }).slice(0, max || 99).map(function (x) { return x.i; });
+    }
+    function renderFaq() {
+        var q = S.faqQ.trim(), hits = q ? matchFaq(q) : null;
+        var html = TOPICS.map(function (t) {
+            var qs = FAQ.map(function (f, i) {
+                if (f[0] !== t.key || (hits && hits.indexOf(i) < 0)) return '';
+                var open = !!S.open[i] || (hits && hits.length <= 3);
+                return '<div class="hs-q"><button type="button" aria-expanded="' + open + '" aria-controls="faqa-' + i + '" data-q="' + i + '">' + esc(f[1]) + '<i class="fas fa-chevron-down" aria-hidden="true"></i></button><div class="a" id="faqa-' + i + '"' + (open ? '' : ' hidden') + '>' + f[2] + '</div></div>';
+            }).join('');
+            return qs ? '<div class="hs-faq-group"><h3><i class="fas ' + t.icon + '" style="--c:' + t.c + '" aria-hidden="true"></i>' + esc(t.title) + '</h3>' + qs + '</div>' : '';
+        }).join('');
+        $('hsFaq').innerHTML = html || '<div class="hs-empty"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><h3>No answer found</h3><p>Try other words, or ask the team. We\'ll put what you searched for in the subject.</p>' +
+            '<button type="button" class="hs-btn hs-btn-primary" data-go="new" data-prefill="' + esc(q) + '"><i class="fas fa-pen-to-square" aria-hidden="true"></i> Contact us</button></div>';
+        $('hsFaqCount').textContent = q ? (hits.length ? hits.length + (hits.length === 1 ? ' answer' : ' answers') + ' found' : 'No answers found') : '';
+    }
+    $('hsFaq').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-q]'); if (!b) return;
+        var i = +b.dataset.q, now = b.getAttribute('aria-expanded') !== 'true'; S.open[i] = now;
+        b.setAttribute('aria-expanded', String(now)); $('faqa-' + i).hidden = !now;
+    });
+    var faqTimer;
+    $('hsFaqSearch').addEventListener('input', function () { clearTimeout(faqTimer); var v = this.value; faqTimer = setTimeout(function () { S.faqQ = v; renderFaq(); }, 150); });
 
-        // Knowledge Base Articles
-        const knowledgeBase = [
-            {
-                id: 1,
-                title: "Getting Started with the courses",
-                description: "Make sure to stay consistent to get a certificate.",
-                icon: "fas fa-book-open",
-            },
-            {
-                id: 2,
-                title: "Advancing Your Learning Skills",
-                description: "Advance daily in any course and learn atleast one skill.",
-                icon: "fa-brain",
-            },
-            {
-                id: 3,
-                title: "Tracking Your academic Progress",
-                description: "Visit the progress page and view all your progress.",
-                icon: "fa-chart-line",
-            },
-            {
-                id: 4,
-                title: "Finishing the Modules",
-                description: "Pass all tests to unlock the next level to have a good GPA.",
-                icon: "fa-star",
-            },
-            {
-                id: 5,
-                title: "Setting Up Your Study Plan",
-                description: "Visit the schedule page and plan your studies.",
-                icon: "fa-bullseye",
-            },
-            {
-                id: 6,
-                title: "Unlocking New achievements",
-                description: "view what it needs to be done inorder to achieve the achievement.",
-                icon: "fa-trophy",
-            }
-        ];
-
-        // Initialize page
-        document.addEventListener('DOMContentLoaded', () => {
-            loadTickets();
-            loadKnowledgeBase();
-            setupTicketForm();
+    /* ---------- tickets ---------- */
+    var loading = null;
+    async function loadTickets(quiet) {
+        if (loading) return loading;
+        loading = (async function () {
+            try {
+                S.tickets = (await api('/api/complaints/mine')).complaints || [];
+                renderTickets();
+            } catch (e) {
+                if (quiet) return;
+                $('hsTickets').innerHTML = '<div class="hs-empty"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><h3>Couldn\'t load your tickets</h3><p>' + esc(e.message) + '</p><button type="button" class="hs-btn hs-btn-ghost" data-retry>Try again</button></div>';
+            } finally { loading = null; }
+        })();
+        return loading;
+    }
+    var lastSig = '';
+    function renderTickets() {
+        var t = S.tickets;
+        var fresh = t.filter(function (x) { return x.new_reply; }).length;
+        $('hsTicketCount').textContent = fresh ? fresh + ' new' : t.length;
+        $('hsTicketCount').classList.toggle('new', !!fresh);
+        $('tab-tickets').setAttribute('aria-label', 'My tickets, ' + t.length + (fresh ? ', ' + fresh + ' with a new reply' : ''));
+        var answered = function (x) { return x.response && x.status !== 'resolved'; };
+        var groups = [['all', 'All', t.length], ['open', 'Open', t.filter(function (x) { return x.status !== 'resolved'; }).length], ['answered', 'Answered', t.filter(answered).length], ['resolved', 'Resolved', t.filter(function (x) { return x.status === 'resolved'; }).length]];
+        var html = '';
+        var shown = t.filter(function (x) {
+            return S.filter === 'all' || (S.filter === 'open' && x.status !== 'resolved') || (S.filter === 'resolved' && x.status === 'resolved') || (S.filter === 'answered' && answered(x));
         });
-
-        // ============================================
-        // TICKETS — backed by GET/POST /api/complaints
-        // ============================================
-        function loadTickets() {
-            const container = document.getElementById('ticketsContainer');
-
-            fetch('/api/complaints/mine')
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.success) {
-                        console.error('Failed to load tickets:', data.message);
-                        return;
-                    }
-                    tickets = data.complaints;
-                    renderTickets();
-                })
-                .catch(err => {
-                    console.error('Error loading tickets:', err);
-                    container.innerHTML = `
-                        <div class="empty-state" style="grid-column: 1/-1;">
-                            <div class="empty-icon"><i class="fas fa-triangle-exclamation"></i></div>
-                            <h3 class="empty-title">Couldn't load your tickets</h3>
-                            <p class="empty-text">Please refresh the page to try again.</p>
-                        </div>
-                    `;
-                });
+        if (!t.length) html = '<div class="hs-empty"><i class="fas fa-ticket" aria-hidden="true"></i><h3>No tickets yet</h3><p>When you contact the team, your ticket and their reply appear here. Many answers are already under Questions.</p><button type="button" class="hs-btn hs-btn-primary" data-go="new"><i class="fas fa-plus" aria-hidden="true"></i> Contact us</button></div>';
+        else if (!shown.length) html = '<div class="hs-empty"><i class="fas fa-filter" aria-hidden="true"></i><h3>Nothing here</h3><p>No tickets match this filter.</p></div>';
+        else html = shown.map(ticketHtml).join('');
+        var filters = groups.map(function (g) { return '<button type="button" class="hs-fchip" data-filter="' + g[0] + '" aria-pressed="' + (S.filter === g[0]) + '">' + g[1] + ' (' + g[2] + ')</button>'; }).join('');
+        // only redraw when something changed (a check runs every minute), and keep keyboard focus
+        var sig = filters + html;
+        if (sig === lastSig) return;
+        lastSig = sig;
+        var a = document.activeElement, keep = a && $('panel-tickets').contains(a) ? (a.id || (a.dataset.toggle && '[data-toggle="' + a.dataset.toggle + '"]') || (a.dataset.filter && '[data-filter="' + a.dataset.filter + '"]')) : null;
+        $('hsFilters').innerHTML = filters;
+        $('hsTickets').innerHTML = html;
+        if (keep) { var el = keep.charAt(0) === '[' ? document.querySelector(keep) : $(keep); if (el) el.focus(); }
+    }
+    function ticketHtml(x) {
+        var id = Number(x.id), cat = CAT[x.category] || CAT.other, open = !!S.open['t' + id];
+        var answered = !!x.response, resolved = x.status === 'resolved';
+        var st = resolved ? STATUS.resolved : answered ? STATUS.answered : (STATUS[x.status] || STATUS.pending);
+        var prio = { low: 'Low', medium: 'Normal', high: 'High', urgent: 'Urgent' }[x.priority] || 'Normal';
+        var recent = resolved && (Date.now() - parseTime(x.response_date || x.created_at)) < 7 * 86400000;
+        var h = '<div class="hs-ticket' + (answered ? ' answered' : '') + (x.new_reply ? ' fresh' : '') + '" id="t' + id + '">';
+        h += '<button type="button" class="hs-ticket-head" aria-expanded="' + open + '" aria-controls="tb-' + id + '" data-toggle="' + id + '"><span class="hs-ticket-ic" aria-hidden="true"><i class="fas ' + cat[0] + '"></i></span>' +
+            '<span class="hs-ticket-main"><b>' + esc(x.subject) + '</b><span class="hs-ticket-meta"><span>#' + id + '</span><span><i class="fas fa-tag" aria-hidden="true"></i> ' + esc(cat[1]) + '</span><span><i class="fas fa-flag" aria-hidden="true"></i> ' + prio + '</span><span title="' + esc(fullDate(x.created_at)) + '"><i class="fas fa-clock" aria-hidden="true"></i> ' + esc(when(x.created_at)) + '</span></span></span>' +
+            (x.new_reply ? '<span class="hs-pill new">New reply</span>' : '') +
+            '<span class="hs-pill ' + st[0] + '">' + st[1] + '</span><i class="fas fa-chevron-down hs-chev" aria-hidden="true"></i></button>';
+        h += '<div class="hs-ticket-body" id="tb-' + id + '"' + (open ? '' : ' hidden') + '>';
+        h += '<div class="hs-steps" aria-label="Ticket progress: ' + st[1] + '"><span class="hs-step done"><i class="fas fa-check" aria-hidden="true"></i> Sent</span><span class="hs-step-line' + (answered ? ' done' : '') + '"></span><span class="hs-step' + (answered ? ' done' : '') + '"><i class="fas fa-check" aria-hidden="true"></i> Answered</span><span class="hs-step-line' + (resolved ? ' done' : '') + '"></span><span class="hs-step' + (resolved ? ' done' : '') + '"><i class="fas fa-check" aria-hidden="true"></i> Resolved</span></div>';
+        h += '<div class="hs-msg me"><small title="' + esc(fullDate(x.created_at)) + '">You wrote · ' + esc(when(x.created_at)) + '</small>' + esc(x.description || '(no message)') + '</div>';
+        if (answered) h += '<div class="hs-msg team"><small title="' + esc(fullDate(x.response_date)) + '"><i class="fas fa-headset" aria-hidden="true"></i> Eschool support' + (x.response_date ? ' · ' + esc(when(x.response_date)) : '') + '</small>' + esc(x.response) + '</div>';
+        else if (x.status === 'in-progress') h += '<div class="hs-wait"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><span>The team is looking at this. You\'ll get a notification in your bell when they reply.</span></div>';
+        else h += '<div class="hs-wait"><i class="fas fa-hourglass-half" aria-hidden="true"></i><span>The team hasn\'t replied yet. You\'ll get a notification in your bell when they do.</span></div>';
+        h += '<div class="hs-ticket-acts">';
+        if (!resolved) h += '<button type="button" class="hs-btn hs-btn-ghost hs-btn-sm" data-close="' + id + '"><i class="fas fa-circle-check" aria-hidden="true"></i> My problem is solved</button>';
+        if (!resolved || recent) h += '<button type="button" class="hs-btn hs-btn-ghost hs-btn-sm" data-add="' + id + '" aria-expanded="false" aria-controls="add-' + id + '"><i class="fas fa-reply" aria-hidden="true"></i> ' + (resolved ? 'Still a problem? Reopen it' : 'Add more information') + '</button>';
+        else h += '<button type="button" class="hs-btn hs-btn-ghost hs-btn-sm" data-follow="' + id + '"><i class="fas fa-reply" aria-hidden="true"></i> Still a problem? Send a new ticket</button>';
+        h += '<span class="hs-note" id="tn-' + id + '" role="status" style="margin:0;padding:6px 10px;"></span></div>';
+        h += '<form class="hs-add" id="add-' + id + '" data-add-form="' + id + '" hidden><label class="st-sr" for="addtx-' + id + '">More information for ticket ' + id + '</label>' +
+             '<textarea class="hs-textarea" id="addtx-' + id + '" maxlength="2000" rows="3" placeholder="What else should the team know?"></textarea>' +
+             '<div class="hs-ticket-acts"><button type="submit" class="hs-btn hs-btn-primary hs-btn-sm"><i class="fas fa-paper-plane" aria-hidden="true"></i> ' + (resolved ? 'Reopen and send' : 'Send') + '</button><button type="button" class="hs-btn hs-btn-ghost hs-btn-sm" data-add-cancel="' + id + '">Cancel</button></div></form>';
+        return h + '</div></div>';
+    }
+    function markSeen(x) {
+        if (!x || !x.new_reply) return;
+        x.new_reply = false;
+        api('/api/complaints/' + Number(x.id) + '/seen', { method: 'POST' }).catch(function () {});
+        renderTickets();
+    }
+    function openTicket(id) {
+        openTab('tickets', false, true);
+        S.filter = 'all'; S.open['t' + id] = true; lastSig = ''; renderTickets();
+        var el = $('t' + id); if (!el) return;
+        markSeen(S.tickets.filter(function (x) { return String(x.id) === String(id); })[0]);
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var head = el.querySelector('[data-toggle]'); if (head) head.focus({ preventScroll: true });
+    }
+    $('hsFilters').addEventListener('click', function (e) { var b = e.target.closest('[data-filter]'); if (b) { S.filter = b.dataset.filter; renderTickets(); } });
+    $('hsTickets').addEventListener('click', async function (e) {
+        var b;
+        if (e.target.closest('[data-retry]')) { loadTickets(); return; }
+        if ((b = e.target.closest('[data-toggle]'))) {
+            var id = b.dataset.toggle, k = 't' + id; S.open[k] = !S.open[k];
+            b.setAttribute('aria-expanded', String(S.open[k])); $('tb-' + id).hidden = !S.open[k];
+            if (S.open[k]) markSeen(S.tickets.filter(function (x) { return String(x.id) === id; })[0]);
+            return;
         }
-
-        function renderTickets() {
-            const container = document.getElementById('ticketsContainer');
-
-            if (tickets.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state" style="grid-column: 1/-1;">
-                        <div class="empty-icon"><i class="fas fa-ticket-alt"></i></div>
-                        <h3 class="empty-title">No Tickets Yet</h3>
-                        <p class="empty-text">Submit your first support ticket to get help from our team.</p>
-                        <button class="btn btn-primary" onclick="switchTab('new')">
-                            <i class="fas fa-plus"></i> Create Ticket
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = tickets.map(ticket => createTicketCard(ticket)).join('');
+        if ((b = e.target.closest('[data-close]'))) {
+            b.disabled = true;
+            try { await api('/api/complaints/' + Number(b.dataset.close) + '/close', { method: 'POST' }); note('hsNote', 'Glad it\'s sorted. The ticket is marked as resolved.', 'ok'); lastSig = ''; await loadTickets(); }
+            catch (err) { b.disabled = false; note('tn-' + b.dataset.close, err.message, 'bad'); }
+            return;
         }
-
-        // Backend statuses are pending / in-progress / resolved.
-        // Map them onto the existing status-open / status-in-progress / status-resolved CSS.
-        function statusInfo(status) {
-            if (status === 'resolved') return { cls: 'status-resolved', label: 'Resolved' };
-            if (status === 'in-progress') return { cls: 'status-in-progress', label: 'In Progress' };
-            return { cls: 'status-open', label: 'Open' };
+        if ((b = e.target.closest('[data-add]'))) {
+            var f = $('add-' + b.dataset.add); f.hidden = !f.hidden; b.setAttribute('aria-expanded', String(!f.hidden));
+            if (!f.hidden) f.querySelector('textarea').focus();
+            return;
         }
-
-        function createTicketCard(ticket) {
-            const { cls: statusClass, label: statusText } = statusInfo(ticket.status);
-            const description = ticket.description || '';
-
-            const priorityColors = {
-                low: '#10b981',
-                medium: '#f59e0b',
-                high: '#ef4444',
-                urgent: '#dc2626'
-            };
-            const priority = ticket.priority || 'medium';
-            const responseCount = ticket.response ? 1 : 0;
-
-            const responseBlock = ticket.response ? `
-                <div class="ticket-response">
-                    <div class="ticket-response-label"><i class="fas fa-headset"></i> Support Response</div>
-                    <div class="ticket-response-text">${escapeHtml(ticket.response)}</div>
-                    ${ticket.response_date ? `<div class="ticket-response-time">${formatDate(ticket.response_date)}</div>` : ''}
-                </div>
-            ` : '';
-
-            return `
-                <div class="ticket-card" onclick="viewTicketDetails(${ticket.id})">
-                    <div class="ticket-header">
-                        <div class="ticket-title">${escapeHtml(ticket.subject)}</div>
-                        <div class="ticket-status ${statusClass}">${statusText}</div>
-                    </div>
-                    <div class="ticket-category">
-                        <i class="fas ${getCategoryIcon(ticket.category)}"></i> ${escapeHtml((ticket.category || 'other').toUpperCase())}
-                    </div>
-                    <div class="ticket-message">${escapeHtml(description.substring(0, 100))}${description.length > 100 ? '...' : ''}</div>
-                    ${responseBlock}
-                    <div class="ticket-meta">
-                        <span><i class="fas fa-calendar"></i> ${formatDate(ticket.created_at)}</span>
-                        <span><i class="fas fa-flag" style="color: ${priorityColors[priority]}"></i> ${priority}</span>
-                        <span><i class="fas fa-comment"></i> ${responseCount} response${responseCount === 1 ? '' : 's'}</span>
-                    </div>
-                </div>
-            `;
+        if ((b = e.target.closest('[data-add-cancel]'))) {
+            $('add-' + b.dataset.addCancel).hidden = true;
+            var ab = document.querySelector('[data-add="' + b.dataset.addCancel + '"]'); if (ab) { ab.setAttribute('aria-expanded', 'false'); ab.focus(); }
+            return;
         }
-
-        function viewTicketDetails(id) {
-            const ticket = tickets.find(t => t.id === id);
-            if (!ticket) return;
-
-            const { label: statusText } = statusInfo(ticket.status);
-            let details = `Ticket: ${ticket.subject}\n\nStatus: ${statusText}\nPriority: ${ticket.priority || 'medium'}\n\nMessage: ${ticket.description || ''}`;
-
-            if (ticket.response) {
-                details += `\n\n--- Support Response ---\n${ticket.response}`;
-            } else {
-                details += `\n\nOur team hasn't responded yet — we'll notify you here once they do.`;
-            }
-
-            alert(details);
+        if ((b = e.target.closest('[data-follow]'))) {
+            var t = S.tickets.filter(function (x) { return String(x.id) === b.dataset.follow; })[0];
+            if (!t) return;
+            // "Re: #5 Re: #3 …" is never stacked
+            $('hsSubject').value = ('Re: #' + t.id + ' ' + String(t.subject).replace(/^(Re:\s*#\d+\s*)+/i, '')).slice(0, 150);
+            $('hsCategory').value = CAT[t.category] ? t.category : 'other';
+            setPrio(t.priority || 'medium'); S.autoUrgent = false;
+            $('hsMessage').value = ''; count();
+            openTab('new'); $('hsMessage').focus();
         }
+    });
+    $('hsTickets').addEventListener('submit', async function (e) {
+        var f = e.target.closest('[data-add-form]'); if (!f) return;
+        e.preventDefault();
+        var id = f.dataset.addForm, ta = f.querySelector('textarea'), text = ta.value.trim();
+        if (text.length < 2) { ta.focus(); return; }
+        var btn = f.querySelector('[type="submit"]'); btn.disabled = true;
+        try {
+            await api('/api/complaints/' + Number(id) + '/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text }) });
+            S.open['t' + id] = true; lastSig = '';
+            await loadTickets();
+            note('tn-' + id, 'Added. The team has been told.', 'ok');
+            var head = document.querySelector('[data-toggle="' + id + '"]'); if (head) head.focus();
+        } catch (err) { btn.disabled = false; note('tn-' + id, err.message, 'bad'); }
+    });
 
-        // ============================================
-        // KNOWLEDGE BASE (static content)
-        // ============================================
-        function loadKnowledgeBase() {
-            const container = document.getElementById('articlesContainer');
-            container.innerHTML = knowledgeBase.map(article => `
-                <div class="article-card" onclick="viewArticle(${article.id})">
-                    <div class="article-icon">
-                        <i class="fas ${article.icon}"></i>
-                    </div>
-                    <div class="article-title">${article.title}</div>
-                    <div class="article-description">${article.description}</div>
-                </div>
-            `).join('');
+    /* ---------- new ticket ---------- */
+    function setPrio(p) {
+        S.priority = p;
+        document.querySelectorAll('#hsPrio [data-p]').forEach(function (b) { var on = b.dataset.p === p; b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; });
+    }
+    $('hsPrio').addEventListener('click', function (e) { var b = e.target.closest('[data-p]'); if (b) { setPrio(b.dataset.p); S.autoUrgent = false; } });
+    $('hsPrio').addEventListener('keydown', function (e) {
+        if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].indexOf(e.key) < 0) return; e.preventDefault();
+        var opts = Array.prototype.slice.call(this.querySelectorAll('[data-p]')), i = opts.indexOf(document.activeElement);
+        var n = opts[(i + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : opts.length - 1)) % opts.length]; setPrio(n.dataset.p); S.autoUrgent = false; n.focus();
+    });
+    function count() { $('hsMsgCount').textContent = $('hsMessage').value.length + ' / 5000'; }
+    $('hsMessage').addEventListener('input', function () { count(); clearErr('hsMessage', 'errMessage'); });
+    function clearErr(f, e) { $(f).classList.remove('bad'); $(e).textContent = ''; }
+    var DEFAULT_PH = $('hsMessage').placeholder;
+    $('hsCategory').addEventListener('change', function () {
+        clearErr('hsCategory', 'errCategory');
+        if (this.value === 'content') {
+            if (S.priority === 'medium') { setPrio('urgent'); S.autoUrgent = true; }
+            $('hsMessage').placeholder = 'Who or what was it (name, page or message), what happened, and when? We keep reports private.';
+        } else {
+            if (S.autoUrgent) { setPrio('medium'); S.autoUrgent = false; }    // we set Urgent for a report; undo it
+            $('hsMessage').placeholder = DEFAULT_PH;
         }
+    });
+    // answers that may already help, while the subject is typed
+    var sugTimer;
+    $('hsSubject').addEventListener('input', function () {
+        clearErr('hsSubject', 'errSubject');
+        clearTimeout(sugTimer); var v = this.value;
+        sugTimer = setTimeout(function () {
+            var hits = matchFaq(v, 3), box = $('hsSuggest');
+            if (!hits.length) { box.hidden = true; box.innerHTML = ''; return; }
+            box.hidden = false;
+            box.innerHTML = '<b>These answers may help:</b><ul>' + hits.map(function (i) { return '<li><button type="button" class="hs-link" data-faq="' + i + '">' + esc(FAQ[i][1]) + '</button></li>'; }).join('') + '</ul>';
+        }, 250);
+    });
+    $('hsSuggest').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-faq]'); if (!b) return;
+        var i = +b.dataset.faq; S.open[i] = true; S.faqQ = ''; $('hsFaqSearch').value = ''; renderFaq(); openTab('faq');
+        var q = document.querySelector('[data-q="' + i + '"]'); if (q) { q.scrollIntoView({ behavior: 'smooth', block: 'center' }); q.focus({ preventScroll: true }); }
+    });
+    $('hsForm').addEventListener('reset', function () { setTimeout(function () { setPrio('medium'); S.autoUrgent = false; count(); $('hsMessage').placeholder = DEFAULT_PH; $('hsSuggest').hidden = true; ['hsSubject', 'hsCategory', 'hsMessage'].forEach(function (f) { $(f).classList.remove('bad'); }); ['errSubject', 'errCategory', 'errMessage'].forEach(function (e) { $(e).textContent = ''; }); note('hsFormNote', ''); }, 0); });
+    $('hsForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var btn = $('hsSend');
+        if (btn.disabled) return;                     // a double click sends once
+        var body = { subject: $('hsSubject').value.trim(), category: $('hsCategory').value, priority: S.priority, description: $('hsMessage').value.trim() };
+        var bad = null;
+        if (!body.subject) { $('hsSubject').classList.add('bad'); $('errSubject').textContent = 'Add a short subject.'; bad = bad || 'hsSubject'; }
+        if (!body.category) { $('hsCategory').classList.add('bad'); $('errCategory').textContent = 'Choose what it\'s about.'; bad = bad || 'hsCategory'; }
+        if (body.description.length < 10) { $('hsMessage').classList.add('bad'); $('errMessage').textContent = 'Tell us a little more (at least 10 characters).'; bad = bad || 'hsMessage'; }
+        if (bad) { $(bad).focus(); return; }
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Sending...';
+        try {
+            var d = await api('/api/complaints', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            var t = d.complaint || {};
+            this.reset();
+            S.open['t' + t.id] = true; S.filter = 'all'; lastSig = '';
+            await loadTickets();
+            openTab('tickets');
+            // focus goes to the message, so keyboard and screen-reader users know it worked
+            note('hsNote', 'Ticket #' + t.id + ' sent. The team will reply here, and you\'ll get a notification in your bell.', 'ok', true);
+            document.querySelector('.hs-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (err) { note('hsFormNote', err.message + ' What you typed is still here.', 'bad', true); }
+        finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane" aria-hidden="true"></i> Send ticket'; }
+    });
 
-        
-
-        // ============================================
-        // NEW TICKET FORM — POSTs to /api/complaints
-        // ============================================
-        function setupTicketForm() {
-            document.getElementById('ticketForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-
-                const submitBtn = document.getElementById('ticketSubmitBtn');
-                const originalBtnHTML = submitBtn.innerHTML;
-
-                const payload = {
-                    subject: document.getElementById('ticketTitle').value.trim(),
-                    category: document.getElementById('ticketCategory').value,
-                    priority: document.getElementById('ticketPriority').value,
-                    description: document.getElementById('ticketMessage').value.trim()
-                };
-
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-
-                fetch('/api/complaints', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.message || 'Failed to submit ticket');
-                    }
-
-                    const savedTicket = data.complaint;
-
-                    // Best-effort email alert to the support inbox — failure here
-                    // does not affect the ticket, which is already saved.
-                    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-                        to_email: SUPPORT_EMAIL,
-                        ticket_id: savedTicket.id,
-                        from_user: currentUser,
-                        subject: savedTicket.subject,
-                        category: savedTicket.category,
-                        priority: savedTicket.priority,
-                        message: savedTicket.description,
-                        created_at: savedTicket.created_at
-                    }).catch(err => console.error('EmailJS alert failed (ticket still saved):', err));
-
-                    
-                    loadTickets();
-                    switchTab('tickets');
-                })
-                .catch(err => {
-                    console.error('Failed to submit ticket:', err);
-                    alert("⚠️ We couldn't submit your ticket right now. Please try again in a moment.");
-                })
-                .finally(() => {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalBtnHTML;
-                });
-            });
-        }
-
-        function toggleFAQ(element) {
-            const answer = element.nextElementSibling;
-            const icon = element.querySelector('i');
-            
-            answer.classList.toggle('active');
-            icon.style.transform = answer.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0)';
-        }
-
-        // Live Chat Functions
-        function toggleChat() {
-            const chatWindow = document.getElementById('chatWindow');
-            chatWindow.classList.toggle('active');
-        }
-
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const message = input.value.trim();
-            
-            if (!message) return;
-            
-            // Add user message
-            addChatMessage(message, 'user');
-            input.value = '';
-            
-            // Simulate support response
-            setTimeout(() => {
-                const response = getSupportResponse(message);
-                addChatMessage(response, 'support');
-            }, 1000);
-        }
-
-        function addChatMessage(message, sender) {
-            const chatMessages = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message ${sender}`;
-            messageDiv.innerHTML = `
-                <div class="message-bubble">
-                    ${message}
-                </div>
-            `;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        
-
-        // Tab switching
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => 
-                btn.innerHTML.toLowerCase().includes(tabName === 'tickets' ? 'tickets' :
-                                                   tabName === 'faq' ? 'faq' :
-                                                   tabName === 'knowledge' ? 'knowledge' : 'new')
-            );
-            if (activeBtn) activeBtn.classList.add('active');
-            
-            document.getElementById(`${tabName}-tab`).classList.add('active');
-        }
-
-        function getCategoryIcon(category) {
-            const icons = {
-                technical: 'fa-code',
-                account: 'fa-user',
-                course: 'fa-book',
-                billing: 'fa-credit-card',
-                feature: 'fa-star',
-                other: 'fa-question'
-            };
-            return icons[category] || 'fa-tag';
-        }
-
-        function formatDate(dateStr) {
-            const date = new Date(dateStr);
-            const now = new Date();
-            const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-            
-            if (diffDays === 0) return 'Today';
-            if (diffDays === 1) return 'Yesterday';
-            if (diffDays < 7) return `${diffDays} days ago`;
-            return date.toLocaleDateString();
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // Allow Enter key in chat
-        document.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && document.activeElement.id === 'chatInput') {
-                sendChatMessage();
-            }
-        });
-    </script>
-</body>
-</html>
+    /* ---------- start ---------- */
+    setPrio('medium');
+    renderFaq();
+    var h = (location.hash || '').slice(1), tm = /^t(\d+)$/.exec(h);
+    loadTickets().then(function () {
+        if (tm) { openTicket(tm[1]); return; }
+        // nothing sent yet and no tab asked for: start on the questions
+        if (!h && !S.tickets.length) openTab('faq');
+    });
+    openTab(TABS.indexOf(h) > -1 ? h : 'tickets', false, true);
+    // replies show up without a refresh (only while the page is open on screen)
+    setInterval(function () { if (!document.hidden) loadTickets(true); }, 60000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) loadTickets(true); });
+})();
+</script>
 {% endblock %}

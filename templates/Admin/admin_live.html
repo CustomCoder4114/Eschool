@@ -1,0 +1,602 @@
+{% extends "Admin/admin_body.html" %}
+{% block title %}Live classes{% endblock %}
+{% block allcontent %}
+{#
+    ADMIN - Live classes & paid lessons  (templates/Admin/admin_live.html)   Route: /admin-live
+    GET  /api/admin/live/overview?days=7|30|90   every class and paid lesson, with flags
+    GET  /api/admin/live/<id>/report              attendance (every join/leave), class log, chat, ratings, recordings
+    POST /api/admin/live/<id>/review              admin decision {status, note, tell_teacher}
+    POST /api/admin/live/<id>  {action:"end", reason}   DELETE /api/admin/live/<id> {reason}
+    GET  /api/admin/lessons/<id>/report           paid lesson: call evidence, payment, parent report
+    POST /api/admin/lessons/<id>/decide           {outcome: taught | not_taught, note}
+    GET  /api/admin/recordings/<id>               plays a recording (admins only; logged)
+#}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+.lv {
+    --lv-accent: var(--primary-color, #4f46e5); --lv-soft: #eef0ff;
+    --lv-bg: #f4f6fb; --lv-card: #fff; --lv-line: #e3e7f1; --lv-line-2: #f0f2f7;
+    --lv-text: #1c2333; --lv-text-2: #4b5468; --lv-text-3: #6b7385;
+    --lv-ok: #137333; --lv-ok-bg: #e6f4ea; --lv-ok-line: #b7dfc3;
+    --lv-bad: #b3261e; --lv-bad-bg: #fdecea; --lv-bad-line: #f5c2bd;
+    --lv-warn: #7a4a00; --lv-warn-bg: #fff4e0; --lv-warn-line: #f3d39b;
+    --lv-info: #3730a3; --lv-teach: #4f46e5; --lv-learn: #10a37f; --lv-parent: #d97706;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--lv-text);
+    max-width: 1320px; margin: 0 auto; padding: 4px 0 40px; font-size: 14px;
+}
+body.dark-mode .lv {
+    --lv-soft: #24264a; --lv-bg: #0b1220; --lv-card: #111a2e; --lv-line: #263149; --lv-line-2: #1b2539;
+    --lv-text: #e8ecf5; --lv-text-2: #b8c1d6; --lv-text-3: #8d97ae;
+    --lv-ok: #6fd391; --lv-ok-bg: #12301f; --lv-ok-line: #1f5a36; --lv-bad: #ff8b80; --lv-bad-bg: #3a1714; --lv-bad-line: #6b2a24;
+    --lv-warn: #f5c46a; --lv-warn-bg: #33260c; --lv-warn-line: #654a17; --lv-info: #b4b9ff;
+}
+.lv *, .lv *::before, .lv *::after { box-sizing: border-box; }
+.lv h1 { font-size: 1.6rem; margin: 0; font-weight: 800; }
+.lv h2, .lv h3, .lv p { margin: 0; }
+.lv button, .lv input, .lv select, .lv textarea { font: inherit; color: inherit; }
+.lv-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.lv-sub { color: var(--lv-text-3); margin-top: 4px; max-width: 760px; }
+.lv-btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.lv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 13px; border-radius: 10px; border: 1px solid var(--lv-line); background: var(--lv-card); font-weight: 600; font-size: .84rem; cursor: pointer; text-decoration: none; white-space: nowrap; color: var(--lv-text); }
+.lv-btn:hover { border-color: var(--lv-accent); color: var(--lv-accent); }
+.lv-btn.primary { background: var(--lv-accent); border-color: var(--lv-accent); color: #fff; }
+.lv-btn.primary:hover { filter: brightness(1.08); color: #fff; }
+.lv-btn.danger { color: var(--lv-bad); }
+.lv-btn.danger.solid { background: var(--lv-bad); border-color: var(--lv-bad); color: #fff; }
+.lv-btn.sm { height: 30px; padding: 0 10px; font-size: .78rem; }
+.lv-btn:disabled { opacity: .5; cursor: default; }
+.lv-btn:focus-visible, .lv-chip:focus-visible, .lv-tab:focus-visible, .lv input:focus-visible, .lv textarea:focus-visible, .lv-ev button:focus-visible { outline: 3px solid color-mix(in srgb, var(--lv-accent) 45%, transparent); outline-offset: 2px; }
+.lv-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.lv-chip { border: 1px solid var(--lv-line); background: var(--lv-card); border-radius: 999px; padding: 5px 12px; font-size: .8rem; font-weight: 600; cursor: pointer; color: var(--lv-text-2); }
+.lv-chip[aria-pressed="true"] { background: var(--lv-soft); border-color: var(--lv-accent); color: var(--lv-accent); }
+.lv-card { background: var(--lv-card); border: 1px solid var(--lv-line); border-radius: 14px; padding: 16px; min-width: 0; }
+.lv-grid { display: grid; gap: 12px; margin-bottom: 12px; }
+.g6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.lv-kl { font-size: .7rem; color: var(--lv-text-3); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.lv-kv { font-size: 1.55rem; font-weight: 800; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.lv-kn { font-size: .76rem; color: var(--lv-text-3); }
+.lv-card.alert { border-color: var(--lv-bad-line); }
+.lv-card.alert .lv-kv { color: var(--lv-bad); }
+.lv-red { color: var(--lv-bad); }
+.lv-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--lv-bad); margin-right: 6px; vertical-align: middle; animation: lvP 1.3s infinite; }
+@keyframes lvP { 50% { opacity: .35; } }
+
+.lv-tabs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.lv-tab { border: 1px solid var(--lv-line); background: var(--lv-card); border-radius: 999px; padding: 6px 13px; font-weight: 600; font-size: .82rem; cursor: pointer; }
+.lv-tab em { font-style: normal; opacity: .7; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.lv-tab[aria-selected="true"] { background: var(--lv-accent); border-color: var(--lv-accent); color: #fff; }
+.lv-tab.red:not([aria-selected="true"]) { border-color: var(--lv-bad-line); color: var(--lv-bad); }
+.lv-search { margin-left: auto; position: relative; flex: 0 1 320px; min-width: 200px; }
+.lv-search i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--lv-text-3); }
+.lv-search input { width: 100%; height: 36px; border: 1px solid var(--lv-line); border-radius: 10px; padding: 0 12px 0 32px; background: var(--lv-card); }
+.lv-tblw { overflow-x: auto; }
+.lv-tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width: 960px; }
+.lv-tbl th { text-align: left; font-size: .68rem; color: var(--lv-text-3); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; padding: 7px 6px; border-bottom: 1px solid var(--lv-line); white-space: nowrap; }
+.lv-tbl td { padding: 9px 6px; border-bottom: 1px solid var(--lv-line-2); vertical-align: top; }
+.lv-tbl .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lv-tbl tr:hover td { background: color-mix(in srgb, var(--lv-soft) 45%, transparent); }
+.lv-m { color: var(--lv-text-3); font-size: .76rem; }
+.lv-pill { display: inline-flex; align-items: center; gap: 4px; font-size: .7rem; font-weight: 700; border-radius: 999px; padding: 2px 9px; white-space: nowrap; margin: 1px 2px 1px 0; }
+.lv-pill.bad { background: var(--lv-bad-bg); color: var(--lv-bad); }
+.lv-pill.warn { background: var(--lv-warn-bg); color: var(--lv-warn); }
+.lv-pill.ok { background: var(--lv-ok-bg); color: var(--lv-ok); }
+.lv-pill.info { background: var(--lv-soft); color: var(--lv-info); }
+.lv-pill.grey { background: var(--lv-line-2); color: var(--lv-text-3); }
+.lv-empty { text-align: center; padding: 30px 10px; color: var(--lv-text-3); }
+.lv-empty i { font-size: 1.6rem; display: block; margin-bottom: 8px; }
+.lv-note { border-radius: 10px; padding: 9px 12px; font-size: .86rem; margin-bottom: 10px; }
+.lv-note[hidden] { display: none; }
+.lv-note.ok { background: var(--lv-ok-bg); color: var(--lv-ok); } .lv-note.bad { background: var(--lv-bad-bg); color: var(--lv-bad); }
+
+/* report */
+.lv-dlg { border: 0; border-radius: 16px; padding: 0; width: min(1180px, calc(100vw - 24px)); max-height: calc(100vh - 24px); box-shadow: 0 24px 60px rgba(15, 20, 40, .35); background: var(--lv-bg); color: var(--lv-text); font-family: Inter, system-ui, sans-serif; }
+.lv-dlg::backdrop { background: rgba(15, 20, 35, .6); }
+.lv-dh { position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; background: var(--lv-card); border-bottom: 1px solid var(--lv-line); flex-wrap: wrap; }
+.lv-dh h2 { font-size: 1.1rem; }
+.lv-db { padding: 16px 18px 22px; }
+.lv-x { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--lv-line); background: var(--lv-card); cursor: pointer; }
+.lv-find { border-radius: 12px; padding: 12px 14px; border: 1px solid; margin-bottom: 12px; display: flex; gap: 10px; align-items: flex-start; }
+.lv-find.ok { background: var(--lv-ok-bg); border-color: var(--lv-ok-line); color: var(--lv-ok); }
+.lv-find.bad { background: var(--lv-bad-bg); border-color: var(--lv-bad-line); color: var(--lv-bad); }
+.lv-find.warn { background: var(--lv-warn-bg); border-color: var(--lv-warn-line); color: var(--lv-warn); }
+.lv-find.info { background: var(--lv-soft); border-color: var(--lv-line); color: var(--lv-info); }
+.lv-find i { margin-top: 3px; }
+.lv-r2 { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+.lv-r3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.lv-ch { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.lv-ch h3 { font-size: .95rem; }
+.lv-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.lv-facts div { background: var(--lv-card); border: 1px solid var(--lv-line); border-radius: 12px; padding: 10px; }
+.lv-facts b { display: block; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.lv-facts span { font-size: .72rem; color: var(--lv-text-3); }
+.lv-video { width: 100%; max-height: 380px; border-radius: 12px; background: #000; display: block; }
+.lv-parts { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 4px; }
+.lv-norec { border: 1px dashed var(--lv-line); border-radius: 12px; padding: 24px 14px; text-align: center; color: var(--lv-text-3); }
+.lv-tl { margin-top: 14px; }
+.lv-tlrow { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px; align-items: center; font-size: .78rem; margin: 5px 0; }
+.lv-tlrow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--lv-text-2); }
+.lv-track { position: relative; height: 14px; border-radius: 5px; background: var(--lv-line-2); }
+.lv-track i { position: absolute; top: 0; bottom: 0; border-radius: 4px; min-width: 2px; }
+.lv-track .pl { position: absolute; top: -3px; bottom: -3px; border-left: 2px dashed var(--lv-text-3); opacity: .55; }
+.lv-tlx { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px; font-size: .7rem; color: var(--lv-text-3); }
+.lv-tlx div { display: flex; justify-content: space-between; }
+.lv-ppl { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.lv-ppl td, .lv-ppl th { padding: 7px 5px; border-bottom: 1px solid var(--lv-line-2); text-align: left; vertical-align: top; }
+.lv-ppl th { font-size: .68rem; color: var(--lv-text-3); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.lv-ppl .n { text-align: right; font-variant-numeric: tabular-nums; }
+.lv-role { font-size: .66rem; font-weight: 700; border-radius: 6px; padding: 1px 6px; margin-left: 4px; text-transform: capitalize; }
+.lv-role.teacher { background: var(--lv-soft); color: var(--lv-info); } .lv-role.student { background: var(--lv-ok-bg); color: var(--lv-ok); }
+.lv-role.parent { background: var(--lv-warn-bg); color: var(--lv-warn); } .lv-role.admin { background: var(--lv-bad-bg); color: var(--lv-bad); }
+.lv-ev { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow: auto; }
+.lv-ev li { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--lv-line-2); font-size: .82rem; align-items: start; }
+.lv-ev time { color: var(--lv-text-3); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lv-ev button { border: 0; background: none; color: var(--lv-accent); cursor: pointer; font-size: .74rem; font-weight: 600; padding: 0 2px; }
+.lv-ev .k-ended b, .lv-ev .k-admin_ended b { color: var(--lv-bad); }
+.lv-chat { max-height: 300px; overflow: auto; font-size: .82rem; }
+.lv-chat div { padding: 5px 0; border-bottom: 1px solid var(--lv-line-2); }
+.lv-chat b { color: var(--lv-learn); } .lv-chat .t b { color: var(--lv-teach); }
+.lv-chat .del { color: var(--lv-text-3); text-decoration: line-through; }
+.lv-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--lv-line-2); font-size: .84rem; }
+.lv-row:last-child { border-bottom: 0; }
+.lv-row b { text-align: right; }
+.lv-dec textarea { width: 100%; min-height: 76px; border: 1px solid var(--lv-line); border-radius: 10px; padding: 9px 10px; background: var(--lv-card); resize: vertical; margin: 8px 0; }
+.lv-dec label.ck { display: flex; gap: 8px; align-items: center; font-size: .84rem; margin-bottom: 10px; }
+.lv-err { color: var(--lv-bad); font-size: .8rem; margin-top: 6px; }
+.lv-err:empty { display: none; }
+.lv-skel { display: block; height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--lv-line-2), var(--lv-line), var(--lv-line-2)); background-size: 200% 100%; animation: lvS 1.2s infinite; margin: 8px 0; }
+@keyframes lvS { to { background-position: -200% 0; } }
+.lv-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.lv-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: #1c2333; color: #fff; padding: 11px 16px; border-radius: 12px; font-size: .88rem; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 3000; max-width: calc(100vw - 32px); }
+.lv-toast.on { opacity: 1; transform: translateX(-50%); }
+#lvPrint { display: none; }
+
+@media (max-width: 1150px) { .g6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .lv-r3 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 860px) { .lv-r2, .lv-r3 { grid-template-columns: minmax(0, 1fr); } .lv-facts { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .g6 { grid-template-columns: 1fr 1fr; } .lv-search { margin-left: 0; flex-basis: 100%; } .lv-tlrow, .lv-tlx { grid-template-columns: 84px minmax(0, 1fr); } .lv-db { padding: 12px; } }
+@media (prefers-reduced-motion: reduce) { .lv-dot { animation: none; } }
+@media print {
+    body * { visibility: hidden !important; }
+    #lvPrint, #lvPrint * { visibility: visible !important; }
+    #lvPrint { display: block !important; position: absolute; left: 0; top: 0; width: 100%; color: #000; background: #fff; font-family: Arial, sans-serif; font-size: 11pt; }
+    #lvPrint h1 { font-size: 16pt; margin: 0 0 4px; } #lvPrint h2 { font-size: 12pt; margin: 14px 0 6px; border-bottom: 1px solid #999; }
+    #lvPrint table { width: 100%; border-collapse: collapse; } #lvPrint td, #lvPrint th { border: 1px solid #bbb; padding: 4px 6px; text-align: left; font-size: 9.5pt; vertical-align: top; }
+    #lvPrint .box { border: 1px solid #000; padding: 8px; margin: 8px 0; }
+}
+</style>
+
+<div class="lv" id="lv">
+    <div class="lv-top">
+        <div>
+            <h1>Live classes &amp; lessons</h1>
+            <p class="lv-sub">Every live class and paid lesson: who taught, who attended and for how long, the class recording, and a full report to settle complaints.</p>
+        </div>
+        <div class="lv-btns">
+            <div class="lv-chips" role="group" aria-label="Time period" id="period">
+                <button type="button" class="lv-chip" data-days="7" aria-pressed="false">7 days</button>
+                <button type="button" class="lv-chip" data-days="30" aria-pressed="true">30 days</button>
+                <button type="button" class="lv-chip" data-days="90" aria-pressed="false">90 days</button>
+            </div>
+            <button type="button" class="lv-btn" id="refresh"><i class="fas fa-rotate" aria-hidden="true"></i> Refresh</button>
+        </div>
+    </div>
+    <div class="lv-note" id="note" role="status" hidden></div>
+    <div class="lv-grid g6" id="kpis">
+        <div class="lv-card"><span class="lv-skel"></span><span class="lv-skel"></span></div><div class="lv-card"><span class="lv-skel"></span></div><div class="lv-card"><span class="lv-skel"></span></div>
+        <div class="lv-card"><span class="lv-skel"></span></div><div class="lv-card"><span class="lv-skel"></span></div><div class="lv-card"><span class="lv-skel"></span></div>
+    </div>
+    <section class="lv-card" aria-label="Classes and lessons">
+        <div class="lv-tabs" role="tablist" aria-label="Show" id="tabs"></div>
+        <div class="lv-tblw"><table class="lv-tbl" id="tbl"><thead id="thead"></thead><tbody id="rows"><tr><td colspan="8"><span class="lv-skel"></span><span class="lv-skel"></span></td></tr></tbody></table></div>
+    </section>
+    <p class="lv-m" style="margin-top:10px" id="foot"></p>
+
+    <dialog class="lv-dlg" id="dlg" aria-labelledby="dTitle">
+        <div class="lv-dh">
+            <div style="min-width:0"><h2 id="dTitle">Report</h2><div class="lv-m" id="dSub"></div></div>
+            <div class="lv-btns" id="dActs"></div>
+        </div>
+        <div class="lv-db" id="dBody"></div>
+    </dialog>
+    <div id="lvPrint" aria-hidden="true"></div>
+    <div class="lv-toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+(function () {
+"use strict";
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+var num = function (v) { v = Number(v); return isFinite(v) ? v : 0; };
+var fmt = function (n) { return num(n).toLocaleString(); };
+var SUBJ = { math: "Mathematics", english: "English", kiswahili: "Kiswahili", csl: "CSL" };
+function size(b) { b = num(b); if (!b) return "0 B"; var u = ["B", "KB", "MB", "GB", "TB"], i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + " " + u[i]; }
+function T(d) { if (!d) return NaN; if (typeof d === "number") return d; var s = String(d); return Date.parse(s.replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? "" : "Z")); }
+function hm(d) { var t = T(d); return t ? new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "–"; }
+function hms(d) { var t = T(d); return t ? new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }) : "–"; }
+function day(d) { var t = T(d); return t ? new Date(t).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }) : ""; }
+function full(d) { var t = T(d); return t ? new Date(t).toLocaleString([], { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) : "–"; }
+function mins(n) { n = Math.round(num(n)); return n >= 90 ? Math.floor(n / 60) + " h " + (n % 60 ? n % 60 + " min" : "") : n + " min"; }
+function clock(s) { s = Math.max(0, Math.round(num(s))); var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); }
+function subj(s) { return SUBJ[s] || s || ""; }
+function pill(f) { var lv = { bad: "bad", warn: "warn", ok: "ok", info: "info" }[f[2]] || "grey"; return '<span class="lv-pill ' + lv + '">' + esc(f[1]) + "</span>"; }
+function api(url, opts) {
+    opts = opts || {};
+    var o = { credentials: "same-origin", cache: "no-store", method: opts.method || "GET" };
+    if (opts.body) { o.body = JSON.stringify(opts.body); o.headers = { "Content-Type": "application/json" }; }
+    return fetch(url, o).then(function (r) {
+        if (r.status === 401) { location.href = "/login"; throw new Error("Please sign in again."); }
+        return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.success === false) throw new Error(d.message || "Something went wrong (" + r.status + ")."); return d; });
+    });
+}
+var toastT;
+function toast(m) { var t = $("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove("on"); }, 4200); }
+function note(m, kind) { var n = $("note"); n.hidden = !m; n.className = "lv-note " + (kind || "ok"); n.textContent = m || ""; }
+
+var DAYS = 30, data = null, tab = null, q = "", qT = null;
+
+/* ---------------- list ---------------- */
+function load() {
+    $("refresh").disabled = true;
+    return api("/api/admin/live/overview?days=" + DAYS).then(function (d) {
+        data = d; note("");
+        if (!tab) tab = d.kpis.live_now ? "live" : d.kpis.review ? "review" : "ended";
+        render();
+        if (window.AD && window.AD.refreshBadges) try { window.AD.refreshBadges(); } catch (e) {}
+    }).catch(function (e) { note("Couldn’t load: " + e.message, "bad"); })
+      .then(function () { $("refresh").disabled = false; });
+}
+function render() {
+    var k = data.kpis;
+    var cards = [
+        ["Live now", k.live_now ? '<span class="lv-dot" aria-hidden="true"></span>' + fmt(k.live_now) : "0", fmt(k.viewers_now) + " watching right now", k.live_now ? "lv-red" : ""],
+        ["Classes held", fmt(k.held), fmt(k.upcoming_today) + " coming up today · " + fmt(k.upcoming) + " planned"],
+        ["Time taught", mins(k.minutes_taught), k.minutes_planned ? Math.round(k.minutes_taught / k.minutes_planned * 100) + "% of the " + mins(k.minutes_planned) + " planned" : "no finished classes"],
+        [k.attendance != null ? "Attendance" : "Learners per class", k.attendance != null ? k.attendance + "%" : fmt(k.avg_learners), k.attendance != null ? "of invited learners came" : "on average in finished classes"],
+        ["Recorded", fmt(k.recorded) + " / " + fmt(k.held), size(k.rec_bytes) + " · kept " + data.keep_days + " days"],
+        ["Needs review", fmt(k.review), "classes and lessons with a problem", k.review ? "alert" : ""]
+    ];
+    $("kpis").innerHTML = cards.map(function (c) {
+        return '<div class="lv-card ' + (c[3] === "alert" ? "alert" : "") + '"><div class="lv-kl">' + esc(c[0]) + '</div><div class="lv-kv ' + (c[3] === "lv-red" ? "lv-red" : "") + '">' + c[1] + '</div><div class="lv-kn">' + esc(c[2]) + "</div></div>";
+    }).join("");
+    var C = data.classes, L = data.lessons, rid = data.review_ids;
+    var counts = {
+        live: C.filter(function (c) { return c.state === "live"; }).length,
+        scheduled: C.filter(function (c) { return c.state === "scheduled"; }).length,
+        ended: C.filter(function (c) { return c.state === "ended"; }).length,
+        review: rid["class"].length + rid.lesson.length, lessons: L.length, all: C.length
+    };
+    var tabs = [["live", "Live now"], ["scheduled", "Coming up"], ["ended", "Finished"], ["review", "Needs review"], ["lessons", "Paid lessons"], ["all", "All classes"]];
+    $("tabs").innerHTML = tabs.map(function (t) {
+        return '<button type="button" class="lv-tab' + (t[0] === "review" && counts.review ? " red" : "") + '" role="tab" data-t="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + t[1] + "<em>" + fmt(counts[t[0]]) + "</em></button>";
+    }).join("") + '<label class="lv-search"><span class="lv-sr">Search</span><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="q" placeholder="Class, teacher, learner or parent" value="' + esc(q) + '"></label>';
+    $("q").addEventListener("input", function () { var v = this.value; clearTimeout(qT); qT = setTimeout(function () { q = v.trim().toLowerCase(); drawRows(); }, 200); });
+    drawRows();
+    $("foot").textContent = "Recordings can be watched only after a class ends. They show only what the teacher shows and says. Learners’ cameras and voices are never recorded. Only admins can watch recordings, and they are deleted after " + data.keep_days + " days. Every time a recording is opened it is written to the activity log.";
+}
+function match(s) { return !q || String(s).toLowerCase().indexOf(q) > -1; }
+function classRow(c) {
+    var planned = (c.start ? day(c.start) + " " + hm(c.start) : "–");
+    var actual = c.went_live_at ? hm(c.went_live_at) + " → " + (c.ended_at ? hm(c.ended_at) : (c.state === "live" ? "now" : "–")) : (c.state === "scheduled" ? "not started" : "never went live");
+    var st = c.state === "live" ? '<span class="lv-pill bad"><span class="lv-dot" style="width:7px;height:7px;margin:0" aria-hidden="true"></span> Live</span>' : c.state === "ended" ? "" : '<span class="lv-pill info">Coming up</span>';
+    var flags = c.flags.length ? c.flags.map(pill).join("") : (c.state === "ended" ? '<span class="lv-pill ok">No problems</span>' : "");
+    if (c.review) flags += ' <span class="lv-pill grey">Reviewed: ' + esc({ ok: "fine", warned: "teacher warned", resolved: "resolved", open: "open" }[c.review] || c.review) + "</span>";
+    var rec = c.state === "live" ? '<span class="lv-pill grey"><i class="fas fa-lock" aria-hidden="true"></i> after class</span>' : c.recording ? '<span class="lv-pill ok"><i class="fas fa-play" aria-hidden="true"></i> ' + size(c.recording.bytes) + "</span>" : (c.state === "ended" && c.went_live_at ? '<span class="lv-pill grey">None</span>' : '<span class="lv-m">–</span>');
+    return '<tr><td><b>' + esc(c.title) + "</b> " + st + '<div class="lv-m">Live class · ' + esc([subj(c.subject), c.grade].filter(Boolean).join(" · ")) + "</div></td>" +
+        "<td>" + esc(c.teacher) + "</td><td>" + esc(planned) + '<div class="lv-m">' + esc(actual) + "</div></td>" +
+        '<td class="n">' + (c.actual != null ? "<b>" + fmt(c.actual) + "</b> / " : "– / ") + fmt(c.minutes) + " min</td>" +
+        '<td class="n">' + fmt(c.joined) + (c.invited ? " / " + fmt(c.invited) : "") + '<div class="lv-m">most ' + fmt(c.peak) + " at once</div></td>" +
+        "<td>" + rec + "</td><td>" + flags + '</td><td class="n"><button type="button" class="lv-btn sm ' + (c.flags.length && !c.review ? "primary" : "") + '" data-open="class" data-id="' + num(c.id) + '">Open report</button></td></tr>';
+}
+function lessonRow(x) {
+    var oc = { taught: "ok", learner_absent: "warn", review: "bad", not_taught: "bad", cancelled: "grey", scheduled: "info" }[x.outcome] || "grey";
+    var flags = x.flags.length ? x.flags.map(pill).join("") : (x.outcome === "taught" ? '<span class="lv-pill ok">No problems</span>' : "");
+    return '<tr><td><b>' + esc(subj(x.subject) + (x.topic ? ": " + x.topic : "")) + '</b><div class="lv-m">Paid lesson · ' + esc(x.learner) + " · parent " + esc(x.parent) + "</div></td>" +
+        "<td>" + esc(x.teacher) + "</td><td>" + esc(day(x.starts_at) + " " + hm(x.starts_at)) + '<div class="lv-m">' + esc(x.mode === "in-person" ? "In person" : "Eschool call") + "</div></td>" +
+        '<td class="n"><b>' + fmt(x.together_minutes) + "</b> / " + fmt(x.minutes) + ' min<div class="lv-m">together on a call</div></td>' +
+        '<td><span class="lv-pill ' + oc + '">' + esc(x.outcome_text) + "</span></td><td>" + flags + '</td><td class="n"><button type="button" class="lv-btn sm ' + (x.outcome === "review" ? "primary" : "") + '" data-open="lesson" data-id="' + num(x.id) + '">Open report</button></td></tr>';
+}
+function drawRows() {
+    var C = data.classes, L = data.lessons, html = "", head;
+    var classHead = "<tr><th>Class</th><th>Teacher</th><th>Planned → actual</th><th class=\"n\">Taught</th><th class=\"n\">Attended</th><th>Recording</th><th>Flags</th><th></th></tr>";
+    var lessonHead = "<tr><th>Paid lesson</th><th>Teacher</th><th>When</th><th class=\"n\">Taught</th><th>Outcome</th><th>Flags</th><th></th></tr>";
+    var cm = function (c) { return match(c.title + " " + c.teacher + " " + subj(c.subject)); };
+    var lm = function (x) { return match(x.subject + " " + subj(x.subject) + " " + x.topic + " " + x.teacher + " " + x.learner + " " + x.parent); };
+    if (tab === "lessons") {
+        head = lessonHead; var ls = L.filter(lm).sort(function (a, b) { return T(b.starts_at) - T(a.starts_at); });
+        html = ls.map(lessonRow).join("") || empty("fa-chalkboard-user", q ? "Nothing matches that search." : "No paid lessons in this period.");
+    } else if (tab === "review") {
+        var rc = C.filter(function (c) { return data.review_ids["class"].indexOf(c.id) > -1 && cm(c); });
+        var rl = L.filter(function (x) { return data.review_ids.lesson.indexOf(x.id) > -1 && lm(x); });
+        head = classHead;
+        html = (rc.map(classRow).join("") || "") + (rl.length ? '<tr><td colspan="8" style="padding-top:16px"><b>Paid lessons to check</b></td></tr>' + rl.map(function (x) { return lessonRow(x).replace("</td></tr>", "</td><td></td></tr>"); }).join("") : "");
+        if (!html) html = empty("fa-circle-check", "Nothing needs review. Every class and lesson in this period looks fine.");
+    } else {
+        head = classHead;
+        var cs = C.filter(function (c) { return (tab === "all" || c.state === tab) && cm(c); });
+        if (tab === "scheduled") cs.sort(function (a, b) { return T(a.start) - T(b.start); });
+        html = cs.map(classRow).join("") || empty("fa-tower-broadcast", q ? "Nothing matches that search." : tab === "live" ? "No class is live right now." : "No classes here in this period.");
+    }
+    $("thead").innerHTML = head; $("rows").innerHTML = html;
+}
+function empty(icon, text) { return '<tr><td colspan="8"><div class="lv-empty"><i class="fas ' + icon + '" aria-hidden="true"></i>' + esc(text) + "</div></td></tr>"; }
+
+$("tabs").addEventListener("click", function (e) { var b = e.target.closest("[data-t]"); if (b) { tab = b.getAttribute("data-t"); render(); } });
+$("rows").addEventListener("click", function (e) { var b = e.target.closest("[data-open]"); if (b) (b.getAttribute("data-open") === "class" ? openClass : openLesson)(Number(b.getAttribute("data-id"))); });
+$("period").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-days]"); if (!b) return;
+    DAYS = Number(b.getAttribute("data-days"));
+    this.querySelectorAll("[data-days]").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+    load();
+});
+$("refresh").addEventListener("click", load);
+
+/* ---------------- report dialog ---------------- */
+var dlg = $("dlg"), current = null, lastFocus = null;
+function openDlg(title, sub) {
+    lastFocus = document.activeElement;
+    $("dTitle").textContent = title; $("dSub").textContent = sub || "";
+    $("dActs").innerHTML = ""; $("dBody").innerHTML = '<span class="lv-skel"></span><span class="lv-skel" style="width:60%"></span><span class="lv-skel"></span>';
+    if (!dlg.open) dlg.showModal();
+}
+function closeDlg() { dlg.querySelectorAll("video").forEach(function (v) { v.pause(); }); if (dlg.open) dlg.close(); }
+dlg.addEventListener("close", function () { $("dBody").innerHTML = ""; current = null; if (lastFocus && lastFocus.isConnected) lastFocus.focus(); });
+dlg.addEventListener("click", function (e) { if (e.target === dlg) closeDlg(); });
+function actBtns(extra) { $("dActs").innerHTML = (extra || "") + '<button type="button" class="lv-x" id="dClose" aria-label="Close"><i class="fas fa-xmark"></i></button>'; $("dClose").addEventListener("click", closeDlg); }
+function failDlg(e) { $("dBody").innerHTML = '<div class="lv-find bad"><i class="fas fa-circle-exclamation"></i><div>' + esc(e.message) + "</div></div>"; actBtns(); }
+var ROLE = { teacher: "teacher", student: "learner", parent: "parent", admin: "admin" };
+var FIND_ICON = { ok: "fa-circle-check", bad: "fa-triangle-exclamation", warn: "fa-circle-exclamation", info: "fa-circle-info" };
+
+function openClass(id) {
+    openDlg("Class report", "Loading…");
+    api("/api/admin/live/" + id + "/report").then(function (d) {
+        if (!dlg.open) return;
+        current = { kind: "class", id: id, d: d };
+        drawClass(d);
+    }).catch(failDlg);
+}
+function drawClass(d) {
+    var c = d.cls || d["class"], people = d.people;
+    var recs = c.state === "ended" ? d.recordings : [];          // watchable only after the class ends
+    $("dTitle").textContent = c.title + " — " + c.teacher;
+    $("dSub").textContent = [subj(c.subject), c.grade, c.audience, "planned " + full(c.start) + " for " + c.minutes + " min"].filter(Boolean).join(" · ");
+    var live = c.state !== "ended";
+    actBtns('<button type="button" class="lv-btn" id="pPrint"><i class="fas fa-file-pdf" aria-hidden="true"></i> Report (print / PDF)</button>' +
+        '<button type="button" class="lv-btn" id="pCsv"><i class="fas fa-file-csv" aria-hidden="true"></i> Attendance CSV</button>' +
+        (live ? '<button type="button" class="lv-btn danger" id="pEnd"><i class="fas fa-circle-stop" aria-hidden="true"></i> End now</button>' : "") +
+        '<button type="button" class="lv-btn danger" id="pDel"><i class="fas fa-trash" aria-hidden="true"></i> Remove</button>');
+    var learners = people.filter(function (p) { return p.role !== "teacher"; });
+    var tp = people.filter(function (p) { return p.role === "teacher"; })[0];
+    var actual = c.went_live_at ? Math.round(((T(c.ended_at) || Date.now()) - T(c.went_live_at)) / 60000) : 0;
+    var late = c.went_live_at && c.start ? Math.round((T(c.went_live_at) - T(c.start)) / 60000) : null;
+    var avgMin = learners.length ? Math.round(learners.reduce(function (s, p) { return s + num(p.minutes); }, 0) / learners.length) : 0;
+    var html = '<div class="lv-find ' + esc(d.finding.level) + '"><i class="fas ' + (FIND_ICON[d.finding.level] || "fa-circle-info") + '" aria-hidden="true"></i><div><b>Eschool’s finding:</b> ' + esc(d.finding.text) +
+        (c.flags.length ? '<div style="margin-top:6px">' + c.flags.map(pill).join("") + "</div>" : "") + "</div></div>";
+    html += '<div class="lv-facts">' +
+        "<div><b>" + (c.went_live_at ? hm(c.went_live_at) : "–") + "</b><span>went live" + (late != null ? (late > 1 ? " · " + late + " min late" : late < -1 ? " · " + (-late) + " min early" : " · on time") : "") + "</span></div>" +
+        "<div><b>" + (c.went_live_at ? mins(actual) : "–") + "</b><span>taught of " + c.minutes + " min planned</span></div>" +
+        "<div><b>" + fmt(learners.length) + (d.absent.length ? " / " + fmt(learners.length + d.absent.length) : "") + "</b><span>people attended · most " + fmt(c.peak) + " at once</span></div>" +
+        "<div><b>" + (learners.length ? mins(avgMin) : "–") + "</b><span>average time each stayed</span></div></div>";
+    // recording + timeline
+    html += '<div class="lv-r2"><section class="lv-card"><div class="lv-ch"><h3>Recording</h3><span class="lv-m">teacher’s camera or screen, and voice</span></div>';
+    if (c.state !== "ended") {
+        html += '<div class="lv-norec"><i class="fas fa-lock" aria-hidden="true" style="font-size:1.4rem;display:block;margin-bottom:8px"></i>' +
+            (c.state === "live" ? "This class is live now" + (d.recordings.length ? " and being recorded" : "") + ". The recording can be watched once the class ends." : "The class hasn’t started. Its recording can be watched once the class has ended.") + "</div>";
+    } else if (recs.length) {
+        html += '<video class="lv-video" id="vid" controls preload="metadata" playsinline src="' + esc(recs[0].url) + '"></video>';
+        html += '<div class="lv-parts" id="parts">' + recs.map(function (r, i) {
+            return '<button type="button" class="lv-chip" data-part="' + i + '" aria-pressed="' + (i === 0) + '">Part ' + (i + 1) + " · " + hm(r.started) + " · " + clock(r.seconds) + "</button>";
+        }).join("") + "</div>";
+        html += '<p class="lv-m" id="recInfo"></p>';
+    } else {
+        html += '<div class="lv-norec"><i class="fas fa-video-slash" aria-hidden="true" style="font-size:1.4rem;display:block;margin-bottom:8px"></i>' +
+            (c.went_live_at ? "No recording for this class. It may have been taught before recording started, from a browser that can’t record, or it was deleted after " + d.keep_days + " days." : "The class hasn’t been taught, so there is nothing recorded.") + "</div>";
+    }
+    html += timeline(c, people) + "</section>";
+    // people
+    html += '<section class="lv-card"><div class="lv-ch"><h3>Who was there</h3><span class="lv-m">every join and leave</span></div>' +
+        '<div style="overflow-x:auto"><table class="lv-ppl"><thead><tr><th>Person</th><th>In and out</th><th class="n">Minutes</th></tr></thead><tbody>' +
+        (people.length ? people.map(function (p) {
+            var segs = p.segments.map(function (s) { return hm(s.from) + " → " + (s.open ? "now" : s.to ? hm(s.to) : "?"); }).join(", ");
+            return "<tr><td><b>" + esc(p.name) + '</b><span class="lv-role ' + esc(p.role) + '">' + esc(ROLE[p.role] || p.role) + '</span><div class="lv-m">' + esc(p.device || "") + "</div></td><td>" + esc(segs) +
+                (p.segments.length > 1 ? '<div class="lv-m">' + p.segments.length + " visits</div>" : "") + (p.old ? '<div class="lv-m">only the first join was kept for older classes</div>' : "") +
+                '</td><td class="n"><b>' + (p.minutes == null ? "?" : fmt(p.minutes)) + "</b></td></tr>";
+        }).join("") : '<tr><td colspan="3" class="lv-m">Nobody joined.</td></tr>') + "</tbody></table></div>" +
+        (d.absent.length ? '<p class="lv-m" style="margin-top:8px"><b>Invited but never came:</b> ' + esc(d.absent.map(function (a) { return a.name; }).join(", ")) + "</p>" : "") +
+        (d.removed.length ? '<p class="lv-m" style="margin-top:6px"><b>Removed by the teacher:</b> ' + esc(d.removed.map(function (a) { return a.name + " (" + hm(a.at) + ")"; }).join(", ")) + "</p>" : "") +
+        "</section></div>";
+    // events, chat, money/decision
+    html += '<div class="lv-r3"><section class="lv-card"><div class="lv-ch"><h3>What happened</h3><span class="lv-m">' + fmt(d.events.length) + " events</span></div><ul class=\"lv-ev\" id=\"events\">" +
+        (d.events.length ? d.events.map(function (e, i) {
+            var canSeek = recs.some(function (r) { return T(e.at) >= T(r.started) && T(e.at) <= T(r.ended) + 1000; });
+            return '<li class="k-' + esc(e.kind) + '"><time>' + esc(hm(e.at)) + "</time><span>" + (e.who ? "<b>" + esc(e.who) + "</b> " : "") + esc(e.text) + (e.detail && e.kind !== "joined" && e.detail !== "left" ? ' <span class="lv-m">(' + esc(e.detail) + ")</span>" : e.kind === "joined" && e.detail ? ' <span class="lv-m">· ' + esc(e.detail) + "</span>" : "") + "</span>" +
+                (canSeek ? '<button type="button" data-seek="' + i + '" aria-label="Play the recording from ' + esc(hm(e.at)) + '">▶ play</button>' : "<span></span>") + "</li>";
+        }).join("") : '<li class="lv-m">Nothing was logged. Classes taught before this log existed only have start and end times.</li>') + "</ul></section>";
+    html += '<section class="lv-card"><div class="lv-ch"><h3>Chat</h3><span class="lv-m">' + fmt(d.chat.length) + (d.chat.length === 1 ? " message" : " messages") + ' · <button type="button" class="lv-btn sm" id="chatCsv">Download</button></span></div><div class="lv-chat">' +
+        (d.chat.length ? d.chat.map(function (m) {
+            return '<div class="' + (m.teacher ? "t" : "") + '"><b>' + esc(m.who) + '</b> <span class="lv-m">' + esc(hm(m.at)) + "</span> " + (m.deleted ? '<span class="del">' + esc(m.text) + '</span> <span class="lv-pill grey">removed by teacher</span>' : esc(m.text)) + "</div>";
+        }).join("") : '<p class="lv-m">No chat messages.</p>') + "</div>" +
+        (d.ratings.length ? '<div class="lv-ch" style="margin-top:12px"><h3>Ratings</h3><span class="lv-m">' + d.ratings.length + "</span></div>" + d.ratings.map(function (r) { return '<div class="lv-row"><span>' + esc(r.who) + (r.comment ? ' <span class="lv-m">“' + esc(r.comment) + "”</span>" : "") + "</span><b>" + "★".repeat(Math.max(0, Math.min(5, num(r.stars)))) + "</b></div>"; }).join("") : "") + "</section>";
+    html += '<section class="lv-card lv-dec"><div class="lv-ch"><h3>Admin decision</h3><span class="lv-m">saved to the activity log</span></div>' +
+        '<div class="lv-row"><span>Teacher’s last 30 days</span><b>' + fmt(d.teacher_month.flagged) + " of " + fmt(d.teacher_month.classes) + " classes flagged</b></div>" +
+        (d.review ? '<div class="lv-row"><span>Current decision</span><b>' + esc({ ok: "Fine", warned: "Teacher warned", resolved: "Resolved", open: "Open" }[d.review.status] || d.review.status) + '</b></div><p class="lv-m">' + esc(d.review.by + ", " + full(d.review.at) + (d.review.note ? ": " + d.review.note : "")) + "</p>" : '<div class="lv-row"><span>Current decision</span><b>None yet</b></div>') +
+        '<label class="lv-sr" for="decNote">Note</label><textarea id="decNote" maxlength="600" placeholder="What did you find? If you warn the teacher or tick the box, the teacher sees this note."></textarea>' +
+        '<label class="ck"><input type="checkbox" id="decTell"> Send this note to the teacher</label>' +
+        '<div class="lv-btns"><button type="button" class="lv-btn primary sm" data-dec="ok"><i class="fas fa-check" aria-hidden="true"></i> Fine</button><button type="button" class="lv-btn sm" data-dec="resolved">Resolved</button><button type="button" class="lv-btn danger sm" data-dec="warned"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Warn teacher</button></div><div class="lv-err" id="decErr"></div>' +
+        '<div id="endBox"></div></section></div>';
+    $("dBody").innerHTML = html;
+    wireClass(d, c, recs, tp);
+}
+function timeline(c, people) {
+    var start = T(c.start), end = start + c.minutes * 60000, pts = [start, end];
+    if (c.went_live_at) pts.push(T(c.went_live_at)); if (c.ended_at) pts.push(T(c.ended_at));
+    people.forEach(function (p) { p.segments.forEach(function (s) { if (s.from) pts.push(T(s.from)); if (s.to) pts.push(T(s.to)); }); });
+    pts = pts.filter(function (x) { return isFinite(x); }); if (!pts.length) return "";
+    var a = Math.min.apply(null, pts), b = Math.max.apply(null, pts.concat([a + 60000])), span = b - a;
+    var pct = function (t) { return Math.max(0, Math.min(100, (t - a) / span * 100)); };
+    var plan = '<span class="pl" style="left:' + pct(start) + '%"></span><span class="pl" style="left:' + pct(end) + '%"></span>';
+    var row = function (name, segs, color) {
+        return '<div class="lv-tlrow"><span class="nm" title="' + esc(name) + '">' + esc(name) + '</span><div class="lv-track">' + plan + segs.map(function (s) {
+            var f = T(s.from), t = s.open ? Date.now() : (T(s.to) || f);
+            return isFinite(f) ? '<i style="left:' + pct(f) + "%;width:" + Math.max(0.6, pct(t) - pct(f)) + "%;background:" + color + '" title="' + esc(hm(s.from) + " – " + (s.open ? "now" : hm(s.to))) + '"></i>' : "";
+        }).join("") + "</div></div>";
+    };
+    var rows = c.went_live_at ? row("Teacher live", [{ from: c.went_live_at, to: c.ended_at, open: !c.ended_at }], "var(--lv-teach)") : "";
+    people.filter(function (p) { return p.role !== "teacher"; }).slice(0, 14).forEach(function (p) { rows += row(p.name, p.segments.filter(function (s) { return s.to || s.open; }), p.role === "parent" ? "var(--lv-parent)" : "var(--lv-learn)"); });
+    return '<div class="lv-tl"><div class="lv-ch" style="margin:0 0 4px"><h3 style="font-size:.85rem">Timeline</h3><span class="lv-m">dashed lines = planned start and end</span></div>' + rows +
+        '<div class="lv-tlx"><span></span><div><span>' + esc(hm(a)) + "</span><span>" + esc(hm(a + span / 2)) + "</span><span>" + esc(hm(b)) + "</span></div></div></div>";
+}
+function wireClass(d, c, recs, tp) {
+    var vid = $("vid"), part = 0;
+    function setPart(i, at) {
+        part = i; var r = recs[i];
+        $("parts").querySelectorAll("[data-part]").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-part") == i ? "true" : "false"); });
+        if (vid.getAttribute("src") !== r.url) { vid.setAttribute("src", r.url); vid.load(); }
+        $("recInfo").textContent = "Part " + (i + 1) + ": " + hm(r.started) + " – " + hm(r.ended) + " · " + clock(r.seconds) + " · " + size(r.bytes) + (r.status === "recording" ? " · still recording" : "") + " · deleted automatically on " + day(r.delete_on);
+        if (at != null) {
+            var go = function () { try { vid.currentTime = Math.max(0, at); } catch (e) {} vid.play().catch(function () {}); };
+            if (vid.readyState >= 1) go(); else vid.addEventListener("loadedmetadata", go, { once: true });
+        }
+    }
+    if (vid) {
+        // recordings made in the browser don't say how long they are: find out once so the seek bar works
+        vid.addEventListener("loadedmetadata", function () { if (vid.duration === Infinity) { var back = function () { vid.removeEventListener("durationchange", back); vid.currentTime = 0; }; vid.addEventListener("durationchange", back); vid.currentTime = 1e7; } });
+        $("parts").addEventListener("click", function (e) { var b = e.target.closest("[data-part]"); if (b) setPart(Number(b.getAttribute("data-part"))); });
+        setPart(0);
+    }
+    $("events").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-seek]"); if (!b || !vid) return;
+        var ev = d.events[Number(b.getAttribute("data-seek"))], t = T(ev.at);
+        for (var i = 0; i < recs.length; i++) if (t >= T(recs[i].started) && t <= T(recs[i].ended) + 1000) { setPart(i, (t - T(recs[i].started)) / 1000 - 3); vid.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    });
+    $("pCsv").addEventListener("click", function () {
+        var rows = [["Name", "Role", "Joined", "Left", "Minutes", "Device"]];
+        d.people.forEach(function (p) { p.segments.forEach(function (s) { rows.push([p.name, ROLE[p.role] || p.role, full(s.from) + " " + hms(s.from), s.open ? "still in class" : s.to ? full(s.to) + " " + hms(s.to) : "", s.from && (s.to || s.open) ? Math.round(((s.open ? Date.now() : T(s.to)) - T(s.from)) / 60000) : "", p.device || ""]); }); });
+        d.absent.forEach(function (a) { rows.push([a.name, "invited", "never came", "", 0, ""]); });
+        download("attendance-" + slug(c.title) + ".csv", rows);
+    });
+    $("chatCsv").addEventListener("click", function () {
+        download("chat-" + slug(c.title) + ".csv", [["Time", "Name", "Message", "Removed by teacher"]].concat(d.chat.map(function (m) { return [full(m.at) + " " + hms(m.at), m.who, m.text, m.deleted ? "yes" : ""]; })));
+    });
+    $("pPrint").addEventListener("click", function () { printReport(d, c); });
+    $("dBody").querySelectorAll("[data-dec]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            var st = b.getAttribute("data-dec"), noteV = $("decNote").value.trim();
+            $("decErr").textContent = "";
+            if (st === "warned" && noteV.length < 5) { $("decErr").textContent = "Write what the teacher is being warned about. They will see it."; $("decNote").focus(); return; }
+            b.disabled = true;
+            api("/api/admin/live/" + c.id + "/review", { method: "POST", body: { status: st, note: noteV, tell_teacher: $("decTell").checked } })
+                .then(function () { toast(st === "warned" ? "Saved. The teacher was warned." : "Decision saved."); openClass(c.id); load(); })
+                .catch(function (e) { $("decErr").textContent = e.message; b.disabled = false; });
+        });
+    });
+    function askReason(kind) {
+        var end = kind === "end";
+        $("endBox").innerHTML = '<div class="lv-find bad" style="margin-top:12px;flex-direction:column"><b>' + (end ? "End this class now?" : "Remove this class?") + "</b><span>" +
+            (end ? "Everyone watching is disconnected and the class is marked as finished." : "The class, its chat, attendance, class log and recordings are deleted for good.") + " The teacher is told the reason.</span>" +
+            '<label class="lv-sr" for="why">Reason</label><textarea id="why" maxlength="300" placeholder="Reason (the teacher will see it)" style="width:100%;min-height:60px;border:1px solid var(--lv-line);border-radius:10px;padding:8px;background:var(--lv-card);color:var(--lv-text)"></textarea>' +
+            '<div class="lv-btns"><button type="button" class="lv-btn sm" id="whyNo">Cancel</button><button type="button" class="lv-btn danger solid sm" id="whyYes">' + (end ? "End class" : "Remove class") + '</button></div><div class="lv-err" id="whyErr"></div></div>';
+        $("why").focus(); $("endBox").scrollIntoView({ behavior: "smooth", block: "center" });
+        $("whyNo").addEventListener("click", function () { $("endBox").innerHTML = ""; });
+        $("whyYes").addEventListener("click", function () {
+            var r = $("why").value.trim(); if (r.length < 5) { $("whyErr").textContent = "Write a short reason. The teacher will see it."; return; }
+            this.disabled = true;
+            api("/api/admin/live/" + c.id, { method: end ? "POST" : "DELETE", body: { action: "end", reason: r } })
+                .then(function () { toast(end ? "Class ended. The teacher was told." : "Class removed. The teacher was told."); if (end) openClass(c.id); else closeDlg(); load(); })
+                .catch(function (e) { $("whyErr").textContent = e.message; $("whyYes").disabled = false; });
+        });
+    }
+    if ($("pEnd")) $("pEnd").addEventListener("click", function () { askReason("end"); });
+    $("pDel").addEventListener("click", function () { askReason("remove"); });
+}
+
+function openLesson(id) {
+    openDlg("Lesson report", "Loading…");
+    api("/api/admin/lessons/" + id + "/report").then(function (d) {
+        if (!dlg.open) return;
+        current = { kind: "lesson", id: id, d: d };
+        drawLesson(d);
+    }).catch(failDlg);
+}
+function drawLesson(d) {
+    var x = d.lesson, p = x.proof || {};
+    $("dTitle").textContent = subj(x.subject) + (x.topic ? ": " + x.topic : "") + " — " + x.teacher;
+    $("dSub").textContent = "Paid lesson · " + x.learner + " · parent " + x.parent + " · " + full(x.starts_at) + " for " + x.minutes + " min · " + (x.mode === "in-person" ? "in person" : "Eschool call");
+    actBtns('<button type="button" class="lv-btn" id="pPrint"><i class="fas fa-file-pdf" aria-hidden="true"></i> Report (print / PDF)</button>');
+    var html = '<div class="lv-find ' + esc(d.finding.level) + '"><i class="fas ' + (FIND_ICON[d.finding.level] || "fa-circle-info") + '" aria-hidden="true"></i><div><b>Eschool’s finding: ' + esc(x.outcome_text) + ".</b> " + esc(d.finding.text) +
+        (x.flags.length ? '<div style="margin-top:6px">' + x.flags.map(pill).join("") + "</div>" : "") + "</div></div>";
+    html += '<div class="lv-facts"><div><b>' + fmt(p.together_minutes != null ? p.together_minutes : x.together_minutes) + " / " + fmt(x.minutes) + ' min</b><span>teacher and learner on a call together</span></div>' +
+        "<div><b>" + fmt(p.calls_connected || 0) + "</b><span>calls connected</span></div>" +
+        "<div><b>" + fmt(p.teacher_tries || 0) + " · " + fmt(p.learner_tries || 0) + "</b><span>unanswered calls: teacher · learner</span></div>" +
+        "<div><b>" + (d.payment.paid ? esc(d.payment.currency + " " + fmt(d.payment.paid)) : "–") + "</b><span>" + fmt(d.payment.sessions) + " lessons paid by the parent</span></div></div>";
+    html += '<div class="lv-r2"><section class="lv-card"><div class="lv-ch"><h3>Calls around the lesson</h3><span class="lv-m">from 2 hours before to after the end</span></div>' +
+        '<div style="overflow-x:auto"><table class="lv-ppl"><thead><tr><th>Called at</th><th>Who called</th><th>Answered</th><th>Ended</th><th class="n">Minutes</th></tr></thead><tbody>' +
+        (d.calls.length ? d.calls.map(function (cl) {
+            return "<tr><td>" + esc(hms(cl.at)) + "</td><td>" + esc(cl.by === "teacher" ? x.teacher : x.learner) + ' <span class="lv-m">(' + esc(cl.kind) + ")</span></td><td>" + (cl.answered ? esc(hms(cl.answered)) : '<span class="lv-pill grey">not answered</span>') + "</td><td>" + (cl.ended ? esc(hms(cl.ended)) : "–") + '</td><td class="n"><b>' + fmt(cl.minutes) + "</b></td></tr>";
+        }).join("") : '<tr><td colspan="5" class="lv-m">There were no Eschool calls between the teacher and the learner around this lesson.</td></tr>') + "</tbody></table></div>" +
+        '<div class="lv-norec" style="margin-top:12px;padding:14px"><i class="fas fa-video" aria-hidden="true"></i> ' + (d.recordings.length ? d.recordings.length + " recording(s)" : "Lesson recordings start once call recording is switched on for paid lessons. Until then, the call log above is the proof.") + "</div></section>";
+    html += '<section class="lv-card"><div class="lv-ch"><h3>From the family and teacher</h3></div>' +
+        '<div class="lv-row"><span>Parent’s rating</span><b>' + (x.parent_rating ? "★".repeat(Math.max(0, Math.min(5, num(x.parent_rating)))) : "not rated") + "</b></div>" +
+        (x.parent_comment ? '<div class="lv-row"><span>Parent’s comment</span><b>“' + esc(x.parent_comment) + "”</b></div>" : "") +
+        (x.parent_report ? '<div class="lv-row"><span>Parent reported</span><b class="lv-red">“' + esc(x.parent_report) + "”</b></div>" : "") +
+        (x.teacher_notes ? '<div class="lv-row"><span>Teacher’s notes</span><b>' + esc(x.teacher_notes) + "</b></div>" : "") +
+        (x.homework ? '<div class="lv-row"><span>Homework set</span><b>' + esc(x.homework) + "</b></div>" : "") +
+        '<div class="lv-row"><span>Teacher’s last 30 days</span><b>' + fmt(d.teacher_month.flagged) + " of " + fmt(d.teacher_month.lessons) + " lessons flagged</b></div>" +
+        '<div class="lv-row"><span>Rate per lesson</span><b>' + (d.payment.rate ? esc(d.payment.currency + " " + fmt(d.payment.rate)) : "–") + "</b></div>" +
+        '<div class="lv-dec" style="margin-top:12px"><h3 style="font-size:.95rem">Admin decision</h3>' +
+        (x.decision_note || x.decided_at ? '<p class="lv-m" style="margin-top:4px">Decided ' + esc(full(x.decided_at)) + (x.decision_note ? ": " + esc(x.decision_note) : "") + "</p>" : "") +
+        '<label class="lv-sr" for="lNote">Note</label><textarea id="lNote" maxlength="400" placeholder="Note for the parent and teacher (both see it)"></textarea>' +
+        '<div class="lv-btns"><button type="button" class="lv-btn primary sm" data-out="taught"><i class="fas fa-check" aria-hidden="true"></i> It was taught</button>' +
+        '<button type="button" class="lv-btn danger sm" data-out="not_taught"><i class="fas fa-rotate-left" aria-hidden="true"></i> Not taught: give the lesson back</button></div><div class="lv-err" id="lErr"></div>' +
+        '<p class="lv-m" style="margin-top:8px">“Not taught” gives the parent the lesson back to book again, or refunds it if the lessons have ended.</p></div></section></div>';
+    $("dBody").innerHTML = html;
+    $("pPrint").addEventListener("click", function () { printLesson(d); });
+    $("dBody").querySelectorAll("[data-out]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            var out = b.getAttribute("data-out");
+            if (out === "not_taught" && !b.dataset.sure) { b.dataset.sure = "1"; b.innerHTML = "Tap again to confirm"; setTimeout(function () { if (b.isConnected) { delete b.dataset.sure; b.innerHTML = '<i class="fas fa-rotate-left" aria-hidden="true"></i> Not taught: give the lesson back'; } }, 4000); return; }
+            b.disabled = true; $("lErr").textContent = "";
+            api("/api/admin/lessons/" + x.id + "/decide", { method: "POST", body: { outcome: out, note: $("lNote").value.trim() } })
+                .then(function () { toast("Saved. The parent and teacher were told."); openLesson(x.id); load(); })
+                .catch(function (e) { $("lErr").textContent = e.message; b.disabled = false; });
+        });
+    });
+}
+
+/* ---------------- downloads ---------------- */
+function slug(s) { return String(s || "class").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "class"; }
+function download(name, rows) {
+    var csv = rows.map(function (r) { return r.map(function (v) { v = String(v == null ? "" : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; }).join(","); }).join("\r\n");
+    var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function doPrint(html) {
+    var p = $("lvPrint"); p.innerHTML = html;
+    var wasOpen = dlg.open; if (wasOpen) dlg.close();
+    setTimeout(function () { window.print(); p.innerHTML = ""; if (wasOpen && current) dlg.showModal(); if (current) (current.kind === "class" ? drawClass : drawLesson)(current.d); }, 50);
+}
+function printReport(d, c) {
+    var h = "<h1>Eschool live class report</h1><div>" + esc(c.title) + " · " + esc(c.teacher) + " · printed " + esc(full(new Date().toISOString())) + "</div>" +
+        '<div class="box"><b>Finding:</b> ' + esc(d.finding.text) + (c.flags.length ? "<br><b>Flags:</b> " + esc(c.flags.map(function (f) { return f[1]; }).join("; ")) : "") + "</div>" +
+        "<table><tr><th>Planned</th><td>" + esc(full(c.start)) + " for " + c.minutes + " min</td></tr><tr><th>Went live</th><td>" + esc(c.went_live_at ? full(c.went_live_at) + " " + hms(c.went_live_at) : "never") + "</td></tr><tr><th>Ended</th><td>" + esc(c.ended_at ? full(c.ended_at) + " " + hms(c.ended_at) : "–") + "</td></tr><tr><th>Recording</th><td>" + (d.recordings.length ? d.recordings.length + " part(s), " + esc(d.recordings.map(function (r) { return hm(r.started) + "–" + hm(r.ended); }).join(", ")) : "none") + "</td></tr></table>" +
+        "<h2>Attendance</h2><table><tr><th>Name</th><th>Role</th><th>In and out</th><th>Minutes</th><th>Device</th></tr>" + d.people.map(function (p) { return "<tr><td>" + esc(p.name) + "</td><td>" + esc(ROLE[p.role] || p.role) + "</td><td>" + esc(p.segments.map(function (s) { return hms(s.from) + " – " + (s.open ? "still in" : s.to ? hms(s.to) : "?"); }).join("; ")) + "</td><td>" + (p.minutes == null ? "?" : p.minutes) + "</td><td>" + esc(p.device || "") + "</td></tr>"; }).join("") + "</table>" +
+        (d.absent.length ? "<p><b>Invited but never came:</b> " + esc(d.absent.map(function (a) { return a.name; }).join(", ")) + "</p>" : "") +
+        "<h2>Class log</h2><table>" + d.events.map(function (e) { return "<tr><td>" + esc(hms(e.at)) + "</td><td>" + esc((e.who ? e.who + " " : "") + e.text + (e.detail ? " (" + e.detail + ")" : "")) + "</td></tr>"; }).join("") + "</table>" +
+        "<h2>Chat</h2><table>" + (d.chat.map(function (m) { return "<tr><td>" + esc(hms(m.at)) + "</td><td>" + esc(m.who) + "</td><td>" + esc(m.text) + (m.deleted ? " [removed by teacher]" : "") + "</td></tr>"; }).join("") || "<tr><td>No messages</td></tr>") + "</table>" +
+        (d.review ? '<div class="box"><b>Admin decision:</b> ' + esc(d.review.status + " by " + d.review.by + ", " + full(d.review.at) + (d.review.note ? ": " + d.review.note : "")) + "</div>" : "");
+    doPrint(h);
+}
+function printLesson(d) {
+    var x = d.lesson;
+    var h = "<h1>Eschool paid lesson report</h1><div>" + esc(subj(x.subject) + (x.topic ? ": " + x.topic : "")) + " · teacher " + esc(x.teacher) + " · learner " + esc(x.learner) + " · parent " + esc(x.parent) + "</div>" +
+        '<div class="box"><b>Outcome:</b> ' + esc(x.outcome_text) + "<br><b>Evidence:</b> " + esc(d.finding.text) + "</div>" +
+        "<table><tr><th>Planned</th><td>" + esc(full(x.starts_at)) + " for " + x.minutes + " min</td></tr><tr><th>Together on a call</th><td>" + fmt(x.together_minutes) + " min</td></tr><tr><th>Parent paid</th><td>" + esc(d.payment.currency + " " + fmt(d.payment.paid)) + " for " + fmt(d.payment.sessions) + " lessons</td></tr></table>" +
+        "<h2>Calls</h2><table><tr><th>Called at</th><th>By</th><th>Answered</th><th>Ended</th><th>Minutes</th></tr>" + (d.calls.map(function (c) { return "<tr><td>" + esc(full(c.at) + " " + hms(c.at)) + "</td><td>" + esc(c.by) + "</td><td>" + esc(c.answered ? hms(c.answered) : "not answered") + "</td><td>" + esc(c.ended ? hms(c.ended) : "–") + "</td><td>" + c.minutes + "</td></tr>"; }).join("") || '<tr><td colspan="5">No calls</td></tr>') + "</table>" +
+        (x.parent_report ? "<p><b>Parent reported:</b> " + esc(x.parent_report) + "</p>" : "") + (x.decision_note ? "<p><b>Admin note:</b> " + esc(x.decision_note) + "</p>" : "");
+    doPrint(h);
+}
+
+load();
+setInterval(function () { if (!document.hidden && data && data.kpis.live_now && !dlg.open) load(); }, 30000);
+})();
+</script>
+{% endblock %}

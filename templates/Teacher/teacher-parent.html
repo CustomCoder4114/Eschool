@@ -1,0 +1,545 @@
+{% extends "Teacher/teacher-body.html" %}
+
+{% block allcontent %}
+{#
+    TEACHER PAGE - Parent requests  (templates/Teacher/teacher-parent.html)
+    Route: /teacher-parent   (sidebar item "Parent requests", in place of Profile; /teacher-tutoring redirects here)
+    Parents send requests from their Teachers page (/parent-teacher). Here the teacher:
+      GET   /api/tutoring/teacher                 every request and family, with sessions and payments
+      POST  /api/tutoring/<id>/respond            {action: accept|decline, rate, session_minutes, note}
+      POST  /api/tutoring/<id>/sessions           book a paid lesson {starts_at, minutes, topic, link}
+      PATCH /api/tutoring/sessions/<id>           record it {status: completed|missed|cancelled, child_attended, teacher_notes, homework}
+      POST  /api/tutoring/<id>/teacher-end        stop teaching a family {reason}
+      GET/POST /api/tutoring-profile              fee, length, "taking new learners"
+    Times are East Africa Time. No pop-ups: everything happens on the page.
+#}
+<style>
+.tt {
+    --tt-accent: var(--primary-color, #4361ee);
+    --tt-accent-2: var(--secondary-color, #3a0ca3);
+    --tt-accent-soft: color-mix(in srgb, var(--tt-accent) 11%, transparent);
+    --tt-accent-line: color-mix(in srgb, var(--tt-accent) 35%, transparent);
+    --tt-accent-text: var(--tt-accent);
+    --tt-surface: #ffffff; --tt-surface-2: #f8fafc; --tt-hover: #f1f5f9;
+    --tt-border: #e5e7eb; --tt-track: #edf0f4;
+    --tt-text: #0f172a; --tt-text-2: #475569; --tt-text-3: #64748b;
+    --tt-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06);
+    --tt-ok: #047857; --tt-ok-soft: #ecfdf5;
+    --tt-warn: #b45309; --tt-warn-soft: #fffbeb;
+    --tt-bad: #b91c1c; --tt-bad-soft: #fef2f2;
+    max-width: 1300px; margin: 0 auto; padding: 6px 0 40px; color: var(--tt-text);
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body.dark-mode .tt {
+    --tt-accent-soft: color-mix(in srgb, var(--tt-accent) 22%, transparent);
+    --tt-accent-line: color-mix(in srgb, var(--tt-accent) 45%, transparent);
+    --tt-accent-text: color-mix(in srgb, var(--tt-accent) 55%, #ffffff);
+    --tt-surface: #111827; --tt-surface-2: #0f172a; --tt-hover: #1e293b;
+    --tt-border: #263244; --tt-track: #1f2937;
+    --tt-text: #e5e7eb; --tt-text-2: #cbd5e1; --tt-text-3: #94a3b8;
+    --tt-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25);
+    --tt-ok: #6ee7b7; --tt-ok-soft: rgba(16, 185, 129, .14);
+    --tt-warn: #fcd34d; --tt-warn-soft: rgba(245, 158, 11, .14);
+    --tt-bad: #fca5a5; --tt-bad-soft: rgba(239, 68, 68, .14);
+}
+.tt *, .tt *::before, .tt *::after { box-sizing: border-box; }
+.tt h1, .tt h2, .tt h3, .tt p { margin: 0; }
+.tt button, .tt input, .tt select, .tt textarea { font-family: inherit; }
+.tt :focus-visible { outline: 2px solid var(--tt-accent); outline-offset: 2px; }
+
+.tt-head { display: flex; align-items: flex-end; gap: 12px 18px; flex-wrap: wrap; margin-bottom: 16px; }
+.tt-head > div:first-child { flex: 1; min-width: 240px; }
+.tt-head h1 { font-family: 'Poppins', sans-serif; font-size: 1.5rem; color: var(--tt-text); }
+.tt-head p { color: var(--tt-text-3); font-size: .9rem; margin-top: 4px; line-height: 1.5; }
+.tt-accept { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--tt-border); background: var(--tt-surface); box-shadow: var(--tt-shadow); font-size: .84rem; color: var(--tt-text-2); }
+.tt-accept b { color: var(--tt-text); }
+.tt-switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+.tt-switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; z-index: 1; }
+.tt-switch span { position: absolute; inset: 0; border-radius: 99px; background: var(--tt-track); transition: background .2s; }
+.tt-switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .2s; }
+.tt-switch input:checked + span { background: var(--tt-accent); }
+.tt-switch input:checked + span::after { transform: translateX(18px); }
+.tt-switch input:focus-visible + span { outline: 2px solid var(--tt-accent); outline-offset: 2px; }
+
+.tt-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tt-stat { background: var(--tt-surface); border: 1px solid var(--tt-border); border-radius: 14px; padding: 13px 15px; box-shadow: var(--tt-shadow); min-width: 0; }
+.tt-stat span { display: flex; align-items: center; gap: 7px; font-size: .76rem; font-weight: 600; color: var(--tt-text-3); }
+.tt-stat span i { width: 24px; height: 24px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); }
+.tt-stat b { display: block; font-family: 'Poppins', sans-serif; font-size: 1.35rem; color: var(--tt-text); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-stat small { font-size: .74rem; color: var(--tt-text-3); }
+
+.tt-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--tt-surface); border: 1px solid var(--tt-border); box-shadow: var(--tt-shadow); margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+.tt-tabs::-webkit-scrollbar { display: none; }
+.tt-tab { flex: 1 1 0; min-width: max-content; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--tt-text-2); font-weight: 600; font-size: .86rem; cursor: pointer; }
+.tt-tab:hover { background: var(--tt-hover); color: var(--tt-text); }
+.tt-tab[aria-selected="true"] { background: var(--tt-accent); color: #fff; }
+.tt-count { font-size: .7rem; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: #ef4444; color: #fff; }
+.tt-tab[aria-selected="true"] .tt-count { background: #fff; color: var(--tt-accent); }
+.tt-count[hidden] { display: none; }
+
+.tt-note { font-size: .86rem; border-radius: 10px; padding: 10px 13px; display: flex; gap: 8px; align-items: flex-start; line-height: 1.45; margin-bottom: 12px; }
+.tt-note:empty { display: none; }
+.tt-note.ok { background: var(--tt-ok-soft); color: var(--tt-ok); }
+.tt-note.bad { background: var(--tt-bad-soft); color: var(--tt-bad); }
+.tt-note.info { background: var(--tt-accent-soft); color: var(--tt-accent-text); }
+
+.tt-card { background: var(--tt-surface); border: 1px solid var(--tt-border); border-radius: 14px; box-shadow: var(--tt-shadow); padding: 16px 18px; min-width: 0; }
+.tt-card + .tt-card { margin-top: 12px; }
+.tt-sec { font-family: 'Poppins', sans-serif; font-size: 1rem; color: var(--tt-text); margin: 18px 0 10px; display: flex; align-items: center; gap: 8px; }
+.tt-sec:first-child { margin-top: 0; }
+.tt-sec small { font-family: 'Inter', sans-serif; font-weight: 500; font-size: .78rem; color: var(--tt-text-3); }
+.tt-top { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.tt-av { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--tt-accent), var(--tt-accent-2)); color: #fff; font-weight: 700; font-size: .9rem; }
+.tt-who { flex: 1; min-width: 180px; }
+.tt-who b { display: block; font-size: 1rem; color: var(--tt-text); }
+.tt-who small { display: block; font-size: .8rem; color: var(--tt-text-3); line-height: 1.5; }
+.tt-pill { display: inline-flex; align-items: center; gap: 5px; font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: var(--tt-hover); color: var(--tt-text-3); white-space: nowrap; }
+.tt-pill.ok { background: var(--tt-ok-soft); color: var(--tt-ok); }
+.tt-pill.warn { background: var(--tt-warn-soft); color: var(--tt-warn); }
+.tt-pill.bad { background: var(--tt-bad-soft); color: var(--tt-bad); }
+.tt-pill.info { background: var(--tt-accent-soft); color: var(--tt-accent-text); }
+.tt-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 16px; margin-top: 12px; font-size: .84rem; }
+.tt-facts div { color: var(--tt-text-2); }
+.tt-facts dt { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--tt-text-3); }
+.tt-facts dd { margin: 2px 0 0; color: var(--tt-text); overflow-wrap: anywhere; }
+.tt-quote { margin-top: 12px; padding: 10px 13px; border-left: 3px solid var(--tt-accent-line); background: var(--tt-surface-2); border-radius: 0 10px 10px 0; font-size: .86rem; color: var(--tt-text-2); line-height: 1.55; overflow-wrap: anywhere; }
+.tt-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+.tt-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--tt-border); background: var(--tt-surface); color: var(--tt-text-2); font-weight: 600; font-size: .82rem; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.tt-btn:hover:not(:disabled) { background: var(--tt-hover); color: var(--tt-text); }
+.tt-btn:disabled { opacity: .55; cursor: default; }
+.tt-btn.primary { background: var(--tt-accent); border-color: var(--tt-accent); color: #fff; }
+.tt-btn.primary:hover:not(:disabled) { background: var(--tt-accent-2); border-color: var(--tt-accent-2); color: #fff; }
+.tt-btn.ok { background: #059669; border-color: #059669; color: #fff; }
+.tt-btn.ok:hover:not(:disabled) { background: #047857; color: #fff; }
+.tt-btn.danger { color: #dc2626; border-color: color-mix(in srgb, #dc2626 35%, transparent); }
+.tt-btn.danger:hover:not(:disabled) { background: color-mix(in srgb, #dc2626 10%, transparent); color: #dc2626; }
+body.dark-mode .tt-btn.danger, body.dark-mode .tt-btn.danger:hover:not(:disabled) { color: #fca5a5; }
+.tt-btn.sm { padding: 6px 11px; font-size: .78rem; border-radius: 8px; }
+
+.tt-form { margin-top: 12px; padding: 14px; border-radius: 12px; border: 1px solid var(--tt-border); background: var(--tt-surface-2); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.tt-form.danger { border-color: color-mix(in srgb, #dc2626 35%, var(--tt-border)); background: color-mix(in srgb, #dc2626 5%, var(--tt-surface)); }
+.tt-form .full { grid-column: 1 / -1; }
+.tt-form h3 { grid-column: 1 / -1; font-size: .92rem; color: var(--tt-text); }
+.tt-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.tt-f label, .tt-f .lbl { font-size: .78rem; font-weight: 600; color: var(--tt-text-2); }
+.tt-f small { font-size: .74rem; color: var(--tt-text-3); }
+.tt-in { padding: 9px 11px; border-radius: 10px; border: 1px solid var(--tt-border); background: var(--tt-surface); color: var(--tt-text); font-size: .86rem; width: 100%; min-width: 0; }
+.tt-in:focus { outline: none; border-color: var(--tt-accent); box-shadow: 0 0 0 3px var(--tt-accent-soft); }
+textarea.tt-in { min-height: 70px; resize: vertical; line-height: 1.5; }
+.tt-form-acts { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; align-items: center; }
+.tt-form-acts .tt-note { margin: 0 auto 0 0; padding: 6px 10px; }
+.tt-choice { display: flex; gap: 8px; flex-wrap: wrap; }
+.tt-choice label { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--tt-border); background: var(--tt-surface); cursor: pointer; font-size: .84rem; color: var(--tt-text-2); font-weight: 600; }
+.tt-choice input { accent-color: var(--tt-accent); }
+.tt-choice label:has(input:checked) { border-color: var(--tt-accent); background: var(--tt-accent-soft); color: var(--tt-accent-text); }
+
+.tt-prog { margin-top: 12px; }
+.tt-prog-top { display: flex; justify-content: space-between; gap: 10px; font-size: .78rem; color: var(--tt-text-3); flex-wrap: wrap; }
+.tt-prog-top b { color: var(--tt-text); }
+.tt-bar { display: flex; height: 10px; border-radius: 99px; background: var(--tt-track); overflow: hidden; margin-top: 6px; gap: 2px; }
+.tt-bar i { display: block; height: 100%; }
+.tt-key { display: flex; gap: 12px; flex-wrap: wrap; font-size: .74rem; color: var(--tt-text-3); margin-top: 6px; }
+.tt-key i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+.tt-sess { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 12px; align-items: flex-start; }
+.tt-date { text-align: center; border-radius: 12px; padding: 7px 4px; background: var(--tt-accent-soft); color: var(--tt-accent-text); }
+.tt-date b { display: block; font-family: 'Poppins', sans-serif; font-size: 1.3rem; line-height: 1.1; }
+.tt-date small { display: block; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.tt-date.past { background: var(--tt-hover); color: var(--tt-text-3); }
+.tt-sess-main b { color: var(--tt-text); font-size: .94rem; }
+.tt-sess-main small { display: block; color: var(--tt-text-3); font-size: .8rem; margin-top: 2px; line-height: 1.5; overflow-wrap: anywhere; }
+.tt-sess-main a { color: var(--tt-accent-text); }
+.tt-report { margin-top: 8px; font-size: .82rem; color: var(--tt-text-2); line-height: 1.5; overflow-wrap: anywhere; }
+.tt-report b { color: var(--tt-text); font-weight: 600; }
+.tt-sess .tt-acts { margin-top: 0; justify-content: flex-end; }
+.tt-empty { text-align: center; padding: 34px 14px; color: var(--tt-text-3); font-size: .9rem; line-height: 1.6; }
+.tt-empty > i { display: block; font-size: 1.8rem; opacity: .45; margin-bottom: 10px; }
+.tt-empty b { display: block; color: var(--tt-text); font-size: 1rem; margin-bottom: 4px; }
+.tt-skel { height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--tt-track), var(--tt-hover), var(--tt-track)); background-size: 200% 100%; animation: ttShim 1.2s linear infinite; margin: 10px 0; }
+@keyframes ttShim { to { background-position: -200% 0; } }
+.tt-tbl-wrap { overflow-x: auto; }
+.tt-tbl { width: 100%; border-collapse: collapse; font-size: .84rem; min-width: 560px; }
+.tt-tbl th { text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--tt-text-3); padding: 8px 10px; border-bottom: 1px solid var(--tt-border); }
+.tt-tbl td { padding: 11px 10px; border-bottom: 1px solid var(--tt-border); color: var(--tt-text-2); }
+.tt-tbl tr:last-child td { border-bottom: 0; }
+.tt-tbl .num { text-align: right; white-space: nowrap; }
+.tt-tbl b { color: var(--tt-text); }
+.tt-muted { color: var(--tt-text-3); font-size: .8rem; }
+.tt-help { margin-top: 16px; font-size: .8rem; color: var(--tt-text-3); line-height: 1.6; }
+.tt-help a { color: var(--tt-accent-text); }
+
+@media (max-width: 1000px) { .tt-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+    .tt-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tt-form { grid-template-columns: minmax(0, 1fr); }
+    .tt-card { padding: 14px; }
+    .tt-head h1 { font-size: 1.28rem; }
+    .tt-accept { width: 100%; }
+    .tt-sess { grid-template-columns: 60px minmax(0, 1fr); }
+    .tt-sess .tt-acts { grid-column: 1 / -1; justify-content: flex-start; }
+    .tt-acts .tt-btn { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) { .tt *, .tt *::before, .tt *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="tt" data-no-theme>
+    <div class="tt-head">
+        <div>
+            <h1>Parent requests</h1>
+            <p>Parents send you requests to teach their child. Accept or decline them here, then manage the families you teach, your lessons and what parents have paid.</p>
+        </div>
+        <div class="tt-accept">
+            <label class="tt-switch"><input type="checkbox" id="ttAccepting" role="switch" aria-label="Taking new private learners" disabled><span></span></label>
+            <div><b id="ttAcceptT">Taking new learners</b><br><span id="ttAcceptS" class="tt-muted">Loading...</span></div>
+            <a class="tt-btn sm" href="/teacher-settings#teaching" title="Fee, lesson length and availability"><i class="fas fa-sliders"></i><span>Lesson details</span></a>
+        </div>
+    </div>
+
+    <div class="tt-stats" id="ttStats">
+        <div class="tt-stat"><div class="tt-skel"></div></div><div class="tt-stat"><div class="tt-skel"></div></div><div class="tt-stat"><div class="tt-skel"></div></div><div class="tt-stat"><div class="tt-skel"></div></div><div class="tt-stat"><div class="tt-skel"></div></div>
+    </div>
+
+    <div class="tt-tabs" role="tablist" aria-label="Parent requests">
+        <button type="button" class="tt-tab" role="tab" id="tab-requests" data-tab="requests" aria-controls="panel-requests" aria-selected="true"><i class="fas fa-inbox"></i> Requests <span class="tt-count" id="cntRequests" hidden></span></button>
+        <button type="button" class="tt-tab" role="tab" id="tab-learners" data-tab="learners" aria-controls="panel-learners" aria-selected="false"><i class="fas fa-user-graduate"></i> My learners</button>
+        <button type="button" class="tt-tab" role="tab" id="tab-lessons" data-tab="lessons" aria-controls="panel-lessons" aria-selected="false"><i class="fas fa-calendar-check"></i> Lessons <span class="tt-count" id="cntLessons" hidden title="Lessons that need a report"></span></button>
+        <button type="button" class="tt-tab" role="tab" id="tab-pay" data-tab="pay" aria-controls="panel-pay" aria-selected="false"><i class="fas fa-coins"></i> Payments</button>
+    </div>
+
+    <div class="tt-note" id="ttNote" role="status" aria-live="polite"></div>
+
+    <section id="panel-requests" role="tabpanel" aria-labelledby="tab-requests"><div class="tt-card"><div class="tt-skel"></div><div class="tt-skel"></div></div></section>
+    <section id="panel-learners" role="tabpanel" aria-labelledby="tab-learners" hidden></section>
+    <section id="panel-lessons" role="tabpanel" aria-labelledby="tab-lessons" hidden></section>
+    <section id="panel-pay" role="tabpanel" aria-labelledby="tab-pay" hidden></section>
+
+    <p class="tt-help"><i class="fas fa-circle-info"></i> How it works: a parent sends a request from their Teachers page. You accept with your fee, the parent pays eSchool with M-Pesa, and once eSchool confirms the payment the paid lessons appear here for you to book. After each lesson, record what happened so the parent gets a report. Keep all arrangements and payments on eSchool; see the <a href="/teacher-settings#legal">teacher terms</a>.</p>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var TZ = 'Africa/Nairobi';
+    var LENGTHS = [30, 45, 60, 90, 120];
+    var S = { tab: 'requests', eng: [], profile: null, open: {} };
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function initials(n) { return String(n || '?').split(/\s+/).filter(Boolean).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(); }
+    function money(n) { return 'KES ' + (Number(n) || 0).toLocaleString('en-KE'); }
+    function dt(iso) { var d = iso ? new Date(String(iso).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? '' : 'Z')) : null; return d && !isNaN(d) ? d : null; }
+    function fmt(iso, o) { var d = dt(iso); return d ? d.toLocaleString('en-GB', Object.assign({ timeZone: TZ }, o)) : ''; }
+    function day(iso) { return fmt(iso, { day: 'numeric', month: 'short', year: 'numeric' }); }
+    function full(iso) { return fmt(iso, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+    function note(el, msg, type) {
+        el = typeof el === 'string' ? $(el) : el; if (!el) return;
+        el.className = 'tt-note ' + (type || 'info');
+        el.innerHTML = msg ? '<i class="fas ' + (type === 'ok' ? 'fa-circle-check' : type === 'bad' ? 'fa-circle-exclamation' : 'fa-circle-info') + '" style="margin-top:2px"></i><span></span>' : '';
+        if (msg) el.querySelector('span').textContent = msg;
+        clearTimeout(el._t); if (msg && type !== 'bad') el._t = setTimeout(function () { el.innerHTML = ''; }, 7000);
+    }
+    async function api(url, opt) {
+        opt = opt || {};
+        var init = { credentials: 'same-origin', cache: 'no-store', method: opt.method || 'GET', headers: {} };
+        if (opt.body !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(opt.body); }
+        var r; try { r = await fetch(url, init); } catch (e) { throw new Error('No connection. Check your internet and try again.'); }
+        if (r.status === 401) { location.href = '/Login'; throw new Error('Please sign in again.'); }
+        var d = null; try { d = await r.json(); } catch (e) { /* none */ }
+        if (!r.ok || (d && d.success === false)) throw new Error((d && d.message) || 'Something went wrong (' + r.status + ').');
+        return d || {};
+    }
+
+    /* ---------- tabs ---------- */
+    var TABS = ['requests', 'learners', 'lessons', 'pay'];
+    function openTab(name) {
+        if (TABS.indexOf(name) < 0) name = 'requests';
+        S.tab = name;
+        TABS.forEach(function (t) { var on = t === name; $('tab-' + t).setAttribute('aria-selected', String(on)); $('tab-' + t).tabIndex = on ? 0 : -1; $('panel-' + t).hidden = !on; });
+        try { history.replaceState(null, '', '#' + name); } catch (e) { /* ignore */ }
+    }
+    document.querySelector('.tt-tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) openTab(b.dataset.tab); });
+    document.querySelector('.tt-tabs').addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        var i = (TABS.indexOf(S.tab) + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length; openTab(TABS[i]); $('tab-' + TABS[i]).focus();
+    });
+
+    /* ---------- load ---------- */
+    async function load() {
+        try {
+            var both = await Promise.all([api('/api/tutoring/teacher'), api('/api/tutor-profile').catch(function () { return {}; })]);
+            S.eng = both[0].engagements || []; S.profile = (both[1] && both[1].profile) || {};
+            render();
+        } catch (e) { note('ttNote', e.message, 'bad'); $('panel-requests').innerHTML = ''; }
+    }
+    function sessionsOf(e) { return (e.sessions || []).map(function (s) { return Object.assign({ eng: e }, s); }); }
+    function needsReport(s) { var d = dt(s.starts_at); return s.status === 'scheduled' && d && d.getTime() + (s.minutes || 60) * 60000 < Date.now(); }
+    function render() {
+        var E = S.eng, p = S.profile || {};
+        var pend = E.filter(function (e) { return e.status === 'pending'; });
+        var mine = E.filter(function (e) { return e.status === 'active'; });
+        var waitPay = E.filter(function (e) { return e.status === 'accepted'; });
+        var sess = [].concat.apply([], E.map(sessionsOf));
+        var now = Date.now(), week = now + 7 * 864e5;
+        var upcoming = sess.filter(function (s) { var d = dt(s.starts_at); return s.status === 'scheduled' && d && d.getTime() >= now - (s.minutes || 60) * 60000 && !needsReport(s); });
+        var toReport = sess.filter(needsReport);
+        var earned = 0, pendingPay = 0;
+        E.forEach(function (e) { (e.payments || []).forEach(function (x) { if (x.status === 'confirmed') earned += x.amount; if (x.status === 'pending') pendingPay += x.amount; }); });
+        var done = sess.filter(function (s) { return s.status === 'completed'; });
+        // accepting switch
+        var acc = p.accepting !== 0;
+        $('ttAccepting').checked = acc; $('ttAccepting').disabled = false;
+        $('ttAcceptT').textContent = acc ? 'Taking new learners' : 'Not taking new learners';
+        $('ttAcceptS').textContent = p.rate ? money(p.rate) + ' · ' + (p.session_minutes || 60) + ' min a lesson' : 'Set your fee in lesson details';
+        $('ttStats').innerHTML = [
+            ['fa-inbox', '#f59e0b', 'Waiting for you', pend.length, pend.length ? 'Answer soon' : 'All answered'],
+            ['fa-user-graduate', '#4361ee', 'Your learners', mine.length, waitPay.length ? waitPay.length + ' accepted, waiting to pay' : 'Paid and learning'],
+            ['fa-calendar-day', '#0ea5e9', 'Lessons this week', upcoming.filter(function (s) { return dt(s.starts_at).getTime() <= week; }).length, toReport.length ? toReport.length + ' to report' : 'Up to date'],
+            ['fa-clipboard-check', '#10b981', 'Lessons taught', done.length, (Math.round(done.reduce(function (a, s) { return a + (s.minutes || 0); }, 0) / 6) / 10) + ' hours'],
+            ['fa-coins', '#8b5cf6', 'Paid by parents', money(earned), pendingPay ? money(pendingPay) + ' being checked' : 'Confirmed by eSchool']
+        ].map(function (k) { return '<div class="tt-stat" style="--c:' + k[1] + '"><span><i class="fas ' + k[0] + '"></i>' + k[2] + '</span><b>' + k[3] + '</b><small>' + k[4] + '</small></div>'; }).join('');
+        $('cntRequests').hidden = !pend.length; $('cntRequests').textContent = pend.length;
+        $('cntLessons').hidden = !toReport.length; $('cntLessons').textContent = toReport.length;
+        renderRequests(pend, waitPay, E.filter(function (e) { return e.status === 'declined' || e.status === 'cancelled'; }));
+        renderLearners(mine, E.filter(function (e) { return e.status === 'ended'; }));
+        renderLessons(toReport, upcoming, sess.filter(function (s) { return s.status !== 'scheduled'; }));
+        renderPay();
+    }
+
+    /* ---------- requests ---------- */
+    function reqCard(e) {
+        var facts = [['Subject', e.subject], ['How', e.mode_label], ['How often', e.sessions_per_week + ' lesson' + (e.sessions_per_week === 1 ? '' : 's') + ' a week'],
+            ['Times that suit them', e.preferred_times], ['Start', e.start_date ? day(e.start_date) : 'As soon as possible'], ['Your fee then', e.rate ? money(e.rate) + ' · ' + e.session_minutes + ' min' : 'Not set']];
+        return '<div class="tt-card" data-eng="' + e.id + '"><div class="tt-top"><span class="tt-av">' + esc(initials(e.child.name)) + '</span>' +
+            '<div class="tt-who"><b>' + esc(e.child.name) + ' · ' + esc(e.subject) + '</b><small>Asked by ' + esc(e.parent.name) + ' (parent) · ' + esc(day(e.created_at)) + '</small></div><span class="tt-pill warn"><i class="fas fa-hourglass-half"></i> Waiting for you</span></div>' +
+            '<dl class="tt-facts">' + facts.map(function (f) { return '<div><dt>' + f[0] + '</dt><dd>' + esc(f[1]) + '</dd></div>'; }).join('') + '</dl>' +
+            (e.goals ? '<div class="tt-quote"><b>Goals:</b> ' + esc(e.goals) + '</div>' : '') + (e.message ? '<div class="tt-quote">"' + esc(e.message) + '"</div>' : '') +
+            '<div class="tt-acts"><button type="button" class="tt-btn ok" data-open="accept"><i class="fas fa-check"></i> Accept</button><button type="button" class="tt-btn danger" data-open="decline"><i class="fas fa-xmark"></i> Decline</button>' +
+            '<a class="tt-btn" href="/teacher-messages?user=' + e.parent.id + '"><i class="fas fa-comment"></i> Ask the parent a question</a></div><div data-form></div></div>';
+    }
+    function renderRequests(pend, waitPay, closed) {
+        var h = '';
+        h += pend.length ? pend.map(reqCard).join('') :
+            '<div class="tt-card"><div class="tt-empty"><i class="fas fa-envelope-open"></i><b>No requests waiting</b>' + ((S.profile || {}).accepting === 0 ? 'You are not taking new learners, so parents can\'t send requests. Switch it on at the top of this page.' : 'When a parent asks you to teach their child, it shows up here and in your notifications. Parents find you on their Teachers page.') + '</div></div>';
+        if (waitPay.length) h += '<h2 class="tt-sec">Accepted, waiting for the parent to pay <small>They become your learners once eSchool confirms the payment</small></h2>' + waitPay.map(learnerCard).join('');
+        if (closed.length) h += '<h2 class="tt-sec">Earlier requests <small>' + closed.length + '</small></h2><div class="tt-card"><div class="tt-tbl-wrap"><table class="tt-tbl"><thead><tr><th>Learner</th><th>Subject</th><th>Parent</th><th>Status</th><th>Date</th></tr></thead><tbody>' +
+            closed.map(function (e) { return '<tr><td><b>' + esc(e.child.name) + '</b></td><td>' + esc(e.subject) + '</td><td>' + esc(e.parent.name) + '</td><td><span class="tt-pill">' + (e.status === 'declined' ? 'You declined' : 'Parent withdrew') + '</span></td><td>' + esc(day(e.responded_at || e.ended_at || e.created_at)) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+        $('panel-requests').innerHTML = h;
+    }
+    $('panel-requests').addEventListener('click', async function (ev) {
+        var card = ev.target.closest('[data-eng]'); if (!card) return;
+        var e = S.eng.filter(function (x) { return String(x.id) === card.dataset.eng; })[0], box = card.querySelector('[data-form]'), b;
+        if (e.status !== 'pending') return;   // accepted families use the learner card actions
+        if ((b = ev.target.closest('[data-open]'))) {
+            if (box.dataset.kind === b.dataset.open && box.innerHTML) { box.innerHTML = ''; box.dataset.kind = ''; return; }
+            box.dataset.kind = b.dataset.open;
+            var p = S.profile || {};
+            var mins = +(e.session_minutes || p.session_minutes || 60), lens = LENGTHS.indexOf(mins) < 0 ? LENGTHS.concat([mins]).sort(function (a, c) { return a - c; }) : LENGTHS;
+            box.innerHTML = b.dataset.open === 'accept'
+                ? '<form class="tt-form" data-do="accept" novalidate><h3>Accept and set your fee</h3>' +
+                  '<div class="tt-f"><label>Fee per lesson (KES)</label><input class="tt-in" name="rate" type="number" min="50" max="100000" step="50" inputmode="numeric" value="' + esc(e.rate || p.rate || '') + '"><small>The parent pays this per lesson, through eSchool.</small></div>' +
+                  '<div class="tt-f"><label>Lesson length</label><select class="tt-in" name="session_minutes">' + lens.map(function (m) { return '<option value="' + m + '"' + (m === mins ? ' selected' : '') + '>' + m + ' minutes</option>'; }).join('') + '</select></div>' +
+                  '<div class="tt-f full"><label>Message to the parent <span class="tt-muted">(optional)</span></label><textarea class="tt-in" name="note" maxlength="400" placeholder="e.g. I can start next Monday at 5pm. We will begin with algebra basics."></textarea></div>' +
+                  '<div class="tt-form-acts"><div class="tt-note" data-n></div><button type="button" class="tt-btn" data-cancel>Cancel</button><button type="submit" class="tt-btn ok"><i class="fas fa-check"></i> Accept request</button></div></form>'
+                : '<form class="tt-form danger" data-do="decline" novalidate><h3>Decline this request</h3>' +
+                  '<div class="tt-f full"><label>Reason <span class="tt-muted">(the parent sees it)</span></label><textarea class="tt-in" name="note" maxlength="400" placeholder="e.g. My evenings are full this term. Try again in January."></textarea></div>' +
+                  '<div class="tt-form-acts"><div class="tt-note" data-n></div><button type="button" class="tt-btn" data-cancel>Cancel</button><button type="submit" class="tt-btn danger"><i class="fas fa-xmark"></i> Decline request</button></div></form>';
+            var f = box.querySelector('input, textarea'); if (f) f.focus();
+            return;
+        }
+        if (ev.target.closest('[data-cancel]')) { box.innerHTML = ''; box.dataset.kind = ''; }
+    });
+    $('panel-requests').addEventListener('submit', async function (ev) {
+        var form = ev.target.closest('form[data-do]'); if (!form || (form.dataset.do !== 'accept' && form.dataset.do !== 'decline')) return; ev.preventDefault();
+        var card = form.closest('[data-eng]'), e = S.eng.filter(function (x) { return String(x.id) === card.dataset.eng; })[0], n = form.querySelector('[data-n]');
+        var body = { action: form.dataset.do, note: form.note.value.trim() };
+        if (body.action === 'accept') {
+            var rate = Number(form.rate.value);
+            if (!form.rate.value || !isFinite(rate) || rate < 50 || rate > 100000) { note(n, 'Set your fee per lesson, from KES 50 to 100,000.', 'bad'); form.rate.focus(); return; }
+            body.rate = Math.round(rate); body.session_minutes = Number(form.session_minutes.value);
+        }
+        var btn = form.querySelector('[type="submit"]'); btn.disabled = true; note(n, 'Sending...', 'info');
+        try {
+            await api('/api/tutoring/' + e.id + '/respond', { method: 'POST', body: body });
+            await load();
+            note('ttNote', body.action === 'accept' ? 'Accepted. ' + e.parent.name + ' has been told and can now pay. ' + e.child.first_name + ' becomes your learner once eSchool confirms the payment.' : 'Declined. ' + e.parent.name + ' has been told.', 'ok');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (err) { note(n, err.message, 'bad'); btn.disabled = false; }
+    });
+
+    /* ---------- learners ---------- */
+    function learnerCard(e) {
+        var paid = e.sessions_paid, used = e.sessions_used, booked = e.sessions_booked, left = e.sessions_left;
+        var st = e.status === 'active' ? ['ok', 'fa-circle-check', 'Lessons paid'] : e.status === 'accepted' ? ['warn', 'fa-hourglass-half', 'Waiting for the parent to pay'] : ['', 'fa-flag-checkered', 'Ended'];
+        var att = (e.sessions || []).filter(function (s) { return s.status === 'completed'; });
+        var h = '<div class="tt-card" data-eng="' + e.id + '"><div class="tt-top"><span class="tt-av">' + esc(initials(e.child.name)) + '</span>' +
+            '<div class="tt-who"><b>' + esc(e.child.name) + ' · ' + esc(e.subject) + '</b><small>Parent: ' + esc(e.parent.name) + ' · ' + esc(e.mode_label) + ' · ' + money(e.rate) + ' a lesson, ' + e.session_minutes + ' min' +
+            (e.status === 'ended' && e.ended_at ? ' · ended ' + esc(day(e.ended_at)) : '') + '</small></div><span class="tt-pill ' + st[0] + '"><i class="fas ' + st[1] + '"></i> ' + st[2] + '</span></div>';
+        if (paid) {
+            var t = Math.max(1, paid);
+            h += '<div class="tt-prog"><div class="tt-prog-top"><span><b>' + left + '</b> paid lesson' + (left === 1 ? '' : 's') + ' left to book</span><span>' + used + ' of ' + paid + ' taught or missed</span></div>' +
+                '<div class="tt-bar" role="img" aria-label="' + used + ' done, ' + booked + ' booked, ' + left + ' to book"><i style="width:' + (used / t * 100) + '%;background:#10b981"></i><i style="width:' + (booked / t * 100) + '%;background:var(--tt-accent)"></i><i style="width:' + (left / t * 100) + '%;background:#f59e0b"></i></div>' +
+                '<div class="tt-key"><span><i style="background:#10b981"></i>Done ' + used + '</span><span><i style="background:var(--tt-accent)"></i>Booked ' + booked + '</span><span><i style="background:#f59e0b"></i>To book ' + left + '</span>' +
+                (att.length ? '<span>Attendance ' + (e.attended != null ? Math.round(e.attended / att.length * 100) : 100) + '%</span>' : '') + (e.avg_session_rating ? '<span>Parent rating ' + e.avg_session_rating + '★</span>' : '') + '</div></div>';
+        } else if (e.status === 'accepted') h += '<div class="tt-quote">You accepted on ' + esc(day(e.responded_at)) + '. Lessons can be booked as soon as ' + esc(e.parent.name) + ' pays and eSchool confirms it. You\'ll get a notification.</div>';
+        if (e.goals) h += '<div class="tt-quote"><b>Goals:</b> ' + esc(e.goals) + (e.preferred_times ? '<br><b>Times that suit them:</b> ' + esc(e.preferred_times) : '') + '</div>';
+        if (e.status !== 'ended') {
+            h += '<div class="tt-acts">' + (e.status === 'active' ? '<button type="button" class="tt-btn primary" data-open="book"' + (left ? '' : ' disabled title="All paid lessons are booked. The parent needs to pay for more."') + '><i class="fas fa-calendar-plus"></i> Book a lesson</button>' : '') +
+                '<a class="tt-btn" href="/teacher-messages?user=' + e.parent.id + '"><i class="fas fa-comment"></i> Message parent</a><a class="tt-btn" href="/teacher-messages?user=' + e.child.id + '"><i class="fas fa-comment-dots"></i> Message ' + esc(e.child.first_name) + '</a>' +
+                '<button type="button" class="tt-btn danger" data-open="end"><i class="fas fa-circle-xmark"></i> Stop teaching</button></div><div data-form></div>';
+        }
+        return h + '</div>';
+    }
+    function renderLearners(mine, ended) {
+        var h = mine.length ? mine.map(learnerCard).join('') : '<div class="tt-card"><div class="tt-empty"><i class="fas fa-user-graduate"></i><b>No learners yet</b>A child becomes your learner once you accept the request and the parent\'s payment is confirmed. Accepted requests waiting for payment are under Requests.</div></div>';
+        if (ended.length) h += '<h2 class="tt-sec">Ended <small>' + ended.length + '</small></h2>' + ended.map(learnerCard).join('');
+        $('panel-learners').innerHTML = h;
+    }
+    function nextSlot() {
+        var d = new Date(Date.now() + 864e5), parts = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+        return parts;
+    }
+    function onLearnerClick(ev) {
+        var card = ev.target.closest('[data-eng]'); if (!card) return;
+        var e = S.eng.filter(function (x) { return String(x.id) === card.dataset.eng; })[0], box = card.querySelector('[data-form]'), b;
+        if (e.status === 'pending') return;
+        if ((b = ev.target.closest('[data-open]'))) {
+            if (box.dataset.kind === b.dataset.open && box.innerHTML) { box.innerHTML = ''; box.dataset.kind = ''; return; }
+            box.dataset.kind = b.dataset.open;
+            box.innerHTML = b.dataset.open === 'book'
+                ? '<form class="tt-form" data-do="book" novalidate><h3>Book a lesson with ' + esc(e.child.first_name) + '</h3>' +
+                  '<div class="tt-f"><label>Date</label><input class="tt-in" name="date" type="date" min="' + nextSlot().slice(0, 10) + '" value="' + nextSlot() + '"></div>' +
+                  '<div class="tt-f"><label>Start time (East Africa Time)</label><input class="tt-in" name="time" type="time" value="17:00" step="300"></div>' +
+                  '<div class="tt-f"><label>Length</label><select class="tt-in" name="minutes">' + LENGTHS.map(function (m) { return '<option value="' + m + '"' + (m === e.session_minutes ? ' selected' : '') + '>' + m + ' minutes</option>'; }).join('') + '</select></div>' +
+                  '<div class="tt-f"><label>Topic <span class="tt-muted">(optional)</span></label><input class="tt-in" name="topic" maxlength="160" placeholder="e.g. Simultaneous equations"></div>' +
+                  '<div class="tt-f full"><label>Where <span class="tt-muted">(optional)</span></label><input class="tt-in" name="link" maxlength="300" placeholder="' + (e.mode === 'in-person' ? 'Address is agreed with the parent in Messages' : 'Paste a meeting link, or call ' + esc(e.child.first_name) + ' from Messages') + '"><small>A link must start with https://. You can also call the learner from Messages at lesson time.</small></div>' +
+                  '<div class="tt-form-acts"><div class="tt-note" data-n></div><button type="button" class="tt-btn" data-cancel>Cancel</button><button type="submit" class="tt-btn primary"><i class="fas fa-calendar-plus"></i> Book lesson</button></div></form>'
+                : '<form class="tt-form danger" data-do="end" novalidate><h3>Stop teaching ' + esc(e.child.first_name) + ' ' + esc(e.subject) + '?</h3>' +
+                  '<p class="full tt-muted">Booked lessons are cancelled and the parent is told why.' + (e.sessions_left || e.sessions_booked ? ' They have paid for ' + (e.sessions_left + e.sessions_booked) + ' lesson' + (e.sessions_left + e.sessions_booked === 1 ? '' : 's') + ' you haven\'t taught; eSchool support will refund those.' : '') + '</p>' +
+                  '<div class="tt-f full"><label>Reason <span class="tt-muted">(the parent sees it)</span></label><textarea class="tt-in" name="reason" maxlength="300" placeholder="e.g. I\'m moving to a full-time job and can\'t keep the evening slots."></textarea></div>' +
+                  '<div class="tt-form-acts"><div class="tt-note" data-n></div><button type="button" class="tt-btn" data-cancel>Keep teaching</button><button type="submit" class="tt-btn danger"><i class="fas fa-circle-xmark"></i> Stop teaching</button></div></form>';
+            var f = box.querySelector('input, textarea'); if (f) f.focus();
+            return;
+        }
+        if (ev.target.closest('[data-cancel]')) { box.innerHTML = ''; box.dataset.kind = ''; }
+    }
+    $('panel-learners').addEventListener('click', onLearnerClick);
+    $('panel-requests').addEventListener('click', onLearnerClick);
+
+    async function onLearnerSubmit(ev) {
+        var form = ev.target.closest('form[data-do]'); if (!form || (form.dataset.do !== 'book' && form.dataset.do !== 'end')) return; ev.preventDefault();
+        var card = form.closest('[data-eng]'), e = S.eng.filter(function (x) { return String(x.id) === card.dataset.eng; })[0], n = form.querySelector('[data-n]'), btn = form.querySelector('[type="submit"]');
+        try {
+            if (form.dataset.do === 'book') {
+                if (!form.date.value || !form.time.value) { note(n, 'Choose the date and time.', 'bad'); return; }
+                var start = new Date(form.date.value + 'T' + form.time.value + ':00+03:00');
+                if (isNaN(start) || start.getTime() < Date.now()) { note(n, 'Choose a time in the future.', 'bad'); return; }
+                var link = form.link.value.trim();
+                if (link && !/^https?:\/\//i.test(link)) { note(n, 'A link must start with https://', 'bad'); form.link.focus(); return; }
+                btn.disabled = true; note(n, 'Booking...', 'info');
+                await api('/api/tutoring/' + e.id + '/sessions', { method: 'POST', body: { starts_at: form.date.value + 'T' + form.time.value + ':00+03:00', minutes: Number(form.minutes.value), topic: form.topic.value.trim(), link: link } });
+                await load(); note('ttNote', 'Lesson booked for ' + full(start.toISOString()) + '. ' + e.parent.name + ' and ' + e.child.first_name + ' have been told.', 'ok');
+            } else {
+                if (form.reason.value.trim().length < 5) { note(n, 'Tell the parent why, in a sentence.', 'bad'); form.reason.focus(); return; }
+                btn.disabled = true; note(n, 'Sending...', 'info');
+                await api('/api/tutoring/' + e.id + '/teacher-end', { method: 'POST', body: { reason: form.reason.value.trim() } });
+                await load(); note('ttNote', 'Lessons with ' + e.child.name + ' have ended. ' + e.parent.name + ' has been told.', 'ok');
+            }
+        } catch (err) { note(n, err.message, 'bad'); btn.disabled = false; }
+    }
+    $('panel-learners').addEventListener('submit', onLearnerSubmit);
+    $('panel-requests').addEventListener('submit', onLearnerSubmit);
+
+    /* ---------- lessons ---------- */
+    function sessCard(s, mode) {
+        var e = s.eng, d = dt(s.starts_at), past = mode !== 'upcoming';
+        var st = { completed: ['ok', 'Taught'], missed: ['bad', 'Missed'], cancelled: ['', 'Cancelled'], scheduled: mode === 'report' ? ['warn', 'Needs a report'] : ['info', 'Booked'] }[s.status] || ['', s.status];
+        var h = '<div class="tt-card" data-sess="' + s.id + '"><div class="tt-sess"><div class="tt-date' + (past ? ' past' : '') + '"><small>' + esc(fmt(s.starts_at, { month: 'short' })) + '</small><b>' + esc(fmt(s.starts_at, { day: 'numeric' })) + '</b><small>' + esc(fmt(s.starts_at, { weekday: 'short' })) + '</small></div>' +
+            '<div class="tt-sess-main"><b>' + esc(e.child.name) + ' · ' + esc(e.subject) + '</b> <span class="tt-pill ' + st[0] + '">' + st[1] + '</span>' +
+            '<small><i class="fas fa-clock"></i> ' + esc(fmt(s.starts_at, { hour: '2-digit', minute: '2-digit' })) + ' · ' + s.minutes + ' min' + (s.topic ? ' · ' + esc(s.topic) : '') + '</small>' +
+            (s.link ? '<small><i class="fas fa-link"></i> <a href="' + esc(s.link) + '" target="_blank" rel="noopener noreferrer">' + esc(s.link) + '</a></small>' : '') +
+            (s.status === 'completed' || s.status === 'missed' ? '<div class="tt-report">' + (s.child_attended === 0 ? '<b>' + esc(e.child.first_name) + ' did not attend.</b> ' : '') + (s.teacher_notes ? '<b>Your notes:</b> ' + esc(s.teacher_notes) + ' ' : '') + (s.homework ? '<br><b>Homework:</b> ' + esc(s.homework) : '') +
+                (s.parent_rating ? '<br><b>Parent\'s rating:</b> ' + '★★★★★'.slice(0, s.parent_rating) + (s.parent_comment ? ' "' + esc(s.parent_comment) + '"' : '') : '') + (s.parent_report ? '<br><b style="color:#dc2626">Parent reported a problem:</b> ' + esc(s.parent_report) : '') + '</div>' : '') + '</div>';
+        if (s.status === 'scheduled') h += '<div class="tt-acts">' + (mode === 'report' || d.getTime() < Date.now() + 15 * 60000 ? '<button type="button" class="tt-btn primary sm" data-open="report"><i class="fas fa-clipboard-check"></i> Record lesson</button>' : '') +
+            '<a class="tt-btn sm" href="/teacher-messages?user=' + e.child.id + '"><i class="fas fa-phone"></i> Call ' + esc(e.child.first_name) + '</a><button type="button" class="tt-btn danger sm" data-open="cancel"><i class="fas fa-calendar-xmark"></i> Cancel</button></div>';
+        return h + '</div><div data-form></div></div>';
+    }
+    function renderLessons(toReport, upcoming, history) {
+        upcoming.sort(function (a, b) { return dt(a.starts_at) - dt(b.starts_at); });
+        history.sort(function (a, b) { return dt(b.starts_at) - dt(a.starts_at); });
+        toReport.sort(function (a, b) { return dt(a.starts_at) - dt(b.starts_at); });
+        var h = '';
+        if (toReport.length) h += '<h2 class="tt-sec"><i class="fas fa-clipboard-list" style="color:#f59e0b"></i> Needs a report <small>The parent is waiting to hear how it went</small></h2>' + toReport.map(function (s) { return sessCard(s, 'report'); }).join('');
+        h += '<h2 class="tt-sec">Coming up <small>' + upcoming.length + '</small></h2>' + (upcoming.length ? upcoming.map(function (s) { return sessCard(s, 'upcoming'); }).join('') : '<div class="tt-card"><div class="tt-empty" style="padding:20px"><i class="fas fa-calendar"></i><b>Nothing booked</b>Book lessons for families who have paid, under My learners.</div></div>');
+        if (history.length) h += '<h2 class="tt-sec">Past lessons <small>' + history.length + '</small></h2>' + history.slice(0, 30).map(function (s) { return sessCard(s, 'past'); }).join('');
+        $('panel-lessons').innerHTML = h;
+    }
+    $('panel-lessons').addEventListener('click', function (ev) {
+        var card = ev.target.closest('[data-sess]'); if (!card) return;
+        var box = card.querySelector('[data-form]'), b;
+        var s = [].concat.apply([], S.eng.map(sessionsOf)).filter(function (x) { return String(x.id) === card.dataset.sess; })[0];
+        if ((b = ev.target.closest('[data-open]'))) {
+            if (box.dataset.kind === b.dataset.open && box.innerHTML) { box.innerHTML = ''; box.dataset.kind = ''; return; }
+            box.dataset.kind = b.dataset.open;
+            box.innerHTML = b.dataset.open === 'report'
+                ? '<form class="tt-form" data-do="report" novalidate><h3>How did the lesson go?</h3>' +
+                  '<div class="tt-f full"><span class="lbl">Result</span><div class="tt-choice"><label><input type="radio" name="status" value="completed" checked> Lesson taught</label><label><input type="radio" name="status" value="missed"> Missed</label></div></div>' +
+                  '<div class="tt-f full"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" name="attended" checked style="accent-color:var(--tt-accent)"> ' + esc(s.eng.child.first_name) + ' attended</label></div>' +
+                  '<div class="tt-f full"><label>What you covered and how ' + esc(s.eng.child.first_name) + ' did</label><textarea class="tt-in" name="notes" maxlength="1000" placeholder="e.g. Covered factorising quadratics. Strong on the method, still mixing up signs. Practise more next time."></textarea><small>The parent sees this report.</small></div>' +
+                  '<div class="tt-f full"><label>Homework <span class="tt-muted">(optional)</span></label><input class="tt-in" name="homework" maxlength="500" placeholder="e.g. Exercise 4B, questions 1-10"></div>' +
+                  '<div class="tt-form-acts"><div class="tt-note" data-n></div><button type="button" class="tt-btn" data-cancel>Cancel</button><button type="submit" class="tt-btn primary"><i class="fas fa-paper-plane"></i> Save and send to parent</button></div></form>'
+                : '<form class="tt-form danger" data-do="cancel" novalidate><h3>Cancel this lesson?</h3><p class="full tt-muted">It goes back to the family\'s paid lessons, so you can book it again for another day. Tell the parent in Messages why.</p>' +
+                  '<div class="tt-form-acts"><div class="tt-note" data-n></div><button type="button" class="tt-btn" data-cancel>Keep it</button><button type="submit" class="tt-btn danger"><i class="fas fa-calendar-xmark"></i> Cancel lesson</button></div></form>';
+            return;
+        }
+        if (ev.target.closest('[data-cancel]')) { box.innerHTML = ''; box.dataset.kind = ''; }
+    });
+    $('panel-lessons').addEventListener('change', function (ev) { if (ev.target.name === 'status') { var f = ev.target.form; f.attended.checked = ev.target.value === 'completed'; } });
+    $('panel-lessons').addEventListener('submit', async function (ev) {
+        var form = ev.target.closest('form[data-do]'); if (!form) return; ev.preventDefault();
+        var card = form.closest('[data-sess]'), n = form.querySelector('[data-n]'), btn = form.querySelector('[type="submit"]');
+        var body = form.dataset.do === 'cancel' ? { status: 'cancelled' } : { status: form.querySelector('[name="status"]:checked').value, child_attended: form.attended.checked, teacher_notes: form.notes.value.trim(), homework: form.homework.value.trim() };
+        if (body.status === 'completed' && body.teacher_notes.length < 10) { note(n, 'Write a short report for the parent (at least 10 characters).', 'bad'); form.notes.focus(); return; }
+        btn.disabled = true; note(n, 'Saving...', 'info');
+        try {
+            await api('/api/tutoring/sessions/' + card.dataset.sess, { method: 'PATCH', body: body });
+            await load(); note('ttNote', body.status === 'cancelled' ? 'Lesson cancelled. It\'s back in the family\'s paid lessons to book again.' : 'Saved. The parent has your report.', 'ok');
+        } catch (err) { note(n, err.message, 'bad'); btn.disabled = false; }
+    });
+
+    /* ---------- payments ---------- */
+    function renderPay() {
+        var rows = [];
+        S.eng.forEach(function (e) { (e.payments || []).forEach(function (p) { rows.push(Object.assign({ eng: e }, p)); }); });
+        rows.sort(function (a, b) { return dt(b.created_at) - dt(a.created_at); });
+        var ok = rows.filter(function (p) { return p.status === 'confirmed'; }), month = fmt(new Date().toISOString(), { month: 'short', year: 'numeric' });
+        var thisMonth = ok.filter(function (p) { return fmt(p.decided_at || p.created_at, { month: 'short', year: 'numeric' }) === month; }).reduce(function (a, p) { return a + p.amount; }, 0);
+        var ST = { confirmed: ['ok', 'Confirmed'], pending: ['warn', 'Being checked by eSchool'], rejected: ['bad', 'Not confirmed'], cancelled: ['', 'Cancelled'] };
+        $('panel-pay').innerHTML = '<div class="tt-stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">' +
+            '<div class="tt-stat" style="--c:#10b981"><span><i class="fas fa-calendar-check"></i>Paid this month</span><b>' + money(thisMonth) + '</b></div>' +
+            '<div class="tt-stat" style="--c:#8b5cf6"><span><i class="fas fa-coins"></i>Paid all time</span><b>' + money(ok.reduce(function (a, p) { return a + p.amount; }, 0)) + '</b></div>' +
+            '<div class="tt-stat" style="--c:#f59e0b"><span><i class="fas fa-hourglass-half"></i>Being checked</span><b>' + money(rows.filter(function (p) { return p.status === 'pending'; }).reduce(function (a, p) { return a + p.amount; }, 0)) + '</b></div></div>' +
+            '<div class="tt-card">' + (rows.length ? '<div class="tt-tbl-wrap"><table class="tt-tbl"><thead><tr><th>Date</th><th>Learner</th><th>For</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' +
+            rows.map(function (p) { var s = ST[p.status] || ['', p.status]; return '<tr><td>' + esc(day(p.decided_at || p.created_at)) + '</td><td><b>' + esc(p.eng.child.name) + '</b><div class="tt-muted">' + esc(p.eng.parent.name) + '</div></td><td>' + p.sessions + ' lesson' + (p.sessions === 1 ? '' : 's') + ' of ' + esc(p.eng.subject) + '</td><td class="num"><b>' + money(p.amount) + '</b></td><td><span class="tt-pill ' + s[0] + '">' + s[1] + '</span></td></tr>'; }).join('') +
+            '</tbody></table></div>' : '<div class="tt-empty"><i class="fas fa-receipt"></i><b>No payments yet</b>When a parent pays for lessons with you, the payment shows here once eSchool has checked it.</div>') + '</div>' +
+            '<p class="tt-help" style="margin-top:12px"><i class="fas fa-circle-info"></i> These are the amounts parents paid eSchool for your lessons. eSchool pays teachers on its payout schedule; if a payment looks wrong, contact <a href="/teacher-support">Help &amp; Support</a>.</p>';
+    }
+
+    /* ---------- taking new learners ---------- */
+    function listOf(v) { try { var x = JSON.parse(v || '[]'); return Array.isArray(x) ? x : []; } catch (e) { return []; } }
+    $('ttAccepting').addEventListener('change', async function () {
+        var t = this, on = t.checked, p = S.profile || {}; t.disabled = true;
+        try {
+            await api('/api/tutor-profile', { method: 'POST', body: { headline: p.headline || '', bio: p.bio || '', subjects: listOf(p.subjects), levels: listOf(p.levels), qualifications: listOf(p.qualifications),
+                experience_years: p.experience_years == null ? null : p.experience_years, rate: p.rate == null ? null : p.rate, session_minutes: p.session_minutes || 60, mode: p.mode || 'online',
+                location: p.location || '', availability: p.availability || '', accepting: on } });
+            p.accepting = on ? 1 : 0; render();
+            note('ttNote', on ? 'You\'re taking new learners. Parents can send you requests.' : 'New requests are paused. Families you already teach aren\'t affected.', 'ok');
+        } catch (e) { t.checked = !on; note('ttNote', e.message, 'bad'); } finally { t.disabled = false; }
+    });
+
+    openTab((location.hash || '').slice(1) || 'requests');
+    load();
+    setInterval(function () { if (!document.hidden && !document.querySelector('.tt form')) load(); }, 60000);
+})();
+</script>
+{% endblock %}

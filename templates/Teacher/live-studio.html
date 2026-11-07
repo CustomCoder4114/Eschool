@@ -1,0 +1,599 @@
+{% extends "Teacher/teacher-body.html" %}
+
+{% block allcontent %}
+{#
+    TEACHER PAGE - Live studio  (templates/Teacher/live-studio.html)
+    Route: /teacher-live/studio/<id>
+    The teacher's camera / screen and microphone go straight to each learner's
+    browser (WebRTC). The server only passes the connection messages
+    (/api/live/<id>/signal), the chat, raised hands and who is watching.
+      POST /api/live/<id>/join      class details
+      GET  /api/live/<id>/state     viewers, raised hands, chat, connection messages (every 1.5 s)
+      POST /api/live/<id>/start     go live            POST /api/live/<id>/end   end the class
+      POST /api/live/<id>/settings  camera / mic / screen / chat paused
+      POST /api/live/<id>/hand      lower someone's hand
+      POST /api/live/<id>/remove    remove someone from the class
+      GET/POST /api/live/<id>/audience   who can enter: everyone on Basic/Pro, my learners, or people I pick
+      GET  /api/live/<id>/people?q= find learners to invite
+    The learner side is the player on the Live Classes page (Learner/live.html).
+#}
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+.st {
+    --st-accent: var(--primary-color, #2563EB);
+    --st-teal: #14B8A6;
+    --st-live: #ef4444;
+    --st-bg: #F8FAFC; --st-surface: #ffffff; --st-surface-2: #f1f5f9; --st-border: #e2e8f0;
+    --st-text: #0F172A; --st-text-2: #475569; --st-text-3: #64748B;
+    --st-ok: #059669; --st-ok-soft: #ecfdf5; --st-warn: #b45309; --st-warn-soft: #fffbeb; --st-bad: #dc2626; --st-bad-soft: #fef2f2;
+    --st-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 6px 18px rgba(15, 23, 42, .07);
+    max-width: 1320px; margin: 0 auto; color: var(--st-text); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+body.dark-mode .st {
+    --st-bg: #0b1220; --st-surface: #111827; --st-surface-2: #0f172a; --st-border: #263244;
+    --st-text: #e5e7eb; --st-text-2: #cbd5e1; --st-text-3: #94a3b8;
+    --st-ok-soft: rgba(16, 185, 129, .14); --st-warn-soft: rgba(245, 158, 11, .14); --st-bad-soft: rgba(239, 68, 68, .14);
+    --st-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+}
+.st *, .st *::before, .st *::after { box-sizing: border-box; }
+.st h1, .st h2, .st h3, .st p { margin: 0; }
+.st button, .st input, .st select, .st textarea { font-family: inherit; }
+.st :focus-visible { outline: 2px solid var(--st-accent); outline-offset: 2px; }
+.st-back { display: inline-flex; align-items: center; gap: 8px; color: var(--st-text-2); text-decoration: none; font-weight: 600; font-size: .88rem; margin-bottom: 12px; }
+.st-back:hover { color: var(--st-accent); }
+.st-head { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.st-head h1 { font: 700 1.35rem 'Manrope', 'Poppins', sans-serif; flex: 1; min-width: 200px; }
+.st-head .sub { display: block; font: 500 .85rem 'Inter', sans-serif; color: var(--st-text-3); margin-top: 3px; }
+.st-badge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; font-weight: 800; font-size: .78rem; letter-spacing: .5px; background: var(--st-surface-2); color: var(--st-text-2); border: 1px solid var(--st-border); }
+.st-badge.live { background: var(--st-live); color: #fff; border-color: var(--st-live); }
+.st-badge.live i { width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: stPulse 1.4s infinite; }
+@keyframes stPulse { 50% { opacity: .3; } }
+.st-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--st-border); background: var(--st-surface); color: var(--st-text); font-weight: 700; font-size: .88rem; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.st-btn:hover { background: var(--st-surface-2); }
+.st-btn:disabled { opacity: .5; cursor: default; }
+.st-btn[hidden], .st-picked .lbl[hidden] { display: none; }
+.st-btn.primary { background: var(--st-accent); border-color: transparent; color: #fff; }
+.st-btn.primary:hover { filter: brightness(1.07); }
+.st-btn.live { background: var(--st-live); border-color: transparent; color: #fff; }
+.st-btn.danger { color: var(--st-bad); }
+.st-btn.danger:hover { background: var(--st-bad-soft); }
+.st-btn.sm { height: 32px; padding: 0 10px; font-size: .78rem; border-radius: 9px; }
+.st-note { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px; border-radius: 12px; margin-bottom: 14px; font-size: .88rem; line-height: 1.45; }
+.st-note[hidden] { display: none; }
+.st-note.info { background: color-mix(in srgb, var(--st-accent) 10%, transparent); color: var(--st-accent); }
+.st-note.ok { background: var(--st-ok-soft); color: var(--st-ok); }
+.st-note.bad { background: var(--st-bad-soft); color: var(--st-bad); }
+.st-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.st-card { background: var(--st-surface); border: 1px solid var(--st-border); border-radius: 18px; box-shadow: var(--st-shadow); min-width: 0; }
+.st-stage { position: relative; aspect-ratio: 16 / 9; background: #0b1020; border-radius: 18px 18px 0 0; overflow: hidden; display: grid; place-items: center; }
+.st-stage video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.st-stage .off { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #cbd5e1; padding: 20px; background: radial-gradient(circle at 50% 40%, #1e293b, #0b1020); }
+.st-stage .off[hidden] { display: none; }
+.st-stage .off i { font-size: 2.2rem; display: block; margin-bottom: 10px; color: #94a3b8; }
+.st-stage .off b { display: block; color: #fff; font-size: 1.05rem; margin-bottom: 4px; }
+.st-chip { position: absolute; top: 12px; padding: 5px 10px; border-radius: 999px; font-size: .74rem; font-weight: 700; background: rgba(15, 23, 42, .72); color: #fff; display: inline-flex; gap: 6px; align-items: center; }
+.st-chip[hidden] { display: none; }
+.st-chip.l { left: 12px; } .st-chip.r { right: 12px; }
+.st-controls { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px; align-items: center; }
+.st-ctl { width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--st-border); background: var(--st-surface-2); color: var(--st-text); font-size: 1.05rem; cursor: pointer; display: grid; place-items: center; }
+.st-ctl:hover { filter: brightness(.97); }
+.st-ctl.off { background: var(--st-bad-soft); color: var(--st-bad); border-color: color-mix(in srgb, var(--st-bad) 35%, transparent); }
+.st-ctl.on { background: color-mix(in srgb, var(--st-accent) 14%, transparent); color: var(--st-accent); border-color: color-mix(in srgb, var(--st-accent) 40%, transparent); }
+.st-controls .grow { flex: 1; }
+.st-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 0 12px 12px; }
+.st-stats div { padding: 9px 10px; border-radius: 12px; background: var(--st-surface-2); }
+.st-stats b { display: block; font: 700 1.05rem 'Poppins', sans-serif; }
+.st-stats span { font-size: .72rem; color: var(--st-text-3); }
+.st-sec { padding: 14px 16px; border-top: 1px solid var(--st-border); }
+.st-sec:first-child { border-top: 0; }
+.st-sec h2 { font: 700 .95rem 'Poppins', sans-serif; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.st-sec h2 .n { margin-left: auto; font: 600 .78rem 'Inter', sans-serif; color: var(--st-text-3); }
+.st-tabs { display: flex; gap: 4px; padding: 6px; border-bottom: 1px solid var(--st-border); }
+.st-tab { flex: 1; height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--st-text-2); font-weight: 700; font-size: .84rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.st-tab[aria-selected="true"] { background: color-mix(in srgb, var(--st-accent) 12%, transparent); color: var(--st-accent); }
+.st-tab em { font-style: normal; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--st-live); color: #fff; font-size: .7rem; display: inline-grid; place-items: center; }
+.st-tab em[hidden] { display: none; }
+.st-panel[hidden] { display: none; }
+.st-people { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; }
+.st-person { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; }
+.st-person:hover { background: var(--st-surface-2); }
+.st-person.hand { background: var(--st-warn-soft); }
+.st-av { width: 34px; height: 34px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden; color: #fff; font: 700 .78rem 'Poppins', sans-serif; background: linear-gradient(135deg, var(--st-accent), var(--st-teal)); }
+.st-av img { width: 100%; height: 100%; object-fit: cover; }
+.st-person .nm { flex: 1; min-width: 0; font-size: .86rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-person .nm small { display: block; font-weight: 500; color: var(--st-text-3); font-size: .74rem; }
+.st-hand { color: var(--st-warn); font-weight: 700; font-size: .78rem; display: inline-flex; gap: 5px; align-items: center; }
+.st-empty { text-align: center; color: var(--st-text-3); font-size: .86rem; padding: 18px 8px; line-height: 1.5; }
+.st-empty i { display: block; font-size: 1.5rem; opacity: .5; margin-bottom: 6px; }
+.st-chat { height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+.st-msg { display: flex; gap: 8px; font-size: .86rem; }
+.st-msg .st-av { width: 28px; height: 28px; font-size: .68rem; }
+.st-msg .bd { flex: 1; min-width: 0; }
+.st-msg b { font-size: .8rem; }
+.st-msg b em { font-style: normal; margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--st-accent) 14%, transparent); color: var(--st-accent); font-size: .66rem; }
+.st-msg small { color: var(--st-text-3); font-size: .7rem; margin-left: 6px; }
+.st-msg p { margin-top: 2px; overflow-wrap: anywhere; line-height: 1.4; }
+.st-msg.del p { color: var(--st-text-3); font-style: italic; }
+.st-msg .x { border: 0; background: none; color: var(--st-text-3); cursor: pointer; padding: 2px 4px; opacity: 0; }
+.st-msg:hover .x, .st-msg .x:focus-visible { opacity: 1; }
+.st-chatform { display: flex; gap: 8px; margin-top: 10px; }
+.st-in { width: 100%; height: 42px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--st-border); background: var(--st-surface); color: var(--st-text); font-size: .88rem; }
+.st-in:focus { outline: none; border-color: var(--st-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--st-accent) 15%, transparent); }
+.st-switch { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--st-text-2); margin-top: 8px; cursor: pointer; }
+.st-switch input { width: 16px; height: 16px; accent-color: var(--st-accent); }
+.st-aud { display: flex; flex-direction: column; gap: 8px; }
+.st-aud label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--st-border); cursor: pointer; }
+.st-aud label:has(input:checked) { border-color: var(--st-accent); background: color-mix(in srgb, var(--st-accent) 7%, transparent); }
+.st-aud input { margin-top: 3px; accent-color: var(--st-accent); }
+.st-aud b { display: block; font-size: .88rem; }
+.st-aud small { color: var(--st-text-3); font-size: .78rem; }
+.st-picked { margin-top: 12px; }
+.st-picked[hidden] { display: none; }
+.st-picked .lbl { font-size: .78rem; font-weight: 700; color: var(--st-text-2); margin: 10px 0 6px; display: block; }
+.st-results { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; margin-top: 6px; }
+.st-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--st-accent) 10%, transparent); color: var(--st-accent); font-size: .8rem; font-weight: 600; }
+.st-tag button { border: 0; background: none; color: inherit; cursor: pointer; width: 22px; height: 22px; border-radius: 50%; }
+.st-tag button:hover { background: color-mix(in srgb, var(--st-accent) 18%, transparent); }
+.st-msgline { font-size: .82rem; margin-top: 8px; min-height: 18px; }
+.st-msgline.ok { color: var(--st-ok); } .st-msgline.bad { color: var(--st-bad); }
+.st-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 12px 0; }
+.st-summary div { padding: 12px; border-radius: 12px; background: var(--st-surface-2); text-align: center; }
+.st-summary b { display: block; font: 700 1.3rem 'Poppins', sans-serif; }
+.st-summary span { font-size: .78rem; color: var(--st-text-3); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 1000px) { .st-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) {
+    .st-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .st-ctl { width: 44px; height: 44px; }
+    .st-controls .st-btn { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .st-badge.live i { animation: none; } }
+</style>
+
+<div class="st" data-no-theme id="st" data-cid="{{ class_id }}">
+    <a class="st-back" href="/teacher-live"><i class="fas fa-arrow-left"></i> Back to live classes</a>
+    <div class="st-head">
+        <h1><span id="title">Live studio</span><span class="sub" id="sub">Loading…</span></h1>
+        <span class="st-badge" id="badge">NOT LIVE</span>
+        <span class="st-badge" id="clock" hidden></span>
+    </div>
+    <div class="st-note info" id="note" hidden></div>
+
+    <div class="st-grid">
+        <!-- ===== stage ===== -->
+        <section class="st-card" aria-label="Your camera">
+            <div class="st-stage">
+                <video id="preview" autoplay playsinline muted></video>
+                <div class="off" id="stageOff"><div><i class="fas fa-video-slash"></i><b id="offTitle">Camera is off</b><span id="offText">Turn on your camera or share your screen. Learners can still hear you.</span></div></div>
+                <span class="st-chip l" id="srcChip" hidden></span>
+                <span class="st-chip r" id="watchChip" hidden><i class="fas fa-eye"></i> <span id="watchN">0</span> watching</span>
+            </div>
+            <div class="st-controls">
+                <button type="button" class="st-ctl" id="camBtn" aria-label="Turn camera off" title="Camera"><i class="fas fa-video"></i></button>
+                <button type="button" class="st-ctl" id="micBtn" aria-label="Mute microphone" title="Microphone"><i class="fas fa-microphone"></i></button>
+                <button type="button" class="st-ctl" id="shareBtn" aria-label="Share your screen" title="Share screen"><i class="fas fa-display"></i></button>
+                <span class="grow"></span>
+                <button type="button" class="st-btn live" id="goBtn"><i class="fas fa-tower-broadcast"></i> Go live</button>
+                <button type="button" class="st-btn danger" id="endBtn" hidden><i class="fas fa-circle-stop"></i> End class</button>
+            </div>
+            <div class="st-stats">
+                <div><b id="sNow">0</b><span>watching now</span></div>
+                <div><b id="sTotal">0</b><span>joined in total</span></div>
+                <div><b id="sHands">0</b><span>hands up</span></div>
+                <div><b id="sTime">–</b><span>live for</span></div>
+            </div>
+            <div class="st-sec" id="endedBox" hidden></div>
+        </section>
+
+        <!-- ===== side ===== -->
+        <aside class="st-card">
+            <div class="st-tabs" role="tablist" aria-label="Studio">
+                <button type="button" class="st-tab" role="tab" data-tab="people" aria-selected="true"><i class="fas fa-users"></i> People <em id="handBadge" hidden>0</em></button>
+                <button type="button" class="st-tab" role="tab" data-tab="chat" aria-selected="false"><i class="fas fa-comments"></i> Chat <em id="chatBadge" hidden>0</em></button>
+                <button type="button" class="st-tab" role="tab" data-tab="access" aria-selected="false"><i class="fas fa-lock"></i> Who can join</button>
+            </div>
+
+            <div class="st-panel" data-panel="people">
+                <div class="st-sec">
+                    <h2><i class="fas fa-hand" style="color:#f59e0b"></i> Raised hands <span class="n" id="handsN"></span></h2>
+                    <div class="st-people" id="hands"></div>
+                </div>
+                <div class="st-sec">
+                    <h2><i class="fas fa-users" style="color:var(--st-accent)"></i> In the class <span class="n" id="peopleN"></span></h2>
+                    <div class="st-people" id="people"></div>
+                </div>
+            </div>
+
+            <div class="st-panel" data-panel="chat" hidden>
+                <div class="st-sec">
+                    <div class="st-chat" id="chat" aria-live="polite"></div>
+                    <form class="st-chatform" id="chatForm" autocomplete="off">
+                        <label for="chatIn" class="sr">Message to the class</label>
+                        <input class="st-in" id="chatIn" maxlength="400" placeholder="Say something to the class">
+                        <button type="submit" class="st-btn primary" aria-label="Send"><i class="fas fa-paper-plane"></i></button>
+                    </form>
+                    <label class="st-switch"><input type="checkbox" id="chatLock"> Pause the chat for learners</label>
+                    <div class="st-msgline" id="chatMsg" role="status"></div>
+                </div>
+            </div>
+
+            <div class="st-panel" data-panel="access" hidden>
+                <div class="st-sec">
+                    <h2><i class="fas fa-door-open" style="color:var(--st-teal)"></i> Who can join this class</h2>
+                    <div class="st-aud" id="aud" role="radiogroup" aria-label="Who can join">
+                        <label><input type="radio" name="aud" value="everyone"><span><b>Everyone on Basic or Pro</b><small>Any learner whose plan includes live classes.</small></span></label>
+                        <label><input type="radio" name="aud" value="my_learners"><span><b>Only my learners</b><small>Learners who hired you for private lessons.</small></span></label>
+                        <label><input type="radio" name="aud" value="picked"><span><b>Only people I pick</b><small>Choose learners by name. They get an invitation.</small></span></label>
+                    </div>
+                    <div class="st-picked" id="pickBox" hidden>
+                        <span class="lbl">Invited (<span id="pickN">0</span>)</span>
+                        <div class="st-tags" id="pickTags"></div>
+                        <span class="lbl" id="mineLbl">Your learners</span>
+                        <div class="st-tags" id="mineTags"></div>
+                        <span class="lbl">Find a learner</span>
+                        <input class="st-in" id="findIn" type="search" placeholder="Type a name" autocomplete="off" aria-label="Find a learner">
+                        <div class="st-results" id="results"></div>
+                    </div>
+                    <button type="button" class="st-btn primary" id="audSave" style="margin-top:12px;width:100%"><i class="fas fa-check"></i> Save</button>
+                    <div class="st-msgline" id="audMsg" role="status"></div>
+                    <p style="font-size:.78rem;color:var(--st-text-3);margin-top:10px;line-height:1.5">Learners on the Free plan can't join live classes. Anyone you remove from the class can't come back unless you let them in again.</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const root = document.getElementById("st");
+const CID = Number(root.dataset.cid);
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const initials = n => (n || "?").split(/\s+/).map(w => w[0] || "").join("").slice(0, 2).toUpperCase();
+const av = p => `<span class="st-av">${p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="">` : esc(initials(p.name))}</span>`;
+const clock = s => { s = Math.max(0, Math.floor(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+const timeOf = iso => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+async function api(url, opts) {
+    const r = await fetch(url, Object.assign({ credentials: "same-origin", cache: "no-store" }, opts || {}));
+    if (r.status === 401) { location.href = "/login"; throw new Error("Please sign in again."); }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.success === false) throw new Error(d.message || `Something went wrong (${r.status}).`);
+    return d;
+}
+const post = (url, body, method) => api(url, { method: method || "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+function note(text, kind) {
+    const n = $("note"); if (!text) { n.hidden = true; return; }
+    n.className = "st-note " + (kind || "info"); n.hidden = false;
+    n.innerHTML = `<i class="fas ${kind === "bad" ? "fa-circle-exclamation" : kind === "ok" ? "fa-circle-check" : "fa-circle-info"}"></i><div>${esc(text)}</div>`;
+}
+
+let RTC = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }] };
+let info = null, camStream = null, screenStream = null, outStream = new MediaStream();
+let camOn = true, micOn = true, sharing = false;
+let chatSince = 0, msgs = [], unread = 0, tab = "people", lastHands = 0, viewers = [];
+const peers = new Map();        // learner id -> RTCPeerConnection
+let polling = null;
+
+/* ---------- camera, microphone, screen ---------- */
+let recovering = false, lastRecover = 0;
+async function startDevices() {
+    try {
+        camStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: { echoCancellation: true, noiseSuppression: true } });
+        watchTracks(camStream);
+    } catch (e) {
+        try { camStream = await navigator.mediaDevices.getUserMedia({ audio: true }); camOn = false; note("No camera found, or the camera is blocked. Learners will hear you; you can share your screen.", "info"); }
+        catch (e2) { camStream = new MediaStream(); camOn = false; micOn = false; note("eSchool can't use your camera or microphone. Allow them in the browser (the camera icon in the address bar), then reload this page.", "bad"); }
+    }
+    rebuildOut(); drawControls();
+}
+// The camera can be taken away while the studio is open: another app (Zoom, Teams, the Camera app),
+// another tab, the computer's privacy settings or power saving. When that happens the picture stops,
+// so watch the camera and bring it back.
+function watchTracks(stream) {
+    stream.getTracks().forEach(t => {
+        t.addEventListener("ended", () => { if (!stopping) cameraLost(t.kind); });
+        t.addEventListener("mute", () => { if (t.kind === "video" && !stopping) { $("offTitle").textContent = "Your computer paused the camera"; drawControls(); } });
+        t.addEventListener("unmute", () => drawControls());
+    });
+}
+let stopping = false;
+async function cameraLost(kind) {
+    drawControls();
+    if (recovering) return;
+    // try to get it back on its own once; after that, ask the teacher
+    if (Date.now() - lastRecover > 20000) {
+        recovering = true; lastRecover = Date.now();
+        note(`Your ${kind === "video" ? "camera" : "microphone"} stopped. Turning it back on…`, "info");
+        try {
+            const fresh = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: { echoCancellation: true, noiseSuppression: true } });
+            if (camStream) camStream.getTracks().forEach(t => { if (t.readyState !== "ended") { stopping = true; t.stop(); stopping = false; } });
+            camStream = fresh; watchTracks(fresh); rebuildOut(); drawControls(); sendSettings();
+            note("Your camera is back on.", "ok"); setTimeout(() => note(""), 4000);
+        } catch (e) { showCameraHelp(); }
+        recovering = false;
+    } else showCameraHelp();
+}
+function showCameraHelp() {
+    const n = $("note"); n.className = "st-note bad"; n.hidden = false;
+    n.innerHTML = `<i class="fas fa-video-slash"></i><div><b>Your camera keeps turning off.</b> Close other apps or tabs that use the camera (Zoom, Teams, WhatsApp, the Camera app, another eSchool tab), and check that the browser may use the camera (the camera icon in the address bar).
+        <button type="button" class="st-btn sm primary" id="camRetry" style="margin-left:8px"><i class="fas fa-rotate-right"></i> Turn camera on again</button></div>`;
+    $("camRetry").onclick = () => { lastRecover = 0; cameraLost("video"); };
+}
+function liveTrack(t) { return t && t.readyState === "live" ? t : null; }
+function currentVideoTrack() {
+    if (sharing && screenStream) return screenStream.getVideoTracks()[0] || null;
+    return camStream ? camStream.getVideoTracks()[0] || null : null;
+}
+function rebuildOut() {
+    const v = liveTrack(currentVideoTrack()), a = liveTrack(camStream ? camStream.getAudioTracks()[0] : null);
+    if (v) v.enabled = sharing ? true : camOn;
+    if (a) a.enabled = micOn;
+    outStream = new MediaStream([v, a].filter(Boolean));
+    $("preview").srcObject = outStream;
+    // swap the picture going to every learner without reconnecting
+    peers.forEach(pc => {
+        pc.getSenders().forEach(s => {
+            if (s.track && s.track.kind === "video" && v && s.track !== v) s.replaceTrack(v).catch(() => {});
+            if (!s.track && v && s._kind === "video") s.replaceTrack(v).catch(() => {});
+            if (s.track && s.track.kind === "audio" && a && s.track !== a) s.replaceTrack(a).catch(() => {});
+        });
+    });
+}
+function drawControls() {
+    const vt = liveTrack(currentVideoTrack());
+    const showVideo = sharing || (camOn && vt && !vt.muted);
+    $("stageOff").hidden = !!showVideo;
+    if (!vt || !vt.muted) $("offTitle").textContent = vt ? "Camera is off" : currentVideoTrack() ? "The camera stopped" : "No camera";
+    $("camBtn").className = "st-ctl " + (camOn ? "" : "off"); $("camBtn").innerHTML = `<i class="fas ${camOn ? "fa-video" : "fa-video-slash"}"></i>`;
+    $("camBtn").setAttribute("aria-label", camOn ? "Turn camera off" : "Turn camera on");
+    $("micBtn").className = "st-ctl " + (micOn ? "" : "off"); $("micBtn").innerHTML = `<i class="fas ${micOn ? "fa-microphone" : "fa-microphone-slash"}"></i>`;
+    $("micBtn").setAttribute("aria-label", micOn ? "Mute microphone" : "Unmute microphone");
+    $("shareBtn").className = "st-ctl " + (sharing ? "on" : ""); $("shareBtn").setAttribute("aria-label", sharing ? "Stop sharing your screen" : "Share your screen");
+    $("srcChip").hidden = !info || info.state !== "live";
+    $("srcChip").innerHTML = sharing ? '<i class="fas fa-display"></i> Sharing your screen' : camOn ? '<i class="fas fa-video"></i> Camera' : '<i class="fas fa-video-slash"></i> Camera off';
+}
+function sendSettings() { post(`/api/live/${CID}/settings`, { cam: camOn && !!currentVideoTrack(), mic: micOn, screen: sharing }).catch(() => {}); }
+$("camBtn").addEventListener("click", () => { camOn = !camOn; rebuildOut(); drawControls(); sendSettings(); });
+$("micBtn").addEventListener("click", () => { micOn = !micOn; rebuildOut(); drawControls(); sendSettings(); });
+$("shareBtn").addEventListener("click", async () => {
+    if (sharing) { stopShare(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) { note("This browser can't share the screen. Use Chrome, Edge or Firefox on a computer.", "bad"); return; }
+    try {
+        screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        sharing = true;
+        screenStream.getVideoTracks()[0].addEventListener("ended", stopShare);
+        rebuildOut(); drawControls(); sendSettings();
+    } catch (e) { /* the teacher closed the picker */ }
+});
+function stopShare() {
+    if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+    screenStream = null; sharing = false;
+    rebuildOut(); drawControls(); sendSettings();
+}
+
+/* ---------- one connection per learner ---------- */
+function closePeer(id) { const pc = peers.get(id); if (pc) { try { pc.close(); } catch (e) {} peers.delete(id); } }
+async function connectTo(id) {
+    closePeer(id);
+    const pc = new RTCPeerConnection(RTC);
+    peers.set(id, pc);
+    const v = currentVideoTrack(), a = camStream ? camStream.getAudioTracks()[0] : null;
+    // always send a video and an audio line so the picture can be swapped later
+    if (v) pc.addTrack(v, outStream); else { const t = pc.addTransceiver("video", { direction: "sendonly" }); t.sender._kind = "video"; }
+    if (a) pc.addTrack(a, outStream); else pc.addTransceiver("audio", { direction: "sendonly" });
+    pc.onicecandidate = e => { if (e.candidate) post(`/api/live/${CID}/signal`, { to: id, kind: "ice", payload: e.candidate }).catch(() => {}); };
+    pc.onconnectionstatechange = () => { if (["failed", "closed"].includes(pc.connectionState) && peers.get(id) === pc) closePeer(id); };
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await post(`/api/live/${CID}/signal`, { to: id, kind: "offer", payload: pc.localDescription });
+}
+async function onSignal(s) {
+    try {
+        if (s.kind === "ready") { if (info && info.state === "live") await connectTo(s.from); }
+        else if (s.kind === "answer") { const pc = peers.get(s.from); if (pc && pc.signalingState === "have-local-offer") await pc.setRemoteDescription(s.payload); }
+        else if (s.kind === "ice") { const pc = peers.get(s.from); if (pc && pc.remoteDescription) await pc.addIceCandidate(s.payload).catch(() => {}); }
+        else if (s.kind === "bye") closePeer(s.from);
+    } catch (e) { console.warn("studio signal", e); }
+}
+
+/* ---------- going live / ending ---------- */
+$("goBtn").addEventListener("click", async () => {
+    $("goBtn").disabled = true;
+    try {
+        const d = await post(`/api/live/${CID}/start`);
+        info = d.info; sendSettings(); note("You're live. Learners who open the class see and hear you now.", "ok");
+        setTimeout(() => note(""), 5000);
+    } catch (e) { note(e.message, "bad"); }
+    $("goBtn").disabled = false; draw();
+});
+$("endBtn").addEventListener("click", async () => {
+    const b = $("endBtn");
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.innerHTML = '<i class="fas fa-circle-stop"></i> Tap again to end'; setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.innerHTML = '<i class="fas fa-circle-stop"></i> End class'; } }, 4000); return; }
+    b.disabled = true;
+    try {
+        const d = await post(`/api/live/${CID}/end`);
+        peers.forEach((_, id) => closePeer(id));
+        info.state = "ended";
+        showSummary(d.summary);
+        stopping = true;
+        if (camStream) camStream.getTracks().forEach(t => t.stop());
+        if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+    } catch (e) { note(e.message, "bad"); b.disabled = false; }
+    draw();
+});
+function showSummary(sm, ratings) {
+    const box = $("endedBox"); box.hidden = false;
+    box.innerHTML = `<h2><i class="fas fa-flag-checkered" style="color:var(--st-teal)"></i> Class finished</h2>
+        <div class="st-summary"><div><b>${sm ? sm.learners : "–"}</b><span>learners joined</span></div><div><b>${sm ? sm.peak : "–"}</b><span>most at once</span></div>
+        <div><b>${sm ? sm.minutes + " min" : "–"}</b><span>live</span></div><div><b>${sm ? sm.messages : "–"}</b><span>chat messages</span></div>
+        <div><b id="rateNow">${ratings && ratings.count ? ratings.out_of_10 + "/10" : "–"}</b><span id="rateNowL">${ratings && ratings.count ? ratings.count + " learner rating" + (ratings.count === 1 ? "" : "s") : "learners rate the class now"}</span></div></div>
+        <p style="font-size:.84rem;color:var(--st-text-3)">Learners who joined are asked to rate this class. Their ratings count towards your teacher rating on eSchool.</p>
+        <a class="st-btn primary" href="/teacher-live" style="margin-top:12px"><i class="fas fa-plus"></i> Plan another class</a>`;
+}
+
+/* ---------- polling the class ---------- */
+async function poll() {
+    let d;
+    try { d = await api(`/api/live/${CID}/state?chat=${chatSince}`); }
+    catch (e) { note("Reconnecting… check your internet.", "bad"); return; }
+    if ($("note").classList.contains("bad") && /Reconnecting/.test($("note").textContent)) note("");
+    info = d.info;
+    for (const s of d.signals) await onSignal(s);
+    viewers = d.viewers || [];
+    const here = new Set(viewers.map(v => v.id));
+    peers.forEach((_, id) => { if (!here.has(id)) closePeer(id); });
+    $("sNow").textContent = d.viewers_count; $("watchN").textContent = d.viewers_count;
+    $("sTotal").textContent = d.total_joined || 0;
+    if (d.chat.length) {
+        d.chat.forEach(m => { const i = msgs.findIndex(x => x.id === m.id); if (i >= 0) msgs[i] = m; else { msgs.push(m); if (tab !== "chat" && !m.teacher) unread++; } });
+        chatSince = Math.max(chatSince, ...d.chat.map(m => m.id)); drawChat();
+    }
+    $("chatLock").checked = !!info.chat_locked;
+    drawPeople();
+    if (info.state === "ended" && $("endedBox").hidden) showSummary(null, d.ratings);
+    if (info.state === "ended" && d.ratings && $("rateNow")) { $("rateNow").textContent = d.ratings.count ? d.ratings.out_of_10 + "/10" : "–"; $("rateNowL").textContent = d.ratings.count ? `${d.ratings.count} learner rating${d.ratings.count === 1 ? "" : "s"}` : "no ratings yet"; }
+    draw();
+}
+function draw() {
+    if (!info) return;
+    const live = info.state === "live", ended = info.state === "ended";
+    $("badge").className = "st-badge " + (live ? "live" : ""); $("badge").innerHTML = live ? "<i></i> LIVE" : ended ? "ENDED" : "NOT LIVE";
+    $("goBtn").hidden = live || ended; $("endBtn").hidden = !live;
+    $("watchChip").hidden = !live;
+    $("sTime").textContent = live && info.went_live_at ? clock((Date.now() - Date.parse(info.went_live_at)) / 1000) : "–";
+    $("clock").hidden = !(live && info.went_live_at); $("clock").textContent = $("sTime").textContent;
+    const start = Date.parse(info.start);
+    $("sub").textContent = [info.subject ? ({ math: "Mathematics", english: "English", kiswahili: "Kiswahili", csl: "CSL" }[info.subject] || info.subject) : "", info.grade,
+        new Date(start).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + " · " + info.minutes + " min",
+        info.audience_label].filter(Boolean).join(" · ");
+    drawControls();
+}
+function drawPeople() {
+    const hands = viewers.filter(v => v.hand);
+    $("sHands").textContent = hands.length; $("handsN").textContent = hands.length ? hands.length : "";
+    $("handBadge").hidden = !hands.length || tab === "people"; $("handBadge").textContent = hands.length;
+    if (hands.length > lastHands) note(`${hands[hands.length - 1].name} raised their hand to ask a question.`, "info");
+    lastHands = hands.length;
+    $("hands").innerHTML = hands.length ? hands.map(v => `<div class="st-person hand">${av(v)}<span class="nm">${esc(v.name)}<small>wants to ask a question</small></span>
+        <button type="button" class="st-btn sm" data-lower="${v.id}"><i class="fas fa-hand"></i> Lower</button></div>`).join("")
+        : '<div class="st-empty"><i class="far fa-hand"></i>No hands up. Learners tap “Raise hand” to ask a question.</div>';
+    $("peopleN").textContent = viewers.length || "";
+    $("people").innerHTML = viewers.length ? viewers.map(v => `<div class="st-person">${av(v)}<span class="nm">${esc(v.name)}<small>joined ${timeOf(v.joined_at)}${v.role !== "student" ? " · " + esc(v.role) : ""}</small></span>
+        ${v.hand ? '<span class="st-hand"><i class="fas fa-hand"></i></span>' : ""}
+        <button type="button" class="st-btn sm danger" data-remove="${v.id}" data-name="${esc(v.name)}" aria-label="Remove ${esc(v.name)} from the class"><i class="fas fa-user-xmark"></i></button></div>`).join("")
+        : `<div class="st-empty"><i class="fas fa-users"></i>${info && info.state === "live" ? "No one is watching yet. Learners join from Live Classes." : "Learners appear here when they open the class."}</div>`;
+}
+function drawChat() {
+    const box = $("chat");
+    $("chatBadge").hidden = !unread; $("chatBadge").textContent = unread > 9 ? "9+" : unread;
+    if (!msgs.length) { box.innerHTML = '<div class="st-empty"><i class="far fa-comments"></i>No messages yet.</div>'; return; }
+    const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+    box.innerHTML = msgs.map(m => `<div class="st-msg ${m.deleted ? "del" : ""}">${av(m)}<div class="bd"><b>${esc(m.teacher ? "You" : m.name)}${m.teacher ? "<em>Teacher</em>" : ""}</b><small>${timeOf(m.at)}</small>
+        <p>${m.deleted ? "Removed" : esc(m.text)}</p></div>${m.deleted ? "" : `<button type="button" class="x" data-del="${m.id}" aria-label="Remove this message"><i class="fas fa-trash-can"></i></button>`}</div>`).join("");
+    if (atEnd) box.scrollTop = box.scrollHeight;
+}
+root.addEventListener("click", async e => {
+    const t = e.target;
+    const tb = t.closest("[data-tab]");
+    if (tb) {
+        tab = tb.dataset.tab;
+        document.querySelectorAll(".st-tab").forEach(x => x.setAttribute("aria-selected", String(x === tb)));
+        document.querySelectorAll("[data-panel]").forEach(p => { p.hidden = p.dataset.panel !== tab; });
+        if (tab === "chat") { unread = 0; drawChat(); $("chat").scrollTop = $("chat").scrollHeight; }
+        if (tab === "access" && !aud) loadAudience();
+        drawPeople(); return;
+    }
+    const lw = t.closest("[data-lower]"); if (lw) { post(`/api/live/${CID}/hand`, { user_id: Number(lw.dataset.lower), up: false }).then(poll).catch(err => note(err.message, "bad")); return; }
+    const rm = t.closest("[data-remove]");
+    if (rm) {
+        if (!rm.dataset.sure) { rm.dataset.sure = "1"; rm.innerHTML = "Remove?"; setTimeout(() => { if (rm.isConnected) { delete rm.dataset.sure; rm.innerHTML = '<i class="fas fa-user-xmark"></i>'; } }, 3000); return; }
+        const id = Number(rm.dataset.remove);
+        try { await post(`/api/live/${CID}/remove`, { user_id: id }); closePeer(id); note(`${rm.dataset.name} was removed from the class and can't come back in.`, "ok"); poll(); }
+        catch (err) { note(err.message, "bad"); }
+        return;
+    }
+    const dl = t.closest("[data-del]"); if (dl) { api(`/api/live/${CID}/chat/${dl.dataset.del}`, { method: "DELETE" }).then(poll).catch(err => note(err.message, "bad")); }
+});
+$("chatForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const text = $("chatIn").value.trim(); if (!text) return;
+    $("chatIn").value = ""; $("chatMsg").textContent = "";
+    try { await post(`/api/live/${CID}/chat`, { text }); poll(); } catch (err) { $("chatIn").value = text; $("chatMsg").className = "st-msgline bad"; $("chatMsg").textContent = err.message; }
+});
+$("chatLock").addEventListener("change", e => { post(`/api/live/${CID}/settings`, { chat_locked: e.target.checked }).catch(err => note(err.message, "bad")); });
+
+/* ---------- who can join ---------- */
+let aud = null, picked = new Map(), findTimer = null;
+async function loadAudience() {
+    try { aud = await api(`/api/live/${CID}/audience`); }
+    catch (e) { $("audMsg").className = "st-msgline bad"; $("audMsg").textContent = e.message; return; }
+    picked = new Map(aud.invited.map(p => [p.id, p]));
+    const r = document.querySelector(`#aud input[value="${aud.audience}"]`); if (r) r.checked = true;
+    drawAudience();
+}
+function drawAudience() {
+    const val = (document.querySelector("#aud input:checked") || {}).value;
+    $("pickBox").hidden = val !== "picked";
+    $("pickN").textContent = picked.size;
+    $("pickTags").innerHTML = picked.size ? [...picked.values()].map(p => `<span class="st-tag">${esc(p.name)}<button type="button" data-unpick="${p.id}" aria-label="Remove ${esc(p.name)}">✕</button></span>`).join("") : '<span style="font-size:.8rem;color:var(--st-text-3)">No one yet.</span>';
+    const mine = (aud && aud.my_learners || []).filter(p => !picked.has(p.id));
+    $("mineLbl").hidden = !mine.length;
+    $("mineTags").innerHTML = mine.map(p => `<button type="button" class="st-btn sm" data-pick='${esc(JSON.stringify(p))}'><i class="fas fa-plus"></i> ${esc(p.name)}</button>`).join("");
+}
+$("aud").addEventListener("change", drawAudience);
+$("pickBox").addEventListener("click", e => {
+    const pk = e.target.closest("[data-pick]"); if (pk) { const p = JSON.parse(pk.dataset.pick); picked.set(p.id, p); drawAudience(); $("results").querySelectorAll(`[data-pick]`).forEach(b => { if (JSON.parse(b.dataset.pick).id === p.id) b.remove(); }); return; }
+    const up = e.target.closest("[data-unpick]"); if (up) { picked.delete(Number(up.dataset.unpick)); drawAudience(); }
+});
+$("findIn").addEventListener("input", () => {
+    clearTimeout(findTimer);
+    findTimer = setTimeout(async () => {
+        const q = $("findIn").value.trim();
+        if (q.length < 2) { $("results").innerHTML = ""; return; }
+        try {
+            const d = await api(`/api/live/${CID}/people?q=${encodeURIComponent(q)}`);
+            const list = d.people.filter(p => !picked.has(p.id));
+            $("results").innerHTML = list.length ? list.map(p => `<div class="st-person">${av(p)}<span class="nm">${esc(p.name)}</span><button type="button" class="st-btn sm" data-pick='${esc(JSON.stringify(p))}'><i class="fas fa-plus"></i> Invite</button></div>`).join("")
+                : '<div class="st-empty" style="padding:10px">No learner with that name.</div>';
+        } catch (e) { $("results").innerHTML = `<div class="st-empty">${esc(e.message)}</div>`; }
+    }, 250);
+});
+$("audSave").addEventListener("click", async () => {
+    const val = (document.querySelector("#aud input:checked") || {}).value;
+    if (!val) { $("audMsg").className = "st-msgline bad"; $("audMsg").textContent = "Choose who can join."; return; }
+    if (val === "picked" && !picked.size) { $("audMsg").className = "st-msgline bad"; $("audMsg").textContent = "Invite at least one learner, or choose another option."; return; }
+    $("audSave").disabled = true; $("audMsg").className = "st-msgline"; $("audMsg").textContent = "Saving…";
+    try {
+        aud = await post(`/api/live/${CID}/audience`, { audience: val, invite: [...picked.keys()] });
+        $("audMsg").className = "st-msgline ok";
+        $("audMsg").textContent = val === "picked" ? `Saved. ${picked.size} learner${picked.size === 1 ? "" : "s"} invited; they got a notification.` : "Saved.";
+        poll();
+    } catch (e) { $("audMsg").className = "st-msgline bad"; $("audMsg").textContent = e.message; }
+    $("audSave").disabled = false;
+});
+
+/* ---------- start ---------- */
+(async () => {
+    if (!window.RTCPeerConnection || !navigator.mediaDevices) { note("This browser can't run a live class. Use Chrome, Edge, Firefox or Safari.", "bad"); }
+    try { const c = await api("/api/calls/config"); if (c.iceServers && c.iceServers.length) RTC = { iceServers: c.iceServers }; } catch (e) { /* default servers */ }
+    try { info = (await post(`/api/live/${CID}/join`)).info; }
+    catch (e) { note(e.message, "bad"); $("sub").textContent = ""; return; }
+    $("title").textContent = info.title;
+    document.title = info.title + " · eSchool studio";
+    draw();
+    if (info.state !== "ended" && navigator.mediaDevices) await startDevices();
+    poll();
+    polling = setInterval(poll, 1500);
+    setInterval(() => {
+        draw();
+        const pv = $("preview"); if (pv.srcObject && pv.paused && !stopping) pv.play().catch(() => {});
+        const t = currentVideoTrack();
+        if (!stopping && camOn && !sharing && t && t.readyState === "ended") cameraLost("video");
+    }, 1000);
+})();
+window.addEventListener("beforeunload", e => { if (info && info.state === "live") { e.preventDefault(); e.returnValue = ""; } });
+})();
+</script>
+{% endblock %}

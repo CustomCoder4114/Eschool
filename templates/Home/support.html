@@ -1,0 +1,926 @@
+{% extends "Home/fronten.html" %}
+{% block content %}
+{#
+    PUBLIC SUPPORT PAGE  (templates/Home/support.html)
+    Routes: /support (visitors who are not signed in), /policies (everyone), /career (old link, redirects here)
+    Answers to common questions and every policy in one place:
+    Privacy policy, Terms of service, rules for parents and rules for teachers.
+    Links straight to a section: /policies#privacy  #terms  #parents  #teachers  #faq
+#}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   ESCHOOL SUPPORT — same brand system as the other public pages
+   Display: Manrope / Body: Inter / Eyebrows+Numerals: Poppins
+   ============================================================ */
+#eschool-support{
+  --primary:#2563EB;
+  --secondary:#3B82F6;
+  --accent:#14B8A6;
+  --highlight:#F59E0B;
+  --success:#22C55E;
+  --danger:#EF4444;
+  --bg:#F8FAFC;
+  --ink:#0F172A;
+  --ink-2:#334155;
+  --muted:#64748B;
+  --line:#E2E8F0;
+  --white:#FFFFFF;
+  --glass-bg: rgba(255,255,255,0.6);
+  --glass-border: rgba(255,255,255,0.8);
+  --glass-shadow: 0 20px 50px -12px rgba(15,23,42,0.12);
+  --radius-sm:12px;
+  --radius-md:20px;
+  --radius-lg:28px;
+  --ease: cubic-bezier(.16,1,.3,1);
+  --font-display:'Manrope', sans-serif;
+  --font-body:'Inter', sans-serif;
+  --font-num:'Poppins', sans-serif;
+
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--bg);
+  overflow-x: hidden;
+  position: relative;
+}
+#eschool-support *{ box-sizing: border-box; }
+#eschool-support a{ text-decoration:none; color:inherit; }
+#eschool-support ul{ list-style:none; margin:0; padding:0; }
+#eschool-support button{ font-family:inherit; }
+#eschool-support section{ position:relative; z-index:2; }
+
+#eschool-support h1, #eschool-support h2, #eschool-support h3, #eschool-support h4{
+  font-family: var(--font-display); color: var(--ink); line-height:1.15; letter-spacing:-0.02em; margin:0;
+}
+#eschool-support .eyebrow{
+  font-family: var(--font-num); font-size:0.78rem; font-weight:600; letter-spacing:0.14em;
+  text-transform:uppercase; color: var(--primary); display:inline-flex; align-items:center; gap:8px;
+}
+#eschool-support .eyebrow::before{ content:''; width:18px; height:2px; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius:2px; }
+
+#eschool-support .wrap{ max-width:1200px; margin:0 auto; padding:0 32px; }
+#eschool-support .section-pad{ padding:100px 0; }
+@media (max-width:900px){ #eschool-support .section-pad{ padding:64px 0; } #eschool-support .wrap{ padding:0 20px; } }
+
+#eschool-support .reveal{ opacity:0; transform: translateY(28px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
+#eschool-support .reveal.in-view{ opacity:1; transform:none; }
+#eschool-support .reveal-delay-1{ transition-delay:.08s; }
+#eschool-support .reveal-delay-2{ transition-delay:.16s; }
+#eschool-support .reveal-delay-3{ transition-delay:.24s; }
+@media (prefers-reduced-motion: reduce){ #eschool-support *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; } }
+
+/* ---------- ambient background ---------- */
+#eschool-support .ambient-bg{
+  position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+  background:
+    radial-gradient(circle at 8% 6%, rgba(37,99,235,0.10), transparent 45%),
+    radial-gradient(circle at 92% 18%, rgba(20,184,166,0.10), transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(59,130,246,0.08), transparent 50%),
+    var(--bg);
+}
+#eschool-support .dot-grid{
+  position:absolute; inset:0; background-image: radial-gradient(rgba(15,23,42,0.07) 1px, transparent 1px);
+  background-size:26px 26px; mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%); opacity:.5;
+}
+#eschool-support .blur-circle{ position:absolute; border-radius:50%; filter:blur(70px); opacity:.35; animation: sp-float 22s ease-in-out infinite; }
+#eschool-support .blur-circle.c1{ width:420px; height:420px; background:var(--secondary); top:-120px; left:-100px; }
+#eschool-support .blur-circle.c2{ width:360px; height:360px; background:var(--accent); top:35%; right:-140px; animation-delay:-6s; }
+#eschool-support .blur-circle.c3{ width:300px; height:300px; background:var(--highlight); opacity:.18; bottom:8%; left:22%; animation-delay:-12s; }
+@keyframes sp-float{ 0%,100%{ transform: translate(0,0) scale(1); } 50%{ transform: translate(30px,-40px) scale(1.08); } }
+
+/* ============================================================
+   HERO — "Safe harbour": a shield with a reply bubble
+   ============================================================ */
+#eschool-support .hero{ padding:150px 0 70px; }
+#eschool-support .hero-grid{ display:grid; grid-template-columns: 1.05fr 0.95fr; gap:56px; align-items:center; }
+@media (max-width:980px){ #eschool-support .hero-grid{ grid-template-columns:1fr; } #eschool-support .hero{ padding:120px 0 40px; } }
+#eschool-support .hero h1{ font-size: clamp(2.3rem,4.6vw,3.7rem); font-weight:800; margin:18px 0 20px; }
+#eschool-support .hero h1 .accent-word{ background: linear-gradient(100deg, var(--primary), var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+#eschool-support .hero p.lead{ font-size:1.12rem; color:var(--muted); max-width:540px; line-height:1.7; margin:0 0 34px; }
+
+#eschool-support .btn-row{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:0; }
+#eschool-support .btn{
+  position:relative; overflow:hidden; isolation:isolate; font-family:var(--font-display); font-weight:700; font-size:0.98rem;
+  padding:15px 28px; border-radius:100px; cursor:pointer; border:none; display:inline-flex; align-items:center; gap:10px;
+  transition: transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s, color .35s;
+}
+#eschool-support .btn svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
+#eschool-support .btn-primary{ color:#fff; background: linear-gradient(100deg, var(--primary), var(--secondary)); box-shadow: 0 10px 30px -8px rgba(37,99,235,0.55); }
+#eschool-support .btn-primary:hover{ transform: translateY(-3px); box-shadow: 0 16px 36px -8px rgba(37,99,235,0.65); }
+#eschool-support .btn-ghost{ color:var(--ink); background: var(--glass-bg); border:1px solid rgba(15,23,42,0.1); backdrop-filter: blur(10px); }
+#eschool-support .btn-ghost:hover{ transform: translateY(-3px); border-color: var(--primary); color:var(--primary); }
+#eschool-support .btn .shine{ position:absolute; top:0; left:-60%; width:40%; height:100%; background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent); transform: skewX(-20deg); animation: sp-shine 3.2s ease-in-out infinite; }
+@keyframes sp-shine{ 0%{ left:-60%; } 45%,100%{ left:130%; } }
+#eschool-support .btn:focus-visible, #eschool-support button:focus-visible, #eschool-support a:focus-visible, #eschool-support summary:focus-visible, #eschool-support select:focus-visible{ outline:3px solid var(--highlight); outline-offset:2px; }
+
+#eschool-support .harbour{ position:relative; aspect-ratio:1/1; max-width:460px; margin:0 auto; width:100%; }
+#eschool-support .harbour svg{ width:100%; height:100%; overflow:visible; }
+#eschool-support .h-ring{ transform-origin:240px 240px; animation: sp-ring 6s ease-in-out infinite; }
+#eschool-support .h-ring.r2{ animation-delay:-2s; }
+#eschool-support .h-ring.r3{ animation-delay:-4s; }
+@keyframes sp-ring{ 0%{ transform:scale(.82); opacity:0; } 30%{ opacity:.55; } 100%{ transform:scale(1.18); opacity:0; } }
+#eschool-support .h-shield{ stroke-dasharray:900; stroke-dashoffset:900; animation: sp-draw 2.2s var(--ease) forwards .2s; }
+@keyframes sp-draw{ to{ stroke-dashoffset:0; } }
+#eschool-support .h-tick{ stroke-dasharray:80; stroke-dashoffset:80; animation: sp-draw .8s var(--ease) forwards 1.6s; }
+#eschool-support .h-bubble{ opacity:0; animation: sp-pop .6s var(--ease) forwards 1.2s; transform-origin:368px 132px; }
+#eschool-support .h-bubble.b2{ animation-delay:1.8s; transform-origin:110px 350px; }
+@keyframes sp-pop{ from{ opacity:0; transform:scale(.6) translateY(10px); } to{ opacity:1; transform:none; } }
+#eschool-support .h-dot{ animation: sp-blink 1.4s ease-in-out infinite; }
+#eschool-support .h-dot.d2{ animation-delay:.2s; } #eschool-support .h-dot.d3{ animation-delay:.4s; }
+@keyframes sp-blink{ 0%,100%{ opacity:.3; } 50%{ opacity:1; } }
+#eschool-support .h-particle{ animation: sp-particle 5s ease-in-out infinite; }
+@keyframes sp-particle{ 0%,100%{ transform: translateY(0); opacity:.5; } 50%{ transform: translateY(-14px); opacity:1; } }
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+#eschool-support .section-head{ max-width:660px; margin-bottom:46px; }
+#eschool-support .section-head h2{ font-size: clamp(1.8rem,3vw,2.5rem); margin-top:14px; }
+#eschool-support .section-head p{ color:var(--muted); margin:14px 0 0; font-size:1.02rem; line-height:1.7; }
+#eschool-support .section-head.center{ margin-left:auto; margin-right:auto; text-align:center; }
+
+#eschool-support .glass-card{
+  position:relative; display:block; background: var(--glass-bg); border-radius: var(--radius-md); padding:28px 24px;
+  border:1px solid transparent; backdrop-filter: blur(14px); box-shadow: var(--glass-shadow);
+  transition: transform .4s var(--ease), box-shadow .4s var(--ease); overflow:hidden;
+}
+#eschool-support .glass-card::before{
+  content:''; position:absolute; inset:0; border-radius:inherit; padding:1px;
+  background: linear-gradient(135deg, rgba(37,99,235,0.5), rgba(20,184,166,0.4), transparent 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; opacity:0; transition: opacity .4s var(--ease);
+}
+#eschool-support a.glass-card:hover{ transform: translateY(-8px); box-shadow: 0 26px 55px -14px rgba(37,99,235,0.28); }
+#eschool-support a.glass-card:hover::before{ opacity:1; }
+#eschool-support .icon-badge{
+  width:50px; height:50px; border-radius:15px; background: linear-gradient(135deg, var(--primary), var(--accent));
+  display:flex; align-items:center; justify-content:center; margin-bottom:16px; box-shadow: 0 10px 22px -8px rgba(37,99,235,0.55); flex-shrink:0;
+}
+#eschool-support .icon-badge svg{ width:23px; height:23px; stroke:#fff; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+#eschool-support .glass-card h3{ font-size:1.06rem; margin-bottom:8px; }
+#eschool-support .glass-card p{ color:var(--muted); font-size:0.9rem; line-height:1.6; margin:0; }
+#eschool-support .go{ display:inline-flex; align-items:center; gap:6px; margin-top:16px; font-weight:600; font-size:0.84rem; color:var(--primary); }
+#eschool-support .go svg{ width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2; transition: transform .3s var(--ease); }
+#eschool-support a.glass-card:hover .go svg{ transform: translateX(4px); }
+
+#eschool-support .topic-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:20px; }
+@media (max-width:900px){ #eschool-support .topic-grid{ grid-template-columns:1fr 1fr; } }
+@media (max-width:560px){ #eschool-support .topic-grid{ grid-template-columns:1fr; } }
+
+/* ============================================================
+   QUESTIONS (accordion)
+   ============================================================ */
+#eschool-support .faq-layout{ display:grid; grid-template-columns: 0.8fr 1.2fr; gap:50px; align-items:start; }
+@media (max-width:900px){ #eschool-support .faq-layout{ grid-template-columns:1fr; gap:28px; } }
+#eschool-support .faq-side{ position:sticky; top:110px; }
+@media (max-width:900px){ #eschool-support .faq-side{ position:static; } }
+#eschool-support .faq-filter{ display:flex; flex-wrap:wrap; gap:8px; margin-top:24px; }
+#eschool-support .chip{
+  border:1px solid var(--line); background: var(--white); color: var(--ink-2); font-size:0.84rem; font-weight:600;
+  padding:8px 14px; border-radius:100px; cursor:pointer; transition: all .25s var(--ease);
+}
+#eschool-support .chip:hover{ border-color: var(--primary); color: var(--primary); }
+#eschool-support .chip[aria-pressed="true"]{ background: var(--primary); border-color: var(--primary); color:#fff; box-shadow: 0 8px 18px -8px rgba(37,99,235,.6); }
+#eschool-support .faq-list{ display:flex; flex-direction:column; gap:12px; }
+#eschool-support .faq{ background: var(--white); border:1px solid #EEF2F7; border-radius: 16px; box-shadow: 0 14px 30px -20px rgba(15,23,42,0.18); transition: border-color .3s, box-shadow .3s; }
+#eschool-support .faq[open]{ border-color: rgba(37,99,235,.28); box-shadow: 0 18px 36px -18px rgba(37,99,235,0.25); }
+#eschool-support .faq summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:14px; padding:18px 20px; font-family: var(--font-display); font-weight:700; font-size:0.98rem; color: var(--ink); }
+#eschool-support .faq summary::-webkit-details-marker{ display:none; }
+#eschool-support .faq .pm{ margin-left:auto; width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; background: #EFF6FF; color: var(--primary); transition: transform .35s var(--ease), background .3s; }
+#eschool-support .faq .pm svg{ width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2.4; }
+#eschool-support .faq[open] .pm{ transform: rotate(45deg); background: var(--primary); color:#fff; }
+#eschool-support .faq .ans{ padding:0 20px 18px; color: var(--muted); font-size:0.92rem; line-height:1.7; }
+#eschool-support .faq .ans p{ margin:0 0 8px; }
+#eschool-support .faq .ans a{ color: var(--primary); font-weight:600; }
+#eschool-support .faq[hidden]{ display:none; }
+
+/* ============================================================
+   POLICIES
+   ============================================================ */
+#eschool-support .pol-tabs{ display:flex; flex-wrap:wrap; gap:6px; padding:6px; background: var(--white); border:1px solid var(--line); border-radius:100px; width:fit-content; max-width:100%; box-shadow: 0 10px 26px -18px rgba(15,23,42,.25); margin-bottom:28px; }
+#eschool-support .pol-tab{ border:0; background:transparent; cursor:pointer; padding:11px 20px; border-radius:100px; font-weight:600; font-size:0.9rem; color: var(--ink-2); display:inline-flex; align-items:center; gap:8px; transition: background .25s, color .25s; }
+#eschool-support .pol-tab svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; }
+#eschool-support .pol-tab:hover{ background:#EFF6FF; color: var(--primary); }
+#eschool-support .pol-tab[aria-selected="true"]{ background: linear-gradient(100deg, var(--primary), var(--secondary)); color:#fff; box-shadow: 0 8px 18px -8px rgba(37,99,235,.6); }
+@media (max-width:640px){ #eschool-support .pol-tabs{ border-radius:18px; width:100%; display:grid; grid-template-columns:1fr 1fr; } #eschool-support .pol-tab{ justify-content:center; border-radius:13px; padding:11px 10px; font-size:.85rem; } }
+
+#eschool-support .pol-layout{ display:grid; grid-template-columns: 260px minmax(0,1fr); gap:32px; align-items:start; }
+@media (max-width:900px){ #eschool-support .pol-layout{ grid-template-columns:1fr; gap:16px; } }
+#eschool-support .pol-toc{ position:sticky; top:104px; background: var(--white); border:1px solid #EEF2F7; border-radius: var(--radius-md); padding:18px; box-shadow: 0 14px 30px -20px rgba(15,23,42,0.18); max-height: calc(100vh - 130px); overflow:auto; }
+#eschool-support .pol-toc h4{ font-family: var(--font-num); font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; color: var(--muted); margin-bottom:10px; }
+#eschool-support .pol-toc ol{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; counter-reset: t; }
+#eschool-support .pol-toc a{ display:flex; gap:8px; padding:7px 10px; border-radius:10px; font-size:.86rem; color: var(--ink-2); line-height:1.35; border-left:2px solid transparent; transition: background .2s, color .2s, border-color .2s; }
+#eschool-support .pol-toc a:hover{ background:#F1F5F9; color: var(--primary); }
+#eschool-support .pol-toc a.on{ background:#EFF6FF; color: var(--primary); font-weight:600; border-left-color: var(--primary); border-radius:0 10px 10px 0; }
+#eschool-support .pol-jump{ display:none; }
+@media (max-width:900px){
+  #eschool-support .pol-toc{ display:none; }
+  #eschool-support .pol-jump{ display:block; }
+  #eschool-support .pol-jump select{ width:100%; padding:13px 14px; border-radius:14px; border:1px solid var(--line); background: var(--white); font: inherit; font-size:.92rem; color: var(--ink); }
+}
+#eschool-support .pol-doc{ background: var(--white); border:1px solid #EEF2F7; border-radius: var(--radius-lg); padding:44px 48px; box-shadow: 0 20px 44px -26px rgba(15,23,42,0.22); }
+@media (max-width:640px){ #eschool-support .pol-doc{ padding:26px 20px; border-radius: var(--radius-md); } }
+#eschool-support .pol-doc[hidden]{ display:none; }
+#eschool-support .pol-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; padding-bottom:22px; margin-bottom:24px; border-bottom:1px solid var(--line); }
+#eschool-support .pol-top h3{ font-size: clamp(1.5rem,2.4vw,2rem); }
+#eschool-support .pol-date{ display:inline-flex; align-items:center; gap:6px; margin-top:10px; font-family: var(--font-num); font-size:.74rem; font-weight:600; color: var(--muted); background:#F1F5F9; padding:5px 12px; border-radius:100px; }
+#eschool-support .pol-print{ border:1px solid var(--line); background: var(--white); color: var(--ink-2); border-radius:100px; padding:9px 16px; font-size:.84rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition: border-color .25s, color .25s; }
+#eschool-support .pol-print:hover{ border-color: var(--primary); color: var(--primary); }
+#eschool-support .pol-print svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; }
+#eschool-support .pol-lead{ font-size:1rem; line-height:1.75; color: var(--ink-2); background: linear-gradient(100deg, rgba(37,99,235,0.06), rgba(20,184,166,0.06)); border:1px solid rgba(37,99,235,0.14); border-radius:16px; padding:18px 20px; margin:0 0 10px; }
+#eschool-support .pol-doc h4{ font-size:1.12rem; margin:34px 0 10px; scroll-margin-top:100px; display:flex; gap:12px; align-items:baseline; }
+#eschool-support .pol-doc h4 .no{ font-family: var(--font-num); font-size:.8rem; font-weight:600; color: var(--primary); background:#EFF6FF; border-radius:8px; padding:2px 8px; flex-shrink:0; }
+#eschool-support .pol-doc p{ color: var(--ink-2); line-height:1.75; font-size:.95rem; margin:0 0 10px; }
+#eschool-support .pol-doc ul{ margin:6px 0 12px; display:flex; flex-direction:column; gap:7px; }
+#eschool-support .pol-doc li{ position:relative; padding-left:20px; color: var(--ink-2); line-height:1.65; font-size:.94rem; }
+#eschool-support .pol-doc li::before{ content:''; position:absolute; left:2px; top:.62em; width:7px; height:7px; border-radius:50%; background: linear-gradient(135deg, var(--primary), var(--accent)); }
+#eschool-support .pol-doc strong{ color: var(--ink); }
+#eschool-support .pol-doc a{ color: var(--primary); font-weight:600; }
+#eschool-support .pol-doc .sub{ font-weight:700; color: var(--ink); margin-top:14px; }
+#eschool-support .pol-box{ border-radius:14px; padding:14px 16px; background:#F0FDFA; border:1px solid #CCFBF1; color: #134E4A; font-size:.92rem; line-height:1.65; margin:8px 0 12px; }
+
+/* ============================================================
+   CTA BAND
+   ============================================================ */
+#eschool-support .cta-band{
+  position:relative; overflow:hidden; border-radius: var(--radius-lg);
+  background: linear-gradient(120deg, var(--primary), var(--secondary) 55%, var(--accent));
+  padding:64px 50px; text-align:center; color:#fff; margin:0 32px;
+}
+@media (max-width:700px){ #eschool-support .cta-band{ padding:46px 24px; margin:0 20px; } }
+#eschool-support .cta-band::before{
+  content:''; position:absolute; inset:-40%; opacity:.5;
+  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 45%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.18), transparent 45%);
+  animation: sp-drift 14s ease-in-out infinite;
+}
+#eschool-support .cta-band h2{ color:#fff; font-size: clamp(1.7rem,3.2vw,2.4rem); position:relative; z-index:2; }
+#eschool-support .cta-band p{ color:rgba(255,255,255,0.9); max-width:560px; margin:16px auto 30px; position:relative; z-index:2; line-height:1.7; }
+#eschool-support .cta-band .btn-row{ justify-content:center; margin-bottom:0; position:relative; z-index:2; }
+#eschool-support .cta-band .btn-white{ background:#fff; color:var(--primary); }
+#eschool-support .cta-band .btn-white:hover{ transform: translateY(-3px) scale(1.02); }
+#eschool-support .cta-band .btn-outline{ background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,0.6); }
+#eschool-support .cta-band .btn-outline:hover{ background: rgba(255,255,255,0.12); transform: translateY(-3px); }
+#eschool-support .ripple{ position:absolute; border-radius:50%; background: rgba(255,255,255,0.5); transform: scale(0); animation: sp-ripple .65s ease-out; pointer-events:none; }
+@keyframes sp-ripple{ to{ transform:scale(3.2); opacity:0; } }
+
+/* ============================================================
+   FOOTER (standard eSchool footer)
+   ============================================================ */
+#eschool-support .site-foot{ background: linear-gradient(180deg, #0F172A, #060b16); color:#fff; padding:70px 0 26px; margin-top:100px; position:relative; z-index:2; }
+#eschool-support .site-foot .container{ max-width:1200px; margin:0 auto; padding:0 32px; }
+#eschool-support .foot-grid{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1.2fr; gap:40px; margin-bottom:44px; }
+#eschool-support .foot-brand{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+#eschool-support .foot-brand span{ font-family:var(--font-display); font-weight:800; font-size:18px; }
+#eschool-support .foot-col p{ font-size:13px; color:#94a3b8; line-height:1.7; margin:0; }
+#eschool-support .foot-col h5{ font-family:var(--font-display); font-size:13.5px; margin:0 0 16px; color:#e2e8f0; }
+#eschool-support .foot-col ul{ margin:0; padding:0; }
+#eschool-support .foot-col ul li{ margin-bottom:10px; }
+#eschool-support .foot-col ul a{ color:#94a3b8; font-size:13px; transition:color .2s ease; }
+#eschool-support .foot-col ul a:hover{ color:#fff; }
+#eschool-support .help-box{ border-radius:14px; padding:16px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); }
+#eschool-support .help-box p{ margin:0 0 12px; }
+#eschool-support .help-btn{
+  display:flex; align-items:center; justify-content:center; gap:8px; padding:11px 14px; border-radius:10px;
+  background:linear-gradient(100deg, var(--primary), var(--accent)); color:#fff; font-weight:700; font-size:13px;
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+#eschool-support .help-btn:hover{ transform:translateY(-2px); box-shadow:0 10px 22px -10px rgba(20,184,166,.7); }
+#eschool-support .help-btn svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; }
+#eschool-support .copyright{ text-align:center; padding-top:26px; border-top:1px solid rgba(255,255,255,.08); color:#64748B; font-size:12px; }
+#eschool-support .copyright a{ color:#94a3b8; }
+#eschool-support .copyright a:hover{ color:#fff; }
+@media (max-width:900px){ #eschool-support .foot-grid{ grid-template-columns:1fr 1fr; } #eschool-support .site-foot .container{ padding:0 20px; } }
+@media (max-width:520px){ #eschool-support .foot-grid{ grid-template-columns:1fr; } }
+
+/* ============================================================
+   PRINT: only the open policy
+   ============================================================ */
+@media print{
+  body *{ visibility:hidden !important; }
+  #eschool-support .pol-doc:not([hidden]), #eschool-support .pol-doc:not([hidden]) *{ visibility:visible !important; }
+  #eschool-support .pol-doc:not([hidden]){ position:absolute; left:0; top:0; width:100%; box-shadow:none; border:0; padding:0; }
+  #eschool-support .pol-print{ display:none !important; }
+}
+</style>
+
+{% set signed_in = session.get('user_id') %}
+<div id="eschool-support">
+
+<div class="ambient-bg" aria-hidden="true">
+  <div class="dot-grid"></div>
+  <div class="blur-circle c1"></div>
+  <div class="blur-circle c2"></div>
+  <div class="blur-circle c3"></div>
+</div>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow reveal in-view">Support and policies</span>
+      <h1 class="reveal in-view">How can we <span class="accent-word">help</span> you?</h1>
+      <p class="lead reveal in-view reveal-delay-1">Answers to common questions and every eSchool policy in one place, written in plain language.</p>
+      <div class="btn-row reveal in-view reveal-delay-2">
+        <a href="/contact" class="btn btn-primary"><span class="shine"></span><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Contact us</a>
+        <a href="#policies" class="btn btn-ghost" data-open-doc="privacy"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z"/></svg>Read our policies</a>
+      </div>
+    </div>
+
+    <div class="harbour reveal in-view reveal-delay-2" aria-hidden="true">
+      <svg viewBox="0 0 480 480">
+        <defs>
+          <linearGradient id="spGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2563EB"/><stop offset="100%" stop-color="#14B8A6"/></linearGradient>
+          <linearGradient id="spSoft" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EFF6FF"/><stop offset="100%" stop-color="#F0FDFA"/></linearGradient>
+        </defs>
+        <circle class="h-ring" cx="240" cy="240" r="170" fill="none" stroke="#3B82F6" stroke-width="1.5"/>
+        <circle class="h-ring r2" cx="240" cy="240" r="170" fill="none" stroke="#14B8A6" stroke-width="1.5"/>
+        <circle class="h-ring r3" cx="240" cy="240" r="170" fill="none" stroke="#3B82F6" stroke-width="1.5"/>
+        <circle class="h-particle" cx="70" cy="140" r="4" fill="#F59E0B" opacity="0.7"/>
+        <circle class="h-particle" cx="420" cy="300" r="5" fill="#3B82F6" opacity="0.6" style="animation-delay:-1.5s"/>
+        <circle class="h-particle" cx="300" cy="430" r="4" fill="#14B8A6" opacity="0.6" style="animation-delay:-3s"/>
+        <path d="M240 96l112 46v74c0 76-48 128-112 152-64-24-112-76-112-152v-74z" fill="url(#spSoft)"/>
+        <path class="h-shield" d="M240 96l112 46v74c0 76-48 128-112 152-64-24-112-76-112-152v-74z" fill="none" stroke="url(#spGrad)" stroke-width="6" stroke-linejoin="round"/>
+        <path class="h-tick" d="M196 240l30 30 62-64" fill="none" stroke="url(#spGrad)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+        <g class="h-bubble">
+          <rect x="318" y="96" width="104" height="62" rx="20" fill="#fff" stroke="#E2E8F0"/>
+          <path d="M340 156l-6 18 22-16z" fill="#fff" stroke="#E2E8F0"/>
+          <circle class="h-dot" cx="352" cy="127" r="6" fill="#2563EB"/>
+          <circle class="h-dot d2" cx="370" cy="127" r="6" fill="#3B82F6"/>
+          <circle class="h-dot d3" cx="388" cy="127" r="6" fill="#14B8A6"/>
+        </g>
+        <g class="h-bubble b2">
+          <rect x="52" y="324" width="118" height="54" rx="18" fill="url(#spGrad)"/>
+          <path d="M140 376l18 16-4-20z" fill="#14B8A6"/>
+          <path d="M78 351h66" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".9"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TOPICS ============ -->
+<section class="section-pad" style="padding-top:40px;">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Find your answer</span>
+      <h2>What do you need help with?</h2>
+    </div>
+    <div class="topic-grid">
+      <a href="#faq" class="glass-card reveal" data-faq-topic="account">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0114 0v1"/></svg></div>
+        <h3>Account and signing in</h3><p>Creating an account, signing in, your details and closing an account.</p>
+        <span class="go">See answers <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a href="#faq" class="glass-card reveal reveal-delay-1" data-faq-topic="parents">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/><circle cx="19" cy="8" r="3"/></svg></div>
+        <h3>Parents and children</h3><p>Linking to your child, what you can see, and the controls you can set.</p>
+        <span class="go">See answers <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a href="#faq" class="glass-card reveal reveal-delay-2" data-faq-topic="payments">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h4"/></svg></div>
+        <h3>Plans and payments</h3><p>How to pay, when a plan starts, and what to do if something went wrong.</p>
+        <span class="go">See answers <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a href="#faq" class="glass-card reveal" data-faq-topic="teachers">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M2 7l10-4 10 4-10 4z"/><path d="M6 9v5c3 3 9 3 12 0V9"/></svg></div>
+        <h3>Teachers and private lessons</h3><p>Hiring a teacher for your child, and teaching on eSchool.</p>
+        <span class="go">See answers <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a href="#faq" class="glass-card reveal reveal-delay-1" data-faq-topic="learning">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M9 14l-2 7 5-3 5 3-2-7"/></svg></div>
+        <h3>Learning and points</h3><p>eSchool Points, tests, scores and what your results mean.</p>
+        <span class="go">See answers <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a href="#policies" class="glass-card reveal reveal-delay-2" data-open-doc="privacy">
+        <div class="icon-badge"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></div>
+        <h3>Privacy and terms</h3><p>What we collect, who can see it, your rights, and the rules for using eSchool.</p>
+        <span class="go">Read policies <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ QUESTIONS ============ -->
+<section class="section-pad" id="faq" style="padding-top:20px;">
+  <div class="wrap faq-layout">
+    <div class="faq-side reveal">
+      <span class="eyebrow">Common questions</span>
+      <h2 style="font-size: clamp(1.8rem,3vw,2.4rem); margin-top:14px;">Quick answers</h2>
+      <p style="color:var(--muted); margin-top:14px; line-height:1.7;">Can't find what you need? <a href="/contact" style="color:var(--primary); font-weight:600;">Send us a message</a> and we'll get back to you, usually within one working day.</p>
+      <div class="faq-filter" role="group" aria-label="Show questions about">
+        <button type="button" class="chip" data-topic="all" aria-pressed="true">All</button>
+        <button type="button" class="chip" data-topic="account" aria-pressed="false">Account</button>
+        <button type="button" class="chip" data-topic="parents" aria-pressed="false">Parents</button>
+        <button type="button" class="chip" data-topic="payments" aria-pressed="false">Payments</button>
+        <button type="button" class="chip" data-topic="teachers" aria-pressed="false">Teachers</button>
+        <button type="button" class="chip" data-topic="learning" aria-pressed="false">Learning</button>
+      </div>
+    </div>
+
+    <div class="faq-list reveal reveal-delay-1">
+      <details class="faq" data-topic="account">
+        <summary>How do I create an account?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>Press <a href="/register">Register</a>, fill in your name, email and a password, and choose whether you are a learner, a parent or a teacher. You can also sign in with Google.</p></div>
+      </details>
+      <details class="faq" data-topic="account">
+        <summary>I forgot my password. What do I do?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>Send us a message from <a href="/contact">Contact us</a> using the email address you signed up with, and our team will help you get back into your account. If you signed up with Google, use "Continue with Google" on the sign-in page instead.</p></div>
+      </details>
+      <details class="faq" data-topic="account">
+        <summary>How do I change my details or close my account?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>Sign in and open <strong>Settings</strong>. You can change your profile, notifications and privacy there. Parents can deactivate or delete their account under Sign-in &amp; security. Learners and teachers can ask Help &amp; Support to close their account; for a learner we may check with a linked parent first.</p></div>
+      </details>
+      <details class="faq" data-topic="parents">
+        <summary>How does a parent link to their child?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>From a parent account, open <strong>Link a child</strong>. Your child confirms with a one-time code sent to their notification bell, or by accepting your request. Nothing is linked without your child agreeing.</p></div>
+      </details>
+      <details class="faq" data-topic="parents">
+        <summary>What can a parent see?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>The child chooses what to share when linking: grades and progress, schedule, attendance, resources, activity updates and messages. They can change it at any time and are told when it changes. A parent can set goals and rewards, a daily time limit, quiet hours or a pause, but can never see the child's password or sign in as them.</p></div>
+      </details>
+      <details class="faq" data-topic="payments">
+        <summary>How do I pay for a plan or lessons?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>You pay through eSchool, and the ways you can pay are shown before you pay, along with the price and what is included. A plan or lessons start once the payment is confirmed. Learners should ask a parent or guardian before paying for anything.</p></div>
+      </details>
+      <details class="faq" data-topic="payments">
+        <summary>I paid but nothing changed.<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>Contact us with your payment receipt or reference. If you were charged twice, or your plan or lessons did not start, we will sort it out. We never ask for your PIN, card details or password.</p></div>
+      </details>
+      <details class="faq" data-topic="teachers">
+        <summary>How do private lessons with a teacher work?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>A parent sends a request from the <strong>Teachers</strong> page. If the teacher accepts, they set the price per lesson. The parent pays eSchool, not the teacher, and the lessons start once the payment is confirmed. eSchool pays the teacher after the lessons. The parent can see every lesson, message and call between the teacher and their child.</p></div>
+      </details>
+      <details class="faq" data-topic="teachers">
+        <summary>How do I teach on eSchool?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>Register as a teacher, then fill in your teaching profile in Settings: subjects, grades, qualifications, fee and availability. You can upload resources, run live classes and accept private lesson requests from parents. Your qualifications and experience must be true.</p></div>
+      </details>
+      <details class="faq" data-topic="learning">
+        <summary>What are eSchool Points?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>Learners earn eSchool Points (EP) by learning: finishing modules, passing tests and keeping streaks. EP can be spent in the Points shop. They have no cash value and can't be bought, sold or moved to another account.</p></div>
+      </details>
+      <details class="faq" data-topic="learning">
+        <summary>Are eSchool results official school results?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>No. Scores and progress on eSchool show how a learner is doing on the platform. They are not official school results or certificates unless your school tells you otherwise.</p></div>
+      </details>
+      <details class="faq" data-topic="account">
+        <summary>How do I report someone or something?<span class="pm"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+        <div class="ans"><p>Signed in, open <strong>Help &amp; Support</strong> and send an <strong>Urgent</strong> ticket under "Report a person or content". Not signed in? Use <a href="/contact">Contact us</a>. We look at every report.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ POLICIES ============ -->
+<section class="section-pad" id="policies" style="padding-top:20px;">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Policies</span>
+      <h2>Our policies, in plain language</h2>
+      <p>These apply to everyone who uses eSchool. Parents and teachers have a few extra rules, in their own tabs.</p>
+    </div>
+
+    <div class="pol-tabs" role="tablist" aria-label="Policies">
+      <button type="button" class="pol-tab" role="tab" id="t-privacy" aria-controls="doc-privacy" aria-selected="true" data-doc="privacy"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z"/></svg>Privacy policy</button>
+      <button type="button" class="pol-tab" role="tab" id="t-terms" aria-controls="doc-terms" aria-selected="false" data-doc="terms" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Terms of service</button>
+      <button type="button" class="pol-tab" role="tab" id="t-parents" aria-controls="doc-parents" aria-selected="false" data-doc="parents" tabindex="-1"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/></svg>For parents</button>
+      <button type="button" class="pol-tab" role="tab" id="t-teachers" aria-controls="doc-teachers" aria-selected="false" data-doc="teachers" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M2 7l10-4 10 4-10 4z"/><path d="M6 9v5c3 3 9 3 12 0V9"/></svg>For teachers</button>
+    </div>
+
+    <div class="pol-layout">
+      <nav class="pol-toc" aria-label="Sections"><h4>On this page</h4><ol id="polToc"></ol></nav>
+      <div class="pol-jump"><label class="sr-only" for="polJump" style="position:absolute;left:-9999px;">Jump to a section</label><select id="polJump"></select></div>
+
+      <div>
+        <!-- ---------- PRIVACY ---------- -->
+        <article class="pol-doc" id="doc-privacy" role="tabpanel" aria-labelledby="t-privacy" tabindex="0">
+          <div class="pol-top"><div><h3>Privacy policy</h3><span class="pol-date">Last updated: 28 October 2026</span></div><button type="button" class="pol-print"><svg viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print or save</button></div>
+          <p class="pol-lead">This policy explains what information eSchool collects, why we need it, who can see it, how long we keep it and the choices you have. We have written it so that a learner can understand it. If anything is unclear, ask a parent, guardian or teacher to read it with you, or contact us.</p>
+
+          <h4 id="pp-1"><span class="no">1</span>Who we are</h4>
+          <p>eSchool is an online learning platform for learners, parents and guardians, and teachers. In this policy, "eSchool", "we" and "us" mean the team that runs the platform, and "you" means the person using the account. We decide how your personal information is used, so we are responsible for looking after it. We handle personal information in line with the data protection laws that apply to us.</p>
+
+          <h4 id="pp-2"><span class="no">2</span>Information we collect</h4>
+          <p class="sub">Information you give us</p>
+          <ul>
+            <li><strong>Account details:</strong> your first and last name, email address, password and the type of account (learner, parent or teacher). Your password is never shown to anyone, including parents and eSchool staff.</li>
+            <li><strong>Details you choose to add:</strong> phone number, date of birth, gender, country, school, grade, a guardian's name and phone number, time zone and a short bio. Teachers also add a teaching profile: headline, subjects, grades, qualifications, fee and availability.</li>
+            <li><strong>Profile photo</strong> if you upload one.</li>
+            <li><strong>Things you create or send:</strong> messages, community study tips, resources you upload, live classes, schedule events, support tickets and your replies, reviews, likes, saves, friends and the teachers you follow.</li>
+          </ul>
+          <p class="sub">Information created when you learn</p>
+          <ul>
+            <li>Courses you enrol in, modules you finish, and your module test, quiz and Daily Quiz Test scores.</li>
+            <li>eSchool Points (EP), your level, monthly rank, streaks, achievements and badges, and items you get from the Points shop.</li>
+            <li>How long you study, the days you are active, and goals a linked parent sets for you and your progress on them.</li>
+          </ul>
+          <p class="sub">Information about your use of eSchool</p>
+          <ul>
+            <li>When you sign in and out, the devices and browsers you sign in from, and your active sessions.</li>
+            <li>Notifications we send you and whether you have read them.</li>
+            <li>Basic technical records such as error logs, which we use to keep the platform working.</li>
+          </ul>
+          <p>We do not collect your exact location, your contacts or anything from other apps on your device.</p>
+
+          <h4 id="pp-3"><span class="no">3</span>How we use your information</h4>
+          <ul>
+            <li><strong>To run your account and lessons:</strong> signing you in, saving your progress, marking tests and quizzes, and showing your courses, schedule and resources.</li>
+            <li><strong>To award EP and achievements:</strong> working out points, levels, streaks, badges and the monthly leaderboard.</li>
+            <li><strong>To connect people:</strong> messages, friends, following teachers, live classes, private lessons and teacher resources.</li>
+            <li><strong>To keep you informed:</strong> the notifications you chose, plus safety, account and payment notices.</li>
+            <li><strong>To keep eSchool safe:</strong> protecting accounts, stopping misuse and bullying, and looking into reports.</li>
+            <li><strong>To help you:</strong> answering support tickets and messages.</li>
+            <li><strong>To improve eSchool:</strong> understanding which features and lessons work well, using combined information that does not single you out.</li>
+          </ul>
+          <p>We do not sell personal information, and we do not use it to show you advertising from other companies.</p>
+
+          <h4 id="pp-4"><span class="no">4</span>What other people on eSchool can see</h4>
+          <p>You control most of this in Settings &gt; Privacy, and every choice is checked on our servers:</p>
+          <ul>
+            <li><strong>Who can open your profile:</strong> everyone, only teachers and your parents, or only you and your linked parents.</li>
+            <li><strong>What your profile shows:</strong> learners can hide their level and EP, achievements and badges, monthly rank, quiz streak and friends list.</li>
+            <li><strong>The leaderboard:</strong> learners can hide their name and EP from the monthly leaderboard.</li>
+            <li><strong>Search and messages:</strong> you can stop people finding you in search, and choose who can start a conversation with you.</li>
+          </ul>
+          <p><strong>Friends and teachers:</strong> learners become friends only when one sends a friend request and the other accepts it; either can remove the friendship at any time. Following a teacher needs no approval. Parents can't be added as friends or followed.</p>
+          <p>A teacher's public profile shows their name, photo, headline, subjects, grades, qualifications, public resources, live classes, rating and reviews. A teacher's email, phone number and address are never shown.</p>
+
+          <h4 id="pp-5"><span class="no">5</span>Parents and guardians</h4>
+          <div class="pol-box">A parent or guardian can only link to a learner's account after the learner agrees, using a one-time code sent to their notification bell or a request they accept. The learner chooses what is shared and can change it at any time.</div>
+          <ul>
+            <li>A linked parent can always see the learner's name, profile photo, plan, the teachers they follow, their activity counts (modules done and streaks) and their profile, even if it is private.</li>
+            <li>Depending on what was shared, a linked parent may also see grades and course progress, schedule, attendance, resources, activity updates and who the learner talks to.</li>
+            <li>A parent can set study goals and rewards, a daily time limit, quiet hours or a pause. The learner is told when controls change.</li>
+            <li>A parent can never read the learner's password, sign in as them, change their settings or privacy choices, or post, message, add friends, follow or spend EP as them.</li>
+          </ul>
+
+          <h4 id="pp-6"><span class="no">6</span>Learners under 18</h4>
+          <p>Many of our learners are children. We collect only what we need to teach and keep learners safe, we do not show advertising to learners, and the safest privacy choices are always available in Settings. Where the law requires a parent's or guardian's consent to use a child's information, we rely on that consent, and a parent or guardian can contact us at any time about their child's information.</p>
+
+          <h4 id="pp-7"><span class="no">7</span>Who we share it with</h4>
+          <ul>
+            <li><strong>Service providers</strong> who help us run eSchool, such as hosting, email delivery and payment processing. They may only use information to provide their service to us.</li>
+            <li><strong>Linked parents, teachers you learn with, and parents you teach</strong>, as described in this policy.</li>
+            <li><strong>Our team</strong> may look at a resource, review or message that has been reported, to keep eSchool safe.</li>
+            <li><strong>Authorities</strong>, when the law requires it, or when we need to protect someone's safety, for example to report a child at risk.</li>
+            <li><strong>A new owner</strong>, if eSchool is ever merged or sold. This policy would continue to protect your information.</li>
+          </ul>
+
+          <h4 id="pp-8"><span class="no">8</span>Payments</h4>
+          <p>Plans and private lessons are paid through eSchool, using the payment methods shown when you pay. We keep the amount, what it was for, the payment reference and, for mobile money, the phone number used, so we can confirm the payment and help with any problem. Card payments are handled by our payment provider: we never see or store full card numbers, PINs or passwords.</p>
+
+          <h4 id="pp-9"><span class="no">9</span>Information kept on your device</h4>
+          <p>Your browser keeps some settings on the device you use so eSchool remembers them: your theme, accent colour, text size, session timeout and recently viewed courses. These stay on that device and can be removed by clearing your browser data. We use a sign-in cookie to keep you signed in; we do not use advertising or tracking cookies.</p>
+
+          <h4 id="pp-10"><span class="no">10</span>How long we keep it</h4>
+          <ul>
+            <li>We keep account information and learning records while the account is open, so progress, EP and achievements are not lost.</li>
+            <li>You can delete read notifications at any time. Support tickets are kept so we can help again if the same problem returns.</li>
+            <li>Deactivating an account hides the profile but keeps the data. When an account is deleted or closed, we delete or anonymise the personal information in it, except what we must keep by law (for example payment records) or to settle a dispute.</li>
+          </ul>
+
+          <h4 id="pp-11"><span class="no">11</span>How we protect it</h4>
+          <p>We limit which staff can see personal information, check privacy choices on our servers rather than only in your browser, send sign-in alerts, sign inactive sessions out automatically, and let you sign out of every device from your security settings. No system is completely secure, so please keep your password private and tell us straight away if you think someone else has used your account.</p>
+
+          <h4 id="pp-12"><span class="no">12</span>Your rights and choices</h4>
+          <ul>
+            <li><strong>Be informed</strong> about how your information is used, which is what this policy is for.</li>
+            <li><strong>Get a copy</strong> of your information: use Download my data in Settings &gt; Privacy.</li>
+            <li><strong>Correct it:</strong> change your details in Settings, or ask us.</li>
+            <li><strong>Object or limit</strong> how it is used, for example by changing your privacy and notification choices.</li>
+            <li><strong>Ask us to delete it</strong> or close your account. If you are a learner, we may check with your linked parent first.</li>
+            <li><strong>Complain</strong> to the data protection authority where you live if you are unhappy with how we handled your information. We would like the chance to fix it first, so please contact us.</li>
+          </ul>
+
+          <h4 id="pp-13"><span class="no">13</span>Changes to this policy</h4>
+          <p>We may update this policy when eSchool changes or the law changes. The date at the top shows the latest version. If a change is important, we will tell you in your notification bell before it takes effect.</p>
+
+          <h4 id="pp-14"><span class="no">14</span>Contact us</h4>
+          <p>For any question or request about your privacy, send a ticket from Help &amp; Support when signed in, or use <a href="/contact">Contact us</a>. We usually answer within one working day.</p>
+        </article>
+
+        <!-- ---------- TERMS ---------- -->
+        <article class="pol-doc" id="doc-terms" role="tabpanel" aria-labelledby="t-terms" tabindex="0" hidden>
+          <div class="pol-top"><div><h3>Terms of service</h3><span class="pol-date">Last updated: 28 October 2026</span></div><button type="button" class="pol-print"><svg viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print or save</button></div>
+          <p class="pol-lead">These terms are the rules for using eSchool. By creating an account or using eSchool you agree to them and to our Privacy policy. If you are under 18, please read them with a parent or guardian, who also agrees to them on your behalf. Parents and teachers also follow the extra rules in their own tabs.</p>
+
+          <h4 id="tos-1"><span class="no">1</span>Using eSchool</h4>
+          <p>eSchool gives you courses, module tests, quizzes, resources from teachers, live classes, study strategies, a schedule, messages and progress tracking. You must give true information when you sign up and use only one account of each type.</p>
+
+          <h4 id="tos-2"><span class="no">2</span>Your account</h4>
+          <ul>
+            <li>Keep your password secret and don't share your account. You are responsible for what happens on it.</li>
+            <li>If you think someone else has used your account, change your password, sign out of all devices, then tell us.</li>
+            <li>Keep your details up to date in Settings.</li>
+          </ul>
+
+          <h4 id="tos-3"><span class="no">3</span>Learning, tests and scores</h4>
+          <ul>
+            <li>Module tests are passed with 60% or more and can be retaken; your best score counts. Each course quiz and the Daily Quiz Test can be taken once a day.</li>
+            <li>Do your own work. Getting someone else to take your tests, sharing answers, or using tricks to change scores is cheating, and those results, EP and achievements can be removed.</li>
+            <li>Scores and progress on eSchool show how you are doing on the platform. They are not official school results or certificates unless your school tells you otherwise.</li>
+          </ul>
+
+          <h4 id="tos-4"><span class="no">4</span>eSchool Points, levels and the shop</h4>
+          <ul>
+            <li>eSchool Points (EP) are earned by learning. They have no cash value and cannot be bought, sold, swapped for money or moved to another account.</li>
+            <li>EP can be spent in the Points shop on profile titles, avatar frames and days of eSchool Basic. Spending EP does not lower your total EP, level or monthly rank.</li>
+            <li>The leaderboard ranks EP earned in the current month and starts again on the 1st of each month (East Africa Time).</li>
+            <li>If EP, a streak or an achievement was given by mistake or through cheating, we may correct or remove it.</li>
+          </ul>
+
+          <h4 id="tos-5"><span class="no">5</span>Plans and payments</h4>
+          <ul>
+            <li>Some features need a paid plan. The price and what is included are shown before you pay.</li>
+            <li>Payments are made through eSchool, using the payment methods shown when you pay. A plan or private lessons start once the payment is confirmed and last for the period or number of lessons shown.</li>
+            <li>Payments that can't be confirmed are not charged on eSchool's side. If you were charged but nothing started, or you were charged twice, contact us with your payment receipt or reference and we will sort it out.</li>
+            <li>Learners should ask a parent or guardian before paying for anything.</li>
+          </ul>
+
+          <h4 id="tos-6"><span class="no">6</span>Community rules</h4>
+          <p>eSchool is a place to learn. When you message people, share tips, teach or upload anything, you agree to:</p>
+          <ul>
+            <li>Be kind and respectful. No bullying, threats, hate speech or harassment.</li>
+            <li>Keep it appropriate for learners. No sexual, violent or frightening content.</li>
+            <li>Protect privacy. Don't share anyone's personal details, photos or messages without their permission, and never share your own home address or passwords.</li>
+            <li>Be honest. Don't pretend to be someone else, including a teacher, parent or eSchool staff. Don't post, buy or ask for fake reviews.</li>
+            <li>No spam, advertising, scams or links to harmful sites.</li>
+            <li>Don't try to break, overload or get around eSchool's security, privacy choices or parental controls.</li>
+          </ul>
+
+          <h4 id="tos-7"><span class="no">7</span>Content you share</h4>
+          <p>You own what you create, such as your tips, messages and uploads. By sharing it on eSchool, you allow us to store it and show it to the people you shared it with, so the platform can work. Only share content you have the right to share. We may remove content that breaks these terms.</p>
+
+          <h4 id="tos-8"><span class="no">8</span>Our content</h4>
+          <p>Courses, lessons, tests, quizzes, study strategies and the eSchool name and design belong to eSchool or the teachers who made them. Resources from teachers are for viewing on eSchool for your own learning. Don't copy, sell or share them outside eSchool without permission.</p>
+
+          <h4 id="tos-9"><span class="no">9</span>Reporting</h4>
+          <p>If someone breaks these rules, send an Urgent ticket in Help &amp; Support under "Report a person or content", or use Contact us if you are not signed in. We look at every report and may warn, restrict or remove accounts. Where the law requires it, we may contact the right authorities.</p>
+
+          <h4 id="tos-10"><span class="no">10</span>Suspending or closing accounts</h4>
+          <ul>
+            <li>We may limit, suspend or close an account that breaks these terms, puts others at risk, or is used for cheating or fraud. Where we can, we will tell you why.</li>
+            <li>You can ask us to close your account or delete your information. For a learner, we may confirm the request with a linked parent first.</li>
+            <li>When a learner account is closed, its EP, achievements and shop items are lost and cannot be moved to another account.</li>
+          </ul>
+
+          <h4 id="tos-11"><span class="no">11</span>Availability and changes to eSchool</h4>
+          <p>We work to keep eSchool available and correct, but it may sometimes be unavailable for maintenance or because of problems outside our control, and lessons may have mistakes. We may add, change or remove features and courses. If a change affects a paid plan you already have, we will make sure you get what you paid for or a fair alternative.</p>
+
+          <h4 id="tos-12"><span class="no">12</span>Our responsibility to you</h4>
+          <p>We provide eSchool with reasonable care and skill. As far as the law allows, we are not responsible for losses that were not foreseeable, that are caused by your breaking these terms, or that are caused by events outside our control. Nothing in these terms limits rights you have under the consumer laws where you live that cannot be limited.</p>
+
+          <h4 id="tos-13"><span class="no">13</span>Changes to these terms</h4>
+          <p>We may update these terms when eSchool or the law changes. The date at the top shows the latest version. If a change is important, we will tell you in your notification bell before it takes effect. If you keep using eSchool after that, the new terms apply.</p>
+
+          <h4 id="tos-14"><span class="no">14</span>Law and disputes</h4>
+          <p>These terms are governed by the laws of Kenya. If you have a problem, please contact us first so we can try to fix it. If we cannot agree, the courts of Kenya can decide.</p>
+
+          <h4 id="tos-15"><span class="no">15</span>Contact us</h4>
+          <p>Questions about these terms? Send a ticket from Help &amp; Support when signed in, or use <a href="/contact">Contact us</a>. We usually answer within one working day.</p>
+        </article>
+
+        <!-- ---------- PARENTS ---------- -->
+        <article class="pol-doc" id="doc-parents" role="tabpanel" aria-labelledby="t-parents" tabindex="0" hidden>
+          <div class="pol-top"><div><h3>Extra rules for parents and guardians</h3><span class="pol-date">Last updated: 28 October 2026</span></div><button type="button" class="pol-print"><svg viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print or save</button></div>
+          <p class="pol-lead">These rules are added to the Privacy policy and Terms of service for anyone using a parent account.</p>
+
+          <h4 id="pa-1"><span class="no">1</span>Linking to a child</h4>
+          <ul>
+            <li>Only link to children you are the parent or legal guardian of, or are responsible for with the family's permission.</li>
+            <li>A link is only made after the child agrees. The child decides what to share and can change it at any time.</li>
+            <li>By linking, you agree to these terms for that child and are responsible for their use of eSchool.</li>
+          </ul>
+
+          <h4 id="pa-2"><span class="no">2</span>What you see and how to use it</h4>
+          <ul>
+            <li>Use what you see about your child to support their learning. Don't share it publicly.</li>
+            <li>We never show you your child's password, and you can't sign in as them or act for them.</li>
+          </ul>
+
+          <h4 id="pa-3"><span class="no">3</span>Controls, goals and rewards</h4>
+          <ul>
+            <li>Controls you set (screen time, quiet hours, pauses, contact rules and features) are stored so eSchool can enforce them, and your child is told when they change.</li>
+            <li>Goals and rewards you set are visible to the child they are for.</li>
+          </ul>
+
+          <h4 id="pa-4"><span class="no">4</span>Private teachers</h4>
+          <ul>
+            <li>Teachers you hire see your name and the child they teach, and you see every lesson, message and call between the teacher and your child.</li>
+            <li>Pay through eSchool, not the teacher directly. Teachers are paid for the lessons you buy.</li>
+            <li>Report any concern about a lesson from the Teachers page. Lessons paid for but not taught can be refunded through Help &amp; Support.</li>
+          </ul>
+
+          <h4 id="pa-5"><span class="no">5</span>Your data and your account</h4>
+          <p>Deleting your account removes your personal data, your links to your children and the controls and goals you set, except records the law requires us to keep, such as payments. You can deactivate or delete your account at any time from Sign-in &amp; security.</p>
+        </article>
+
+        <!-- ---------- TEACHERS ---------- -->
+        <article class="pol-doc" id="doc-teachers" role="tabpanel" aria-labelledby="t-teachers" tabindex="0" hidden>
+          <div class="pol-top"><div><h3>Extra rules for teachers</h3><span class="pol-date">Last updated: 28 October 2026</span></div><button type="button" class="pol-print"><svg viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print or save</button></div>
+          <p class="pol-lead">These rules are added to the Privacy policy and Terms of service for anyone using a teacher account. Keeping learners safe comes first.</p>
+
+          <h4 id="te-1"><span class="no">1</span>Your profile</h4>
+          <ul>
+            <li>Use your real name and a photo of you. Qualifications and years of experience must be true.</li>
+            <li>Don't ask for or post learners' personal contact details on your profile or in resources.</li>
+          </ul>
+
+          <h4 id="te-2"><span class="no">2</span>Learners' data you can see</h4>
+          <p>You see what learners and parents choose to share with you: their name and photo, messages they send, questions and chat in your live classes, and the details a parent gives in a private lesson request. Use it only to teach them, and don't share it outside eSchool.</p>
+
+          <h4 id="te-3"><span class="no">3</span>Resources you upload</h4>
+          <ul>
+            <li>Only upload material you made or have the right to share. You keep ownership of it.</li>
+            <li>By making a resource public you let eSchool show it to learners, parents and teachers on eSchool. Resources set to "Only me" can only be opened by you.</li>
+            <li>Resources must suit the grades you set and contain nothing unlawful, hateful or adult.</li>
+          </ul>
+
+          <h4 id="te-4"><span class="no">4</span>Live classes</h4>
+          <ul>
+            <li>Teach from a suitable place and dress as you would in a classroom.</li>
+            <li>Keep chat respectful. You can delete messages and pause chat; use them to keep the class safe.</li>
+            <li>Only record a class for teaching, and tell learners when you are recording. A recording is only kept if you choose to save it.</li>
+          </ul>
+
+          <h4 id="te-5"><span class="no">5</span>Private lessons and payments</h4>
+          <ul>
+            <li>Agree fees through eSchool. Lessons start once the parent's payment is confirmed.</li>
+            <li>Don't ask families to pay you outside eSchool for lessons arranged here.</li>
+            <li>Keep in touch with learners through eSchool, and include their parent in arrangements.</li>
+            <li>Book only the lessons that have been paid for, and record what happened in each one honestly.</li>
+          </ul>
+
+          <h4 id="te-6"><span class="no">6</span>Reviews</h4>
+          <p>Don't post, buy or ask for fake reviews. You may reply to a review once, politely. Reviews stay on your profile unless the person who wrote them deletes them or our team removes them. Report a review you believe breaks these terms through Help &amp; Support.</p>
+
+          <h4 id="te-7"><span class="no">7</span>Contact with learners</h4>
+          <ul>
+            <li>Never contact a learner in a way their parent or eSchool has not allowed.</li>
+            <li>We may hide content or suspend accounts that break these rules, particularly anything that puts a learner at risk.</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="section-pad" style="padding-top:20px;">
+  <div class="cta-band reveal">
+    <h2>Still need help?</h2>
+    <p>Tell us what's going on and our team will get back to you, usually within one working day.</p>
+    <div class="btn-row">
+      {% if signed_in %}
+      <a href="/support" class="btn btn-white"><span class="shine"></span>Open Help &amp; Support</a>
+      <a href="/contact" class="btn btn-outline">Contact us</a>
+      {% else %}
+      <a href="/contact" class="btn btn-white"><span class="shine"></span>Contact us</a>
+      <a href="/Login" class="btn btn-outline">Sign in for Help &amp; Support</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-foot">
+    <div class="container foot-grid">
+        <div class="foot-col">
+            <div class="foot-brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3L1 8l11 5 9-4.09V17h2V8L12 3z" fill="url(#lfg1)"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="url(#lfg1)" opacity=".7"/><defs><linearGradient id="lfg1" x1="1" y1="3" x2="23" y2="21"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#14B8A6"/></linearGradient></defs></svg>
+                <span>Eschool</span>
+            </div>
+            <p>Premium online learning built around real skills, clear video lessons, and a path that actually gets you somewhere.</p>
+        </div>
+        <div class="foot-col">
+            <h5>Quick Links</h5>
+            <ul>
+                <li><a href="/#categories">Courses</a></li>
+                <li><a href="/aboutus">About us</a></li>
+                <li><a href="/services">Services</a></li>
+                <li><a href="/earn">Earn</a></li>
+            </ul>
+        </div>
+        <div class="foot-col">
+            <h5>Support</h5>
+            <ul>
+                <li><a href="/contact">Contact</a></li>
+                <li><a href="/policies#privacy">Privacy Policy</a></li>
+                <li><a href="/policies#terms">Terms of Service</a></li>
+            </ul>
+        </div>
+        <div class="foot-col">
+            <h5>Need help now?</h5>
+            <div class="help-box">
+                <p>Questions about your account, a payment or a lesson? Our team will help, usually within one working day.</p>
+                <a class="help-btn" href="/contact"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Contact support</a>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <div class="copyright">&copy; <span data-year>2026</span> Eschool. All rights reserved. &middot; <a href="/policies#privacy">Privacy</a> &middot; <a href="/policies#terms">Terms</a></div>
+    </div>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  var root = document.getElementById('eschool-support');
+  if(!root) return;
+  function $(s, el){ return (el || root).querySelector(s); }
+  function $$(s, el){ return Array.prototype.slice.call((el || root).querySelectorAll(s)); }
+
+  /* year */
+  $$('[data-year]').forEach(function(el){ el.textContent = new Date().getFullYear(); });
+
+  /* reveal on scroll */
+  var revealEls = $$('.reveal');
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in-view'); io.unobserve(e.target); } });
+    }, { threshold:0.08 });
+    revealEls.forEach(function(el){ if(!el.classList.contains('in-view')) io.observe(el); });
+  } else { revealEls.forEach(function(el){ el.classList.add('in-view'); }); }
+
+  /* questions: filter by topic */
+  var chips = $$('.chip'), faqs = $$('.faq');
+  function showTopic(t){
+    chips.forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.topic === t)); });
+    faqs.forEach(function(f){ f.hidden = !(t === 'all' || f.dataset.topic === t); if(f.hidden) f.open = false; });
+  }
+  chips.forEach(function(c){ c.addEventListener('click', function(){ showTopic(c.dataset.topic); }); });
+  $$('[data-faq-topic]').forEach(function(a){ a.addEventListener('click', function(){ showTopic(a.dataset.faqTopic); }); });
+  /* only one answer open at a time */
+  faqs.forEach(function(f){ f.addEventListener('toggle', function(){ if(f.open) faqs.forEach(function(o){ if(o !== f) o.open = false; }); }); });
+
+  /* policies: tabs, table of contents, jump list */
+  var DOCS = ['privacy', 'terms', 'parents', 'teachers'];
+  var tabs = $$('.pol-tab'), toc = $('#polToc'), jump = $('#polJump'), current = 'privacy', spy = null;
+  function heads(){ return $$('#doc-' + current + ' h4'); }
+  function label(h){ return h.textContent.replace(/^\d+/, '').trim(); }
+  function openDoc(name, focusTab){
+    if(DOCS.indexOf(name) < 0) name = 'privacy';
+    current = name;
+    tabs.forEach(function(t){ var on = t.dataset.doc === name; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; if(on && focusTab) t.focus(); });
+    DOCS.forEach(function(d){ $('#doc-' + d).hidden = d !== name; });
+    var hs = heads();
+    toc.innerHTML = hs.map(function(h, i){ return '<li><a href="#' + h.id + '" data-i="' + i + '">' + (i + 1) + '. ' + label(h) + '</a></li>'; }).join('');
+    jump.innerHTML = '<option value="">Jump to a section…</option>' + hs.map(function(h, i){ return '<option value="' + h.id + '">' + (i + 1) + '. ' + label(h) + '</option>'; }).join('');
+    watch();
+  }
+  function setOn(id){ $$('a', toc).forEach(function(a){ a.classList.toggle('on', a.getAttribute('href') === '#' + id); }); }
+  function watch(){
+    if(spy) spy.disconnect();
+    if(!('IntersectionObserver' in window)) return;
+    spy = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting) setOn(e.target.id); });
+    }, { rootMargin:'-90px 0px -70% 0px' });
+    heads().forEach(function(h){ spy.observe(h); });
+  }
+  function goTo(id){ var el = document.getElementById(id); if(el){ el.scrollIntoView({ behavior:'smooth', block:'start' }); setOn(id); try { history.replaceState(null, '', '#' + id); } catch(e){} } }
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ openDoc(t.dataset.doc); try { history.replaceState(null, '', '#' + t.dataset.doc); } catch(e){} });
+    t.addEventListener('keydown', function(e){
+      if(e.key === 'ArrowRight' || e.key === 'ArrowLeft'){ e.preventDefault(); var n = (i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length; openDoc(tabs[n].dataset.doc, true); }
+    });
+  });
+  toc.addEventListener('click', function(e){ var a = e.target.closest('a'); if(!a) return; e.preventDefault(); goTo(a.getAttribute('href').slice(1)); });
+  jump.addEventListener('change', function(){ if(jump.value){ goTo(jump.value); jump.value = ''; } });
+  $$('.pol-print').forEach(function(b){ b.addEventListener('click', function(){ window.print(); }); });
+  $$('[data-open-doc]').forEach(function(a){ a.addEventListener('click', function(){ openDoc(a.dataset.openDoc); }); });
+
+  /* open the right place from the address: #privacy #terms #parents #teachers, or a section like #tos-5 */
+  function fromHash(){
+    var h = (location.hash || '').slice(1); if(!h) { openDoc('privacy'); return; }
+    if(DOCS.indexOf(h) > -1){ openDoc(h); setTimeout(function(){ document.getElementById('policies').scrollIntoView(); }, 50); return; }
+    var map = { pp:'privacy', tos:'terms', pa:'parents', te:'teachers' }, pre = h.split('-')[0];
+    if(map[pre] && document.getElementById(h)){ openDoc(map[pre]); setTimeout(function(){ goTo(h); }, 50); return; }
+    openDoc('privacy');
+  }
+  fromHash();
+  window.addEventListener('hashchange', function(){ var h = location.hash.slice(1); if(DOCS.indexOf(h) > -1 || /^(pp|tos|pa|te)-/.test(h)) fromHash(); });
+
+  /* ripple on buttons */
+  $$('.btn').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      var rect = btn.getBoundingClientRect(), ripple = document.createElement('span'), size = Math.max(rect.width, rect.height);
+      ripple.className = 'ripple'; ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = (e.clientX - rect.left - size/2) + 'px'; ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
+      btn.appendChild(ripple); setTimeout(function(){ ripple.remove(); }, 650);
+    });
+  });
+
+  /* gentle parallax on the hero picture (mouse only) */
+  var hero = $('.hero'), art = $('.harbour');
+  if(hero && art && window.matchMedia('(pointer:fine)').matches){
+    hero.addEventListener('mousemove', function(e){
+      var r = hero.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+      art.style.transform = 'translate(' + (x*14) + 'px,' + (y*14) + 'px)';
+    });
+  }
+})();
+</script>
+{% endblock %}

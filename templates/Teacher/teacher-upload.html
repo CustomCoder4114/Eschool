@@ -1,2076 +1,935 @@
 {% extends "Teacher/teacher-body.html" %}
 
 {% block allcontent %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>eSchool - Upload Any File</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
-        }
-
-        /* Header */
-        .page-header {
-            background: linear-gradient(135deg, #4361ee, #3a0ca3);
-            color: white;
-            padding: 40px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .page-title {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-            font-weight: 700;
-        }
-
-        .page-subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            background: white;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 18px 20px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            color: #666;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .tab-btn:hover {
-            background: #f8f9ff;
-        }
-
-        .tab-btn.active {
-            background: #4361ee;
-            color: white;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Upload Section */
-        .upload-section {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 30px;
-        }
-
-        .upload-area {
-            border: 3px dashed #ddd;
-            border-radius: 10px;
-            padding: 17px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
-        }
-
-        .upload-area:hover {
-            border-color: #4361ee;
-            background: #f8f9ff;
-        }
-
-        .upload-area.dragover {
-            border-color: #4361ee;
-            background: #eef1ff;
-        }
-
-        .upload-icon {
-            font-size: 4rem;
-            color: #4361ee;
-            margin-bottom: 20px;
-        }
-
-        .upload-btn {
-            background: #4361ee;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            margin: 20px;
-        }
-
-        .upload-btn:hover {
-            background: #3a0ca3;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
-        }
-
-        .upload-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .file-input {
-            display: none;
-        }
-
-        .file-info {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9ff;
-            border-radius: 8px;
-            display: none;
-        }
-
-        .file-list {
-            list-style: none;
-            margin-top: 10px;
-        }
-
-        .file-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            background: white;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            border-left: 4px solid #4361ee;
-        }
-
-        .file-progress {
-            width: 100%;
-            height: 5px;
-            background: #eee;
-            border-radius: 3px;
-            margin-top: 5px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: #4361ee;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-
-        /* Form Styles */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: #4361ee;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        .select-control {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-            background: white;
-            cursor: pointer;
-            transition: border-color 0.3s ease;
-        }
-
-        .select-control:focus {
-            outline: none;
-            border-color: #4361ee;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        textarea.form-control {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        /* File Types */
-        .file-types {
-            color: #666;
-            font-size: 0.9rem;
-            margin-top: 10px;
-        }
-
-        /* Success/Error Messages */
-        .success-message {
-            background: #d1ecf1;
-            color: #0c5460;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            display: none;
-            border-left: 4px solid #0c5460;
-        }
-
-        .error-message {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            display: none;
-            border-left: 4px solid #721c24;
-        }
-
-        /* Uploaded Files Preview */
-        .uploaded-preview {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #eee;
-        }
-
-        .preview-title {
-            font-size: 1.2rem;
-            color: #333;
-            margin-bottom: 15px;
-            font-weight: 600;
-        }
-
-        .preview-item {
-            background: #f8f9ff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            transition: all 0.3s ease;
-        }
-
-        .preview-item:hover {
-            background: #eef1ff;
-            transform: translateY(-2px);
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-        }
-
-        .preview-icon {
-            width: 40px;
-            height: 40px;
-            background: #4361ee;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.2rem;
-            flex-shrink: 0;
-            overflow: hidden;
-        }
-
-        .preview-info {
-            flex: 1;
-        }
-
-        .preview-info h4 {
-            margin: 0 0 5px 0;
-            color: #333;
-        }
-
-        .preview-info p {
-            margin: 0;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        /* File Type Colors */
-        .file-type-badge {
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            margin-left: 10px;
-        }
-
-        .badge-video { background: #ff6b6b; color: white; }
-        .badge-pdf { background: #ff9f43; color: white; }
-        .badge-doc { background: #48dbfb; color: white; }
-        .badge-image { background: #1dd1a1; color: white; }
-        .badge-zip { background: #f368e0; color: white; }
-        .badge-code { background: #54a0ff; color: white; }
-        .badge-audio { background: #5f27cd; color: white; }
-        .badge-other { background: #8395a7; color: white; }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .tabs {
-                flex-direction: column;
-            }
-            
-            .tab-btn {
-                min-width: 100%;
-            }
-            
-            .page-header {
-                padding: 30px 20px;
-            }
-            
-            .page-title {
-                font-size: 2rem;
-            }
-        }
-
-        /* File Size Warning */
-        .size-warning {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin-top: 10px;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .size-limit-warning {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 0.9rem;
-            display: none;
-        }
-        
-        /* Chunk Upload Progress */
-        .chunk-progress {
-            margin-top: 10px;
-            padding: 10px;
-            background: #f8f9ff;
-            border-radius: 8px;
-            border-left: 4px solid #4361ee;
-        }
-        
-        .chunk-progress-bar {
-            width: 100%;
-            height: 8px;
-            background: #eee;
-            border-radius: 4px;
-            margin-top: 5px;
-            overflow: hidden;
-        }
-        
-        .chunk-progress-fill {
-            height: 100%;
-            background: #4361ee;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-
-        /* Loading spinner */
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #4361ee;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-right: 8px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* User info badge */
-        .user-info-badge {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .user-avatar {
-            width: 35px;
-            height: 35px;
-            background: linear-gradient(135deg, #4361ee, #3a0ca3);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
-
-        /* DELETE BUTTON STYLES - UPDATED */
-        .delete-btn {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            margin-left: 10px;
-        }
-
-        .delete-btn:hover {
-            background: #dc2626;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-        }
-
-        .delete-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .delete-btn.deleting {
-            background: #dc2626;
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-
-        .confirm-delete-dialog {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            display: none;
-        }
-
-        .confirm-delete-box {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        .confirm-delete-box h3 {
-            color: #333;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .confirm-delete-box p {
-            color: #666;
-            margin-bottom: 25px;
-            line-height: 1.5;
-            font-size: 1rem;
-        }
-
-        .confirm-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .cancel-btn {
-            background: #f3f4f6;
-            color: #374151;
-            border: 1px solid #d1d5db;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .cancel-btn:hover {
-            background: #e5e7eb;
-        }
-
-        .confirm-delete-btn {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .confirm-delete-btn:hover {
-            background: #dc2626;
-        }
-
-        .confirm-delete-btn:disabled {
-            background: #fca5a5;
-            cursor: not-allowed;
-        }
-
-        .confirm-delete-btn .spinner {
-            width: 16px;
-            height: 16px;
-            border-width: 2px;
-            border-top-color: white;
-            margin-right: 0;
-        }
-
-        /* Statistics */
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .stat-number {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #4361ee;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: #666;
-        }
-
-        /* Filter Controls */
-        .filter-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .filter-select {
-            padding: 8px 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            background: white;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: border-color 0.3s ease;
-        }
-
-        .filter-select:focus {
-            outline: none;
-            border-color: #4361ee;
-        }
-
-        .search-input {
-            flex: 1;
-            min-width: 200px;
-            padding: 8px 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            transition: border-color 0.3s ease;
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: #4361ee;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-
-        .empty-state i {
-            font-size: 3rem;
-            color: #ccc;
-            margin-bottom: 15px;
-        }
-
-        /* Action buttons for uploaded files */
-        .file-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-
-        .view-btn {
-            background: #4361ee;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .view-btn:hover {
-            background: #3a0ca3;
-        }
-
-        .view-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        /* File details */
-        .file-details {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-top: 10px;
-            font-size: 0.8rem;
-            color: #666;
-        }
-
-        .file-size {
-            background: #eef1ff;
-            padding: 2px 8px;
-            border-radius: 4px;
-        }
-
-        .file-date {
-            color: #999;
-        }
-
-        .file-category {
-            background: #f0f9ff;
-            padding: 2px 8px;
-            border-radius: 4px;
-            color: #0369a1;
-        }
-
-        /* ===== THUMBNAIL UPLOAD (NEW) ===== */
-        .thumbnail-upload-area {
-            border: 2px dashed #ddd;
-            border-radius: 10px;
-            padding: 18px;
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            flex-wrap: wrap;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .thumbnail-upload-area:hover {
-            border-color: #4361ee;
-            background: #f8f9ff;
-        }
-
-        .thumbnail-upload-area.dragover {
-            border-color: #4361ee;
-            background: #eef1ff;
-        }
-
-        .thumbnail-preview-box {
-            width: 90px;
-            height: 90px;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #f0f1f5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            border: 2px solid #e5e7eb;
-        }
-
-        .thumbnail-preview-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .thumbnail-preview-box i {
-            font-size: 1.8rem;
-            color: #bbb;
-        }
-
-        .thumbnail-actions {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
-        }
-
-        .thumbnail-buttons-row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .thumbnail-remove-btn {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 600;
-            display: none;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .thumbnail-remove-btn:hover {
-            background: #dc2626;
-        }
-
-        .thumbnail-hint {
-            color: #666;
-            font-size: 0.8rem;
-        }
-
-        .preview-thumbnail-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-    </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-
-    <div class="container">
-        <!-- Header -->
-        <header class="page-header">
-            <div class="header-content">
-                <div class="page-icon">
-                    <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; margin-bottom: 15px;"></i>
-                </div>
-                <h1 class="page-title">Upload & Manage Files</h1>
-                <p class="page-subtitle">Share educational materials and manage all your uploaded files in one place.</p>
-            </div>
-        </header>
-
-        <!-- Tabs Navigation -->
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('upload')">
-                <i class="fas fa-cloud-upload-alt"></i> Upload Files
-            </button>
-            <button class="tab-btn" onclick="switchTab('myuploads')">
-                <i class="fas fa-folder"></i> My Uploads
-            </button>
-            <button class="tab-btn" onclick="switchTab('instructions')">
-                <i class="fas fa-info-circle"></i> Instructions
-            </button>
-        </div>
-
-        <!-- Upload Tab -->
-        <div id="upload-tab" class="tab-content active">
-            <section class="upload-section">
-                <h2 style="margin-bottom: 20px; color: #333;">
-                    <i class="fas fa-cloud-upload-alt"></i> Upload Any File Type
-                </h2>
-                <p style="color: #666; margin-bottom: 30px;">
-                    Upload documents, videos, images, code files, presentations, and any other educational materials
-                </p>
-
-                <div class="size-limit-warning" id="sizeWarning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span><strong>Note:</strong> Large files are uploaded in chunks for better reliability.</span>
-                </div>
-
-                <div class="upload-area" id="dropArea">
-                    <div class="upload-icon">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                    </div>
-                    <h3>Drag & Drop Files Here</h3>
-                    <p>or click to browse files</p>
-                    <p class="file-types">All file types are supported - No restrictions!</p>
-                    <!--
-                    <div class="size-warning">
-                        <i class="fas fa-info-circle"></i>
-                        <span>Files are stored on server in: <code>/static/uploads/{{ user_id }}/</code></span> 
-                    </div>
-                    -->
-                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
-                        <i class="fas fa-folder-open"></i> Browse All Files
-                    </button>
-                    <input type="file" id="fileInput" class="file-input" multiple>
-                </div>
-
-                <div id="fileInfo" class="file-info">
-                    <h4>Selected Files:</h4>
-                    <ul id="fileList" class="file-list"></ul>
-                    <div id="chunkProgress" class="chunk-progress" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                            <span>Upload Progress:</span>
-                            <span id="chunkStatus">0%</span>
-                        </div>
-                        <div class="chunk-progress-bar">
-                            <div class="chunk-progress-fill" id="chunkProgressFill"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ===== THUMBNAIL UPLOAD (NEW) ===== -->
-                <div class="form-group">
-                    <label for="thumbnailInput"><i class="fas fa-image"></i> Thumbnail Image (optional)</label>
-                    <div class="thumbnail-upload-area" id="thumbnailDropArea">
-                        <div class="thumbnail-preview-box" id="thumbnailPreviewBox">
-                            <i class="fas fa-image"></i>
-                        </div>
-                        <div class="thumbnail-actions">
-                            <div class="thumbnail-buttons-row">
-                                <button type="button" class="upload-btn" onclick="document.getElementById('thumbnailInput').click()">
-                                    <i class="fas fa-image"></i> Choose Thumbnail
-                                </button>
-                                <button type="button" class="thumbnail-remove-btn" id="thumbnailRemoveBtn" onclick="removeThumbnail(event)">
-                                    <i class="fas fa-times"></i> Remove
-                                </button>
-                            </div>
-                            <span class="thumbnail-hint">JPG, PNG, GIF or WEBP · max 5MB · shown as the preview image for this resource</span>
-                        </div>
-                        <input type="file" id="thumbnailInput" class="file-input" accept="image/*">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="course"><i class="fas fa-book"></i> Select Course/Category</label>
-                    <select id="course" class="select-control">
-                        <option value="">Choose a category...</option>
-                        <option value="mathematics">Mathematics</option>
-                        <option value="science">Physics</option>
-                        <option value="business">Business</option>
-                        <option value="arts">Chemistry</option>
-                        <option value="languages">French</option>
-                        <option value="general">General</option>
-                        <option value="projects">English</option>
-                        <option value="assignments">Biology</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="resourceType"><i class="fas fa-tag"></i> Resource Type</label>
-                    <select id="resourceType" class="select-control">
-                        <option value="document">Document</option>
-                        <option value="video">Video</option>
-                        <option value="image">Images</option>
-                        <option value="audio">Audio</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="title"><i class="fas fa-heading"></i> Title *</label>
-                    <input type="text" id="title" class="form-control" placeholder="Enter a descriptive title for your file(s)" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="description"><i class="fas fa-align-left"></i> Description *</label>
-                    <textarea id="description" class="form-control" rows="3" placeholder="Describe what this file contains, its purpose, or any special instructions..." required></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="difficulty"><i class="fas fa-graduation-cap"></i> Grade</label>
-                    <select id="difficulty" class="select-control">
-                        <option value="grade-1">Grade 1</option>
-                        <option value="grade-2">Grade 2</option>
-                        <option value="grade-3">Grade 3</option>
-                        <option value="grade-4">Grade 4</option>
-                        <option value="grade-5">Grade 5</option>
-                        <option value="grade-6">Grade 6</option>
-                        <option value="grade-7">Grade 7</option>
-                        <option value="grade-8">Grade 8</option>
-                        <option value="grade-9">Grade 9</option>
-                        <option value="grade-10">Grade 10</option>
-                        <option value="grade-11">Grade 11</option>
-                        <option value="grade-12">Grade 12</option>
-                        <option value="all">All Grades</option>
-                    </select>
-                </div>
-
-                <button class="upload-btn" onclick="uploadFiles()" style="width: 100%; padding: 15px;" id="uploadButton">
-                    <i class="fas fa-paper-plane"></i> Upload & Share Resources
-                </button>
-
-                <div id="successMessage" class="success-message">
-                    <i class="fas fa-check-circle"></i> <span id="successText">Files uploaded successfully! They will appear in the Resources page.</span>
-                </div>
-
-                <div id="errorMessage" class="error-message">
-                    <i class="fas fa-exclamation-circle"></i> <span id="errorText">Error uploading files. Please try again.</span>
-                </div>
-            </section>
-        </div>
-
-        <!-- My Uploads Tab -->
-        <div id="myuploads-tab" class="tab-content">
-            <section class="upload-section">
-                <h2 style="margin-bottom: 20px; color: #333;">
-                    <i class="fas fa-folder"></i> My Uploaded Files
-                </h2>
-                <p style="color: #666; margin-bottom: 20px;">
-                    Manage all files you've uploaded. You can view, download, or delete them here.
-                </p>
-
-                <!-- Statistics -->
-                <div class="stats-container" id="userStats">
-                    <!-- Stats will be loaded dynamically -->
-                </div>
-
-                <!-- Filter Controls -->
-                <div class="filter-controls">
-                    <input type="text" id="searchUploads" class="search-input" placeholder="Search your uploads..." oninput="filterMyUploads()">
-                    <select id="filterCategory" class="filter-select" onchange="filterMyUploads()">
-                        <option value="">All Categories</option>
-                        <option value="mathematics">Mathematics</option>
-                        <option value="science">Science</option>
-                        <option value="programming">Programming</option>
-                        <option value="business">Business</option>
-                        <option value="arts">Arts & Humanities</option>
-                        <option value="languages">Languages</option>
-                        <option value="general">General</option>
-                    </select>
-                    <select id="filterType" class="filter-select" onchange="filterMyUploads()">
-                        <option value="">All Types</option>
-                        <option value="video">Video</option>
-                        <option value="document">Document</option>
-                        <option value="image">Image</option>
-                        <option value="audio">Audio</option>
-                        <option value="code">Code</option>
-                        <option value="archive">Archive</option>
-                        <option value="other">Other</option>
-                    </select>
-                    <select id="filterSort" class="filter-select" onchange="filterMyUploads()">
-                        <option value="newest">Newest First</option>
-                        <option value="oldest">Oldest First</option>
-                        <option value="largest">Largest First</option>
-                        <option value="smallest">Smallest First</option>
-                        <option value="name">Name A-Z</option>
-                    </select>
-                </div>
-
-                <!-- Uploaded Files List -->
-                <div id="myUploadsList">
-                    <!-- Uploaded files will be displayed here -->
-                </div>
-
-                <!-- Empty State -->
-                <div id="noUploadsMessage" class="empty-state" style="display: none;">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <h3>No Uploads Found</h3>
-                    <p>You haven't uploaded any files yet. Start by uploading some resources!</p>
-                    <button class="upload-btn" onclick="switchTab('upload')" style="margin-top: 15px;">
-                        <i class="fas fa-cloud-upload-alt"></i> Upload Files
-                    </button>
-                </div>
-
-                <!-- Loading State -->
-                <div id="loadingUploads" style="text-align: center; padding: 40px;">
-                    <div class="spinner" style="width: 40px; height: 40px; margin: 0 auto 15px;"></div>
-                    <p>Loading your uploads...</p>
-                </div>
-            </section>
-        </div>
-
-        <!-- Instructions Tab -->
-        <div id="instructions-tab" class="tab-content">
-            <section class="upload-section">
-                <h2 style="margin-bottom: 20px; color: #333;">
-                    <i class="fas fa-info-circle"></i> Upload Instructions
-                </h2>
-                
-                <div style="margin-bottom: 30px;">
-                    <h3 style="color: #4361ee; margin-bottom: 15px;">
-                        <i class="fas fa-file-alt"></i> Supported File Types
-                    </h3>
-                    <ul style="color: #666; line-height: 1.8; padding-left: 20px;">
-                        <li><strong>Documents:</strong> PDF, DOC, DOCX, TXT, RTF, ODT, EPUB</li>
-                        <li><strong>Presentations:</strong> PPT, PPTX, KEY, ODP</li>
-                        <li><strong>Spreadsheets:</strong> XLS, XLSX, CSV, ODS</li>
-                        <li><strong>Images:</strong> JPG, JPEG, PNG, GIF, SVG, BMP, TIFF</li>
-                        <li><strong>Videos:</strong> MP4, AVI, MOV, WMV, FLV, MKV, WEBM</li>
-                        <li><strong>Audio:</strong> MP3, WAV, AAC, FLAC, M4A</li>
-                        <li><strong>Code Files:</strong> JS, HTML, CSS, PY, JAVA, C, CPP, PHP, SQL</li>
-                        <li><strong>Archives:</strong> ZIP, RAR, 7Z, TAR, GZ</li>
-                        <li><strong>And many more...</strong> Almost any file type is accepted!</li>
-                    </ul>
-                </div>
-
-                <div style="margin-bottom: 30px;">
-                    <h3 style="color: #4361ee; margin-bottom: 15px;">
-                        <i class="fas fa-exclamation-triangle"></i> Important Notes
-                    </h3>
-                    <ul style="color: #666; line-height: 1.8; padding-left: 20px;">
-                        <li>There is <strong>NO file type restriction</strong> - upload any educational material</li>
-                        <li>Files will appear in the "Resources" page immediately</li>
-                        <li>Files are stored on the server in your personal folder</li>
-                        <li><strong>Maximum file size: 2GB</strong></li>
-                        <li>Large files (>10MB) are uploaded in chunks for reliability</li>
-                        <li>You can attach an optional thumbnail image (max 5MB) so your resource stands out in the list</li>
-                        <li>Make sure files don't contain sensitive personal information</li>
-                        <li>All uploaded files are visible to everyone by default (unless marked as private)</li>
-                    </ul>
-                </div>
-
-                <div style="background: #f8f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #4361ee;">
-                    <h4 style="color: #333; margin-bottom: 10px;">
-                        <i class="fas fa-lightbulb"></i> Best Practices
-                    </h4>
-                    <ul style="color: #666; line-height: 1.8; padding-left: 20px;">
-                        <li>Use clear, descriptive titles for easy searching</li>
-                        <li>Add detailed descriptions to help classmates understand the content</li>
-                        <li>Select appropriate category and resource type for better organization</li>
-                        <li>For multiple related files, consider zipping them together</li>
-                        <li>Check file names for any typos before uploading</li>
-                        <li>Public resources become available to everyone immediately</li>
-                        <li>Videos and images can be viewed directly in the Resources page</li>
-                    </ul>
-                </div>
-            </section>
-        </div>
-    </div>
-
-    <!-- Delete Confirmation Dialog -->
-    <div class="confirm-delete-dialog" id="deleteDialog">
-        <div class="confirm-delete-box">
-            <h3><i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> Confirm Deletion</h3>
-            <p id="deleteMessage">Are you sure you want to delete this file? This action cannot be undone.</p>
-            <div class="confirm-actions">
-                <button class="cancel-btn" onclick="cancelDelete()">Cancel</button>
-                <button class="confirm-delete-btn" onclick="confirmDelete()" id="confirmDeleteBtn">
-                    <i class="fas fa-trash"></i> Delete File
-                </button>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+/* ======================================================================
+   TEACHER UPLOAD
+   Real uploads to POST /api/upload (one request per file, with live
+   progress), real video/audio length and a real cover frame taken from
+   the video in the browser. Scoped to .up with its own light/dark colours
+   (data-no-theme); the main colour follows Settings > Appearance.
+   No pop-ups: every message is shown on the page.
+   ====================================================================== */
+.up {
+    --up-accent: var(--primary-color, #4361ee);
+    --up-accent-2: var(--secondary-color, #7209b7);
+    --up-accent-soft: color-mix(in srgb, var(--up-accent) 11%, transparent);
+    --up-accent-line: color-mix(in srgb, var(--up-accent) 35%, transparent);
+    --up-surface: #ffffff;
+    --up-surface-2: #f8fafc;
+    --up-hover: #f1f5f9;
+    --up-border: #e5e7eb;
+    --up-text: #0f172a;
+    --up-text-2: #475569;
+    --up-text-3: #64748b;
+    --up-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 6px 18px rgba(15, 23, 42, .06);
+    --up-ok: #059669; --up-ok-soft: #ecfdf5;
+    --up-bad: #dc2626; --up-bad-soft: #fef2f2;
+    --up-warn: #b45309; --up-warn-soft: #fffbeb;
+    max-width: 1320px; margin: 0 auto; color: var(--up-text);
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+body.dark-mode .up {
+    --up-accent-soft: color-mix(in srgb, var(--up-accent) 22%, transparent);
+    --up-accent-line: color-mix(in srgb, var(--up-accent) 50%, transparent);
+    --up-surface: #111827;
+    --up-surface-2: #0f172a;
+    --up-hover: #1e293b;
+    --up-border: #263244;
+    --up-text: #e5e7eb;
+    --up-text-2: #cbd5e1;
+    --up-text-3: #94a3b8;
+    --up-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+    --up-ok: #34d399; --up-ok-soft: rgba(16, 185, 129, .14);
+    --up-bad: #f87171; --up-bad-soft: rgba(239, 68, 68, .14);
+    --up-warn: #fbbf24; --up-warn-soft: rgba(245, 158, 11, .14);
+}
+.up *, .up *::before, .up *::after { box-sizing: border-box; }
+.up button, .up input, .up select, .up textarea { font-family: inherit; }
+.up :focus-visible { outline: 3px solid var(--up-accent-line); outline-offset: 2px; }
+.up [hidden] { display: none !important; }
+.up h2, .up h3, .up p { margin: 0; }
+
+/* ---------- hero ---------- */
+.up-hero {
+    position: relative; overflow: hidden; display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    padding: 24px 28px; margin-bottom: 18px; border-radius: 20px; color: #fff;
+    background: linear-gradient(135deg, var(--up-accent), var(--up-accent-2));
+    box-shadow: 0 12px 30px color-mix(in srgb, var(--up-accent) 28%, transparent);
+}
+.up-hero::after { content: ''; position: absolute; right: -70px; top: -90px; width: 260px; height: 260px; border-radius: 50%; background: rgba(255, 255, 255, .08); pointer-events: none; }
+.up-hero-main { position: relative; z-index: 1; display: flex; gap: 16px; align-items: center; min-width: 0; flex: 1 1 420px; }
+.up-hero-icon { flex: 0 0 auto; width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; font-size: 1.4rem; background: rgba(255, 255, 255, .18); border: 1px solid rgba(255, 255, 255, .3); }
+.up-hero h1 { margin: 0 0 4px; font: 800 1.7rem/1.2 'Poppins', sans-serif; color: #fff; }
+.up-hero p { font-size: .94rem; opacity: .93; line-height: 1.5; }
+.up-hero-side { position: relative; z-index: 1; display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch; }
+.up-hstat { min-width: 92px; padding: 8px 12px; border-radius: 12px; text-align: center; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .28); }
+.up-hstat b { display: block; font: 700 1.2rem 'Poppins', sans-serif; font-variant-numeric: tabular-nums; }
+.up-hstat span { font-size: .74rem; opacity: .9; }
+.up-hbtn { display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; border-radius: 12px; font-weight: 700; font-size: .88rem; text-decoration: none; background: #fff; color: var(--up-accent); border: 1px solid #fff; transition: background .15s; }
+.up-hbtn:hover { background: #eef2ff; }
+
+/* ---------- layout ---------- */
+.up-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+.up-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.up-card { background: var(--up-surface); border: 1px solid var(--up-border); border-radius: 18px; box-shadow: var(--up-shadow); padding: 20px; }
+.up-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.up-step { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: .9rem; background: var(--up-accent-soft); color: var(--up-accent); }
+.up-step.done { background: var(--up-ok-soft); color: var(--up-ok); }
+.up-card-head h2 { font: 700 1.05rem 'Poppins', sans-serif; color: var(--up-text); }
+.up-card-head p { font-size: .82rem; color: var(--up-text-3); margin-top: 2px; }
+.up-card-head .grow { flex: 1; min-width: 0; }
+
+/* ---------- buttons ---------- */
+.up-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 11px;
+    border: 1px solid var(--up-border); background: var(--up-surface); color: var(--up-text); font-weight: 600; font-size: .9rem;
+    cursor: pointer; text-decoration: none; transition: background .15s, border-color .15s, color .15s;
+}
+.up-btn:hover { background: var(--up-hover); }
+.up-btn.primary { background: var(--up-accent); border-color: transparent; color: #fff; }
+.up-btn.primary:hover { background: var(--primary-dark, var(--up-accent-2)); }
+.up-btn.ghost { border-color: transparent; background: transparent; color: var(--up-text-2); }
+.up-btn.ghost:hover { background: var(--up-hover); color: var(--up-text); }
+.up-btn.danger { color: var(--up-bad); }
+.up-btn.danger:hover { background: var(--up-bad-soft); }
+.up-btn:disabled { opacity: .55; cursor: not-allowed; }
+.up-btn.big { height: 50px; padding: 0 26px; font-size: 1rem; border-radius: 13px; }
+.up-icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 0; background: transparent; color: var(--up-text-3); cursor: pointer; display: grid; place-items: center; flex: 0 0 auto; }
+.up-icon-btn:hover { background: var(--up-bad-soft); color: var(--up-bad); }
+
+/* ---------- drop zone ---------- */
+.up-drop {
+    display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 30px 20px; border-radius: 16px;
+    border: 2px dashed var(--up-accent-line); background: var(--up-accent-soft); cursor: pointer; transition: border-color .15s, background .15s;
+}
+.up-drop:hover, .up-drop.over { border-color: var(--up-accent); background: color-mix(in srgb, var(--up-accent) 16%, transparent); }
+.up-drop-icon { width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; font-size: 1.6rem; color: #fff; background: linear-gradient(135deg, var(--up-accent), var(--up-accent-2)); }
+.up-drop h3 { font: 700 1.05rem 'Poppins', sans-serif; color: var(--up-text); }
+.up-drop p { font-size: .86rem; color: var(--up-text-2); }
+.up-drop small { font-size: .78rem; color: var(--up-text-3); }
+.up-drop.compact { flex-direction: row; justify-content: center; padding: 14px; gap: 12px; }
+.up-drop.compact .up-drop-icon { width: 40px; height: 40px; font-size: 1.05rem; border-radius: 12px; }
+.up-drop.compact h3 { font-size: .95rem; }
+.up-drop.compact p, .up-drop.compact small, .up-drop.compact .up-btn { display: none; }
+
+/* ---------- file rows ---------- */
+.up-files { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.up-files:empty { display: none; }
+.up-file { position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--up-border); background: var(--up-surface-2); overflow: hidden; }
+.up-file.bad { border-color: color-mix(in srgb, var(--up-bad) 45%, transparent); background: var(--up-bad-soft); }
+.up-file.ok { border-color: color-mix(in srgb, var(--up-ok) 45%, transparent); }
+.up-thumb { width: 64px; height: 48px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; color: #fff; font-size: 1.15rem; }
+.up-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.k-video { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+.k-pdf { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.k-doc { background: linear-gradient(135deg, #0ea5e9, #0369a1); }
+.k-presentation { background: linear-gradient(135deg, #f97316, #c2410c); }
+.k-spreadsheet { background: linear-gradient(135deg, #10b981, #047857); }
+.k-image { background: linear-gradient(135deg, #14b8a6, #0f766e); }
+.k-audio { background: linear-gradient(135deg, #db2777, #9d174d); }
+.k-code { background: linear-gradient(135deg, #475569, #1e293b); }
+.k-zip { background: linear-gradient(135deg, #a855f7, #6b21a8); }
+.k-other { background: linear-gradient(135deg, #64748b, #334155); }
+.up-file-body { min-width: 0; }
+.up-title-in {
+    width: 100%; height: 36px; padding: 0 10px; border-radius: 9px; border: 1px solid transparent; background: transparent;
+    color: var(--up-text); font-weight: 700; font-size: .93rem;
+}
+.up-title-in:hover { border-color: var(--up-border); background: var(--up-surface); }
+.up-title-in:focus { outline: none; border-color: var(--up-accent); background: var(--up-surface); box-shadow: 0 0 0 3px var(--up-accent-soft); }
+.up-file-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 2px 10px 0; font-size: .77rem; color: var(--up-text-3); }
+.up-file-meta .tag { padding: 1px 8px; border-radius: 999px; background: var(--up-hover); color: var(--up-text-2); font-weight: 600; }
+.up-file-msg { padding: 4px 10px 0; font-size: .78rem; font-weight: 600; }
+.up-file-msg.bad { color: var(--up-bad); }
+.up-file-msg.ok { color: var(--up-ok); }
+.up-file-msg.info { color: var(--up-text-2); }
+.up-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--up-accent); transition: width .2s; }
+.up-file.ok .up-bar { background: var(--up-ok); }
+.up-file.bad .up-bar { background: var(--up-bad); }
+.up-files-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: .82rem; color: var(--up-text-3); }
+
+/* ---------- form ---------- */
+.up-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.up-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.up-field.wide { grid-column: 1 / -1; }
+.up-field > label, .up-label { font-size: .84rem; font-weight: 700; color: var(--up-text-2); }
+.up-field > label .req { color: var(--up-bad); }
+.up-input, .up-select, .up-text {
+    width: 100%; border-radius: 11px; border: 1px solid var(--up-border); background: var(--up-surface-2); color: var(--up-text); font-size: .93rem;
+    transition: border-color .15s, box-shadow .15s;
+}
+.up-input, .up-select { height: 46px; padding: 0 14px; }
+.up-select { cursor: pointer; }
+.up-text { min-height: 110px; padding: 12px 14px; resize: vertical; line-height: 1.5; }
+.up-input:focus, .up-select:focus, .up-text:focus { outline: none; border-color: var(--up-accent); box-shadow: 0 0 0 3px var(--up-accent-soft); }
+.up-field.has-err .up-select, .up-field.has-err .up-text, .up-field.has-err .up-input { border-color: var(--up-bad); }
+.up-hint { display: flex; justify-content: space-between; gap: 10px; font-size: .77rem; color: var(--up-text-3); }
+.up-err { font-size: .78rem; font-weight: 600; color: var(--up-bad); min-height: 0; }
+.up-err:empty { display: none; }
+
+.up-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.up-opt { position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 13px; border: 1px solid var(--up-border); background: var(--up-surface-2); cursor: pointer; transition: border-color .15s, background .15s; }
+.up-opt:hover { border-color: var(--up-accent-line); }
+.up-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.up-opt i { margin-top: 2px; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--up-hover); color: var(--up-text-2); flex: 0 0 auto; }
+.up-opt b { display: block; font-size: .9rem; color: var(--up-text); }
+.up-opt span { font-size: .78rem; color: var(--up-text-3); line-height: 1.4; }
+.up-opt:has(input:checked) { border-color: var(--up-accent); background: var(--up-accent-soft); }
+.up-opt:has(input:checked) i { background: var(--up-accent); color: #fff; }
+.up-opt:has(input:focus-visible) { outline: 3px solid var(--up-accent-line); outline-offset: 2px; }
+
+.up-switch { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 13px; border: 1px solid var(--up-border); background: var(--up-surface-2); }
+.up-switch b { display: block; font-size: .9rem; color: var(--up-text); }
+.up-switch span { font-size: .78rem; color: var(--up-text-3); }
+.up-switch.off { opacity: .6; }
+.up-toggle { position: relative; flex: 0 0 auto; width: 46px; height: 26px; }
+.up-toggle input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.up-toggle i { position: absolute; inset: 0; border-radius: 999px; background: var(--up-border); transition: background .15s; }
+.up-toggle i::after { content: ''; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .15s; }
+.up-toggle input:checked + i { background: var(--up-accent); }
+.up-toggle input:checked + i::after { transform: translateX(20px); }
+.up-toggle input:focus-visible + i { outline: 3px solid var(--up-accent-line); outline-offset: 2px; }
+.up-toggle input:disabled { cursor: not-allowed; }
+.up-toggle input:disabled + i { background: var(--up-border); }
+.up-toggle input:disabled + i::after { transform: none; }
+
+/* ---------- cover ---------- */
+.up-cover { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.up-cover-box { position: relative; width: 168px; aspect-ratio: 16 / 10; border-radius: 13px; overflow: hidden; display: grid; place-items: center; border: 2px dashed var(--up-border); background: var(--up-surface-2); color: var(--up-text-3); font-size: 1.6rem; cursor: pointer; transition: border-color .15s; }
+.up-cover-box:hover, .up-cover-box.over { border-color: var(--up-accent); }
+.up-cover-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.up-cover-box.has { border-style: solid; }
+.up-cover-side { flex: 1 1 220px; display: flex; flex-direction: column; gap: 8px; }
+.up-cover-side p { font-size: .84rem; color: var(--up-text-2); line-height: 1.5; }
+.up-cover-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---------- submit bar ---------- */
+.up-submit { position: sticky; bottom: 12px; z-index: 5; display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 14px 16px; border-radius: 18px; background: var(--up-surface); border: 1px solid var(--up-border); box-shadow: 0 10px 30px rgba(15, 23, 42, .14); }
+body.dark-mode .up-submit { box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+.up-submit-info { min-width: 0; flex: 1 1 260px; }
+.up-submit-info b { display: block; font-size: .95rem; color: var(--up-text); }
+.up-submit-info span { font-size: .8rem; color: var(--up-text-3); }
+.up-total { height: 6px; margin-top: 8px; border-radius: 999px; background: var(--up-hover); overflow: hidden; }
+.up-total div { height: 100%; width: 0; background: linear-gradient(90deg, var(--up-accent), var(--up-accent-2)); transition: width .2s; }
+.up-submit-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---------- page notes ---------- */
+.up-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 13px; font-size: .88rem; line-height: 1.45; border: 1px solid transparent; }
+.up-note i { margin-top: 2px; }
+.up-note.warn { background: var(--up-bad-soft); color: var(--up-bad); border-color: color-mix(in srgb, var(--up-bad) 30%, transparent); }
+.up-note.ok { background: var(--up-ok-soft); color: var(--up-ok); border-color: color-mix(in srgb, var(--up-ok) 30%, transparent); }
+.up-note.info { background: var(--up-accent-soft); color: var(--up-text); border-color: var(--up-accent-line); }
+
+/* ---------- aside ---------- */
+.up-aside { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 16px; }
+.up-aside h3 { font: 700 .95rem 'Poppins', sans-serif; color: var(--up-text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.up-aside h3 small { margin-left: auto; font: 600 .76rem 'Inter', sans-serif; color: var(--up-text-3); }
+.up-pv { border-radius: 14px; overflow: hidden; border: 1px solid var(--up-border); background: var(--up-surface); }
+.up-pv-img { position: relative; aspect-ratio: 16 / 9; display: grid; place-items: center; color: #fff; font-size: 2rem; }
+.up-pv-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.up-pv-badge { position: absolute; left: 10px; top: 10px; display: inline-flex; gap: 6px; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700; background: rgba(15, 23, 42, .72); color: #fff; }
+.up-pv-len { position: absolute; right: 10px; bottom: 10px; padding: 2px 7px; border-radius: 6px; font-size: .72rem; font-weight: 700; background: rgba(15, 23, 42, .78); color: #fff; }
+.up-pv-body { padding: 12px 14px 14px; }
+.up-pv-title { font-weight: 700; font-size: .95rem; color: var(--up-text); line-height: 1.35; overflow-wrap: anywhere; }
+.up-pv-title.empty { color: var(--up-text-3); font-weight: 600; }
+.up-pv-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.up-pv-chips span { padding: 2px 8px; border-radius: 999px; font-size: .72rem; font-weight: 600; background: var(--up-hover); color: var(--up-text-2); }
+.up-pv-chips .priv { background: var(--up-warn-soft); color: var(--up-warn); }
+.up-pv-desc { font-size: .8rem; color: var(--up-text-3); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.up-pv-by { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: .8rem; font-weight: 600; color: var(--up-text-2); }
+.up-pv-by i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: .7rem; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--up-accent), var(--up-accent-2)); }
+.up-pv-more { margin-top: 8px; font-size: .78rem; color: var(--up-text-3); text-align: center; }
+
+.up-check { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.up-check li { display: flex; gap: 10px; align-items: center; font-size: .85rem; color: var(--up-text-2); }
+.up-check li i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: .66rem; border: 2px solid var(--up-border); color: transparent; flex: 0 0 auto; }
+.up-check li.on { color: var(--up-text); }
+.up-check li.on i { background: var(--up-ok); border-color: var(--up-ok); color: #fff; }
+.up-check li em { margin-left: auto; font-style: normal; font-size: .72rem; color: var(--up-text-3); }
+.up-meter { height: 6px; margin-top: 12px; border-radius: 999px; background: var(--up-hover); overflow: hidden; }
+.up-meter div { height: 100%; width: 0; background: var(--up-ok); transition: width .25s; }
+
+.up-recent { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.up-recent a { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; padding: 6px; border-radius: 10px; text-decoration: none; color: inherit; transition: background .15s; }
+.up-recent a:hover { background: var(--up-hover); }
+.up-recent .ic { width: 40px; height: 40px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; color: #fff; font-size: .9rem; }
+.up-recent .ic { position: relative; }
+.up-recent .ic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.up-recent b { display: block; font-size: .84rem; color: var(--up-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.up-recent span { font-size: .74rem; color: var(--up-text-3); }
+.up-empty-s { font-size: .84rem; color: var(--up-text-3); }
+.up-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-size: .84rem; font-weight: 700; color: var(--up-accent); text-decoration: none; }
+.up-link:hover { text-decoration: underline; }
+
+.up-rules { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.up-rules li { display: flex; gap: 10px; font-size: .82rem; color: var(--up-text-2); line-height: 1.45; }
+.up-rules li i { color: var(--up-accent); width: 16px; margin-top: 3px; text-align: center; flex: 0 0 auto; }
+.up-types { display: none; margin-top: 12px; }
+.up-types.open { display: block; }
+.up-types div { margin-bottom: 8px; font-size: .78rem; color: var(--up-text-3); }
+.up-types b { color: var(--up-text-2); }
+
+/* ---------- done ---------- */
+.up-done { text-align: center; padding: 30px 20px; }
+.up-done-icon { width: 70px; height: 70px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; font-size: 1.8rem; background: var(--up-ok-soft); color: var(--up-ok); }
+.up-done-icon.part { background: var(--up-warn-soft); color: var(--up-warn); }
+.up-done h2 { font: 800 1.35rem 'Poppins', sans-serif; color: var(--up-text); margin-bottom: 6px; }
+.up-done > p { color: var(--up-text-2); font-size: .92rem; max-width: 560px; margin: 0 auto; line-height: 1.5; }
+.up-done-list { list-style: none; margin: 20px auto 0; padding: 0; max-width: 620px; text-align: left; display: flex; flex-direction: column; gap: 8px; }
+.up-done-list li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--up-surface-2); border: 1px solid var(--up-border); font-size: .88rem; }
+.up-done-list li > i.fa-circle-check { color: var(--up-ok); }
+.up-done-list li > i.fa-circle-xmark { color: var(--up-bad); }
+.up-done-list b { display: block; color: var(--up-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.up-done-list small { color: var(--up-text-3); }
+.up-done-list li.bad small { color: var(--up-bad); }
+.up-done-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+.up-share { max-width: 620px; margin: 16px auto 0; text-align: left; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+    .up-grid { grid-template-columns: minmax(0, 1fr); }
+    .up-aside { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+    .up-hero { padding: 18px; border-radius: 16px; }
+    .up-hero h1 { font-size: 1.35rem; }
+    .up-hero-icon { width: 46px; height: 46px; font-size: 1.15rem; }
+    .up-hero-side { width: 100%; }
+    .up-hstat { flex: 1; min-width: 0; padding: 6px; }
+    .up-hbtn { flex: 1 1 100%; justify-content: center; height: 44px; }
+    .up-card { padding: 16px; border-radius: 16px; }
+    .up-fields, .up-seg { grid-template-columns: minmax(0, 1fr); }
+    .up-aside { grid-template-columns: minmax(0, 1fr); }
+    .up-file { grid-template-columns: 52px minmax(0, 1fr) auto; gap: 8px; padding: 10px 8px; }
+    .up-thumb { width: 52px; height: 40px; }
+    .up-cover-box { width: 100%; }
+    .up-submit { bottom: 8px; }
+    .up-submit-btns, .up-submit-btns .up-btn { flex: 1; }
+    .up-done-list li { grid-template-columns: 22px minmax(0, 1fr); }
+    .up-done-list li > :last-child:not(div) { grid-column: 2; justify-self: start; }
+}
+</style>
+
+<div class="up" data-no-theme id="up">
+    <header class="up-hero">
+        <div class="up-hero-main">
+            <div class="up-hero-icon"><i class="fas fa-cloud-upload-alt" aria-hidden="true"></i></div>
+            <div>
+                <h1>Upload a resource</h1>
+                <p>Share notes, videos, past papers and audio with your learners. Add a subject and grade so they find it straight away.</p>
             </div>
         </div>
+        <div class="up-hero-side">
+            <div class="up-hstat"><b id="hsUploads">–</b><span>my uploads</span></div>
+            <div class="up-hstat"><b id="hsViews">–</b><span>total views</span></div>
+            <div class="up-hstat"><b>{{ followers_count or 0 }}</b><span>followers</span></div>
+            <a class="up-hbtn" href="/teacher-resourses#mine"><i class="fas fa-folder-open" aria-hidden="true"></i> Manage my uploads</a>
+        </div>
+    </header>
+
+    <div class="up-grid">
+        <div class="up-col" id="formCol">
+            <div id="pageNote" hidden></div>
+
+            <!-- 1. files -->
+            <section class="up-card" aria-labelledby="h-files">
+                <div class="up-card-head">
+                    <span class="up-step" id="st1">1</span>
+                    <div class="grow"><h2 id="h-files">Choose files</h2><p>Up to 10 files at a time, each up to 2 GB. Every file becomes its own resource.</p></div>
+                </div>
+                <div class="up-drop" id="drop" role="button" tabindex="0" aria-describedby="dropHelp">
+                    <div class="up-drop-icon"><i class="fas fa-cloud-upload-alt" aria-hidden="true"></i></div>
+                    <h3>Drag files here, or tap to choose</h3>
+                    <p id="dropHelp">PDF, Word, PowerPoint, Excel, videos, audio, pictures, code and zip files</p>
+                    <span class="up-btn primary" aria-hidden="true"><i class="fas fa-folder-open"></i> Browse files</span>
+                    <small>Large videos take a while: keep this page open until they finish.</small>
+                </div>
+                <input type="file" id="fileInput" multiple hidden>
+                <div class="up-files" id="files" aria-live="polite"></div>
+                <div class="up-files-foot" id="filesFoot" hidden>
+                    <span id="filesSum"></span>
+                    <button type="button" class="up-btn ghost" id="clearFiles"><i class="fas fa-xmark"></i> Remove all</button>
+                </div>
+                <div class="up-err" id="err-files"></div>
+            </section>
+
+            <!-- 2. details -->
+            <section class="up-card" aria-labelledby="h-details">
+                <div class="up-card-head">
+                    <span class="up-step" id="st2">2</span>
+                    <div class="grow"><h2 id="h-details">Describe it</h2><p>These details apply to every file in this upload. You can change them later in My uploads.</p></div>
+                </div>
+                <div class="up-fields">
+                    <div class="up-field" id="f-category">
+                        <label for="category">Subject <span class="req">*</span></label>
+                        <select id="category" class="up-select">
+                            <option value="">Choose a subject</option>
+                            <option value="mathematics">Mathematics</option>
+                            <option value="science">Science</option>
+                            <option value="programming">Physics</option>
+                            <option value="arts">Chemistry</option>
+                            <option value="business">Business</option>
+                            <option value="languages">Languages</option>
+                            <option value="general">General</option>
+                        </select>
+                        <div class="up-err" id="err-category"></div>
+                    </div>
+                    <div class="up-field" id="f-difficulty">
+                        <label for="difficulty">Grade <span class="req">*</span></label>
+                        <select id="difficulty" class="up-select">
+                            <option value="">Choose a grade</option>
+                            <option value="grade-1">Grade 1</option><option value="grade-2">Grade 2</option>
+                            <option value="grade-3">Grade 3</option><option value="grade-4">Grade 4</option>
+                            <option value="grade-5">Grade 5</option><option value="grade-6">Grade 6</option>
+                            <option value="grade-7">Grade 7</option><option value="grade-8">Grade 8</option>
+                            <option value="grade-9">Grade 9</option><option value="grade-10">Grade 10</option>
+                            <option value="grade-11">Grade 11</option>
+                        </select>
+                        <div class="up-err" id="err-difficulty"></div>
+                    </div>
+                    <div class="up-field wide" id="f-description">
+                        <label for="description">Description <span class="req">*</span></label>
+                        <textarea id="description" class="up-text" maxlength="2000" placeholder="What does it cover, and how should learners use it? e.g. “Worked examples on factorising quadratics, then 10 practice questions with answers on the last page.”"></textarea>
+                        <div class="up-hint"><span>At least 20 characters. Topics you name here are searchable.</span><span id="descCount">0 / 2000</span></div>
+                        <div class="up-err" id="err-description"></div>
+                    </div>
+                    <div class="up-field wide">
+                        <span class="up-label" id="lblVis">Who can see it</span>
+                        <div class="up-seg" role="radiogroup" aria-labelledby="lblVis">
+                            <label class="up-opt"><input type="radio" name="privacy" value="public" checked><i class="fas fa-globe" aria-hidden="true"></i><div><b>Everyone</b><span>Learners find it in Resources and when they search.</span></div></label>
+                            <label class="up-opt"><input type="radio" name="privacy" value="private"><i class="fas fa-lock" aria-hidden="true"></i><div><b>Only me</b><span>Kept private. Make it public later from My uploads.</span></div></label>
+                        </div>
+                    </div>
+                    <div class="up-field wide">
+                        <div class="up-switch" id="notifyRow">
+                            <div><b>Tell my followers</b><span id="notifyText">Send one notification to the {{ followers_count or 0 }} learner{{ '' if followers_count == 1 else 's' }} who follow you when the upload finishes.</span></div>
+                            <label class="up-toggle"><input type="checkbox" id="notify" {% if followers_count %}checked{% else %}disabled{% endif %} aria-label="Tell my followers"><i></i></label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. cover -->
+            <section class="up-card" aria-labelledby="h-cover">
+                <div class="up-card-head">
+                    <span class="up-step" id="st3">3</span>
+                    <div class="grow"><h2 id="h-cover">Cover picture <span style="font-weight:500;color:var(--up-text-3);font-size:.85rem">(optional)</span></h2><p>Shown on the resource card. JPG, PNG, GIF or WEBP, up to 5 MB.</p></div>
+                </div>
+                <div class="up-cover">
+                    <div class="up-cover-box" id="coverBox" role="button" tabindex="0" aria-label="Choose a cover picture"><i class="fas fa-image" aria-hidden="true"></i></div>
+                    <div class="up-cover-side">
+                        <p id="coverText">No cover chosen. Videos get a frame from the video, pictures use themselves, and everything else gets a picture for its subject.</p>
+                        <div class="up-cover-btns">
+                            <button type="button" class="up-btn" id="coverPick"><i class="fas fa-image"></i> Choose picture</button>
+                            <button type="button" class="up-btn danger" id="coverRemove" hidden><i class="fas fa-trash-can"></i> Remove</button>
+                        </div>
+                        <div class="up-err" id="err-cover"></div>
+                    </div>
+                    <input type="file" id="coverInput" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+                </div>
+            </section>
+
+            <!-- submit -->
+            <div class="up-submit" id="submitBar">
+                <div class="up-submit-info">
+                    <b id="subTitle">Add a file to get started</b>
+                    <span id="subText">Choose files, a subject, a grade and a description.</span>
+                    <div class="up-total" id="totalBar" hidden><div id="totalFill"></div></div>
+                </div>
+                <div class="up-submit-btns">
+                    <button type="button" class="up-btn" id="cancelBtn" hidden><i class="fas fa-stop"></i> Stop</button>
+                    <button type="button" class="up-btn primary big" id="uploadBtn"><i class="fas fa-paper-plane"></i> <span>Upload</span></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- done (shown after an upload) -->
+        <section class="up-card up-done" id="donePanel" hidden aria-live="polite"></section>
+
+        <aside class="up-aside" aria-label="Preview and help">
+            <section class="up-card">
+                <h3><i class="fas fa-eye" aria-hidden="true" style="color:var(--up-accent)"></i> How learners will see it</h3>
+                <div class="up-pv" id="pv"></div>
+                <div class="up-pv-more" id="pvMore" hidden></div>
+            </section>
+            <section class="up-card">
+                <h3><i class="fas fa-list-check" aria-hidden="true" style="color:var(--up-accent)"></i> Ready to upload? <small id="chkScore">0 of 5</small></h3>
+                <ul class="up-check" id="checklist"></ul>
+                <div class="up-meter"><div id="chkMeter"></div></div>
+            </section>
+            <section class="up-card">
+                <h3><i class="fas fa-clock-rotate-left" aria-hidden="true" style="color:var(--up-accent)"></i> Your latest uploads</h3>
+                <ul class="up-recent" id="recent"><li class="up-empty-s">Loading…</li></ul>
+                <a class="up-link" href="/teacher-resourses#mine">See all and edit <i class="fas fa-arrow-right"></i></a>
+            </section>
+            <section class="up-card">
+                <h3><i class="fas fa-circle-info" aria-hidden="true" style="color:var(--up-accent)"></i> Good to know</h3>
+                <ul class="up-rules">
+                    <li><i class="fas fa-weight-hanging"></i><span>Each file can be up to <b>2 GB</b>; a cover picture up to <b>5 MB</b>.</span></li>
+                    <li><i class="fas fa-magnifying-glass"></i><span>Learners search by title, subject, grade and description, so be specific: “Grade 9 Algebra: linear equations” beats “Notes”.</span></li>
+                    <li><i class="fas fa-shield-halved"></i><span>Don’t upload learners’ personal details, exam answers you were asked to keep private, or material you don’t have the right to share.</span></li>
+                    <li><i class="fas fa-play"></i><span>MP4 and WebM videos play everywhere. Other video files (AVI, MKV, MOV) may not play in every browser.</span></li>
+                </ul>
+                <button type="button" class="up-btn ghost" id="typesBtn" style="margin-top:10px;padding:0 10px;height:34px" aria-expanded="false" aria-controls="types"><i class="fas fa-chevron-down"></i> Every file type you can upload</button>
+                <div class="up-types" id="types"></div>
+            </section>
+        </aside>
     </div>
+</div>
 
-    <script>
-        /* =========================
-           GLOBAL STATE
-        ========================= */
-        let filesToUpload = [];
-        const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB max
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const ME = {{ ((firstname or '') ~ ' ' ~ (lastname or '')) | trim | default('You', true) | tojson }};
+const FOLLOWERS = {{ (followers_count or 0) | int }};
+const MAX_FILES = 10, MAX_SIZE = 2 * 1024 ** 3, MAX_COVER = 5 * 1024 ** 2;
 
-        // Thumbnail state (NEW)
-        let thumbnailFile = null;
-        const MAX_THUMBNAIL_SIZE = 5 * 1024 * 1024; // 5MB max
+/* what the server accepts (ALLOWED_EXTENSIONS in backen.py) */
+const TYPES = {
+    pdf: ["PDF", ["pdf"]],
+    doc: ["Documents", ["doc", "docx", "txt", "rtf", "odt", "epub", "md"]],
+    presentation: ["Presentations", ["ppt", "pptx", "key", "odp"]],
+    spreadsheet: ["Spreadsheets", ["xls", "xlsx", "csv", "ods"]],
+    video: ["Videos", ["mp4", "webm", "mov", "m4v", "avi", "mkv"]],
+    audio: ["Audio", ["mp3", "wav", "m4a", "aac", "ogg", "flac"]],
+    image: ["Pictures", ["jpg", "jpeg", "png", "gif", "webp"]],
+    code: ["Code", ["py", "js", "html", "css", "java", "c", "cpp", "php", "sql", "json", "xml"]],
+    zip: ["Archives", ["zip", "rar", "7z"]]
+};
+const KIND = {
+    video: ["Video", "fa-play"], audio: ["Audio", "fa-headphones"], image: ["Picture", "fa-image"], pdf: ["PDF", "fa-file-pdf"],
+    doc: ["Document", "fa-file-lines"], presentation: ["Slides", "fa-file-powerpoint"], spreadsheet: ["Spreadsheet", "fa-file-excel"],
+    code: ["Code", "fa-file-code"], zip: ["Archive", "fa-file-zipper"], other: ["File", "fa-file"]
+};
+const SUBJECTS = { mathematics: "Mathematics", science: "Science", programming: "Physics", arts: "Chemistry", business: "Business", languages: "Languages", general: "General" };
+const extOf = n => (n.includes(".") ? n.split(".").pop() : "").toLowerCase();
+const kindOf = ext => Object.keys(TYPES).find(k => TYPES[k][1].includes(ext)) || null;
 
-        // FIX: use |tojson so these are safely encoded as JS string
-        // literals. The previous version manually wrapped the Jinja
-        // expressions in quotes ("{{ firstname }} {{ lastname }}"), which
-        // would silently break the script (or allow injection) if a name
-        // ever contained a quote character.
-        const currentUser = {{ (firstname ~ ' ' ~ lastname) | default('John Doe', true) | tojson }};
-        const currentUserInitials = {{ ((firstname[0] if firstname else '') ~ (lastname[0] if lastname else '')) | default('JD', true) | tojson }};
-        const userId = {{ user_id | default('anonymous', true) | tojson }};
-        
-        // For delete functionality
-        let resourceToDelete = null;
-        let allUserResources = [];
-        let isDeleting = false;
+let items = [];          // {id, file, ext, kind, title, size, secs, pages, poster(Blob), posterUrl, url, state, msg, pct, resId}
+let seq = 0, cover = null, coverUrl = null, busy = false, stopAsked = false, activeXhr = null;
 
-        /* =========================
-           DOM ELEMENTS
-        ========================= */
-        const dropArea = document.getElementById("dropArea");
-        const fileInput = document.getElementById("fileInput");
-        const fileList = document.getElementById("fileList");
-        const fileInfo = document.getElementById("fileInfo");
-        const successMessage = document.getElementById("successMessage");
-        const errorMessage = document.getElementById("errorMessage");
-        const sizeWarning = document.getElementById("sizeWarning");
-        const chunkProgress = document.getElementById("chunkProgress");
-        const chunkProgressFill = document.getElementById("chunkProgressFill");
-        const chunkStatus = document.getElementById("chunkStatus");
-        const uploadButton = document.getElementById("uploadButton");
-        const myUploadsList = document.getElementById("myUploadsList");
-        const noUploadsMessage = document.getElementById("noUploadsMessage");
-        const loadingUploads = document.getElementById("loadingUploads");
-        const deleteDialog = document.getElementById("deleteDialog");
-        const deleteMessage = document.getElementById("deleteMessage");
-        const userStats = document.getElementById("userStats");
+/* ---------------- helpers ---------------- */
+function esc(v) { return String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function size(b) {
+    if (!b) return "0 B";
+    const u = ["B", "KB", "MB", "GB"]; let i = 0; while (b >= 1024 && i < 3) { b /= 1024; i++; }
+    return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + " " + u[i];
+}
+function count(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K" : String(n); }
+function clock(s) { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); }
+function niceTitle(name) {
+    let t = name.replace(/\.[^.]+$/, "").replace(/[_\-.]+/g, " ").replace(/\s+/g, " ").trim();
+    t = t.charAt(0).toUpperCase() + t.slice(1);
+    return t.slice(0, 150) || "Untitled";
+}
+function ago(d) {
+    const t = Date.parse(String(d || "").replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(d || "") ? "" : "Z"));
+    if (!t) return "";
+    const s = (Date.now() - t) / 1000;
+    if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago";
+    if (s < 86400) return Math.floor(s / 3600) + " h ago"; if (s < 86400 * 30) return Math.floor(s / 86400) + " days ago";
+    return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+function note(text, kind) {
+    const n = $("pageNote");
+    if (!text) { n.hidden = true; n.innerHTML = ""; return; }
+    n.className = "up-note " + (kind || "info"); n.hidden = false;
+    n.innerHTML = `<i class="fas ${kind === "warn" ? "fa-circle-exclamation" : kind === "ok" ? "fa-circle-check" : "fa-circle-info"}"></i><div>${esc(text)}</div>`;
+}
+const val = id => $(id).value.trim();
+const privacy = () => document.querySelector('input[name="privacy"]:checked').value;
+const ready = () => items.filter(i => i.state === "ready" || i.state === "failed");
 
-        // Thumbnail DOM elements (NEW)
-        const thumbnailDropArea = document.getElementById("thumbnailDropArea");
-        const thumbnailInput = document.getElementById("thumbnailInput");
-        const thumbnailPreviewBox = document.getElementById("thumbnailPreviewBox");
-        const thumbnailRemoveBtn = document.getElementById("thumbnailRemoveBtn");
+/* ---------------- adding files ---------------- */
+function addFiles(list) {
+    if (busy) return;
+    const skipped = [];
+    for (const file of Array.from(list || [])) {
+        if (items.filter(i => i.state !== "done").length >= MAX_FILES) { skipped.push(`${file.name} (only ${MAX_FILES} files at a time)`); continue; }
+        if (items.some(i => i.state !== "done" && i.file.name === file.name && i.file.size === file.size)) { skipped.push(`${file.name} (already added)`); continue; }
+        const ext = extOf(file.name), kind = kindOf(ext);
+        const it = { id: ++seq, file, ext, kind: kind || "other", title: niceTitle(file.name), size: file.size, secs: 0, pages: 0, state: "ready", msg: "", pct: 0 };
+        if (!kind) { it.state = "invalid"; it.msg = ext ? `.${ext} files can’t be uploaded. Pick a PDF, document, video, audio, picture or zip file.` : "This file has no type (no .pdf, .mp4…), so it can’t be uploaded."; }
+        else if (file.size > MAX_SIZE) { it.state = "invalid"; it.msg = `This file is ${size(file.size)}; the limit is 2 GB.`; }
+        else if (!file.size) { it.state = "invalid"; it.msg = "This file is empty."; }
+        items.push(it);
+        if (it.state === "ready") inspect(it);
+    }
+    $("err-files").textContent = "";
+    note(skipped.length ? "Not added: " + skipped.join("; ") + "." : "", "warn");
+    renderFiles(); refresh();
+}
 
-        /* =========================
-           SECURITY UTILITIES
-        ========================= */
-        
-        /**
-         * Escape HTML special characters to prevent XSS attacks
-         */
-        function escapeHtml(text) {
-            if (typeof text !== 'string') return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+/* real length and a real cover frame for videos/audio, measured in the browser */
+function inspect(it) {
+    if (it.kind === "image") { it.posterUrl = URL.createObjectURL(it.file); renderFiles(); refresh(); return; }
+    if (it.kind !== "video" && it.kind !== "audio") return;
+    const el = document.createElement(it.kind);
+    el.preload = "metadata"; el.muted = true; el.playsInline = true;
+    const url = URL.createObjectURL(it.file);
+    let finished = false;
+    const done = () => { if (finished) return; finished = true; clearTimeout(timer); el.removeAttribute("src"); el.load(); URL.revokeObjectURL(url); renderFiles(); refresh(); };
+    const timer = setTimeout(done, 8000);
+    el.addEventListener("error", done);
+    el.addEventListener("loadedmetadata", () => {
+        if (isFinite(el.duration) && el.duration > 0) it.secs = el.duration;
+        if (it.kind !== "video" || !el.videoWidth) return done();
+        el.currentTime = Math.min(Math.max(1, el.duration * 0.1), 5, el.duration / 2);
+    });
+    el.addEventListener("seeked", () => {
+        try {
+            const w = 640, h = Math.round(w * el.videoHeight / el.videoWidth) || 360;
+            const c = document.createElement("canvas"); c.width = w; c.height = h;
+            c.getContext("2d").drawImage(el, 0, 0, w, h);
+            c.toBlob(b => { if (b) { it.poster = b; it.posterUrl = URL.createObjectURL(b); } done(); }, "image/jpeg", 0.85);
+        } catch (e) { done(); }
+    });
+    el.src = url;
+}
 
-        /**
-         * Escape text for use in HTML attributes
-         */
-        function escapeHtmlAttr(text) {
-            if (typeof text !== 'string') return '';
-            return text
-                .replace(/&/g, '&amp;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-        }
+function removeItem(id) {
+    const it = items.find(i => i.id === id); if (!it || it.state === "uploading") return;
+    if (it.posterUrl) URL.revokeObjectURL(it.posterUrl);
+    items = items.filter(i => i.id !== id);
+    renderFiles(); refresh();
+}
 
-        /**
-         * Escape text for use in JavaScript strings (single quotes)
-         */
-        function escapeJsString(text) {
-            if (typeof text !== 'string') return '';
-            return text
-                .replace(/\\/g, '\\\\')
-                .replace(/'/g, "\\'")
-                .replace(/"/g, '\\"')
-                .replace(/\n/g, '\\n')
-                .replace(/\r/g, '\\r')
-                .replace(/\t/g, '\\t')
-                .replace(/\f/g, '\\f')
-                .replace(/\b/g, '\\b');
-        }
+/* ---------------- drawing ---------------- */
+function thumbHTML(it) {
+    const img = coverUrl || it.posterUrl;
+    return `<div class="up-thumb k-${it.kind}">${img ? `<img src="${img}" alt="">` : `<i class="fas ${KIND[it.kind][1]}" aria-hidden="true"></i>`}</div>`;
+}
+function fileHTML(it) {
+    const cls = it.state === "invalid" || it.state === "failed" ? "bad" : it.state === "done" ? "ok" : "";
+    const tags = [KIND[it.kind][0], size(it.size)];
+    if (it.secs) tags.push(clock(it.secs));
+    const lock = it.state === "uploading" || it.state === "done";
+    let msg = it.msg;
+    if (it.state === "uploading") msg = `Uploading… ${it.pct}% (${size(it.size * it.pct / 100)} of ${size(it.size)})`;
+    const msgCls = it.state === "done" ? "ok" : it.state === "uploading" || it.state === "waiting" ? "info" : "bad";
+    return `<div class="up-file ${cls}" data-id="${it.id}">
+        ${thumbHTML(it)}
+        <div class="up-file-body">
+            ${it.state === "invalid"
+                ? `<div class="up-title-in" style="display:flex;align-items:center">${esc(it.file.name)}</div>`
+                : `<input class="up-title-in" data-title="${it.id}" value="${esc(it.title)}" maxlength="150" aria-label="Title for ${esc(it.file.name)}" ${lock ? "disabled" : ""}>`}
+            <div class="up-file-meta">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join("")}<span title="${esc(it.file.name)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px">${esc(it.file.name)}</span></div>
+            ${msg ? `<div class="up-file-msg ${msgCls}">${esc(msg)}</div>` : ""}
+        </div>
+        ${lock ? (it.state === "done" ? '<i class="fas fa-circle-check" style="color:var(--up-ok);font-size:1.2rem;padding:0 8px"></i>' : '<span style="width:36px"></span>')
+               : `<button type="button" class="up-icon-btn" data-remove="${it.id}" aria-label="Remove ${esc(it.file.name)}"><i class="fas fa-xmark"></i></button>`}
+        <div class="up-bar" style="width:${it.state === "done" || it.state === "failed" ? 100 : it.pct}%"></div>
+    </div>`;
+}
+function renderFiles() {
+    const box = $("files"), focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.title : null;
+    let caret = null; if (focused) caret = document.activeElement.selectionStart;
+    box.innerHTML = items.map(fileHTML).join("");
+    if (focused) { const f = box.querySelector(`[data-title="${focused}"]`); if (f) { f.focus(); try { f.setSelectionRange(caret, caret); } catch (e) {} } }
+    const good = items.filter(i => i.state !== "invalid");
+    $("filesFoot").hidden = !items.length;
+    $("filesSum").textContent = items.length ? `${good.length} file${good.length === 1 ? "" : "s"} · ${size(good.reduce((a, i) => a + i.size, 0))}` + (items.length > good.length ? ` · ${items.length - good.length} can’t be uploaded` : "") : "";
+    $("drop").classList.toggle("compact", items.length > 0);
+    $("drop").querySelector("h3").textContent = items.length ? "Add more files" : "Drag files here, or tap to choose";
+    $("clearFiles").disabled = busy;
+}
+function updateRow(it) {
+    const row = document.querySelector(`.up-file[data-id="${it.id}"]`);
+    if (row) row.outerHTML = fileHTML(it);
+}
 
-        /* =========================
-           INITIALIZATION
-        ========================= */
-        document.addEventListener("DOMContentLoaded", () => {
-            setupEventListeners();
-        });
+function preview() {
+    const first = items.find(i => i.state !== "invalid");
+    const kind = first ? first.kind : "pdf";
+    const img = coverUrl || (first && first.posterUrl);
+    const title = first ? first.title.trim() : "";
+    const chips = [];
+    if (val("category")) chips.push(`<span>${esc(SUBJECTS[val("category")])}</span>`);
+    if (val("difficulty")) chips.push(`<span>${esc($("difficulty").selectedOptions[0].text)}</span>`);
+    if (privacy() === "private") chips.push('<span class="priv"><i class="fas fa-lock"></i> Only you</span>');
+    const initials = ME.split(/\s+/).map(w => w[0] || "").join("").slice(0, 2).toUpperCase() || "T";
+    $("pv").innerHTML = `
+        <div class="up-pv-img k-${kind}">${img ? `<img src="${img}" alt="">` : `<i class="fas ${KIND[kind][1]}" aria-hidden="true"></i>`}
+            <span class="up-pv-badge"><i class="fas ${KIND[kind][1]}"></i>${KIND[kind][0]}</span>
+            ${first && first.secs ? `<span class="up-pv-len">${clock(first.secs)}</span>` : ""}</div>
+        <div class="up-pv-body">
+            <div class="up-pv-title ${title ? "" : "empty"}">${esc(title || "Your title appears here")}</div>
+            <div class="up-pv-chips">${chips.join("") || '<span>Subject</span><span>Grade</span>'}</div>
+            <div class="up-pv-desc">${esc(val("description") || "Your description appears here.")}</div>
+            <div class="up-pv-by"><i>${esc(initials)}</i>${esc(ME)}</div>
+        </div>`;
+    const n = items.filter(i => i.state !== "invalid").length;
+    $("pvMore").hidden = n < 2; $("pvMore").textContent = `+ ${n - 1} more resource${n - 1 === 1 ? "" : "s"} with the same details`;
+}
 
-        /* =========================
-           EVENT LISTENERS
-        ========================= */
-        function setupEventListeners() {
-            ["dragenter", "dragover", "dragleave", "drop"].forEach(eventName => {
-                dropArea.addEventListener(eventName, preventDefaults, false);
-            });
+function checks() {
+    const good = ready();
+    const d = val("description").length;
+    return [
+        ["Files added", good.length > 0 && !items.some(i => i.state === "invalid"), good.length ? `${good.length}` : ""],
+        ["Clear titles", good.length > 0 && good.every(i => i.title.trim().length >= 4), ""],
+        ["Subject and grade", !!(val("category") && val("difficulty")), ""],
+        ["Description (20+ characters)", d >= 20, d ? `${d}` : ""],
+        ["Cover picture", !!cover || (good.length > 0 && good.every(i => i.posterUrl)), "optional"]
+    ];
+}
+function refresh() {
+    const c = checks(), on = c.filter(x => x[1]).length;
+    $("checklist").innerHTML = c.map(x => `<li class="${x[1] ? "on" : ""}"><i class="fas fa-check" aria-hidden="true"></i>${esc(x[0])}${x[2] ? `<em>${esc(x[2])}</em>` : ""}</li>`).join("");
+    $("chkScore").textContent = `${on} of ${c.length}`;
+    $("chkMeter").style.width = on / c.length * 100 + "%";
+    $("st1").classList.toggle("done", c[0][1]); $("st1").textContent = c[0][1] ? "✓" : "1";
+    const s2 = !!(val("category") && val("difficulty") && val("description").length >= 20);
+    $("st2").classList.toggle("done", s2); $("st2").textContent = s2 ? "✓" : "2";
+    $("st3").classList.toggle("done", !!cover); $("st3").textContent = cover ? "✓" : "3";
+    $("descCount").textContent = `${$("description").value.length} / 2000`;
+    const priv = privacy() === "private", nt = $("notify");
+    nt.disabled = priv || !FOLLOWERS;
+    $("notifyRow").classList.toggle("off", nt.disabled);
+    $("notifyText").textContent = !FOLLOWERS ? "No learners follow you yet. When they do, you can tell them about new uploads here."
+        : priv ? "Private uploads aren’t shared with followers."
+        : `Send one notification to the ${FOLLOWERS} learner${FOLLOWERS === 1 ? "" : "s"} who follow you when the upload finishes.`;
+    if (!busy) {
+        const g = ready();
+        $("subTitle").textContent = g.length ? `Upload ${g.length} resource${g.length === 1 ? "" : "s"} · ${size(g.reduce((a, i) => a + i.size, 0))}` : "Add a file to get started";
+        $("subText").textContent = g.length ? (priv ? `Only you will see ${g.length === 1 ? "it" : "them"} until you make ${g.length === 1 ? "it" : "them"} public.` : `Learners can open ${g.length === 1 ? "it as soon as it finishes" : "them as soon as they finish"}.`) : "Choose files, a subject, a grade and a description.";
+        $("uploadBtn").querySelector("span").textContent = g.some(i => i.state === "failed") ? "Try again" : "Upload";
+    }
+    preview();
+}
 
-            ["dragenter", "dragover"].forEach(eventName => {
-                dropArea.addEventListener(eventName, () => dropArea.classList.add("dragover"));
-            });
+/* ---------------- cover ---------------- */
+function setCover(file) {
+    $("err-cover").textContent = "";
+    if (!file) return;
+    if (!/^image\/(jpeg|png|gif|webp)$/.test(file.type)) { $("err-cover").textContent = "Use a JPG, PNG, GIF or WEBP picture."; return; }
+    if (file.size > MAX_COVER) { $("err-cover").textContent = `That picture is ${size(file.size)}; the limit is 5 MB.`; return; }
+    if (coverUrl) URL.revokeObjectURL(coverUrl);
+    cover = file; coverUrl = URL.createObjectURL(file);
+    $("coverBox").innerHTML = `<img src="${coverUrl}" alt="Chosen cover">`; $("coverBox").classList.add("has");
+    $("coverRemove").hidden = false;
+    $("coverText").textContent = `${file.name} (${size(file.size)}) will be the cover for every file in this upload.`;
+    renderFiles(); refresh();
+}
+function clearCover() {
+    if (coverUrl) URL.revokeObjectURL(coverUrl);
+    cover = null; coverUrl = null; $("coverInput").value = "";
+    $("coverBox").innerHTML = '<i class="fas fa-image" aria-hidden="true"></i>'; $("coverBox").classList.remove("has");
+    $("coverRemove").hidden = true;
+    $("coverText").textContent = "No cover chosen. Videos get a frame from the video, pictures use themselves, and everything else gets a picture for its subject.";
+    renderFiles(); refresh();
+}
 
-            ["dragleave", "drop"].forEach(eventName => {
-                dropArea.addEventListener(eventName, () => dropArea.classList.remove("dragover"));
-            });
+/* ---------------- validation ---------------- */
+function validate() {
+    const errs = {};
+    if (!items.length) errs.files = "Add at least one file.";
+    else if (!ready().length) errs.files = "None of these files can be uploaded. Remove them and add a supported file.";
+    else if (items.some(i => i.state === "invalid")) errs.files = "Remove the files marked in red first.";
+    else if (ready().some(i => !i.title.trim())) errs.files = "Every file needs a title.";
+    if (!val("category")) errs.category = "Choose the subject.";
+    if (!val("difficulty")) errs.difficulty = "Choose the grade it is for.";
+    const d = val("description").length;
+    if (!d) errs.description = "Add a short description so learners know what it is.";
+    else if (d < 20) errs.description = `A little more, please: ${20 - d} more character${20 - d === 1 ? "" : "s"}.`;
+    ["files", "category", "difficulty", "description"].forEach(k => {
+        $("err-" + k).textContent = errs[k] || "";
+        const f = $("f-" + k); if (f) f.classList.toggle("has-err", !!errs[k]);
+    });
+    const first = Object.keys(errs)[0];
+    if (first) {
+        const el = first === "files" ? $("drop") : $(first);
+        el.scrollIntoView({ behavior: "smooth", block: "center" }); if (first !== "files") el.focus({ preventScroll: true });
+    }
+    return !first;
+}
 
-            dropArea.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
-            dropArea.addEventListener("click", () => fileInput.click());
-            fileInput.addEventListener("change", e => handleFiles(e.target.files));
-
-            // ===== THUMBNAIL UPLOAD LISTENERS (NEW) =====
-            ["dragenter", "dragover", "dragleave", "drop"].forEach(eventName => {
-                thumbnailDropArea.addEventListener(eventName, preventDefaults, false);
-            });
-
-            ["dragenter", "dragover"].forEach(eventName => {
-                thumbnailDropArea.addEventListener(eventName, () => thumbnailDropArea.classList.add("dragover"));
-            });
-
-            ["dragleave", "drop"].forEach(eventName => {
-                thumbnailDropArea.addEventListener(eventName, () => thumbnailDropArea.classList.remove("dragover"));
-            });
-
-            thumbnailDropArea.addEventListener("drop", e => {
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                    handleThumbnailFile(e.dataTransfer.files[0]);
-                }
-            });
-
-            // Clicking anywhere in the thumbnail drop area opens the file
-            // picker, except when the click landed on a button inside it
-            // (Choose/Remove already have their own handlers).
-            thumbnailDropArea.addEventListener("click", (e) => {
-                if (e.target.closest('button')) return;
-                thumbnailInput.click();
-            });
-
-            thumbnailInput.addEventListener("change", e => {
-                if (e.target.files && e.target.files[0]) {
-                    handleThumbnailFile(e.target.files[0]);
-                }
-            });
-            
-            // Add event delegation for delete buttons
-            myUploadsList.addEventListener('click', handleResourceAction);
-            
-            // Close delete dialog when clicking outside
-            deleteDialog.addEventListener('click', (e) => {
-                if (e.target === deleteDialog) {
-                    cancelDelete();
-                }
-            });
-            
-            // Close delete dialog with Escape key
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && deleteDialog.style.display === 'flex') {
-                    cancelDelete();
-                }
-            });
-        }
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        /* =========================
-           THUMBNAIL HANDLING (NEW)
-        ========================= */
-        function handleThumbnailFile(file) {
-            if (!file) return;
-
-            if (!file.type.startsWith('image/')) {
-                showError('Thumbnail must be an image file (JPG, PNG, GIF, or WEBP).');
-                return;
-            }
-
-            if (file.size > MAX_THUMBNAIL_SIZE) {
-                showError(`Thumbnail image is too large (${formatFileSize(file.size)}). Maximum size is 5MB.`);
-                return;
-            }
-
-            thumbnailFile = file;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                thumbnailPreviewBox.innerHTML = `<img src="${e.target.result}" alt="Thumbnail preview">`;
-            };
-            reader.readAsDataURL(file);
-
-            thumbnailRemoveBtn.style.display = 'inline-flex';
-        }
-
-        function removeThumbnail(event) {
-            if (event) event.stopPropagation();
-
-            thumbnailFile = null;
-            thumbnailInput.value = '';
-            thumbnailPreviewBox.innerHTML = '<i class="fas fa-image"></i>';
-            thumbnailRemoveBtn.style.display = 'none';
-        }
-
-        /* =========================
-           FILE HANDLING - ACCEPTS ALL FILES
-        ========================= */
-        function handleFiles(files) {
-            const validFiles = Array.from(files);
-            
-            // Check file sizes
-            let oversizedFiles = [];
-            validFiles.forEach(file => {
-                if (file.size > MAX_FILE_SIZE) {
-                    oversizedFiles.push(file);
-                }
-            });
-            
-            if (oversizedFiles.length > 0) {
-                showError(`The following files exceed the 2GB limit:\n\n${
-                    oversizedFiles.map(f => `${f.name} (${formatFileSize(f.size)})`).join('\n')
-                }\n\nPlease upload smaller files.`);
-                return;
-            }
-            
-            // Show warning if any file is large
-            const hasLargeFiles = validFiles.some(file => file.size > 10 * 1024 * 1024);
-            if (hasLargeFiles) {
-                sizeWarning.style.display = 'block';
-                sizeWarning.innerHTML = `
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span><strong>Note:</strong> Large files detected. They will be uploaded in chunks for better reliability.</span>
-                `;
+/* ---------------- uploading ---------------- */
+function send(it) {
+    return new Promise(resolve => {
+        const fd = new FormData();
+        fd.append("file", it.file);
+        fd.append("title", it.title.trim());
+        fd.append("description", val("description"));
+        fd.append("category", val("category"));
+        fd.append("difficulty", val("difficulty"));
+        fd.append("privacy", privacy());
+        fd.append("resourceType", { video: "video", image: "image", audio: "audio" }[it.kind] || "document");
+        if (it.secs) fd.append("duration", String(Math.round(it.secs)));
+        if (cover) fd.append("thumbnail", cover);
+        else if (it.poster) fd.append("thumbnail", it.poster, "frame.jpg");
+        const x = new XMLHttpRequest(); activeXhr = x;
+        x.open("POST", "/api/upload");
+        x.upload.onprogress = e => {
+            if (!e.lengthComputable) return;
+            it.pct = Math.min(99, Math.round(e.loaded / e.total * 100)); updateRow(it); totals();
+        };
+        x.onload = () => {
+            activeXhr = null;
+            let d = {}; try { d = JSON.parse(x.responseText); } catch (e) {}
+            if (x.status === 401) { location.href = "/login"; return; }
+            if (x.status >= 200 && x.status < 300 && d.success) {
+                it.state = "done"; it.pct = 100; it.msg = "Uploaded"; it.resId = d.resource && d.resource.id;
             } else {
-                sizeWarning.style.display = 'none';
+                it.state = "failed";
+                it.msg = x.status === 413 ? "This file is bigger than the server allows." : (d.message ? "Not uploaded: " + d.message : `Not uploaded (error ${x.status}). Try again.`);
             }
-            
-            filesToUpload.push(...validFiles);
-            updateFileList();
-        }
+            resolve();
+        };
+        x.onerror = () => { activeXhr = null; it.state = "failed"; it.msg = "The connection dropped. Check your internet and try again."; resolve(); };
+        x.onabort = () => { activeXhr = null; it.state = "ready"; it.pct = 0; it.msg = "Stopped before it finished."; resolve(); };
+        x.send(fd);
+    });
+}
+function totals() {
+    const list = items.filter(i => i.batch);
+    const all = list.reduce((a, i) => a + i.size, 0) || 1;
+    const sent = list.reduce((a, i) => a + i.size * (i.state === "done" || i.state === "failed" ? 1 : i.pct / 100), 0);
+    $("totalFill").style.width = Math.round(sent / all * 100) + "%";
+    const doneN = list.filter(i => i.state === "done").length;
+    $("subTitle").textContent = `Uploading ${Math.min(doneN + 1, list.length)} of ${list.length} · ${Math.round(sent / all * 100)}%`;
+    $("subText").textContent = `${size(sent)} of ${size(all)} sent. Keep this page open.`;
+}
+function lockForm(on) {
+    busy = on;
+    ["category", "difficulty", "description", "coverPick", "clearFiles"].forEach(id => { $(id).disabled = on; });
+    document.querySelectorAll('input[name="privacy"]').forEach(r => { r.disabled = on; });
+    $("notify").disabled = on || privacy() === "private" || !FOLLOWERS;
+    $("uploadBtn").disabled = on; $("cancelBtn").hidden = !on; $("totalBar").hidden = !on;
+    $("uploadBtn").innerHTML = on ? '<i class="fas fa-spinner fa-spin"></i> <span>Uploading…</span>' : '<i class="fas fa-paper-plane"></i> <span>Upload</span>';
+    $("drop").style.pointerEvents = on ? "none" : ""; $("drop").style.opacity = on ? ".6" : "";
+}
+async function start() {
+    if (busy || !validate()) return;
+    note("");
+    const batch = ready();
+    items.forEach(i => { i.batch = batch.includes(i); });
+    batch.forEach(i => { i.state = "waiting"; i.msg = "Waiting…"; i.pct = 0; });
+    stopAsked = false; lockForm(true); renderFiles(); totals();
+    for (const it of batch) {
+        if (stopAsked) { it.state = "ready"; it.msg = "Not started."; continue; }
+        it.state = "uploading"; it.msg = ""; updateRow(it);
+        await send(it);
+        updateRow(it); totals();
+    }
+    lockForm(false);
+    const done = batch.filter(i => i.state === "done"), failed = batch.filter(i => i.state === "failed"), stopped = batch.filter(i => i.state === "ready");
+    let notified = null;
+    if (done.length && privacy() === "public" && $("notify").checked && FOLLOWERS) {
+        try {
+            const r = await fetch("/api/resources/notify-followers", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: done.map(i => i.resId).filter(Boolean) }) });
+            const d = await r.json(); notified = d.success ? d.notified : null;
+        } catch (e) {}
+    }
+    loadRecent();
+    if (!failed.length && !stopped.length) showDone(done, [], notified);
+    else {
+        renderFiles(); refresh();
+        if (done.length) { items = items.filter(i => i.state !== "done"); renderFiles(); refresh(); }
+        note(`${done.length ? `${done.length} uploaded. ` : ""}${failed.length ? `${failed.length} didn’t upload: see the red message on ${failed.length === 1 ? "it" : "each"}, then press “Try again”.` : ""}${stopped.length ? ` ${stopped.length} stopped; press Upload to send ${stopped.length === 1 ? "it" : "them"}.` : ""}`, failed.length ? "warn" : "info");
+        $("formCol").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
+function showDone(done, failed, notified) {
+    const pub = privacy() === "public";
+    $("donePanel").innerHTML = `
+        <div class="up-done-icon"><i class="fas fa-check"></i></div>
+        <h2>${done.length === 1 ? "Your resource is up" : `${done.length} resources are up`}</h2>
+        <p>${pub ? "Learners can find " + (done.length === 1 ? "it" : "them") + " in Resources now, by title, subject or grade." : (done.length === 1 ? "It’s private, so only you can see it. Make it public" : "They’re private, so only you can see them. Make them public") + " from My uploads when you’re ready."}</p>
+        <ul class="up-done-list">${done.map(i => `<li><i class="fas fa-circle-check"></i><div><b>${esc(i.title)}</b><small>${esc([KIND[i.kind][0], size(i.size), i.secs ? clock(i.secs) : ""].filter(Boolean).join(" · "))}</small></div><span></span></li>`).join("")}</ul>
+        ${notified !== null ? `<div class="up-note ok up-share"><i class="fas fa-bell"></i><div>${notified ? `${notified} follower${notified === 1 ? " was" : "s were"} told about ${done.length === 1 ? "it" : "them"}.` : "None of your followers could be told (they may have turned these notifications off)."}</div></div>` : ""}
+        <div class="up-done-btns">
+            <button type="button" class="up-btn primary big" id="againBtn"><i class="fas fa-plus"></i> Upload more</button>
+            <a class="up-btn big" href="/teacher-resourses#mine"><i class="fas fa-folder-open"></i> Manage my uploads</a>
+        </div>`;
+    $("formCol").hidden = true; $("donePanel").hidden = false;
+    $("donePanel").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("againBtn").addEventListener("click", resetAll);
+    $("againBtn").focus({ preventScroll: true });
+}
+function resetAll() {
+    items.forEach(i => { if (i.posterUrl) URL.revokeObjectURL(i.posterUrl); });
+    items = []; $("fileInput").value = "";
+    $("description").value = ""; clearCover(); note("");
+    $("donePanel").hidden = true; $("formCol").hidden = false;
+    renderFiles(); refresh();
+    $("formCol").scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
-        function updateFileList() {
-            fileList.innerHTML = "";
+/* ---------------- side panels ---------------- */
+async function loadRecent() {
+    try {
+        const d = await (await fetch("/api/resources?mine=1&limit=5&sort=newest", { credentials: "same-origin" })).json();
+        if (!d.success) throw 0;
+        if (d.mine) { $("hsUploads").textContent = count(d.mine.count); $("hsViews").textContent = count(d.mine.views); }
+        const list = d.resources || [];
+        $("recent").innerHTML = list.length ? list.map(r => {
+            const k = { video: "video", audio: "audio", image: "image", pdf: "pdf", doc: "doc", presentation: "presentation", spreadsheet: "spreadsheet", code: "code", zip: "zip" }[r.file_category] || "other";
+            const img = r.thumbnail_url || "";
+            return `<li><a href="/teacher-resourses#mine"><span class="ic k-${k}">${img ? `<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<i class="fas ${KIND[k][1]}" aria-hidden="true"></i></span>
+                <div style="min-width:0"><b>${esc(r.title)}</b><span>${r.privacy === "private" ? '<i class="fas fa-lock"></i> Private · ' : ""}${count(r.views_count ?? r.views ?? 0)} views · ${esc(ago(r.upload_date))}</span></div></a></li>`;
+        }).join("") : '<li class="up-empty-s">Nothing yet. Your first upload will show here.</li>';
+    } catch (e) {
+        $("recent").innerHTML = '<li class="up-empty-s">Couldn’t load your uploads just now.</li>';
+    }
+}
 
-            if (!filesToUpload.length) {
-                fileInfo.style.display = "none";
-                return;
-            }
+/* ---------------- events ---------------- */
+const drop = $("drop");
+drop.addEventListener("click", () => { if (!busy) $("fileInput").click(); });
+drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!busy) $("fileInput").click(); } });
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); if (!busy) drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+/* a file dropped anywhere else on the page shouldn't open it in the browser */
+window.addEventListener("dragover", e => e.preventDefault());
+window.addEventListener("drop", e => { e.preventDefault(); });
+$("fileInput").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
+$("fileInput").accept = Object.values(TYPES).flatMap(t => t[1]).map(x => "." + x).join(",");
 
-            fileInfo.style.display = "block";
+$("files").addEventListener("click", e => { const b = e.target.closest("[data-remove]"); if (b) removeItem(Number(b.dataset.remove)); });
+$("files").addEventListener("input", e => {
+    const t = e.target.closest("[data-title]"); if (!t) return;
+    const it = items.find(i => i.id === Number(t.dataset.title)); if (it) { it.title = t.value; refresh(); }
+});
+$("clearFiles").addEventListener("click", () => { if (busy) return; items.forEach(i => { if (i.posterUrl) URL.revokeObjectURL(i.posterUrl); }); items = []; note(""); renderFiles(); refresh(); });
 
-            filesToUpload.forEach((file, index) => {
-                const icon = getFileIcon(file.name);
-                const size = formatFileSize(file.size);
-                const fileType = getFileTypeCategory(file.name);
-                const badgeClass = `badge-${fileType}`;
-                const badgeText = getFileTypeText(fileType);
-                
-                // Show warning for large files
-                const isLargeFile = file.size > 10 * 1024 * 1024;
-                const warningIcon = isLargeFile ? 
-                    '<i class="fas fa-exclamation-circle" style="color: #ff6b6b; margin-left: 5px;" title="Large file - will be uploaded in chunks"></i>' : '';
+["category", "difficulty", "description"].forEach(id => $(id).addEventListener("input", () => {
+    if ($("err-" + id).textContent) { $("err-" + id).textContent = ""; $("f-" + id).classList.remove("has-err"); }
+    refresh();
+}));
+document.querySelectorAll('input[name="privacy"]').forEach(r => r.addEventListener("change", refresh));
 
-                const li = document.createElement("li");
-                li.className = "file-item";
-                li.innerHTML = `
-                    <div>
-                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                            <i class="fas ${icon}" style="color:#4361ee"></i>
-                            <strong style="flex:1;min-width:200px;word-break:break-all">${escapeHtml(file.name)}</strong>
-                            ${warningIcon}
-                            <span style="font-size:0.8rem;color:#666">${size}</span>
-                            <span class="file-type-badge ${badgeClass}">${badgeText}</span>
-                        </div>
-                        <div class="file-progress">
-                            <div class="progress-bar" id="progress-${index}"></div>
-                        </div>
-                    </div>
-                    <button onclick="removeFile(${index})" style="border:none;background:none;color:red;cursor:pointer;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-                fileList.appendChild(li);
-            });
-        }
+const cb = $("coverBox");
+cb.addEventListener("click", () => { if (!busy) $("coverInput").click(); });
+cb.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!busy) $("coverInput").click(); } });
+["dragenter", "dragover"].forEach(ev => cb.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); cb.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => cb.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); cb.classList.remove("over"); }));
+cb.addEventListener("drop", e => { if (!busy) setCover(e.dataTransfer.files[0]); });
+$("coverPick").addEventListener("click", () => $("coverInput").click());
+$("coverInput").addEventListener("change", e => setCover(e.target.files[0]));
+$("coverRemove").addEventListener("click", clearCover);
 
-        function removeFile(index) {
-            filesToUpload.splice(index, 1);
-            updateFileList();
-            
-            // Hide warning if no large files left
-            const hasLargeFiles = filesToUpload.some(file => file.size > 10 * 1024 * 1024);
-            if (!hasLargeFiles) {
-                sizeWarning.style.display = 'none';
-            }
-        }
+$("uploadBtn").addEventListener("click", start);
+$("cancelBtn").addEventListener("click", () => { stopAsked = true; if (activeXhr) activeXhr.abort(); });
 
-        /* =========================
-           UPLOAD FUNCTION - USES FLASK BACKEND
-        ========================= */
-        async function uploadFiles() {
-            if (!filesToUpload.length) {
-                showError("Please select files to upload");
-                return;
-            }
+$("typesBtn").addEventListener("click", () => {
+    const t = $("types"), open = !t.classList.contains("open");
+    t.classList.toggle("open", open); $("typesBtn").setAttribute("aria-expanded", open);
+    $("typesBtn").querySelector("i").className = "fas " + (open ? "fa-chevron-up" : "fa-chevron-down");
+});
+$("types").innerHTML = Object.values(TYPES).map(t => `<div><b>${t[0]}:</b> ${t[1].map(x => x.toUpperCase()).join(", ")}</div>`).join("");
 
-            const course = document.getElementById("course").value;
-            const resourceType = document.getElementById("resourceType").value;
-            const title = document.getElementById("title").value;
-            const description = document.getElementById("description").value;
-            const difficulty = document.getElementById("difficulty").value;
+/* links from elsewhere can pre-pick a subject / grade: /teacher-upload?subject=mathematics&grade=9 */
+const qs = new URLSearchParams(location.search);
+if (SUBJECTS[qs.get("subject")]) $("category").value = qs.get("subject");
+if (/^(?:[1-9]|1[01])$/.test(qs.get("grade") || "")) $("difficulty").value = "grade-" + qs.get("grade");
 
-            if (!course || !title || !description) {
-                showError("Please fill in all required fields: Category, Title, and Description");
-                return;
-            }
-
-            const btn = uploadButton;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner"></span> Uploading...';
-            btn.disabled = true;
-
-            // Hide previous messages
-            successMessage.style.display = 'none';
-            errorMessage.style.display = 'none';
-
-            let successCount = 0;
-            let errorCount = 0;
-
-            // Show overall progress
-            chunkProgress.style.display = 'block';
-            chunkProgressFill.style.width = '0%';
-            chunkStatus.textContent = '0%';
-
-            // Upload each file
-            for (let i = 0; i < filesToUpload.length; i++) {
-                const file = filesToUpload[i];
-                
-                try {
-                    // Create FormData
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    formData.append('title', filesToUpload.length > 1 ? `${title} - ${file.name}` : title);
-                    formData.append('description', description);
-                    formData.append('category', course);
-                    formData.append('resourceType', resourceType);
-                    formData.append('difficulty', difficulty);
-                    formData.append('privacy', 'public');
-
-                    // Attach the shared thumbnail (if one was chosen) to
-                    // every file in this batch. (NEW)
-                    if (thumbnailFile) {
-                        formData.append('thumbnail', thumbnailFile);
-                    }
-
-                    // Send to server
-                    const response = await fetch('/api/upload', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    const result = await response.json();
-
-                    if (result.success) {
-                        successCount++;
-                        
-                        // Update individual progress bar
-                        const progressBar = document.getElementById(`progress-${i}`);
-                        if (progressBar) {
-                            progressBar.style.width = '100%';
-                            progressBar.style.background = '#10b981';
-                        }
-                    } else {
-                        errorCount++;
-                        console.error(`Failed to upload ${file.name}:`, result.message);
-                        
-                        // Mark as failed
-                        const progressBar = document.getElementById(`progress-${i}`);
-                        if (progressBar) {
-                            progressBar.style.width = '100%';
-                            progressBar.style.background = '#ef4444';
-                        }
-                    }
-                } catch (error) {
-                    errorCount++;
-                    console.error(`Error uploading ${file.name}:`, error);
-                    
-                    // Mark as failed
-                    const progressBar = document.getElementById(`progress-${i}`);
-                    if (progressBar) {
-                        progressBar.style.width = '100%';
-                        progressBar.style.background = '#ef4444';
-                    }
-                }
-
-                // Update overall progress
-                const progress = Math.round(((i + 1) / filesToUpload.length) * 100);
-                chunkProgressFill.style.width = progress + '%';
-                chunkStatus.textContent = progress + '%';
-            }
-
-            // Show result message
-            if (successCount > 0) {
-                showSuccess(`${successCount} file${successCount > 1 ? 's' : ''} uploaded successfully! They are now available in the Resources page.`);
-                
-                // IMPORTANT: Redirect with success parameter to trigger resource reload
-                // This ensures uploaded files appear immediately in Resources page
-                setTimeout(() => {
-                    window.location.href = '/resourses';
-                }, 1500);
-            }
-            
-            if (errorCount > 0) {
-                showError(`${errorCount} file${errorCount > 1 ? 's' : ''} failed to upload. Please try again.`);
-            }
-
-            // Clear form
-            filesToUpload = [];
-            updateFileList();
-            document.getElementById("title").value = "";
-            document.getElementById("description").value = "";
-            sizeWarning.style.display = "none";
-            removeThumbnail(); // (NEW) clear the chosen thumbnail too
-
-            // Reset button
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                chunkProgress.style.display = 'none';
-            }, 1000);
-        }
-
-        /* =========================
-           LOAD USER'S UPLOADED RESOURCES
-        ========================= */
-        async function loadMyUploads() {
-            try {
-                loadingUploads.style.display = 'block';
-                myUploadsList.innerHTML = '';
-                noUploadsMessage.style.display = 'none';
-
-                const response = await fetch(`/api/resources/user/${userId}`);
-                const result = await response.json();
-
-                if (result.success && result.resources && result.resources.length > 0) {
-                    allUserResources = result.resources;
-                    
-                    // Update statistics
-                    updateUserStats();
-                    
-                    // Render the list
-                    renderMyUploads(allUserResources);
-                    
-                    loadingUploads.style.display = 'none';
-                    myUploadsList.style.display = 'block';
-                } else {
-                    loadingUploads.style.display = 'none';
-                    noUploadsMessage.style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Error loading user uploads:', error);
-                loadingUploads.style.display = 'none';
-                myUploadsList.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Error Loading Uploads</h3>
-                        <p>Failed to load your uploaded files. Please try again.</p>
-                    </div>
-                `;
-            }
-        }
-
-        function updateUserStats() {
-            const totalResources = allUserResources.length;
-            const totalSize = allUserResources.reduce((sum, res) => sum + (res.file_size || 0), 0);
-            const videoCount = allUserResources.filter(r => r.file_category === 'video').length;
-            const docCount = allUserResources.filter(r => ['pdf', 'doc', 'presentation', 'spreadsheet', 'code'].includes(r.file_category)).length;
-            const imageCount = allUserResources.filter(r => r.file_category === 'image').length;
-            
-            userStats.innerHTML = `
-                <div class="stat-card">
-                    <div class="stat-number">${totalResources}</div>
-                    <div class="stat-label">Total Files</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${formatFileSize(totalSize)}</div>
-                    <div class="stat-label">Total Size</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${videoCount}</div>
-                    <div class="stat-label">Videos</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${docCount}</div>
-                    <div class="stat-label">Documents</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${imageCount}</div>
-                    <div class="stat-label">Images</div>
-                </div>
-            `;
-        }
-
-        /* =========================
-           RENDER UPLOADS WITH SECURE DELETE BUTTONS
-        ========================= */
-        function renderMyUploads(resources) {
-            myUploadsList.innerHTML = '';
-            
-            if (resources.length === 0) {
-                noUploadsMessage.style.display = 'block';
-                return;
-            }
-            
-            // Sort resources by upload date (newest first by default)
-            const sortedResources = resources.sort((a, b) => 
-                new Date(b.upload_date) - new Date(a.upload_date)
-            );
-            
-            sortedResources.forEach(resource => {
-                const uploadDate = new Date(resource.upload_date).toLocaleDateString();
-                const fileSize = formatFileSize(resource.file_size || 0);
-                const icon = getFileIcon(resource.file_category || 'other');
-                const fileTypeBadge = getFileTypeText(resource.file_category || 'other');
-                const badgeClass = `badge-${resource.file_category || 'other'}`;
-
-                // (NEW) Show the resource's thumbnail image if it has one,
-                // otherwise fall back to the file-type icon as before.
-                const previewIconHtml = resource.thumbnail_url
-                    ? `<img src="${escapeHtmlAttr(resource.thumbnail_url)}" alt="${escapeHtmlAttr(resource.title)} thumbnail" class="preview-thumbnail-img">`
-                    : `<i class="fas ${icon}"></i>`;
-                
-                const previewItem = document.createElement("div");
-                previewItem.className = "preview-item";
-                previewItem.dataset.resourceId = resource.id;
-                
-                // Use data attributes instead of unsafe onclick
-                previewItem.innerHTML = `
-                    <div class="preview-icon">
-                        ${previewIconHtml}
-                    </div>
-                    <div class="preview-info">
-                        <h4>${escapeHtml(resource.title)}</h4>
-                        <p>
-                            <strong>Category:</strong> ${escapeHtml(resource.category || 'General')} | 
-                            <strong>Type:</strong> ${escapeHtml(resource.type || 'Other')} |
-                            <span class="file-type-badge ${badgeClass}" style="font-size:0.7rem;">${escapeHtml(fileTypeBadge)}</span>
-                        </p>
-                        <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">
-                            <strong>Uploaded:</strong> ${escapeHtml(uploadDate)} | 
-                            <strong>Size:</strong> ${escapeHtml(fileSize)} |
-                            <strong>Views:</strong> ${resource.views || 0} |
-                            <strong>Downloads:</strong> ${resource.downloads || 0}
-                        </p>
-                        <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">
-                            ${escapeHtml(resource.description ? (resource.description.length > 100 ? resource.description.substring(0, 100) + '...' : resource.description) : 'No description')}
-                        </p>
-                        <div class="file-actions" style="margin-top: 10px;">
-                            <button class="view-btn" data-action="view" data-id="${resource.id}">
-                                <i class="fas fa-eye"></i> View
-                            </button>
-                            <button class="view-btn" data-action="download" data-id="${resource.id}">
-                                <i class="fas fa-download"></i> Download
-                            </button>
-                            <button class="delete-btn" 
-                                    data-action="delete" 
-                                    data-id="${resource.id}"
-                                    data-title="${escapeHtmlAttr(resource.title)}">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <span style="background: ${resource.privacy === 'public' ? '#4361ee' : '#6b7280'}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem;">
-                            ${escapeHtml(resource.privacy === 'public' ? 'Public' : 'Private')}
-                        </span>
-                    </div>
-                `;
-                myUploadsList.appendChild(previewItem);
-            });
-        }
-
-        /* =========================
-           EVENT HANDLER FOR ALL ACTIONS
-        ========================= */
-        function handleResourceAction(event) {
-            const button = event.target.closest('[data-action]');
-            if (!button) return;
-            
-            // Prevent multiple clicks if already processing
-            if (button.classList.contains('deleting') || button.disabled) {
-                return;
-            }
-            
-            const action = button.dataset.action;
-            const id = parseInt(button.dataset.id);
-            const title = button.dataset.title || '';
-            
-            switch(action) {
-                case 'view':
-                    viewResource(id);
-                    break;
-                case 'download':
-                    downloadResource(id);
-                    break;
-                case 'delete':
-                    promptDelete(id, title, button);
-                    break;
-            }
-        }
-
-        /* =========================
-           FILTER USER UPLOADS
-        ========================= */
-        function filterMyUploads() {
-            const searchTerm = document.getElementById("searchUploads").value.toLowerCase();
-            const categoryFilter = document.getElementById("filterCategory").value;
-            const typeFilter = document.getElementById("filterType").value;
-            const sortFilter = document.getElementById("filterSort").value;
-            
-            let filteredResources = allUserResources;
-            
-            // Apply search filter
-            if (searchTerm) {
-                filteredResources = filteredResources.filter(resource =>
-                    resource.title.toLowerCase().includes(searchTerm) ||
-                    (resource.description && resource.description.toLowerCase().includes(searchTerm)) ||
-                    resource.category.toLowerCase().includes(searchTerm) ||
-                    resource.type.toLowerCase().includes(searchTerm)
-                );
-            }
-            
-            // Apply category filter
-            if (categoryFilter) {
-                filteredResources = filteredResources.filter(resource =>
-                    resource.category === categoryFilter
-                );
-            }
-            
-            // Apply type filter
-            if (typeFilter) {
-                filteredResources = filteredResources.filter(resource => {
-                    if (typeFilter === 'video') return resource.file_category === 'video';
-                    if (typeFilter === 'document') return ['pdf', 'doc', 'presentation', 'spreadsheet', 'code'].includes(resource.file_category);
-                    if (typeFilter === 'image') return resource.file_category === 'image';
-                    if (typeFilter === 'audio') return resource.file_category === 'audio';
-                    if (typeFilter === 'code') return resource.file_category === 'code';
-                    if (typeFilter === 'archive') return resource.file_category === 'zip';
-                    if (typeFilter === 'other') return resource.file_category === 'other';
-                    return true;
-                });
-            }
-            
-            // Apply sorting
-            switch (sortFilter) {
-                case 'newest':
-                    filteredResources.sort((a, b) => new Date(b.upload_date) - new Date(a.upload_date));
-                    break;
-                case 'oldest':
-                    filteredResources.sort((a, b) => new Date(a.upload_date) - new Date(b.upload_date));
-                    break;
-                case 'largest':
-                    filteredResources.sort((a, b) => (b.file_size || 0) - (a.file_size || 0));
-                    break;
-                case 'smallest':
-                    filteredResources.sort((a, b) => (a.file_size || 0) - (b.file_size || 0));
-                    break;
-                case 'name':
-                    filteredResources.sort((a, b) => a.title.localeCompare(b.title));
-                    break;
-            }
-            
-            renderMyUploads(filteredResources);
-        }
-
-        /* =========================
-           DELETE FUNCTIONALITY - FIXED AND SECURE
-        ========================= */
-        function promptDelete(resourceId, resourceTitle, button = null) {
-            if (isDeleting) return;
-            
-            resourceToDelete = resourceId;
-            deleteMessage.innerHTML = `Are you sure you want to delete <strong>"${escapeHtml(resourceTitle)}"</strong>?<br><br>This action <strong>cannot be undone</strong>. The file will be permanently removed from the server.`;
-            deleteDialog.style.display = 'flex';
-            
-            // Disable the clicked button if provided
-            if (button) {
-                button.disabled = true;
-                button.classList.add('deleting');
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Delete';
-            }
-        }
-
-        function cancelDelete() {
-            if (isDeleting) return;
-            
-            resourceToDelete = null;
-            deleteDialog.style.display = 'none';
-            
-            // Re-enable all delete buttons
-            document.querySelectorAll('.delete-btn[data-action="delete"]').forEach(btn => {
-                btn.disabled = false;
-                btn.classList.remove('deleting');
-                btn.innerHTML = '<i class="fas fa-trash"></i> Delete';
-            });
-        }
-
-        async function confirmDelete() {
-            if (!resourceToDelete || isDeleting) return;
-            
-            isDeleting = true;
-            
-            const btn = document.getElementById('confirmDeleteBtn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner"></span> Deleting...';
-            btn.disabled = true;
-            
-            try {
-                const response = await fetch(`/api/resources/${resourceToDelete}`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showSuccess('File deleted successfully!');
-                    
-                    // Remove from local array
-                    allUserResources = allUserResources.filter(resource => resource.id !== resourceToDelete);
-                    
-                    // Update display
-                    updateUserStats();
-                    renderMyUploads(allUserResources);
-                    
-                    // Close dialog
-                    setTimeout(() => {
-                        deleteDialog.style.display = 'none';
-                        resourceToDelete = null;
-                        isDeleting = false;
-                        
-                        // Reset delete button
-                        btn.innerHTML = originalText;
-                        btn.disabled = false;
-                        
-                        // Re-enable all delete buttons in the list
-                        document.querySelectorAll('.delete-btn[data-action="delete"]').forEach(button => {
-                            button.disabled = false;
-                            button.classList.remove('deleting');
-                            button.innerHTML = '<i class="fas fa-trash"></i> Delete';
-                        });
-                    }, 1000);
-                } else {
-                    showError('Failed to delete file: ' + (result.message || 'Unknown error'));
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                    isDeleting = false;
-                    
-                    // Re-enable all delete buttons
-                    document.querySelectorAll('.delete-btn[data-action="delete"]').forEach(button => {
-                        button.disabled = false;
-                        button.classList.remove('deleting');
-                        button.innerHTML = '<i class="fas fa-trash"></i> Delete';
-                    });
-                }
-            } catch (error) {
-                console.error('Error deleting resource:', error);
-                showError('Network error deleting file. Please try again.');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                isDeleting = false;
-                
-                // Re-enable all delete buttons
-                document.querySelectorAll('.delete-btn[data-action="delete"]').forEach(button => {
-                    button.disabled = false;
-                    button.classList.remove('deleting');
-                    button.innerHTML = '<i class="fas fa-trash"></i> Delete';
-                });
-            }
-        }
-
-        /* =========================
-           VIEW AND DOWNLOAD FUNCTIONS
-        ========================= */
-        function viewResource(resourceId) {
-            // Open in new tab or redirect to resources page with preview
-            window.open(`/resources?preview=${resourceId}`, '_blank');
-        }
-
-        function downloadResource(resourceId) {
-            window.open(`/api/resources/${resourceId}/download`, '_blank');
-        }
-
-        /* =========================
-           HELPER FUNCTIONS
-        ========================= */
-        function getFileExtension(filename) {
-            return filename.split('.').pop().toLowerCase() || 'unknown';
-        }
-
-        function getFileTypeCategory(filename) {
-            const ext = getFileExtension(filename);
-            
-            // Video files
-            const videoExts = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm', 'm4v', 'mpg', 'mpeg'];
-            if (videoExts.includes(ext)) return 'video';
-            
-            // Audio files
-            const audioExts = ['mp3', 'wav', 'aac', 'flac', 'm4a', 'wma', 'ogg'];
-            if (audioExts.includes(ext)) return 'audio';
-            
-            // Image files
-            const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'tiff', 'ico', 'webp'];
-            if (imageExts.includes(ext)) return 'image';
-            
-            // PDF files
-            if (ext === 'pdf') return 'pdf';
-            
-            // Document files
-            const docExts = ['doc', 'docx', 'txt', 'rtf', 'odt', 'epub', 'md'];
-            if (docExts.includes(ext)) return 'doc';
-            
-            // Presentation files
-            const pptExts = ['ppt', 'pptx', 'key', 'odp'];
-            if (pptExts.includes(ext)) return 'presentation';
-            
-            // Spreadsheet files
-            const sheetExts = ['xls', 'xlsx', 'csv', 'ods'];
-            if (sheetExts.includes(ext)) return 'spreadsheet';
-            
-            // Code files
-            const codeExts = ['js', 'html', 'css', 'py', 'java', 'c', 'cpp', 'php', 'sql', 'json', 'xml', 'yml', 'yaml', 'sh', 'bat'];
-            if (codeExts.includes(ext)) return 'code';
-            
-            // Archive files
-            const archiveExts = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'];
-            if (archiveExts.includes(ext)) return 'zip';
-            
-            // Default to 'other'
-            return 'other';
-        }
-
-        function getFileIcon(filename) {
-            const type = getFileTypeCategory(filename);
-            const icons = {
-                video: "fa-video",
-                audio: "fa-music",
-                image: "fa-image",
-                pdf: "fa-file-pdf",
-                doc: "fa-file-word",
-                presentation: "fa-file-powerpoint",
-                spreadsheet: "fa-file-excel",
-                code: "fa-file-code",
-                zip: "fa-file-archive",
-                other: "fa-file"
-            };
-            return icons[type] || "fa-file";
-        }
-
-        function getFileTypeText(type) {
-            const texts = {
-                video: "Video",
-                audio: "Audio",
-                image: "Image",
-                pdf: "PDF",
-                doc: "Document",
-                presentation: "Presentation",
-                spreadsheet: "Spreadsheet",
-                code: "Code",
-                zip: "Archive",
-                other: "File"
-            };
-            return texts[type] || "File";
-        }
-
-        function formatFileSize(bytes) {
-            if (bytes === 0) return "0 Bytes";
-            const k = 1024;
-            const sizes = ["Bytes", "KB", "MB", "GB"];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-        }
-
-        function showSuccess(message) {
-            document.getElementById("successText").textContent = message;
-            successMessage.style.display = "block";
-            errorMessage.style.display = "none";
-            
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                successMessage.style.display = "none";
-            }, 5000);
-        }
-
-        function showError(message) {
-            document.getElementById("errorText").textContent = message;
-            errorMessage.style.display = "block";
-            successMessage.style.display = "none";
-            
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                errorMessage.style.display = "none";
-            }, 5000);
-        }
-
-        /* =========================
-           TAB SWITCHING
-        ========================= */
-        function switchTab(tab) {
-            document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-            
-            // Update active tab button
-            document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`).classList.add("active");
-            
-            // Show active content
-            document.getElementById(`${tab}-tab`).classList.add("active");
-            
-            // Load data for myuploads tab
-            if (tab === 'myuploads') {
-                loadMyUploads();
-            }
-        }
-    </script>
-</body>
-</html>
+renderFiles(); refresh(); loadRecent();
+})();
+</script>
 {% endblock %}

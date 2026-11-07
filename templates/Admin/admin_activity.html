@@ -1,0 +1,62 @@
+{% extends "Admin/admin_body.html" %}
+{% block title %}Activity log{% endblock %}
+{% block allcontent %}
+{#
+    ADMIN - Activity log  (templates/Admin/admin_activity.html)   Route: /admin-activity
+    GET /api/admin/log?type=user|payment|live|review|announcement&q=
+    Every change an admin makes is recorded here and can't be edited or deleted from the app.
+#}
+<div class="ad-page-h">
+    <div><h1>Activity log</h1><p>Every change made by an admin: who did it, when, and why. Entries can't be edited or deleted.</p></div>
+    <div class="ad-actions"><button type="button" class="ad-btn" id="gCsv" disabled><i class="fas fa-file-csv"></i> Export</button></div>
+</div>
+<div class="ad-card">
+    <div class="ad-tabs" role="group" aria-label="Type" id="gTabs">
+        <button type="button" class="ad-tab" data-t="" aria-pressed="true">Everything</button>
+        <button type="button" class="ad-tab" data-t="user" aria-pressed="false"><i class="fas fa-users"></i> Accounts</button>
+        <button type="button" class="ad-tab" data-t="payment" aria-pressed="false"><i class="fas fa-receipt"></i> Payments</button>
+        <button type="button" class="ad-tab" data-t="live" aria-pressed="false"><i class="fas fa-tower-broadcast"></i> Live classes</button>
+        <button type="button" class="ad-tab" data-t="review" aria-pressed="false"><i class="fas fa-star"></i> Reviews</button>
+        <button type="button" class="ad-tab" data-t="announcement" aria-pressed="false"><i class="fas fa-bullhorn"></i> Announcements</button>
+    </div>
+    <div class="ad-toolbar"><input type="search" class="ad-input" id="gQ" placeholder="Search what happened, or an admin's name" aria-label="Search the log"></div>
+    <div class="ad-note" id="gNote" role="status"></div>
+    <div class="ad-tbl-wrap"><table class="ad-tbl" id="gTbl" style="min-width:640px"><thead><tr><th>When</th><th>Admin</th><th>What happened</th><th>Details</th></tr></thead><tbody><tr><td colspan="4"><div class="ad-skel"></div><div class="ad-skel"></div></td></tr></tbody></table></div>
+    <div class="ad-pager" id="gPager"></div>
+</div>
+<script>
+(function () {
+    'use strict';
+    var A = window.AD, $ = function (id) { return document.getElementById(id); };
+    var ICON = { user: 'fa-user', payment: 'fa-receipt', live: 'fa-tower-broadcast', review: 'fa-star', announcement: 'fa-bullhorn' };
+    var LINK = { user: '/admin-users?id=', payment: '/admin-payments', live: '/admin-live', review: '/admin-reviews', announcement: '/admin-announcements' };
+    var S = { type: '', q: '', log: [] };
+    async function load() {
+        document.querySelectorAll('#gTabs [data-t]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === S.type)); });
+        try { S.log = (await A.api('/api/admin/log?' + new URLSearchParams({ type: S.type, q: S.q }))).log; render(); $('gCsv').disabled = !S.log.length; }
+        catch (e) { A.note('gNote', e.message, 'bad'); }
+    }
+    function render() {
+        var day = '';
+        $('gTbl').querySelector('tbody').innerHTML = S.log.length ? S.log.map(function (l) {
+            var d = A.when(l.at), head = d !== day ? '<tr><td colspan="4" style="background:var(--ab-surface-2);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ab-text-3);padding:7px 10px">' + A.esc(d) + '</td></tr>' : '';
+            day = d;
+            var link = LINK[l.type] ? (l.type === 'user' ? LINK.user + l.target_id : LINK[l.type]) : null;
+            return head + '<tr><td class="ad-muted" style="white-space:nowrap">' + A.esc(new Date(l.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + '</td><td><b>' + A.esc(l.admin) + '</b></td>' +
+                '<td><span style="display:inline-flex;align-items:center;gap:8px"><i class="fas ' + (ICON[l.type] || 'fa-circle-dot') + '" style="color:var(--ab-text-3);width:16px;text-align:center"></i>' + A.esc(l.action) + '</span></td>' +
+                '<td style="max-width:420px;overflow-wrap:anywhere">' + A.esc(l.detail) + (link && l.action.indexOf('Deleted') !== 0 ? ' <a href="' + link + '" style="color:var(--ab-accent-text);text-decoration:none;white-space:nowrap">Open <i class="fas fa-arrow-right" style="font-size:.7rem"></i></a>' : '') + '</td></tr>';
+        }).join('') : '<tr><td colspan="4"><div class="ad-empty"><i class="fas fa-clock-rotate-left"></i><b>Nothing recorded' + (S.q || S.type ? ' that matches' : ' yet') + '</b>Confirming payments, suspending accounts, removing content and sending announcements are all recorded here.</div></td></tr>';
+        $('gPager').innerHTML = '<span>' + S.log.length + ' entr' + (S.log.length === 1 ? 'y' : 'ies') + (S.log.length >= 400 ? ' (newest 400)' : '') + '</span>';
+    }
+    $('gTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-t]'); if (b) { S.type = b.dataset.t; load(); } });
+    var qt; $('gQ').addEventListener('input', function () { clearTimeout(qt); var v = this.value.trim(); qt = setTimeout(function () { S.q = v; load(); }, 250); });
+    $('gCsv').addEventListener('click', function () {
+        var rows = [['When (UTC)', 'Admin', 'What happened', 'Type', 'Target ID', 'Details']].concat(S.log.map(function (l) { return [l.at, l.admin, l.action, l.type, l.target_id, l.detail]; }));
+        var csv = rows.map(function (r) { return r.map(function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','); }).join('\r\n');
+        var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = 'eschool-admin-log.csv';
+        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    });
+    load();
+})();
+</script>
+{% endblock %}

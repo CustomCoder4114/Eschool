@@ -1,154 +1,1184 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parent Dashboard - Eschool</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #2563EB;
-            --secondary: #14B8A6;
-            --bg: #F8FAFC;
-            --text: #0F172A;
-            --soft: #64748B;
-            --line: #E2E8F0;
-            --radius: 20px;
-            --shadow: 0 10px 25px -5px rgba(15,23,42,.1), 0 8px 10px -6px rgba(15,23,42,.04);
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+{# templates/Parent/parent-dashboard.html
+   Parent home page. Uses the parent base (Parent/parent-body.html).
+   Data comes from the /parent-dashboard route in backen.py:
+   parent, children, stats, activities, performance, calendar_events,
+   upcoming_live, alerts, leaderboard. #}
+{% extends "Parent/parent-body.html" %}
 
-        .topbar {
-            background: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.08);
-            position: sticky; top: 0; z-index: 10;
-        }
-        .topbar-inner {
-            max-width: 1100px; margin: 0 auto; padding: 14px 20px;
-            display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-        }
-        .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-        .logo i { font-size: 2rem; color: var(--primary); }
-        .logo span {
-            font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 1.7rem;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text; background-clip: text; color: transparent;
-        }
-        .user { display: flex; align-items: center; gap: 14px; }
-        .avatar {
-            width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
-            background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff;
-            display: flex; align-items: center; justify-content: center; font-weight: 700;
-        }
-        .avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .who { line-height: 1.25; }
-        .who b { display: block; font-size: .95rem; }
-        .who small { color: var(--soft); font-size: .8rem; }
-        .logout {
-            text-decoration: none; color: #dc2626; font-weight: 600; font-size: .9rem;
-            border: 2px solid #fecaca; padding: 9px 16px; border-radius: 12px; transition: all .2s ease;
-            display: inline-flex; align-items: center; gap: 8px;
-        }
-        .logout:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+{% block allcontent %}
+<style>
+/* ======================================================================
+   PARENT DASHBOARD
+   Scoped to .pd so nothing leaks into the rest of the site. The page has
+   its own light and dark colours (data-no-theme), so hover and focus
+   states look right in dark mode. The main colour follows
+   Settings > Appearance through --primary-color.
+   ====================================================================== */
+/* plain colours first; browsers that understand color-mix() get the exact shades below */
+.pd {
+    --pd-accent: var(--primary-color, #4361ee);
+    --pd-accent-2: var(--secondary-color, #7209b7);
+    --pd-accent-dark: var(--primary-dark, #2a44c7);
+    --pd-accent-soft: rgba(67, 97, 238, .11);
+    --pd-accent-line: rgba(67, 97, 238, .35);
+    --pd-accent-text: var(--pd-accent);
+    --pd-surface: #ffffff;
+    --pd-surface-2: #f8fafc;
+    --pd-hover: #f1f5f9;
+    --pd-border: #e5e7eb;
+    --pd-track: #e8edf3;
+    --pd-text: #0f172a;
+    --pd-text-2: #475569;
+    --pd-text-3: #64748b;
+    --pd-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06);
+    --pd-shadow-hover: 0 10px 28px rgba(15, 23, 42, .12);
+    --pd-ok: #059669;   --pd-ok-soft: #ecfdf5;
+    --pd-warn: #b45309; --pd-warn-soft: #fffbeb;
+    --pd-bad: #dc2626;  --pd-bad-soft: #fef2f2;
+    --pd-info: #2563eb; --pd-info-soft: #eff6ff;
+    --pd-gold: #d99a00; --pd-gold-soft: #fff7db;
+    --pd-live: #e11d48;
+    --pd-k-module: #059669; --pd-k-quiz: #7c3aed; --pd-k-course: #d97706; --pd-k-streak: #ea580c; --pd-k-live: #e11d48;
+    --pd-radius: 16px;
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 6px 0 28px;
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--pd-text);
+}
+body.dark-mode .pd {
+    --pd-accent-soft: rgba(99, 125, 255, .2);
+    --pd-accent-line: rgba(99, 125, 255, .45);
+    --pd-accent-text: #a5b4fc;
+    --pd-surface: #111827;
+    --pd-surface-2: #0f172a;
+    --pd-hover: #1e293b;
+    --pd-border: #263244;
+    --pd-track: #263244;
+    --pd-text: #e5e7eb;
+    --pd-text-2: #cbd5e1;
+    --pd-text-3: #94a3b8;
+    --pd-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25);
+    --pd-shadow-hover: 0 12px 30px rgba(0, 0, 0, .45);
+    --pd-ok: #34d399;   --pd-ok-soft: rgba(16, 185, 129, .14);
+    --pd-warn: #fbbf24; --pd-warn-soft: rgba(245, 158, 11, .14);
+    --pd-bad: #f87171;  --pd-bad-soft: rgba(239, 68, 68, .14);
+    --pd-info: #60a5fa; --pd-info-soft: rgba(59, 130, 246, .14);
+    --pd-gold: #fbbf24; --pd-gold-soft: rgba(251, 191, 36, .12);
+    --pd-live: #fb7185;
+    --pd-k-module: #34d399; --pd-k-quiz: #a78bfa; --pd-k-course: #fbbf24; --pd-k-streak: #fb923c; --pd-k-live: #fb7185;
+}
 
-        main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 60px; }
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+    .pd { --pd-accent-soft: color-mix(in srgb, var(--pd-accent) 11%, transparent); --pd-accent-line: color-mix(in srgb, var(--pd-accent) 35%, transparent); }
+    body.dark-mode .pd { --pd-accent-soft: color-mix(in srgb, var(--pd-accent) 20%, transparent); --pd-accent-line: color-mix(in srgb, var(--pd-accent) 45%, transparent);
+                         --pd-accent-text: color-mix(in srgb, var(--pd-accent) 55%, #ffffff); }
+}
+.pd *, .pd *::before, .pd *::after { box-sizing: border-box; }
+.pd h1, .pd h2, .pd h3, .pd h4, .pd p { margin: 0; }
+.pd button, .pd input, .pd select { font-family: inherit; }
+.pd :focus-visible { outline: 3px solid var(--pd-accent-line); outline-offset: 2px; }
+.pd a { color: inherit; }
 
-        .hero {
-            background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff;
-            border-radius: var(--radius); padding: 38px 40px; margin-bottom: 30px; position: relative; overflow: hidden;
-        }
-        .hero h1 { font-family: 'Manrope', sans-serif; font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
-        .hero p { opacity: .95; max-width: 560px; line-height: 1.6; }
-        .hero .big-icon { position: absolute; right: 30px; top: 50%; transform: translateY(-50%); font-size: 6rem; opacity: .15; }
+/* ---------- header ---------- */
+.pd-hero {
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    padding: 24px 26px; margin-bottom: 18px; border-radius: var(--pd-radius); color: #fff;
+    background: linear-gradient(135deg, var(--pd-accent), var(--pd-accent-2)); box-shadow: var(--pd-shadow);
+}
+.pd-hero::after {
+    content: ""; position: absolute; right: -60px; top: -80px; width: 260px; height: 260px; border-radius: 50%;
+    background: rgba(255, 255, 255, .08); pointer-events: none;
+}
+.pd-hero-id { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 260px; position: relative; z-index: 1; }
+.pd-hero-avatar {
+    width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.35rem;
+    background: rgba(255, 255, 255, .2); border: 3px solid rgba(255, 255, 255, .55);
+}
+.pd-hero-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pd-hero h1 { font-family: 'Poppins', sans-serif; font-size: 1.6rem; font-weight: 700; line-height: 1.2; color: #fff; }
+.pd-hero p { margin-top: 5px; opacity: .93; font-size: .94rem; line-height: 1.55; color: #fff; max-width: 620px; }
+.pd-hero-date { font-size: .8rem; opacity: .85; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 4px; }
+.pd-hero-stats { display: grid; grid-template-columns: repeat(4, minmax(92px, 1fr)); gap: 10px; position: relative; z-index: 1; }
+.pd-hero-stat {
+    background: rgba(255, 255, 255, .15); border: 1px solid rgba(255, 255, 255, .25); color: #fff;
+    border-radius: 12px; padding: 10px 12px; text-align: center;
+}
+.pd-hero-stat strong { display: block; font-family: 'Poppins', sans-serif; font-size: 1.3rem; font-weight: 700; line-height: 1.25; }
+.pd-hero-stat span { font-size: .74rem; opacity: .9; }
 
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px; }
-        .card {
-            background: #fff; border-radius: var(--radius); padding: 26px; box-shadow: var(--shadow);
-            border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; color: inherit; text-decoration: none;
-            transition: transform .2s ease, box-shadow .2s ease;
-        }
-        a.card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -12px rgba(15,23,42,.2); }
-        .card .ico {
-            width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
-            font-size: 1.4rem; color: #fff;
-        }
-        .card h3 { font-family: 'Manrope', sans-serif; font-size: 1.1rem; }
-        .card p { color: var(--soft); font-size: .92rem; line-height: 1.55; }
-        .soon {
-            align-self: flex-start; margin-top: auto; font-size: .75rem; font-weight: 700; letter-spacing: .04em;
-            background: #FEF3C7; color: #92400E; padding: 4px 12px; border-radius: 20px;
-        }
-        .go { align-self: flex-start; margin-top: auto; font-size: .85rem; font-weight: 600; color: var(--primary); }
+.pd-banner {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; margin-bottom: 18px;
+    border-radius: 12px; background: var(--pd-info-soft); color: var(--pd-text); border: 1px solid var(--pd-border);
+    font-size: .9rem;
+}
+.pd-banner i { color: var(--pd-info); }
+.pd-banner a { margin-left: auto; color: var(--pd-accent-text); font-weight: 600; text-decoration: none; }
+.pd-banner a:hover { text-decoration: underline; }
 
-        @media (max-width: 640px) {
-            .hero { padding: 28px 22px; }
-            .hero h1 { font-size: 1.6rem; }
-            .hero .big-icon { display: none; }
-            .who { display: none; }
-        }
-    </style>
-</head>
-<body>
-    <header class="topbar">
-        <div class="topbar-inner">
-            <a href="/parent-dashboard" class="logo">
-                <i class="fas fa-graduation-cap"></i>
-                <span>Eschool</span>
-            </a>
-            <div class="user">
-                <div class="avatar">
-                    {% if avatar_url %}
-                        <img src="{{ avatar_url }}" alt="Profile photo">
+/* ---------- layout ---------- */
+.pd-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 18px; margin-bottom: 18px; align-items: start; }
+.pd-grid.even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.pd-stack { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+.pd-card {
+    background: var(--pd-surface); border: 1px solid var(--pd-border); border-radius: var(--pd-radius);
+    box-shadow: var(--pd-shadow); padding: 20px; min-width: 0;
+}
+.pd-section { margin-bottom: 18px; }
+.pd-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.pd-card-title { display: flex; align-items: center; gap: 10px; font-family: 'Poppins', sans-serif; font-size: 1.08rem; font-weight: 600; color: var(--pd-text); }
+.pd-card-title .ic {
+    width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--pd-accent-soft); color: var(--pd-accent-text); font-size: .92rem; flex-shrink: 0;
+}
+.pd-card-sub { font-size: .82rem; color: var(--pd-text-3); }
+.pd-link { color: var(--pd-accent-text); font-size: .86rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.pd-link:hover { text-decoration: underline; }
+
+/* buttons */
+.pd-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 9px 14px; border-radius: 10px; border: 1px solid transparent; cursor: pointer;
+    font-size: .86rem; font-weight: 600; text-decoration: none; line-height: 1.2;
+    transition: background-color .15s, border-color .15s, color .15s, transform .15s;
+}
+.pd-btn-primary { background: var(--pd-accent); color: #fff; }
+.pd-btn-primary:hover { background: var(--pd-accent-dark); color: #fff; }
+.pd-btn-ghost { background: var(--pd-surface); color: var(--pd-text-2); border-color: var(--pd-border); }
+.pd-btn-ghost:hover { background: var(--pd-hover); color: var(--pd-text); border-color: var(--pd-accent-line); }
+.pd-btn:disabled { opacity: .6; cursor: default; }
+.pd-icon-btn {
+    width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--pd-border); background: var(--pd-surface);
+    color: var(--pd-text-2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+.pd-icon-btn:hover { background: var(--pd-hover); color: var(--pd-accent-text); border-color: var(--pd-accent-line); }
+
+/* chips */
+.pd-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.pd-chips::-webkit-scrollbar { display: none; }
+.pd-chip {
+    flex-shrink: 0; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--pd-border);
+    background: var(--pd-surface); color: var(--pd-text-2); font-size: .8rem; font-weight: 600; cursor: pointer;
+}
+.pd-chip:hover { background: var(--pd-hover); color: var(--pd-text); }
+.pd-chip[aria-pressed="true"] { background: var(--pd-accent); border-color: var(--pd-accent); color: #fff; }
+.pd-select {
+    padding: 7px 30px 7px 10px; border-radius: 9px; border: 1px solid var(--pd-border); background-color: var(--pd-surface);
+    color: var(--pd-text); font-size: .84rem; cursor: pointer;
+}
+
+/* empty states */
+.pd-empty { text-align: center; padding: 26px 14px; color: var(--pd-text-3); font-size: .9rem; }
+.pd-empty i { display: block; font-size: 1.9rem; opacity: .5; margin-bottom: 10px; }
+
+/* ---------- attention ---------- */
+.pd-alerts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 10px; }
+.pd-alert {
+    display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px;
+    background: var(--pd-surface-2); border: 1px solid var(--pd-border); border-left: 4px solid var(--pd-info);
+}
+.pd-alert i { margin-top: 2px; color: var(--pd-info); width: 18px; text-align: center; }
+.pd-alert.warn { border-left-color: var(--pd-warn); } .pd-alert.warn i { color: var(--pd-warn); }
+.pd-alert.ok { border-left-color: var(--pd-ok); } .pd-alert.ok i { color: var(--pd-ok); }
+.pd-alert p { font-size: .88rem; line-height: 1.45; color: var(--pd-text); }
+.pd-alert small { display: block; margin-top: 2px; font-size: .74rem; color: var(--pd-text-3); }
+.pd-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px; }
+.pd-step { padding: 14px; border-radius: 12px; background: var(--pd-surface-2); border: 1px solid var(--pd-border); }
+.pd-step b { display: inline-flex; width: 26px; height: 26px; border-radius: 50%; align-items: center; justify-content: center; background: var(--pd-accent); color: #fff; font-size: .8rem; margin-bottom: 8px; }
+.pd-step p { font-size: .86rem; color: var(--pd-text-2); line-height: 1.5; }
+.pd-step strong { display: block; color: var(--pd-text); margin-bottom: 3px; font-size: .92rem; }
+
+/* ---------- children ---------- */
+.pd-kids { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr)); gap: 16px; }
+.pd-kid {
+    display: flex; flex-direction: column; gap: 14px; padding: 18px; border-radius: 14px;
+    background: var(--pd-surface-2); border: 1px solid var(--pd-border);
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.pd-kid:hover { border-color: var(--pd-accent-line); box-shadow: var(--pd-shadow-hover); transform: translateY(-2px); }
+.pd-kid-top { display: flex; align-items: center; gap: 12px; }
+.pd-avatar {
+    width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, var(--pd-accent), var(--pd-accent-2));
+}
+.pd-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pd-avatar.sm { width: 36px; height: 36px; font-size: .8rem; }
+.pd-kid-name { font-weight: 700; font-size: 1.04rem; color: var(--pd-text); line-height: 1.25; }
+.pd-kid-meta { font-size: .78rem; color: var(--pd-text-3); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.pd-badge {
+    display: inline-flex; align-items: center; gap: 5px; font-size: .72rem; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+    background: var(--pd-accent-soft); color: var(--pd-accent-text);
+}
+.pd-badge.ok { background: var(--pd-ok-soft); color: var(--pd-ok); }
+.pd-badge.warn { background: var(--pd-warn-soft); color: var(--pd-warn); }
+.pd-badge.muted { background: var(--pd-hover); color: var(--pd-text-3); }
+.pd-kid-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.pd-kid-stat { background: var(--pd-surface); border: 1px solid var(--pd-border); border-radius: 10px; padding: 9px 4px; text-align: center; min-width: 0; }
+.pd-kid-stat strong { display: block; font-family: 'Poppins', sans-serif; font-size: 1.05rem; color: var(--pd-text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pd-kid-stat span { font-size: .68rem; color: var(--pd-text-3); }
+.pd-bar { height: 8px; border-radius: 99px; background: var(--pd-track); overflow: hidden; }
+.pd-bar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--pd-accent), var(--pd-accent-2)); transition: width .6s ease; }
+.pd-bar.ok > i { background: var(--pd-ok); }
+.pd-bar.warn > i { background: var(--pd-warn); }
+.pd-bar-row { display: flex; justify-content: space-between; gap: 8px; font-size: .8rem; color: var(--pd-text-2); margin-bottom: 6px; }
+.pd-bar-row strong { color: var(--pd-text); }
+.pd-week { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.pd-week-label { font-size: .74rem; color: var(--pd-text-3); }
+.pd-week-days { display: flex; gap: 5px; }
+.pd-wd { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: .64rem; color: var(--pd-text-3); }
+.pd-wd i { width: 16px; height: 16px; border-radius: 5px; background: var(--pd-track); display: block; }
+.pd-wd.on i { background: var(--pd-ok); }
+.pd-wd.today span { color: var(--pd-text); font-weight: 700; }
+.pd-kid-note { font-size: .84rem; color: var(--pd-text-2); background: var(--pd-surface); border: 1px dashed var(--pd-border); border-radius: 10px; padding: 10px 12px; line-height: 1.5; }
+.pd-kid-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: auto; }
+.pd-kid-actions .pd-btn { padding: 8px 6px; font-size: .8rem; }
+
+/* link card */
+.pd-linkcard { border-style: dashed; border-width: 2px; background: transparent; justify-content: flex-start; }
+.pd-linkcard:hover { transform: none; box-shadow: none; }
+.pd-field { display: flex; flex-direction: column; gap: 5px; }
+.pd-field label { font-size: .78rem; font-weight: 600; color: var(--pd-text-2); }
+.pd-input {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--pd-border);
+    background: var(--pd-surface); color: var(--pd-text); font-size: .9rem;
+}
+.pd-input::placeholder { color: var(--pd-text-3); }
+.pd-input:focus { outline: none; border-color: var(--pd-accent); box-shadow: 0 0 0 3px var(--pd-accent-soft); }
+.pd-link-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pd-note { font-size: .82rem; min-height: 1.1em; line-height: 1.45; }
+.pd-note.bad { color: var(--pd-bad); }
+.pd-note.ok { color: var(--pd-ok); }
+.pd-help { font-size: .82rem; color: var(--pd-text-3); line-height: 1.5; }
+
+/* ---------- activity ---------- */
+.pd-filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.pd-filters .pd-chips { flex: 1; min-width: 0; }
+.pd-feed { display: flex; flex-direction: column; }
+.pd-day-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--pd-text-3); padding: 12px 0 6px; }
+.pd-day-label:first-child { padding-top: 0; }
+.pd-act { display: flex; gap: 12px; align-items: center; padding: 10px 8px; border-radius: 10px; }
+.pd-act:hover { background: var(--pd-hover); }
+.pd-act-ic {
+    width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--k); background: rgba(100, 116, 139, .12); background: color-mix(in srgb, var(--k) 14%, transparent);
+}
+.k-module { --k: var(--pd-k-module); } .k-quiz { --k: var(--pd-k-quiz); } .k-course { --k: var(--pd-k-course); }
+.k-streak { --k: var(--pd-k-streak); } .k-live { --k: var(--pd-k-live); } .k-event { --k: var(--pd-info); }
+.pd-act-body { flex: 1; min-width: 0; }
+.pd-act-title { font-size: .9rem; font-weight: 600; color: var(--pd-text); line-height: 1.35; }
+.pd-act-meta { font-size: .78rem; color: var(--pd-text-3); margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.pd-ep { flex-shrink: 0; font-size: .76rem; font-weight: 700; color: var(--pd-ok); background: var(--pd-ok-soft); padding: 3px 8px; border-radius: 999px; }
+.pd-more { margin-top: 10px; width: 100%; }
+
+/* ---------- quick access ---------- */
+.pd-qa { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pd-qa a {
+    display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 14px 6px; border-radius: 12px; text-align: center;
+    background: var(--pd-surface-2); border: 1px solid var(--pd-border); text-decoration: none; color: var(--pd-text);
+    transition: background-color .15s, border-color .15s, transform .15s;
+}
+.pd-qa a:hover { background: var(--pd-accent-soft); border-color: var(--pd-accent-line); transform: translateY(-2px); }
+.pd-qa i { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; background: var(--pd-accent-soft); color: var(--pd-accent-text); }
+.pd-qa a:hover i { background: var(--pd-accent); color: #fff; }
+.pd-qa span { font-size: .8rem; font-weight: 600; }
+.pd-clock { text-align: right; line-height: 1.25; }
+.pd-clock strong { display: block; font-family: 'Poppins', sans-serif; font-size: 1.2rem; color: var(--pd-accent-text); }
+.pd-clock span { font-size: .74rem; color: var(--pd-text-3); }
+
+/* goals list (in the quick access card) */
+a.pd-goal-item { text-decoration: none; transition: background-color .15s, border-color .15s; }
+a.pd-goal-item:hover { background: var(--pd-accent-soft); border-color: var(--pd-accent-line); }
+.pd-goal-item .pd-live-date b { font-size: .92rem; }
+.pd-goal-item.won .pd-live-date { background: #db2777; color: #fff; }
+.pd-goal-bar { height: 6px; border-radius: 99px; background: var(--pd-border); overflow: hidden; margin-top: 6px; }
+.pd-goal-bar i { display: block; height: 100%; border-radius: inherit; background: var(--pd-accent); }
+
+/* live list */
+.pd-live { display: flex; flex-direction: column; gap: 8px; }
+.pd-live-item { display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 12px; background: var(--pd-surface-2); border: 1px solid var(--pd-border); }
+.pd-live-date { width: 48px; flex-shrink: 0; text-align: center; border-radius: 10px; padding: 6px 0; background: var(--pd-accent-soft); color: var(--pd-accent-text); line-height: 1.15; }
+.pd-live-date b { display: block; font-size: 1.05rem; }
+.pd-live-date small { font-size: .66rem; text-transform: uppercase; font-weight: 700; }
+.pd-live-item.now .pd-live-date { background: var(--pd-live); color: #fff; }
+.pd-live-title { font-size: .88rem; font-weight: 600; color: var(--pd-text); }
+.pd-live-meta { font-size: .76rem; color: var(--pd-text-3); margin-top: 2px; }
+.pd-livedot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--pd-live); margin-right: 5px; animation: pdPulse 1.4s infinite; }
+@keyframes pdPulse { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, .6); } 70% { box-shadow: 0 0 0 8px rgba(244, 63, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
+
+/* ---------- calendar ---------- */
+.pd-cal-nav { display: flex; gap: 6px; align-items: center; }
+.pd-cal-today { padding: 7px 12px; border-radius: 9px; border: 1px solid var(--pd-border); background: var(--pd-surface); color: var(--pd-accent-text); font-weight: 600; font-size: .8rem; cursor: pointer; }
+.pd-cal-today:hover { background: var(--pd-hover); border-color: var(--pd-accent-line); }
+.pd-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.pd-cal-h { text-align: center; font-size: .72rem; font-weight: 700; color: var(--pd-text-3); padding: 6px 0; text-transform: uppercase; }
+.pd-day {
+    position: relative; aspect-ratio: 1 / .86; border-radius: 10px; border: 2px solid transparent; background: transparent;
+    color: var(--pd-text); font-size: .86rem; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.pd-day:hover { background: var(--pd-hover); }
+.pd-day.blank { pointer-events: none; }
+.pd-day.has { background: var(--pd-accent-soft); color: var(--pd-accent-text); font-weight: 700; }
+.pd-day.today { background: var(--pd-accent); color: #fff; font-weight: 700; }
+.pd-day.sel { border-color: var(--pd-accent); }
+.pd-dots { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; }
+.pd-dot { width: 5px; height: 5px; border-radius: 50%; display: block; background: var(--pd-k-module); }
+.pd-dot.live { background: var(--pd-k-live); }
+.pd-day.today .pd-dot { box-shadow: 0 0 0 1.5px #fff; }
+.pd-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .76rem; color: var(--pd-text-3); margin: 12px 0 4px; }
+.pd-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.pd-cal-events { border-top: 1px solid var(--pd-border); margin-top: 10px; padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.pd-cal-day { font-size: .8rem; font-weight: 700; color: var(--pd-text-2); margin-bottom: 2px; }
+
+/* ---------- progress ---------- */
+.pd [hidden] { display: none !important; }
+.pd-prog-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.pd-prog-stat { padding: 14px 8px; border-radius: 12px; background: var(--pd-surface-2); border: 1px solid var(--pd-border); text-align: center; }
+.pd-prog-stat strong { display: block; font-family: 'Poppins', sans-serif; font-size: 1.45rem; color: var(--pd-text); line-height: 1.25; }
+.pd-prog-stat span { font-size: .74rem; color: var(--pd-text-3); }
+.g-excellent { color: var(--pd-ok) !important; } .g-good { color: var(--pd-info) !important; }
+.g-average { color: var(--pd-warn) !important; } .g-poor { color: var(--pd-bad) !important; }
+.pd-prog-child { padding: 0; }   /* only one child shows at a time */
+.pd-prog-child:first-child { border-top: 0; padding-top: 0; }
+.pd-prog-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.pd-prog-head b { color: var(--pd-text); font-size: .94rem; }
+.pd-prog-name { min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.pd-prog-name small { font-size: .74rem; color: var(--pd-text-3); }
+.pd-prog-more { margin-left: auto; font-size: .8rem; white-space: nowrap; }
+.pd-letter { min-width: 34px; height: 28px; padding: 0 8px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .9rem; }
+.g-bg-excellent { background: var(--pd-ok-soft); color: var(--pd-ok); } .g-bg-good { background: var(--pd-info-soft); color: var(--pd-info); }
+.g-bg-average { background: var(--pd-warn-soft); color: var(--pd-warn); } .g-bg-poor { background: var(--pd-bad-soft); color: var(--pd-bad); }
+.pd-livepill { display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: var(--pd-ok-soft); color: var(--pd-ok); }
+.pd-livepill i { width: 7px; height: 7px; border-radius: 50%; background: var(--pd-ok); animation: pdPulseOk 1.8s infinite; }
+@keyframes pdPulseOk { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, .55); } 70% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+.pd-prog-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.pd-pk { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--pd-surface-2); border: 1px solid var(--pd-border); min-width: 0; }
+.pd-pk > strong { font-family: 'Poppins', sans-serif; font-size: 1.3rem; color: var(--pd-text); min-width: 52px; text-align: center; }
+.pd-pk b { display: block; font-size: .8rem; color: var(--pd-text); }
+.pd-pk small { display: block; font-size: .72rem; color: var(--pd-text-3); }
+.pd-ring { width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    background: conic-gradient(var(--pd-accent) calc(var(--p) * 1%), var(--pd-track) 0); }
+.pd-ring span { width: 40px; height: 40px; border-radius: 50%; background: var(--pd-surface-2); display: flex; align-items: center; justify-content: center; font-size: .74rem; font-weight: 700; color: var(--pd-text); }
+.pd-prog-sec { margin-bottom: 14px; }
+.pd-prog-sec-h { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--pd-text-3); margin-bottom: 8px; }
+.pd-trend { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--pd-text-2); }
+.pd-trend.up { color: var(--pd-ok); } .pd-trend.down { color: var(--pd-warn); }
+.pd-spark { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; height: 96px; padding: 8px 8px 0; border-radius: 12px; background: var(--pd-surface-2); border: 1px solid var(--pd-border); }
+.pd-spark-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0; }
+.pd-spark-col i { display: block; width: 100%; max-width: 26px; border-radius: 5px 5px 0 0; background: linear-gradient(to top, var(--pd-accent), var(--pd-accent-2)); }
+.pd-spark-col .v { font-size: .66rem; font-weight: 700; color: var(--pd-text-2); margin-bottom: 2px; min-height: 14px; }
+.pd-spark-col .l { font-size: .68rem; color: var(--pd-text-3); padding: 4px 0 6px; border-top: 2px solid var(--pd-track); width: 100%; text-align: center; }
+.pd-spark-col.today .l { color: var(--pd-accent-text); font-weight: 700; }
+.pd-course2 { padding: 10px 0; border-bottom: 1px dashed var(--pd-border); }
+.pd-course2:last-child { border-bottom: 0; }
+.pd-course2-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: .85rem; color: var(--pd-text); }
+.pd-course2-top .n { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-course2-top strong { margin-left: auto; font-size: .85rem; }
+.pd-gchip { flex-shrink: 0; font-size: .7rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: var(--pd-accent-soft); color: var(--pd-accent-text); }
+.pd-course2-meta { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 5px; font-size: .74rem; color: var(--pd-text-3); }
+.pd-course2-meta .ok { color: var(--pd-ok); font-weight: 600; } .pd-course2-meta .warn { color: var(--pd-warn); font-weight: 600; }
+.pd-insights { display: flex; flex-wrap: wrap; gap: 6px; }
+.pd-ins { display: inline-flex; align-items: center; gap: 6px; font-size: .76rem; padding: 5px 10px; border-radius: 99px; background: var(--pd-surface-2); border: 1px solid var(--pd-border); color: var(--pd-text-2); text-decoration: none; }
+.pd-ins b { color: var(--pd-text); }
+.pd-ins.ok i { color: var(--pd-ok); } .pd-ins.warn i { color: var(--pd-warn); }
+.pd-ins.link { color: var(--pd-accent-text); font-weight: 600; border-color: var(--pd-accent-line); }
+.pd-ins.link:hover { background: var(--pd-accent-soft); }
+/* Compare view: one line per child */
+.pd-cmp { display: grid; gap: 8px; }
+.pd-cmp-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--pd-surface-2); border: 1px solid var(--pd-border); border-radius: 12px; padding: 10px 12px; font: inherit; color: var(--pd-text); cursor: pointer; }
+.pd-cmp-row:hover { border-color: var(--pd-accent-line); }
+.pd-cmp-name { display: flex; flex-direction: column; min-width: 0; width: 34%; line-height: 1.3; }
+.pd-cmp-name b { font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-cmp-name small { font-size: .74rem; color: var(--pd-text-3); }
+.pd-cmp-bar { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pd-cmp-bar .pd-bar { flex: 1; margin: 0; }
+.pd-cmp-bar small { font-size: .8rem; font-weight: 700; color: var(--pd-text-2); min-width: 36px; text-align: right; }
+.pd-cmp-go { color: var(--pd-text-3); font-size: .8rem; }
+.pd-prog-child[hidden], [data-prog-overview][hidden] { display: none; }
+.pd-prog-empty { text-align: center; padding: 18px 10px; border-radius: 12px; background: var(--pd-surface-2); border: 1px dashed var(--pd-border); color: var(--pd-text-3); font-size: .86rem; }
+.pd-prog-empty > i { font-size: 1.4rem; opacity: .6; display: block; margin-bottom: 6px; }
+.pd-prog-empty p { margin: 0 0 8px; line-height: 1.5; }
+.pd-course { margin-top: 9px; }
+
+/* ---------- leaderboard ---------- */
+.pd-lb-head, .pd-lb-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) 110px 110px 90px; gap: 10px; align-items: center; padding: 10px 14px; }
+.pd-lb-head { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--pd-text-3); }
+.pd-lb-row { border: 1px solid var(--pd-border); border-radius: 12px; margin-bottom: 8px; background: var(--pd-surface); }
+.pd-lb-row:hover { background: var(--pd-hover); }
+.pd-lb-rank { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; background: var(--pd-accent-soft); color: var(--pd-accent-text); }
+.pd-lb-name { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--pd-text); min-width: 0; }
+.pd-lb-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-lb-row.gold { background: linear-gradient(110deg, var(--pd-gold-soft), var(--pd-surface) 70%); border-color: var(--pd-gold); }
+.pd-lb-row.gold .pd-lb-rank { background: var(--pd-gold); color: #3b2c00; }
+.pd-lb-row .fa-crown { color: var(--pd-gold); }
+.pd-lb-cell { font-size: .88rem; color: var(--pd-text-2); }
+
+/* ---------- report window ---------- */
+.pd-modal { position: fixed; inset: 0; z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, .55); }
+.pd-modal.open { display: flex; }
+.pd-dialog {
+    width: min(760px, 100%); max-height: calc(100vh - 40px); overflow: auto; border-radius: 18px;
+    background: var(--pd-surface); color: var(--pd-text); border: 1px solid var(--pd-border); box-shadow: 0 24px 60px rgba(0, 0, 0, .3);
+    animation: pdIn .18s ease-out;
+}
+@keyframes pdIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.pd-dialog-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: var(--pd-surface); border-bottom: 1px solid var(--pd-border); }
+.pd-dialog-head h2 { font-family: 'Poppins', sans-serif; font-size: 1.12rem; color: var(--pd-text); }
+.pd-dialog-head p { font-size: .8rem; color: var(--pd-text-3); margin-top: 2px; }
+.pd-dialog-head .pd-icon-btn { margin-left: auto; flex-shrink: 0; }
+.pd-dialog-body { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 18px; }
+.pd-r-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.pd-r-stat { padding: 12px 8px; border-radius: 12px; background: var(--pd-surface-2); border: 1px solid var(--pd-border); text-align: center; }
+.pd-r-stat strong { display: block; font-family: 'Poppins', sans-serif; font-size: 1.2rem; color: var(--pd-text); }
+.pd-r-stat span { font-size: .72rem; color: var(--pd-text-3); }
+.pd-r-h { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--pd-text-3); margin-bottom: 8px; }
+.pd-table-wrap { overflow-x: auto; border: 1px solid var(--pd-border); border-radius: 12px; }
+.pd-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.pd-table th, .pd-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--pd-border); }
+.pd-table th { font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; color: var(--pd-text-3); background: var(--pd-surface-2); }
+.pd-table tr:last-child td { border-bottom: 0; }
+.pd-table td { color: var(--pd-text); }
+.pd-table .pd-bar { min-width: 90px; }
+.pd-dialog-foot { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; padding: 0 20px 20px; }
+body.pd-lock { overflow: hidden; }
+
+/* two big cards side by side, same height */
+.pd-row { align-items: stretch; }
+.pd-tall { display: flex; flex-direction: column; min-height: 100%; }
+.pd-qa-card .pd-qa { grid-auto-rows: 128px; gap: 12px; }
+@media (max-width: 640px) { .pd-qa-card .pd-qa { grid-auto-rows: 96px; } }
+.pd-qa-card .pd-live { flex: 1; }
+.pd-qa-card .pd-qa a { justify-content: center; padding: 18px 8px; }
+.pd-qa-card .pd-qa i { width: 46px; height: 46px; border-radius: 13px; font-size: 1.15rem; }
+.pd-qa-card .pd-qa span { font-size: .88rem; }
+.pd-sub-head { margin: 20px 0 12px; padding-top: 16px; border-top: 1px solid var(--pd-border); }
+.pd-sub-head .pd-card-title { font-size: 1rem; }
+.pd-tall .pd-feed { flex: 1; }
+.pd-tall .pd-cal-events { flex: 1; }
+
+/* my children table */
+.pd-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.pd-kt-head, .pd-kt-row { display: grid; grid-template-columns: minmax(220px, 2.2fr) repeat(4, minmax(100px, 1fr)) 110px; gap: 12px; align-items: center; }
+.pd-kt-head { padding: 0 16px 8px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--pd-text-3); }
+.pd-kt-row {
+    padding: 14px 16px; margin-bottom: 10px; border-radius: 14px; background: var(--pd-surface-2); border: 1px solid var(--pd-border);
+    transition: border-color .15s, box-shadow .15s;
+}
+.pd-kt-row:last-child { margin-bottom: 0; }
+.pd-kt-row:hover { border-color: var(--pd-accent-line); box-shadow: var(--pd-shadow-hover); }
+.pd-kt-child { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pd-kt-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pd-kt-cell strong, .pd-rank, .pd-grade, .pd-kt-none { font-family: 'Poppins', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--pd-text); line-height: 1.25; }
+.pd-kt-cell small { font-size: .74rem; color: var(--pd-text-3); }
+.pd-kt-none { color: var(--pd-text-3); }
+.pd-rank { display: inline-flex; align-items: center; gap: 6px; }
+.pd-rank.top { color: var(--pd-gold); }
+.pd-streak { display: inline-flex; align-items: center; gap: 6px; color: var(--pd-text-3) !important; }
+.pd-streak.on { color: var(--pd-k-streak) !important; }
+.pd-kt-act { display: flex; justify-content: flex-end; }
+@media (max-width: 900px) {
+    .pd-kt-head { display: none; }
+    .pd-kt-row { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 10px; }
+    .pd-kt-child { grid-column: 1 / -1; }
+    .pd-kt-cell { background: var(--pd-surface); border: 1px solid var(--pd-border); border-radius: 10px; padding: 9px 10px; }
+    .pd-kt-cell::before { content: attr(data-label); font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--pd-text-3); }
+    .pd-kt-act { grid-column: 1 / -1; }
+    .pd-kt-act .pd-btn { width: 100%; }
+}
+@media (max-width: 560px) { .pd-kt-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+    .pd-grid, .pd-grid.even { grid-template-columns: minmax(0, 1fr); }
+    .pd-hero-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+}
+@media (max-width: 640px) {
+    .pd { padding-top: 0; }
+    .pd-hero { padding: 18px 16px; gap: 16px; }
+    .pd-hero h1 { font-size: 1.3rem; }
+    .pd-hero-avatar { width: 52px; height: 52px; font-size: 1.1rem; }
+    .pd-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .pd-card { padding: 16px; }
+    .pd-kid-stats { grid-template-columns: repeat(2, 1fr); }
+    .pd-qa { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .pd-qa a { padding: 12px 4px; }
+    .pd-prog-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .pd-prog-stat strong { font-size: 1.15rem; }
+    .pd-link-row { grid-template-columns: 1fr; }
+    .pd-lb-head, .pd-lb-row { grid-template-columns: 44px minmax(0, 1fr) 70px; padding: 10px; }
+    .pd-lb-head .hide-sm, .pd-lb-row .hide-sm { display: none; }
+    .pd-day { font-size: .8rem; border-radius: 8px; }
+    .pd-modal { padding: 0; align-items: flex-end; }
+    .pd-dialog { width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0; animation-name: pdUp; }
+    .pd-r-grid { grid-template-columns: repeat(2, 1fr); }
+    @keyframes pdUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+}
+@media (prefers-reduced-motion: reduce) {
+    .pd *, .pd *::before, .pd *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+{% set kids = children or [] %}
+{% set st = stats or {} %}
+{% set perf = performance or {} %}
+{% set p = parent or {} %}
+{% set pname = p.first_name or firstname or '' %}
+
+<div class="pd" data-no-theme>
+
+    <!-- ===== Header ===== -->
+    <section class="pd-hero" aria-labelledby="pdGreeting">
+        <div class="pd-hero-id">
+            <div class="pd-hero-avatar">
+                {% if p.avatar_url or avatar_url %}<img src="{{ p.avatar_url or avatar_url }}" alt="">{% else %}{{ (pname or 'P')[:1]|upper }}{% endif %}
+            </div>
+            <div>
+                <div class="pd-hero-date" id="pdHeroDate">&nbsp;</div>
+                <h1 id="pdGreeting">Welcome back{% if pname %}, {{ pname }}{% endif %}</h1>
+                <p>
+                    {% if kids %}
+                        Here is how {% if kids|length == 1 %}{{ kids[0].first_name }} is{% else %}your {{ kids|length }} children are{% endif %} doing.
+                        Open a child's report for courses, grades and recent work.
                     {% else %}
-                        {{ (firstname or 'P')[0] }}{{ (lastname or '')[:1] }}
+                        Link your child's account to follow their courses, grades and daily progress.
                     {% endif %}
-                </div>
-                <div class="who">
-                    <b>{{ firstname }} {{ lastname }}</b>
-                    <small>Parent</small>
-                </div>
-                <a href="/logout" class="logout"><i class="fas fa-sign-out-alt"></i> Log out</a>
+                </p>
             </div>
         </div>
-    </header>
+        <div class="pd-hero-stats">
+            <div class="pd-hero-stat"><strong>{{ st.children_count or 0 }}</strong><span>{{ 'Child' if (st.children_count or 0) == 1 else 'Children' }} linked</span></div>
+            <div class="pd-hero-stat"><strong>{{ st.recent_activity_count or 0 }}</strong><span>Done today</span></div>
+            <div class="pd-hero-stat"><strong>{{ perf.ep_month or 0 }}</strong><span>EP this month</span></div>
+            <div class="pd-hero-stat"><strong>{% if st.best_rank %}#{{ st.best_rank }}{% else %}-{% endif %}</strong><span>Best rank</span></div>
+        </div>
+    </section>
 
-    <main>
-        <section class="hero">
-            <h1>Welcome, {{ firstname }}</h1>
-            <p>This is your parent space. Follow your child's learning and stay connected with their teachers.</p>
-            <i class="fas fa-people-roof big-icon"></i>
+    {% if st.pending_count %}
+    <div class="pd-banner" role="status">
+        <i class="fas fa-hourglass-half"></i>
+        <span>{{ st.pending_count }} link request{{ 's' if st.pending_count != 1 }} still waiting for your child's approval.</span>
+        <a href="/parent-children">View requests <i class="fas fa-arrow-right"></i></a>
+    </div>
+    {% endif %}
+
+    <!-- ===== Quick access + recent activity ===== -->
+    <div class="pd-grid even pd-row">
+        <section class="pd-card pd-tall pd-qa-card" aria-labelledby="pdQaTitle">
+            <div class="pd-card-head">
+                <h2 class="pd-card-title" id="pdQaTitle"><span class="ic"><i class="fas fa-compass"></i></span>Quick access</h2>
+                <div class="pd-clock"><strong id="pdTime">--:--</strong><span id="pdDate"></span></div>
+            </div>
+            <nav class="pd-qa" aria-label="Quick access">
+                <a href="/parent-goals?new=1"><i class="fas fa-bullseye"></i><span>Set a goal</span></a>
+                <a href="/parent-goals#reward"><i class="fas fa-gift"></i><span>Give rewards</span></a>
+                <a href="/parent-progress"><i class="fas fa-chart-line"></i><span>Progress</span></a>
+                <a href="/parent-message"><i class="fas fa-comments"></i><span>Messages</span></a>
+                <a href="/parent-children"><i class="fas fa-children"></i><span>Children</span></a>
+                <a href="/parent-controls"><i class="fas fa-user-gear"></i><span>Manage learner</span></a>
+            </nav>
+        
+            <div class="pd-card-head pd-sub-head">
+                <h3 class="pd-card-title" id="pdGoalsTitle"><span class="ic"><i class="fas fa-trophy"></i></span>Goals &amp; rewards</h3>
+                <a class="pd-link" href="/parent-goals">All <i class="fas fa-arrow-right"></i></a>
+            </div>
+            <div class="pd-live" id="pdGoals" aria-live="polite"><div class="pd-empty" style="padding:14px;">Loading goals...</div></div>
+        </section>
+        <section class="pd-card pd-tall" aria-labelledby="pdActTitle">
+            <div class="pd-card-head">
+                <h2 class="pd-card-title" id="pdActTitle"><span class="ic"><i class="fas fa-bolt"></i></span>Recent activity</h2>
+                {% if kids|length > 1 %}
+                <select class="pd-select" id="actChild" aria-label="Show activity for">
+                    <option value="all">All children</option>
+                    {% for c in kids %}<option value="{{ c.id }}">{{ c.first_name }}</option>{% endfor %}
+                </select>
+                {% endif %}
+            </div>
+            <div class="pd-filters">
+                <div class="pd-chips" role="group" aria-label="Filter activity">
+                    <button type="button" class="pd-chip" data-kind="all" aria-pressed="true">All</button>
+                    <button type="button" class="pd-chip" data-kind="module" aria-pressed="false">Modules</button>
+                    <button type="button" class="pd-chip" data-kind="quiz" aria-pressed="false">Quizzes</button>
+                    <button type="button" class="pd-chip" data-kind="course" aria-pressed="false">Courses</button>
+                    <button type="button" class="pd-chip" data-kind="streak" aria-pressed="false">Streaks</button>
+                </div>
+            </div>
+            <div class="pd-feed" id="pdFeed"></div>
+            <button type="button" class="pd-btn pd-btn-ghost pd-more" id="pdMore" hidden>Show more</button>
         </section>
 
-        <section class="grid">
-            <div class="card">
-                <div class="ico" style="background: linear-gradient(135deg, #2563EB, #3B82F6);"><i class="fas fa-child-reaching"></i></div>
-                <h3>My children</h3>
-                <p>Link your child's learner account to see how they are doing.</p>
-                <span class="soon">COMING SOON</span>
-            </div>
+    </div>
 
-            <div class="card">
-                <div class="ico" style="background: linear-gradient(135deg, #14B8A6, #2DD4BF);"><i class="fas fa-chart-line"></i></div>
-                <h3>Progress reports</h3>
-                <p>See courses completed, quiz results and study time.</p>
-                <span class="soon">COMING SOON</span>
+    <!-- ===== Children ===== -->
+    <section class="pd-card pd-section" id="pdChildren" aria-labelledby="pdKidsTitle">
+        <div class="pd-card-head">
+            <h2 class="pd-card-title" id="pdKidsTitle"><span class="ic"><i class="fas fa-children"></i></span>My children</h2>
+            {% if kids %}<span class="pd-card-sub">Rank is this month's Eschool leaderboard{% if st.ranked_total %} ({{ st.ranked_total }} learners){% endif %}</span>{% endif %}
+        </div>
+        {% if kids %}
+        <div class="pd-kt" role="table" aria-label="My children">
+            <div class="pd-kt-head" role="row">
+                <span role="columnheader">Child</span>
+                <span role="columnheader">Monthly rank</span>
+                <span role="columnheader">Total points</span>
+                <span role="columnheader">Grade</span>
+                <span role="columnheader">Quiz streak</span>
+                <span role="columnheader"><span class="pd-sr">Report</span></span>
             </div>
-
-            <div class="card">
-                <div class="ico" style="background: linear-gradient(135deg, #F59E0B, #FBBF24);"><i class="fas fa-comments"></i></div>
-                <h3>Messages</h3>
-                <p>Talk with your child's teachers.</p>
-                <span class="soon">COMING SOON</span>
+            {% for c in kids %}
+            <div class="pd-kt-row" role="row">
+                <div class="pd-kt-child" role="cell">
+                    <div class="pd-avatar">{% if c.photo_url %}<img src="{{ c.photo_url }}" alt="">{% else %}{{ c.initials }}{% endif %}</div>
+                    <div style="min-width:0;">
+                        <div class="pd-kid-name">{{ c.full_name }}</div>
+                        <div class="pd-kid-meta">
+                            <span class="pd-badge"><i class="fas fa-graduation-cap"></i> {{ c.grade }}</span>
+                            {% if c.last_active %}<span><i class="far fa-clock"></i> Active {{ c.last_active }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="pd-kt-cell" role="cell" data-label="Monthly rank">
+                    {% if c.rank %}
+                    <span class="pd-rank{% if c.rank <= 3 %} top{% endif %}">{% if c.rank == 1 %}<i class="fas fa-crown"></i>{% endif %}#{{ c.rank }}</span>
+                    <small>{{ c.ep_month }} EP this month</small>
+                    {% else %}<span class="pd-kt-none">-</span><small>Not on the leaderboard</small>{% endif %}
+                </div>
+                <div class="pd-kt-cell" role="cell" data-label="Total points">
+                    <strong>{{ '{:,}'.format(c.ep_total) }}</strong><small>EP · Level {{ c.level }}</small>
+                </div>
+                <div class="pd-kt-cell" role="cell" data-label="Grade">
+                    {% if c.has_data and c.letter != '-' %}
+                    <span class="pd-grade {{ 'g-excellent' if c.gpa >= 3.7 else 'g-good' if c.gpa >= 3.0 else 'g-average' if c.gpa >= 2.0 else 'g-poor' }}">{{ c.letter }}</span>
+                    <small>GPA {{ '%.2f'|format(c.gpa) }}</small>
+                    {% elif not c.can_see_grades %}<span class="pd-kt-none"><i class="fas fa-lock"></i></span><small>Not shared</small>
+                    {% else %}<span class="pd-kt-none">-</span><small>No grades yet</small>{% endif %}
+                </div>
+                <div class="pd-kt-cell" role="cell" data-label="Quiz streak">
+                    {% if c.can_see_grades %}
+                    <strong class="pd-streak{% if c.quiz_streak %} on{% endif %}"><i class="fas fa-fire"></i> {{ c.quiz_streak }}</strong>
+                    <small>{{ 'day' if c.quiz_streak == 1 else 'days' }}{% if c.quiz_streak == 0 %} · start one today{% endif %}</small>
+                    {% else %}<span class="pd-kt-none"><i class="fas fa-lock"></i></span><small>Not shared</small>{% endif %}
+                </div>
+                <div class="pd-kt-act" role="cell">
+                    <button class="pd-btn pd-btn-ghost" type="button" data-report="{{ c.id }}"><i class="fas fa-file-lines"></i> Report</button>
+                </div>
             </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="pd-empty">
+            <i class="fas fa-children"></i>
+            No children linked yet.
+            <div style="margin-top:12px;"><a class="pd-btn pd-btn-primary" href="/parent-link"><i class="fas fa-user-plus"></i> Link a child</a></div>
+        </div>
+        {% endif %}
+    </section>
 
-            <a class="card" href="/contact">
-                <div class="ico" style="background: linear-gradient(135deg, #7C3AED, #A78BFA);"><i class="fas fa-headset"></i></div>
-                <h3>Contact the school</h3>
-                <p>Have a question? Send a message to the Eschool team.</p>
-                <span class="go">Open contact page <i class="fas fa-arrow-right"></i></span>
-            </a>
+    <!-- ===== Calendar + progress ===== -->
+    <div class="pd-grid even pd-row">
+        <section class="pd-card pd-tall" aria-labelledby="calTitle">
+            <div class="pd-card-head">
+                <h2 class="pd-card-title"><span class="ic"><i class="fas fa-calendar"></i></span><span id="calTitle">Calendar</span></h2>
+                <div class="pd-cal-nav">
+                    <button type="button" class="pd-icon-btn" id="calPrev" aria-label="Previous month"><i class="fas fa-chevron-left"></i></button>
+                    <button type="button" class="pd-cal-today" id="calToday">Today</button>
+                    <button type="button" class="pd-icon-btn" id="calNext" aria-label="Next month"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="pd-cal" id="pdCalendar"></div>
+            <div class="pd-legend">
+                <span><i class="pd-dot"></i> Work completed</span>
+                <span><i class="pd-dot live"></i> Live class</span>
+            </div>
+            <div class="pd-cal-events" id="calEvents" aria-live="polite"></div>
         </section>
-    </main>
-</body>
-</html>
+
+        {% set g = perf.gpa or 0 %}
+        <section class="pd-card pd-tall" aria-labelledby="pdProgTitle">
+            <div class="pd-card-head">
+                <h2 class="pd-card-title" id="pdProgTitle"><span class="ic"><i class="fas fa-chart-line"></i></span>Progress</h2>
+                <span class="pd-livepill" title="Worked out fresh each time you open this page"><i aria-hidden="true"></i>Up to date</span>
+                {% if kids|length > 1 %}
+                <div class="pd-chips" role="group" aria-label="Show progress for" style="margin-left:auto;">
+                    {% for c in kids %}<button type="button" class="pd-chip" data-prog="{{ c.id }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ c.first_name }}</button>{% endfor %}
+                    <button type="button" class="pd-chip" data-prog="all" aria-pressed="false"><i class="fas fa-table-list" aria-hidden="true"></i> Compare</button>
+                </div>
+                {% endif %}
+            </div>
+            <p class="pd-help" style="margin:-4px 0 14px;">Up to date each time you open this page, from every module test, quiz and course your {{ 'children have' if kids|length > 1 else 'child has' }} passed. They don't need to open their dashboard first.</p>
+
+            {% if kids|length > 1 %}
+            <!-- Compare: everyone on one short screen (one line each); pick a name for the details -->
+            <div data-prog-overview hidden>
+            <div class="pd-prog-stats">
+                <div class="pd-prog-stat"><strong>{{ perf.avg_progress or 0 }}%</strong><span>Course progress</span></div>
+                <div class="pd-prog-stat"><strong class="{% if perf.has_data %}{{ 'g-excellent' if g >= 3.7 else 'g-good' if g >= 3.0 else 'g-average' if g >= 2.0 else 'g-poor' }}{% endif %}">{% if perf.has_data %}{{ '%.2f'|format(g) }}{% else %}-{% endif %}</strong><span>Average GPA</span></div>
+                <div class="pd-prog-stat"><strong>{{ perf.overall_average or 0 }}%</strong><span>Average score</span></div>
+            </div>
+            <div class="pd-cmp">
+                {% for c in kids %}
+                <button type="button" class="pd-cmp-row" data-prog-go="{{ c.id }}">
+                    <span class="pd-avatar sm">{% if c.photo_url %}<img src="{{ c.photo_url }}" alt="">{% else %}{{ c.initials }}{% endif %}</span>
+                    <span class="pd-cmp-name"><b>{{ c.first_name }}</b><small>{% if c.prog %}{{ c.modules_completed }} modules · {{ c.prog.courses|length }} course{{ '' if c.prog.courses|length == 1 else 's' }}{% elif not c.can_see_grades %}Not shared{% else %}Not started yet{% endif %}</small></span>
+                    {% if c.prog %}
+                    <span class="pd-cmp-bar" title="Course progress"><span class="pd-bar {{ 'ok' if c.avg_progress >= 100 else ('warn' if c.avg_progress < 25 else '') }}"><i style="width: {{ c.avg_progress }}%"></i></span><small>{{ c.avg_progress }}%</small></span>
+                    {% if c.has_gpa %}<span class="pd-letter {{ 'g-bg-excellent' if c.gpa >= 3.7 else 'g-bg-good' if c.gpa >= 3.0 else 'g-bg-average' if c.gpa >= 2.0 else 'g-bg-poor' }}" title="Overall grade">{{ c.letter }}</span>{% else %}<span class="pd-letter">-</span>{% endif %}
+                    {% else %}<span class="pd-cmp-bar"></span><span class="pd-letter"><i class="fas {{ 'fa-lock' if not c.can_see_grades else 'fa-seedling' }}" aria-hidden="true"></i></span>{% endif %}
+                    <i class="fas fa-chevron-right pd-cmp-go" aria-hidden="true"></i>
+                </button>
+                {% endfor %}
+            </div>
+            </div>
+            {% endif %}
+
+            <div>
+                {% for c in kids %}
+                {% set p = c.prog %}
+                <div class="pd-prog-child" data-prog-child="{{ c.id }}"{% if kids|length > 1 and not loop.first %} hidden{% endif %}>
+                    <div class="pd-prog-head">
+                        <div class="pd-avatar sm">{% if c.photo_url %}<img src="{{ c.photo_url }}" alt="">{% else %}{{ c.initials }}{% endif %}</div>
+                        <div class="pd-prog-name">
+                            <b>{{ c.full_name }}</b>
+                            <small>{% if p %}Updated {{ c.updated_ago or 'just now' }}{% elif not c.can_see_grades %}Progress not shared{% else %}Not started yet{% endif %}</small>
+                        </div>
+                        {% if p and c.has_gpa %}<span class="pd-letter {{ 'g-bg-excellent' if c.gpa >= 3.7 else 'g-bg-good' if c.gpa >= 3.0 else 'g-bg-average' if c.gpa >= 2.0 else 'g-bg-poor' }}" title="Overall grade">{{ c.letter }}</span>{% endif %}
+                        <a class="pd-link pd-prog-more" href="/parent-progress?child={{ c.id }}">Full report <i class="fas fa-arrow-right"></i></a>
+                    </div>
+
+                    {% if p %}
+                    <div class="pd-prog-kpis">
+                        <div class="pd-pk">
+                            <div class="pd-ring" style="--p:{{ c.avg_progress }}"><span>{{ c.avg_progress }}%</span></div>
+                            <div><b>Course progress</b><small>{{ c.modules_completed }} modules · {{ c.courses_completed }} finished</small></div>
+                        </div>
+                        <div class="pd-pk"><strong class="{% if c.has_gpa %}{{ 'g-excellent' if c.gpa >= 3.7 else 'g-good' if c.gpa >= 3.0 else 'g-average' if c.gpa >= 2.0 else 'g-poor' }}{% endif %}">{{ '%.2f'|format(c.gpa) if c.has_gpa else '-' }}</strong><div><b>GPA</b><small>out of 4.0</small></div></div>
+                        <div class="pd-pk"><strong>{{ p.avg_score ~ '%' if p.avg_score is not none else '-' }}</strong><div><b>Average score</b><small>{{ p.subjects }} subject{{ '' if p.subjects == 1 else 's' }}</small></div></div>
+                        <div class="pd-pk"><strong>{{ c.quiz_streak }}</strong><div><b>Quiz streak</b><small>day{{ '' if c.quiz_streak == 1 else 's' }} in a row</small></div></div>
+                    </div>
+
+                    <div class="pd-prog-sec">
+                        <div class="pd-prog-sec-h"><span>Last 7 days</span>
+                            <span class="pd-trend {{ 'up' if p.ep_7 > p.ep_prev7 else ('down' if p.ep_7 < p.ep_prev7 else '') }}">
+                                {{ p.ep_7 }} EP{% if p.ep_7 != p.ep_prev7 %} · {{ 'up' if p.ep_7 > p.ep_prev7 else 'down' }} {{ (p.ep_7 - p.ep_prev7)|abs }} on the week before{% else %} · same as the week before{% endif %}
+                            </span>
+                        </div>
+                        <div class="pd-spark" role="img" aria-label="EP earned each day for the last 7 days: {% for d in p.days %}{{ d.label }} {{ d.ep }}{{ ', ' if not loop.last }}{% endfor %}">
+                            {% for d in p.days %}
+                            <div class="pd-spark-col{{ ' today' if d.today }}">
+                                <span class="v">{{ d.ep if d.ep else '' }}</span>
+                                <i style="height: {{ [((d.ep / p.max_day) * 58)|round|int, 4]|max if d.ep else 0 }}%"></i>
+                                <span class="l">{{ d.label }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="pd-prog-sec">
+                        <div class="pd-prog-sec-h"><span>Courses</span><span>{{ p.courses|length }} enrolled</span></div>
+                        {% for co in p.courses %}
+                        <div class="pd-course2{{ ' idle' if co.idle }}">
+                            <div class="pd-course2-top">
+                                <span class="n">{{ co.name }}</span>
+                                {% if co.grade %}<span class="pd-gchip" title="Average test score {{ co.score }}%">{{ co.grade }} · {{ co.score }}%</span>{% endif %}
+                                <strong>{{ co.progress }}%</strong>
+                            </div>
+                            <div class="pd-bar {{ 'ok' if co.progress >= 100 else ('warn' if co.progress < 25 else '') }}"><i style="width: {{ co.progress }}%"></i></div>
+                            <div class="pd-course2-meta">
+                                {% if co.total %}<span>{{ co.passed }} of {{ co.total }} module tests passed</span>{% endif %}
+                                {% if co.progress >= 100 %}<span class="ok"><i class="fas fa-check"></i> Finished</span>
+                                {% elif co.idle %}<span class="warn"><i class="fas fa-moon"></i> No work for {{ co.last }}</span>
+                                {% elif co.last %}<span>Last worked {{ co.last }}</span>
+                                {% else %}<span>Not started</span>{% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <p class="pd-help">{{ c.first_name }} hasn't joined a course yet.</p>
+                        {% endfor %}
+                    </div>
+
+                    {% if p.strongest or p.behind %}
+                    <div class="pd-insights">
+                        {% if p.strongest %}<span class="pd-ins ok"><i class="fas fa-arrow-trend-up"></i> Strongest: <b>{{ p.strongest.name }}</b> ({{ p.strongest.score }}%)</span>{% endif %}
+                        {% if p.weakest and p.weakest.name != (p.strongest.name if p.strongest else '') %}<span class="pd-ins warn"><i class="fas fa-triangle-exclamation"></i> Needs work: <b>{{ p.weakest.name }}</b> ({{ p.weakest.score }}%)</span>{% endif %}
+                        {% if p.behind and p.behind.progress < 50 %}<span class="pd-ins"><i class="fas fa-flag"></i> Furthest behind: <b>{{ p.behind.name }}</b> ({{ p.behind.progress }}% done)</span>{% endif %}
+                        <a class="pd-ins link" href="/parent-goals?new=1&child={{ c.id }}"><i class="fas fa-bullseye"></i> Set a goal</a>
+                    </div>
+                    {% endif %}
+
+                    {% elif not c.can_see_grades %}
+                        <div class="pd-prog-empty"><i class="fas fa-lock"></i><p>Progress is private. {{ c.first_name }} can share it with you in Settings &gt; Privacy.</p></div>
+                    {% else %}
+                        <div class="pd-prog-empty"><i class="fas fa-seedling"></i><p>{{ c.first_name }} hasn't passed a module test or quiz yet. Progress appears here the moment they do.</p>
+                            <a class="pd-link" href="/parent-goals?new=1&child={{ c.id }}"><i class="fas fa-bullseye"></i> Set a first goal</a></div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="pd-empty"><i class="fas fa-chart-simple"></i>Progress appears here once you link a child.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <!-- ===== Attention ===== -->
+    <section class="pd-card pd-section" aria-labelledby="pdAttnTitle">
+        <div class="pd-card-head">
+            <h2 class="pd-card-title" id="pdAttnTitle"><span class="ic"><i class="fas fa-bell"></i></span>{% if kids %}Worth your attention{% else %}Get started{% endif %}</h2>
+            {% if kids %}<span class="pd-card-sub">Updated from your children's latest activity</span>{% endif %}
+        </div>
+        {% if not kids %}
+        <div class="pd-steps">
+            <div class="pd-step"><b>1</b><strong>Ask for a link code</strong><p>Your child opens their dashboard and taps "Link a parent" to get a short code.</p></div>
+            <div class="pd-step"><b>2</b><strong>Link them</strong><p>Open <a class="pd-link" href="/parent-link">Link a child</a> and enter their email and the code.</p></div>
+            <div class="pd-step"><b>3</b><strong>Follow their progress</strong><p>Courses, grades, quizzes and streaks show up here as they study.</p></div>
+        </div>
+        {% elif alerts %}
+        <div class="pd-alerts">
+            {% for a in alerts %}
+            <div class="pd-alert {{ a.level }}"><i class="fas {{ a.icon }}"></i><div><p>{{ a.text }}</p>{% if kids|length > 1 %}<small>{{ a.child }}</small>{% endif %}</div></div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="pd-alert ok"><i class="fas fa-circle-check"></i><div><p>Everything looks good. Nothing needs your attention right now.</p></div></div>
+        {% endif %}
+    </section>
+
+    <!-- ===== Family leaderboard ===== -->
+    <section class="pd-card pd-section" aria-labelledby="pdLbTitle">
+        <div class="pd-card-head">
+            <h2 class="pd-card-title" id="pdLbTitle"><span class="ic" style="color: var(--pd-gold); background: var(--pd-gold-soft);"><i class="fas fa-trophy"></i></span>Family leaderboard</h2>
+            {% if st.ranked_total %}<span class="pd-card-sub">Eschool rank is out of {{ st.ranked_total }} learners this month</span>{% endif %}
+        </div>
+        {% if leaderboard %}
+        <div class="pd-lb-head"><span>#</span><span>Child</span><span class="hide-sm">Grade</span><span class="hide-sm">Eschool rank</span><span>Score</span></div>
+        {% for c in leaderboard %}
+        {% set top = loop.first and c.has_data and leaderboard|length > 1 %}
+        <div class="pd-lb-row{% if top %} gold{% endif %}">
+            <span class="pd-lb-rank">{{ loop.index }}</span>
+            <span class="pd-lb-name">
+                <span class="pd-avatar sm">{% if c.photo_url %}<img src="{{ c.photo_url }}" alt="">{% else %}{{ c.initials }}{% endif %}</span>
+                <span>{{ c.full_name }}</span>{% if top %} <i class="fas fa-crown" aria-label="Top of the family"></i>{% endif %}
+            </span>
+            <span class="pd-lb-cell hide-sm">{{ c.letter if c.has_data else '-' }}</span>
+            <span class="pd-lb-cell hide-sm">{% if c.rank %}#{{ c.rank }}{% else %}-{% endif %}</span>
+            <span class="pd-lb-cell"><strong>{% if c.has_data %}{{ c.average }}%{% else %}-{% endif %}</strong></span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="pd-empty"><i class="fas fa-trophy"></i>Rankings appear once you link a child.</div>
+        {% endif %}
+    </section>
+
+    <!-- ===== Report window ===== -->
+    <div class="pd-modal" id="pdReport" aria-hidden="true">
+        <div class="pd-dialog" role="dialog" aria-modal="true" aria-labelledby="pdReportName">
+            <div class="pd-dialog-head">
+                <div class="pd-avatar" id="pdReportAvatar"></div>
+                <div style="min-width:0;"><h2 id="pdReportName">Report</h2><p id="pdReportSub"></p></div>
+                <button type="button" class="pd-icon-btn" data-close aria-label="Close report"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="pd-dialog-body" id="pdReportBody"></div>
+            <div class="pd-dialog-foot">
+                <span class="pd-note ok" id="pdReportNote" aria-live="polite" style="margin-right:auto; align-self:center;"></span>
+                <button type="button" class="pd-btn pd-btn-ghost" id="pdReportDownload"><i class="fas fa-download"></i> Download</button>
+                <a class="pd-btn pd-btn-primary" id="pdReportProfile" href="#"><i class="fas fa-user"></i> Open profile</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var CHILDREN = {{ (children or [])|tojson }};
+    var ACTIVITIES = {{ (activities or [])|tojson }};
+    var EVENTS = {{ (calendar_events or [])|tojson }};
+    var LIVE = {{ (upcoming_live or [])|tojson }};
+    var PROFILE_URL = {{ url_for('view_profile', user_id=0)|tojson }};
+
+    function $(id) { return document.getElementById(id); }
+    // escapes quotes too, so values are safe inside attributes like src="..." and title="..."
+    function esc(v) {
+        return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
+    function pct(v) { return Math.max(0, Math.min(100, Math.round(num(v)))); }
+    function kindOf(k) { return KIND[k] ? k : 'module'; }
+    // only our own pictures (or https) can be shown, never javascript: or data: links
+    function safeImg(u) { u = String(u || ''); return /^(\/(?!\/)|https:\/\/)/i.test(u) ? u : ''; }
+    var TODAY_KEY = {{ today_key|tojson }};       // the server's day (Nairobi), so 'Today' matches the data
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function keyOf(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+    var KIND = {
+        module: { icon: 'fa-circle-check', label: 'Module' },
+        quiz:   { icon: 'fa-clipboard-check', label: 'Quiz' },
+        course: { icon: 'fa-award', label: 'Course' },
+        streak: { icon: 'fa-fire', label: 'Streak' },
+        done:   { icon: 'fa-circle-check', label: 'Completed' },
+        live:   { icon: 'fa-video', label: 'Live class' }
+    };
+
+    /* ---------- greeting + clock ---------- */
+    function tick() {
+        var n = new Date();
+        $('pdTime').textContent = n.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        $('pdDate').textContent = n.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
+        $('pdHeroDate').textContent = n.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    (function greet() {
+        var h = new Date().getHours(), el = $('pdGreeting');
+        var word = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+        el.textContent = el.textContent.replace('Welcome back', word);
+    })();
+    tick(); setInterval(tick, 20000);
+
+    /* ---------- activity feed ---------- */
+    var actKind = 'all', actChild = 'all', shown = 7;
+    function dayLabel(day) {
+        if (!day) return 'Earlier';
+        var t = new Date(TODAY_KEY + 'T12:00:00'), y = new Date(t); y.setDate(t.getDate() - 1);
+        if (day === TODAY_KEY) return 'Today';
+        if (day === keyOf(y)) return 'Yesterday';
+        return new Date(day + 'T00:00:00').toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
+    }
+    function renderFeed() {
+        var list = ACTIVITIES.filter(function (a) {
+            return (actKind === 'all' || a.kind === actKind) && (actChild === 'all' || String(a.child_id) === actChild);
+        });
+        var feed = $('pdFeed'), more = $('pdMore');
+        if (!list.length) {
+            feed.innerHTML = '<div class="pd-empty"><i class="fas fa-clock-rotate-left"></i>' +
+                (ACTIVITIES.length ? 'Nothing matches this filter.' : (CHILDREN.length ? 'No activity yet. Finished modules, quizzes and courses will show here.' : 'Link a child to see what they are working on.')) + '</div>';
+            more.hidden = true; return;
+        }
+        var html = '', last = null, multi = CHILDREN.length > 1;
+        list.slice(0, shown).forEach(function (a) {
+            var lbl = dayLabel(a.day);
+            if (lbl !== last) { html += '<div class="pd-day-label">' + esc(lbl) + '</div>'; last = lbl; }
+            var kk = kindOf(a.kind), k = KIND[kk];
+            var meta = [];
+            if (a.sub) meta.push('<span><i class="fas fa-book"></i> ' + esc(a.sub) + '</span>');
+            if (multi) meta.push('<span><i class="fas fa-user"></i> ' + esc(a.child_first) + '</span>');
+            meta.push('<span><i class="far fa-clock"></i> ' + esc(a.time_ago) + '</span>');
+            html += '<div class="pd-act"><div class="pd-act-ic k-' + kk + '"><i class="fas ' + k.icon + '"></i></div>' +
+                    '<div class="pd-act-body"><div class="pd-act-title">' + esc(a.text) + '</div><div class="pd-act-meta">' + meta.join('') + '</div></div>' +
+                    (num(a.ep) ? '<span class="pd-ep">+' + num(a.ep) + ' EP</span>' : '') + '</div>';
+        });
+        feed.innerHTML = html;
+        more.hidden = list.length <= shown;
+        more.textContent = 'Show more (' + (list.length - shown) + ')';
+    }
+    document.querySelectorAll('[data-kind]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            actKind = b.dataset.kind; shown = 7;
+            document.querySelectorAll('[data-kind]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+            renderFeed();
+        });
+    });
+    if ($('actChild')) $('actChild').addEventListener('change', function () { actChild = this.value; shown = 7; renderFeed(); });
+    $('pdMore').addEventListener('click', function () { shown += 10; renderFeed(); });
+    renderFeed();
+
+    /* ---------- goals & rewards (rewards to give first, then goals ending soonest) ---------- */
+    (async function renderGoals() {
+        var box = $('pdGoals');
+        try {
+            var r = await fetch('/api/parent/goals', { credentials: 'same-origin' });
+            var d = await r.json();
+            if (!r.ok || d.success === false) throw new Error(d.message || 'error');
+            var kids = {}; (d.children || []).forEach(function (c) { kids[c.id] = c; });
+            var list = (d.goals || []).filter(function (g) { return g.status === 'achieved' || g.status === 'active'; }).slice(0, 4);
+            if (!(d.children || []).length) { box.innerHTML = '<div class="pd-empty" style="padding:14px;"><i class="fas fa-link"></i>Link a child to set goals.</div>'; return; }
+            if (!list.length) {
+                box.innerHTML = '<div class="pd-empty" style="padding:14px;"><i class="fas fa-bullseye"></i>No goals running. <a class="pd-link" href="/parent-goals?new=1">Set one</a></div>';
+                return;
+            }
+            box.innerHTML = list.map(function (g) {
+                var k = kids[g.child_id] || {};
+                var reached = g.status === 'achieved';
+                var when = reached ? 'Reached · reward: ' + (g.reward || (g.bonus_points ? '+' + g.bonus_points + ' points' : '+' + g.bonus_minutes + ' min')) :
+                    (g.days_left <= 0 ? 'Ends today' : g.days_left === 1 ? 'Ends tomorrow' : g.days_left + ' days left') + ' · ' + g.progress_text;
+                return '<a class="pd-live-item pd-goal-item' + (reached ? ' won' : '') + '" href="/parent-goals' + (reached ? '#reward' : '') + '">' +
+                       '<div class="pd-live-date"><b>' + (reached ? '<i class="fas fa-gift"></i>' : pct(g.pct) + '%') + '</b><small>' + esc(k.first_name || '') + '</small></div>' +
+                       '<div style="min-width:0;flex:1;"><div class="pd-live-title">' + esc(g.title) + '</div>' +
+                       '<div class="pd-live-meta">' + esc(when) + '</div>' +
+                       (reached ? '' : '<div class="pd-goal-bar"><i style="width:' + pct(g.pct) + '%"></i></div>') + '</div></a>';
+            }).join('');
+        } catch (e) {
+            box.innerHTML = '<div class="pd-empty" style="padding:14px;"><i class="fas fa-triangle-exclamation"></i>Couldn\'t load goals.</div>';
+        }
+    })();
+
+    /* ---------- calendar ---------- */
+    var byDate = {};
+    EVENTS.forEach(function (e) { (byDate[e.date] = byDate[e.date] || []).push(e); });
+    var now = new Date(TODAY_KEY + 'T12:00:00'), view = new Date(now.getFullYear(), now.getMonth(), 1), selected = TODAY_KEY;
+    var calEl = $('pdCalendar');
+    function renderEvents() {
+        var box = $('calEvents');
+        var evs = (byDate[selected] || []).slice().sort(function (a, b) { return (a.time || '').localeCompare(b.time || ''); });
+        var label = new Date(selected + 'T00:00:00').toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+        var html = '<div class="pd-cal-day">' + esc(label) + '</div>';
+        if (!evs.length) { box.innerHTML = html + '<div class="pd-help">Nothing on this day.</div>'; return; }
+        box.innerHTML = html + evs.map(function (e) {
+            var k = e.kind === 'live' ? 'live' : 'module';
+            var meta = [e.kind === 'live' ? 'Live class' : e.child, e.time].filter(Boolean).join(' · ');
+            return '<div class="pd-act" style="padding:8px 6px;"><div class="pd-act-ic k-' + k + '" style="width:32px;height:32px;"><i class="fas ' + KIND[e.kind === 'live' ? 'live' : 'done'].icon + '"></i></div>' +
+                   '<div class="pd-act-body"><div class="pd-act-title">' + esc(e.title) + '</div><div class="pd-act-meta">' + esc(meta) + '</div></div></div>';
+        }).join('');
+    }
+    function renderCal() {
+        var y = view.getFullYear(), m = view.getMonth(), todayKey = TODAY_KEY;
+        $('calTitle').textContent = view.toLocaleDateString([], { month: 'long', year: 'numeric' });
+        var offset = (new Date(y, m, 1).getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
+        var html = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(function (h) { return '<div class="pd-cal-h">' + h + '</div>'; }).join('');
+        for (var i = 0; i < offset; i++) html += '<span class="pd-day blank"></span>';
+        for (var d = 1; d <= days; d++) {
+            var key = y + '-' + pad(m + 1) + '-' + pad(d), evs = byDate[key] || [], cls = 'pd-day', kinds = [];
+            if (evs.length) cls += ' has';
+            if (key === todayKey) cls += ' today';
+            if (key === selected) cls += ' sel';
+            evs.forEach(function (e) { var k = e.kind === 'live' ? 'live' : 'done'; if (kinds.indexOf(k) < 0) kinds.push(k); });
+            var dots = kinds.length ? '<span class="pd-dots">' + kinds.map(function (k) { return '<i class="pd-dot ' + (k === 'live' ? 'live' : '') + '"></i>'; }).join('') + '</span>' : '';
+            var aria = d + ' ' + view.toLocaleDateString([], { month: 'long' }) + (evs.length ? ', ' + evs.length + ' item' + (evs.length > 1 ? 's' : '') : '');
+            // one tab stop for the whole month: the arrow keys move between days
+            var focusKey = (selected.slice(0, 7) === key.slice(0, 7)) ? selected : (y + '-' + pad(m + 1) + '-01');
+            html += '<button type="button" class="' + cls + '" data-key="' + key + '" aria-label="' + esc(aria) + '"' +
+                    ' aria-pressed="' + (key === selected) + '"' + (key === todayKey ? ' aria-current="date"' : '') +
+                    ' tabindex="' + (key === focusKey ? '0' : '-1') + '">' + d + dots + '</button>';
+        }
+        calEl.innerHTML = html;
+        renderEvents();
+    }
+    calEl.addEventListener('click', function (e) { var b = e.target.closest('[data-key]'); if (b) { selected = b.dataset.key; renderCal(); } });
+    calEl.addEventListener('keydown', function (e) {
+        var step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
+        var b = e.target.closest('[data-key]');
+        if (!b || (!step && e.key !== 'Home' && e.key !== 'End')) return;
+        e.preventDefault();
+        var d = new Date(b.dataset.key + 'T12:00:00');
+        if (step) d.setDate(d.getDate() + step);
+        else if (e.key === 'Home') d.setDate(1);
+        else d = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12);
+        selected = keyOf(d);
+        view = new Date(d.getFullYear(), d.getMonth(), 1);
+        renderCal();
+        var f = calEl.querySelector('[data-key="' + selected + '"]'); if (f) f.focus();
+    });
+    $('calPrev').addEventListener('click', function () { view = new Date(view.getFullYear(), view.getMonth() - 1, 1); renderCal(); });
+    $('calNext').addEventListener('click', function () { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); renderCal(); });
+    $('calToday').addEventListener('click', function () { var n = new Date(TODAY_KEY + 'T12:00:00'); view = new Date(n.getFullYear(), n.getMonth(), 1); selected = TODAY_KEY; renderCal(); });
+    renderCal();
+
+    /* ---------- progress filter ---------- */
+    // one child at a time keeps the card short; "Compare" shows everyone on one line each
+    var PROG_KEY = 'pdProgChild';
+    function showProg(id, remember) {
+        var chip = document.querySelector('[data-prog="' + id + '"]');
+        if (!chip) { chip = document.querySelector('[data-prog]'); if (!chip) return; id = chip.dataset.prog; }
+        document.querySelectorAll('[data-prog]').forEach(function (x) { x.setAttribute('aria-pressed', x === chip ? 'true' : 'false'); });
+        document.querySelectorAll('[data-prog-child]').forEach(function (el) { el.hidden = id === 'all' || el.dataset.progChild !== id; });
+        var ov = document.querySelector('[data-prog-overview]'); if (ov) ov.hidden = id !== 'all';
+        if (remember) { try { localStorage.setItem(PROG_KEY, id); } catch (e) {} }
+    }
+    document.querySelectorAll('[data-prog]').forEach(function (b) { b.addEventListener('click', function () { showProg(b.dataset.prog, true); }); });
+    document.querySelectorAll('[data-prog-go]').forEach(function (b) { b.addEventListener('click', function () { showProg(b.dataset.progGo, true); }); });
+    if (document.querySelector('[data-prog]')) { var saved = null; try { saved = localStorage.getItem(PROG_KEY); } catch (e) {} if (saved) showProg(saved, false); }
+
+    /* ---------- report window ---------- */
+    var modal = $('pdReport'), lastFocus = null, current = null;
+    function avatarHtml(c) { var u = safeImg(c.photo_url); return u ? '<img src="' + esc(u) + '" alt="">' : esc(c.initials); }
+    function stat(v, l) { return '<div class="pd-r-stat"><strong>' + esc(v) + '</strong><span>' + esc(l) + '</span></div>'; }
+    function openReport(id) {
+        var c = CHILDREN.filter(function (x) { return String(x.id) === String(id); })[0];
+        if (!c) return;
+        current = c; lastFocus = document.activeElement;
+        $('pdReportAvatar').innerHTML = avatarHtml(c);
+        $('pdReportName').textContent = c.full_name;
+        $('pdReportSub').textContent = [c.grade, c.relationship ? 'You: ' + c.relationship : '', c.linked_since ? 'Linked ' + c.linked_since : ''].filter(Boolean).join(' · ');
+        $('pdReportProfile').href = PROFILE_URL.replace(/0$/, String(c.id));
+        $('pdReportNote').textContent = '';
+        var b = '';
+        var courses = c.courses || [], week = c.week || [], activity = c.activity || [];
+        if (!c.has_data || !c.can_see_grades) {
+            b = '<p class="pd-kid-note">' + (c.can_see_grades
+                ? esc(c.first_name) + " hasn't passed a module test or quiz yet. Their report fills in the moment they do."
+                : esc(c.first_name) + " hasn't shared grades and progress with you. They can turn it on in Settings > Privacy.") + '</p>';
+            $('pdReportDownload').hidden = true;
+        } else {
+            $('pdReportDownload').hidden = false;
+            b += '<div><div class="pd-r-h">Overview</div><div class="pd-r-grid">' +
+                 stat(c.letter, 'Overall grade') + stat(c.has_gpa ? num(c.gpa).toFixed(2) : '-', 'GPA (4.0)') +
+                 stat(c.avg_progress + '%', 'Course progress') + stat(c.rank ? '#' + c.rank : '-', 'Monthly rank') +
+                 stat(c.modules_completed, 'Modules passed') + stat(c.quizzes_passed, 'Quizzes passed') +
+                 stat(c.courses_completed, 'Courses finished') + stat(c.assessments, 'Assessments') +
+                 stat(c.quiz_streak + ' days', 'Quiz streak') + stat(c.module_streak, 'Module streak') +
+                 stat(c.ep_month, 'EP this month') + stat('Level ' + c.level, c.ep_total + ' EP in total') +
+                 '</div></div>';
+            b += '<div><div class="pd-r-h">Courses</div>';
+            if (courses.length) {
+                b += '<div class="pd-table-wrap"><table class="pd-table"><thead><tr><th>Course</th><th>Level</th><th style="width:40%;">Progress</th></tr></thead><tbody>' +
+                     courses.map(function (co) {
+                         var pr = pct(co.progress), cls = pr >= 100 ? 'ok' : pr < 25 ? 'warn' : '';
+                         return '<tr><td>' + esc(co.name) + '</td><td>' + esc(co.level || '-') + '</td><td><div class="pd-bar-row" style="margin-bottom:4px;"><span></span><strong>' + pr + '%</strong></div><div class="pd-bar ' + cls + '"><i style="width:' + pr + '%"></i></div></td></tr>';
+                     }).join('') + '</tbody></table></div>';
+            } else b += '<p class="pd-help">Not enrolled in any course yet.</p>';
+            b += '</div>';
+            b += '<div><div class="pd-r-h">Last 7 days</div><div class="pd-week-days" style="gap:10px;">' +
+                 week.map(function (d, i) { return '<div class="pd-wd' + (d.active ? ' on' : '') + (i === 6 ? ' today' : '') + '"><i style="width:22px;height:22px;"></i><span>' + esc(d.label) + '</span></div>'; }).join('') +
+                 '</div><p class="pd-help" style="margin-top:6px;">' + num(c.done_this_week) + ' item' + (num(c.done_this_week) === 1 ? '' : 's') + ' completed this week' + (c.last_active ? ', last active ' + esc(c.last_active) : '') + '.</p></div>';
+            b += '<div><div class="pd-r-h">Recent work</div>' + (activity.length ? activity.map(function (a) {
+                var kk = kindOf(a.kind), k = KIND[kk];
+                return '<div class="pd-act" style="padding:8px 4px;"><div class="pd-act-ic k-' + kk + '"><i class="fas ' + k.icon + '"></i></div><div class="pd-act-body"><div class="pd-act-title">' + esc(a.text) + '</div><div class="pd-act-meta">' + (a.sub ? '<span>' + esc(a.sub) + '</span>' : '') + '<span>' + esc(a.time_ago) + '</span></div></div>' + (num(a.ep) ? '<span class="pd-ep">+' + num(a.ep) + ' EP</span>' : '') + '</div>';
+            }).join('') : '<p class="pd-help">No completed work yet.</p>') + '</div>';
+        }
+        $('pdReportBody').innerHTML = b;
+        modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('pd-lock');
+        modal.querySelector('[data-close]').focus();
+    }
+    function closeReport() {
+        if (!modal.classList.contains('open')) return;
+        modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('pd-lock');
+        if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+    document.querySelectorAll('[data-report]').forEach(function (b) { b.addEventListener('click', function () { openReport(b.dataset.report); }); });
+    modal.addEventListener('click', function (e) { if (e.target === modal || e.target.closest('[data-close]')) closeReport(); });
+    document.addEventListener('keydown', function (e) {
+        if (!modal.classList.contains('open')) return;
+        if (e.key === 'Escape') { closeReport(); return; }
+        if (e.key === 'Tab') {
+            var f = Array.prototype.filter.call(modal.querySelectorAll('button, a[href], [tabindex]:not([tabindex="-1"])'), function (el) { return !el.hidden && el.offsetParent !== null; });
+            if (!f.length) return;
+            if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+            else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+        }
+    });
+    $('pdReportDownload').addEventListener('click', function () {
+        var c = current; if (!c) return;
+        var L = [];
+        L.push('Eschool progress report: ' + c.full_name);
+        L.push('Date: ' + new Date().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }));
+        L.push('Grade level: ' + c.grade, '');
+        L.push('Overall grade: ' + c.letter + '   GPA: ' + (c.has_gpa ? num(c.gpa).toFixed(2) : '-'));
+        L.push('Course progress: ' + c.avg_progress + '%');
+        L.push('Modules passed: ' + c.modules_completed + '   Quizzes passed: ' + c.quizzes_passed + '   Courses finished: ' + c.courses_completed);
+        L.push('Quiz streak: ' + c.quiz_streak + ' days   Module streak: ' + c.module_streak);
+        L.push('EP this month: ' + c.ep_month + '   Monthly rank: ' + (c.rank ? '#' + c.rank : '-') + '   Level ' + c.level + ' (' + c.ep_total + ' EP in total)', '', 'COURSES');
+        ((c.courses || []).length ? c.courses : [{ name: 'None yet', progress: '' }]).forEach(function (co) { L.push('- ' + co.name + (co.progress !== '' ? ': ' + co.progress + '%' : '')); });
+        L.push('', 'RECENT WORK');
+        ((c.activity || []).length ? c.activity : [{ text: 'None yet', sub: '', time_ago: '' }]).forEach(function (a) { L.push('- ' + a.text + (a.sub ? ' (' + a.sub + ')' : '') + (a.time_ago ? ', ' + a.time_ago : '')); });
+        var blob = new Blob([L.join('\r\n')], { type: 'text/plain' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'Eschool-report-' + c.full_name.replace(/[^a-z0-9]+/gi, '-') + '.txt';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+        $('pdReportNote').textContent = 'Report downloaded.';
+    });
+
+})();
+</script>
+{% endblock %}

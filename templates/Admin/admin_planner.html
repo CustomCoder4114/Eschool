@@ -1,0 +1,698 @@
+{% extends "Admin/admin_body.html" %}
+{% block title %}Learning planner{% endblock %}
+{% block allcontent %}
+{#
+    ADMIN - Learning planner  (templates/Admin/admin_planner.html)   Route: /admin-planner
+    GET  /api/admin/planner/overview?month=YYYY-MM          calendar, weeks, numbers, settings
+    GET|PUT|DELETE /api/admin/planner/day/<YYYY-MM-DD>      one day's Daily Quiz
+    POST /api/admin/planner/bulk {items:[...]}              auto-fill / copy many days
+    GET|POST /api/admin/planner/questions, DELETE .../<id>  questions admins wrote
+    GET  /api/admin/planner/week/<monday>, PUT, DELETE      Career of the week + missions
+    GET|POST /api/admin/planner/missions, DELETE .../<id>   mission library
+    PUT  /api/admin/planner/settings                        reminders
+    Course questions come from the course files loaded below (the same ones learners use).
+#}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% for u in course_scripts %}<script src="{{ u }}"></script>
+{% endfor %}
+<style>
+.pl {
+    --pl-accent: var(--primary-color, #4f46e5); --pl-soft: #eef0ff;
+    --pl-bg: #f4f6fb; --pl-card: #fff; --pl-line: #e3e7f1; --pl-line-2: #f0f2f7;
+    --pl-text: #1c2333; --pl-text-2: #4b5468; --pl-text-3: #6b7385;
+    --pl-ok: #137333; --pl-ok-bg: #e6f4ea; --pl-ok-line: #b7dfc3; --pl-bad: #b3261e; --pl-bad-bg: #fdecea; --pl-bad-line: #f5c2bd;
+    --pl-warn: #7a4a00; --pl-warn-bg: #fff4e0; --pl-warn-line: #f3d39b; --pl-info: #3730a3;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--pl-text);
+    max-width: 1340px; margin: 0 auto; padding: 4px 0 40px; font-size: 14px;
+}
+body.dark-mode .pl {
+    --pl-soft: #24264a; --pl-bg: #0b1220; --pl-card: #111a2e; --pl-line: #263149; --pl-line-2: #1b2539;
+    --pl-text: #e8ecf5; --pl-text-2: #b8c1d6; --pl-text-3: #8d97ae;
+    --pl-ok: #6fd391; --pl-ok-bg: #12301f; --pl-ok-line: #1f5a36; --pl-bad: #ff8b80; --pl-bad-bg: #3a1714; --pl-bad-line: #6b2a24;
+    --pl-warn: #f5c46a; --pl-warn-bg: #33260c; --pl-warn-line: #654a17; --pl-info: #b4b9ff;
+}
+.pl *, .pl *::before, .pl *::after { box-sizing: border-box; }
+.pl h1 { font-size: 1.6rem; margin: 0; font-weight: 800; }
+.pl h2, .pl h3, .pl h4, .pl p { margin: 0; }
+.pl button, .pl input, .pl select, .pl textarea { font: inherit; color: inherit; }
+.pl-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.pl-sub { color: var(--pl-text-3); margin-top: 4px; max-width: 760px; }
+.pl-lbl { font-size: .72rem; font-weight: 700; color: var(--pl-accent); letter-spacing: .08em; text-transform: uppercase; margin: 22px 0 10px; display: flex; align-items: center; gap: 8px; }
+.pl-lbl::after { content: ""; flex: 1; height: 1px; background: var(--pl-line); }
+.pl-card { background: var(--pl-card); border: 1px solid var(--pl-line); border-radius: 14px; padding: 16px; min-width: 0; }
+.pl-grid { display: grid; gap: 12px; margin-bottom: 12px; }
+.g6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gcal { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; }
+.pl-kl { font-size: .7rem; color: var(--pl-text-3); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.pl-kv { font-size: 1.45rem; font-weight: 800; margin: 4px 0 2px; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-kn { font-size: .75rem; color: var(--pl-text-3); }
+.pl-card.alert { border-color: var(--pl-bad-line); } .pl-card.alert .pl-kv { color: var(--pl-bad); }
+.pl-ch { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.pl-ch h3 { font-size: .98rem; }
+.pl-m { color: var(--pl-text-3); font-size: .76rem; }
+.pl-btns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 13px; border-radius: 10px; border: 1px solid var(--pl-line); background: var(--pl-card); font-weight: 600; font-size: .83rem; cursor: pointer; white-space: nowrap; color: var(--pl-text); text-decoration: none; }
+.pl-btn:hover { border-color: var(--pl-accent); color: var(--pl-accent); }
+.pl-btn.primary { background: var(--pl-accent); border-color: var(--pl-accent); color: #fff; }
+.pl-btn.primary:hover { filter: brightness(1.08); color: #fff; }
+.pl-btn.danger { color: var(--pl-bad); }
+.pl-btn.sm { height: 30px; padding: 0 10px; font-size: .78rem; }
+.pl-btn.xs { height: 26px; padding: 0 8px; font-size: .72rem; border-radius: 8px; }
+.pl-btn:disabled { opacity: .5; cursor: default; }
+.pl-btn:focus-visible, .pl-chip:focus-visible, .pl-day:focus-visible, .pl-wk:focus-visible, .pl input:focus-visible, .pl select:focus-visible, .pl textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--pl-accent) 45%, transparent); outline-offset: 2px; }
+.pl-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.pl-chip { border: 1px solid var(--pl-line); background: var(--pl-card); border-radius: 999px; padding: 5px 11px; font-size: .78rem; font-weight: 600; cursor: pointer; color: var(--pl-text-2); }
+.pl-chip[aria-pressed="true"] { background: var(--pl-soft); border-color: var(--pl-accent); color: var(--pl-accent); }
+.pl-pill { display: inline-flex; align-items: center; gap: 4px; font-size: .68rem; font-weight: 700; border-radius: 999px; padding: 2px 8px; white-space: nowrap; margin: 1px 2px 1px 0; }
+.pl-pill.ok { background: var(--pl-ok-bg); color: var(--pl-ok); } .pl-pill.bad { background: var(--pl-bad-bg); color: var(--pl-bad); }
+.pl-pill.warn { background: var(--pl-warn-bg); color: var(--pl-warn); } .pl-pill.info { background: var(--pl-soft); color: var(--pl-info); } .pl-pill.grey { background: var(--pl-line-2); color: var(--pl-text-3); }
+.pl-note { border-radius: 10px; padding: 9px 12px; font-size: .86rem; margin: 8px 0; }
+.pl-note[hidden] { display: none; }
+.pl-note.ok { background: var(--pl-ok-bg); color: var(--pl-ok); } .pl-note.bad { background: var(--pl-bad-bg); color: var(--pl-bad); } .pl-note.info { background: var(--pl-soft); color: var(--pl-info); }
+.pl-skel { display: block; height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--pl-line-2), var(--pl-line), var(--pl-line-2)); background-size: 200% 100%; animation: plS 1.2s infinite; margin: 8px 0; }
+@keyframes plS { to { background-position: -200% 0; } }
+.pl-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* calendar */
+.pl-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.pl-cal .h { font-size: .7rem; color: var(--pl-text-3); font-weight: 700; text-align: center; padding: 2px 0; }
+.pl-day { text-align: left; border: 1px solid var(--pl-line); border-radius: 10px; padding: 6px; min-height: 76px; font-size: .72rem; background: var(--pl-card); cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pl-day:hover { border-color: var(--pl-accent); }
+.pl-day b { font-size: .85rem; }
+.pl-day .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--pl-text-2); }
+.pl-day.out { opacity: .45; }
+.pl-day.past { background: var(--pl-bg); }
+.pl-day.today { border: 2px solid var(--pl-accent); }
+.pl-day.gap { background: var(--pl-bad-bg); border-color: var(--pl-bad-line); }
+.pl-day.sel { box-shadow: 0 0 0 3px color-mix(in srgb, var(--pl-accent) 35%, transparent); }
+.pl-wk { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--pl-soft); border: 1px dashed var(--pl-line); border-radius: 10px; padding: 6px 9px; font-size: .76rem; cursor: pointer; text-align: left; }
+.pl-wk.need { background: var(--pl-bad-bg); border-color: var(--pl-bad-line); }
+.pl-wk .sp { flex: 1; }
+
+/* editor */
+.pl-f label { display: block; font-size: .78rem; font-weight: 600; color: var(--pl-text-2); margin: 10px 0 4px; }
+.pl-in { width: 100%; height: 38px; border: 1px solid var(--pl-line); border-radius: 10px; padding: 0 10px; background: var(--pl-card); }
+textarea.pl-in { height: auto; min-height: 70px; padding: 9px 10px; resize: vertical; }
+.pl-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pl-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.pl-q { border: 1px solid var(--pl-line); border-radius: 12px; padding: 10px; margin-top: 8px; }
+.pl-q .qt { font-weight: 700; margin: 5px 0; }
+.pl-q .o { display: inline-block; border: 1px solid var(--pl-line); border-radius: 8px; padding: 3px 9px; margin: 3px 4px 0 0; font-size: .8rem; }
+.pl-q .o.c { border-color: var(--pl-ok-line); background: var(--pl-ok-bg); color: var(--pl-ok); font-weight: 700; }
+.pl-q .why { font-size: .76rem; color: var(--pl-text-3); margin-top: 5px; }
+.pl-q .tools { display: flex; gap: 4px; justify-content: flex-end; float: right; }
+.pl-err { color: var(--pl-bad); font-size: .8rem; margin-top: 6px; }
+.pl-err:empty { display: none; }
+.pl-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.pl-tabs { display: flex; gap: 6px; margin: 8px 0 4px; flex-wrap: wrap; }
+.pl-tab { border: 1px solid var(--pl-line); background: var(--pl-card); border-radius: 999px; padding: 5px 12px; font-weight: 600; font-size: .8rem; cursor: pointer; }
+.pl-tab[aria-selected="true"] { background: var(--pl-accent); border-color: var(--pl-accent); color: #fff; }
+
+/* lists */
+.pl-rowi { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--pl-line-2); font-size: .85rem; }
+.pl-rowi:last-child { border-bottom: 0; }
+.pl-cc { display: flex; gap: 10px; align-items: center; border: 1px solid var(--pl-line); border-radius: 12px; padding: 9px; margin-bottom: 7px; }
+.pl-cc.need { border-color: var(--pl-bad-line); }
+.pl-cc.now { border-color: var(--pl-ok-line); }
+.pl-cc .em { font-size: 1.4rem; width: 32px; text-align: center; }
+.pl-cc .tx { flex: 1; min-width: 0; }
+.pl-cc .tx b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-hb { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 70px; gap: 8px; align-items: center; margin: 6px 0; font-size: .82rem; }
+.pl-hb .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-hb .tr { height: 10px; background: var(--pl-line-2); border-radius: 4px; overflow: hidden; }
+.pl-hb .tr i { display: block; height: 100%; background: var(--pl-accent); border-radius: 0 4px 4px 0; }
+.pl-hb .tr i.low { background: #d97706; } .pl-hb .tr i.bad { background: var(--pl-bad); }
+.pl-hb b { text-align: right; font-size: .78rem; color: var(--pl-text-2); font-variant-numeric: tabular-nums; }
+.pl-bars { display: flex; align-items: flex-end; gap: 4px; height: 110px; border-bottom: 1px solid var(--pl-line); position: relative; }
+.pl-bars span { flex: 1; background: var(--pl-accent); border-radius: 4px 4px 0 0; min-height: 2px; position: relative; }
+.pl-bars span.auto { background: color-mix(in srgb, var(--pl-accent) 45%, var(--pl-card)); }
+.pl-bars span:hover::after { content: attr(data-t); position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: var(--pl-text); color: var(--pl-card); font-size: .7rem; padding: 4px 7px; border-radius: 6px; white-space: nowrap; z-index: 2; }
+.pl-tog { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--pl-line-2); font-size: .85rem; }
+.pl-tog:last-of-type { border-bottom: 0; }
+.pl-tog input[type="time"], .pl-tog input[type="number"] { height: 32px; border: 1px solid var(--pl-line); border-radius: 8px; padding: 0 6px; background: var(--pl-card); }
+.pl-tog input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--pl-accent); }
+.pl-mis { border: 1px solid var(--pl-line); border-radius: 12px; padding: 10px; margin-bottom: 8px; }
+
+/* dialog */
+.pl-dlg { border: 0; border-radius: 16px; padding: 0; width: min(820px, calc(100vw - 24px)); max-height: calc(100vh - 24px); box-shadow: 0 24px 60px rgba(15, 20, 40, .35); background: var(--pl-bg); color: var(--pl-text); font-family: Inter, system-ui, sans-serif; }
+.pl-dlg.wide { width: min(1080px, calc(100vw - 24px)); }
+.pl-dlg::backdrop { background: rgba(15, 20, 35, .6); }
+.pl-dh { position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; background: var(--pl-card); border-bottom: 1px solid var(--pl-line); }
+.pl-dh h2 { font-size: 1.05rem; }
+.pl-db { padding: 16px 18px; }
+.pl-df { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; background: var(--pl-card); border-top: 1px solid var(--pl-line); flex-wrap: wrap; }
+.pl-df[hidden] { display: none; }
+.pl-x { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--pl-line); background: var(--pl-card); cursor: pointer; }
+.pl-bank { max-height: 52vh; overflow: auto; border: 1px solid var(--pl-line); border-radius: 12px; background: var(--pl-card); }
+.pl-bank label { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; padding: 9px 10px; border-bottom: 1px solid var(--pl-line-2); cursor: pointer; font-size: .84rem; }
+.pl-bank label:hover { background: var(--pl-soft); }
+.pl-bank input { width: 17px; height: 17px; accent-color: var(--pl-accent); margin-top: 2px; }
+.pl-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: #1c2333; color: #fff; padding: 11px 16px; border-radius: 12px; font-size: .88rem; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 3000; max-width: calc(100vw - 32px); }
+.pl-toast.on { opacity: 1; transform: translateX(-50%); }
+.pl-prev { background: var(--pl-card); border: 1px solid var(--pl-line); border-radius: 14px; padding: 16px; max-width: 560px; margin: 0 auto; }
+.pl-prev .o { display: block; border: 1px solid var(--pl-line); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+
+@media (max-width: 1200px) { .g6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .gcal { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) { .g3 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .g6 { grid-template-columns: 1fr 1fr; } .pl-row2, .pl-row3 { grid-template-columns: minmax(0, 1fr); } .pl-day { min-height: 58px; padding: 4px; } .pl-day .t { display: none; } }
+@media (prefers-reduced-motion: reduce) { .pl * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="pl" id="pl">
+    <div class="pl-top">
+        <div>
+            <h1>Learning planner</h1>
+            <p class="pl-sub">Plan the Daily Quiz, the Career of the week and the weekly career missions ahead of time, built from your courses, careers and study strategies.</p>
+        </div>
+        <div class="pl-btns">
+            <button type="button" class="pl-btn" id="goRem"><i class="fas fa-bell" aria-hidden="true"></i> Reminders</button>
+            <button type="button" class="pl-btn" id="autoBtn"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> Auto-fill next 30 days</button>
+            <button type="button" class="pl-btn primary" id="newBtn"><i class="fas fa-plus" aria-hidden="true"></i> New daily quiz</button>
+        </div>
+    </div>
+    <div class="pl-note" id="note" role="status" hidden></div>
+
+    <div class="pl-lbl">Is everything ready?</div>
+    <div class="pl-grid g6" id="kpis">
+        <div class="pl-card"><span class="pl-skel"></span><span class="pl-skel"></span></div><div class="pl-card"><span class="pl-skel"></span></div><div class="pl-card"><span class="pl-skel"></span></div>
+        <div class="pl-card"><span class="pl-skel"></span></div><div class="pl-card"><span class="pl-skel"></span></div><div class="pl-card"><span class="pl-skel"></span></div>
+    </div>
+
+    <div class="pl-lbl">Calendar: every day and week</div>
+    <div class="pl-grid gcal">
+        <section class="pl-card" aria-labelledby="calT">
+            <div class="pl-ch"><h3 id="calT">Month</h3>
+                <div class="pl-btns"><button type="button" class="pl-btn sm" id="prevM" aria-label="Previous month"><i class="fas fa-chevron-left" aria-hidden="true"></i></button><button type="button" class="pl-btn sm" id="todayM">Today</button><button type="button" class="pl-btn sm" id="nextM" aria-label="Next month"><i class="fas fa-chevron-right" aria-hidden="true"></i></button></div></div>
+            <div class="pl-cal" id="cal"></div>
+            <p class="pl-m" style="margin-top:10px"><span class="pl-pill ok">Ready</span> planned by an admin · <span class="pl-pill warn">Draft</span> not shown to learners yet · <span class="pl-pill grey">Auto</span> made from course questions automatically · <span class="pl-pill bad">Gap</span> nothing planned yet. A day with nothing planned is never empty: learners still get a quiz made from course questions. Planned days always come first.</p>
+        </section>
+        <section class="pl-card pl-f" id="editor" aria-live="polite"><span class="pl-skel"></span><span class="pl-skel"></span></section>
+    </div>
+
+    <div class="pl-lbl">Careers: Career of the week and weekly missions</div>
+    <div class="pl-grid g3">
+        <section class="pl-card"><div class="pl-ch"><h3>Career of the week</h3><span class="pl-m">next 8 weeks</span></div><div id="queue"></div><p class="pl-m" id="notRecent"></p></section>
+        <section class="pl-card"><div class="pl-ch"><h3 id="wmT">Weekly missions</h3><button type="button" class="pl-btn sm" id="wmPlan">Plan this week</button></div><div id="wm"></div></section>
+        <section class="pl-card"><div class="pl-ch"><h3>Mission library</h3><button type="button" class="pl-btn sm" id="newMis"><i class="fas fa-plus" aria-hidden="true"></i> New mission</button></div><div id="lib"></div><p class="pl-m" id="libNote"></p></section>
+    </div>
+
+    <div class="pl-lbl">Results and reminders</div>
+    <div class="pl-grid g3">
+        <section class="pl-card"><div class="pl-ch"><h3>Daily Quiz attendance</h3><span class="pl-m">last 14 days</span></div><div class="pl-bars" id="bars"></div><p class="pl-m" id="barsNote" style="margin-top:8px"></p></section>
+        <section class="pl-card" id="remCard"><div class="pl-ch"><h3>Reminders</h3><span class="pl-m">East Africa Time</span></div><div id="rem"></div><div class="pl-foot"><span class="pl-m">Learners are only reminded if they haven’t done today’s quiz.</span><button type="button" class="pl-btn sm primary" id="saveRem">Save reminders</button></div><div class="pl-err" id="remErr"></div></section>
+        <section class="pl-card"><div class="pl-ch"><h3>Courses &amp; strategies</h3><span class="pl-m">planned days, next 30</span></div><div id="cov"></div></section>
+    </div>
+
+    <dialog class="pl-dlg" id="dlg" aria-labelledby="dT"><div class="pl-dh"><h2 id="dT"></h2><button type="button" class="pl-x" id="dX" aria-label="Close"><i class="fas fa-xmark"></i></button></div><div class="pl-db" id="dB"></div><div class="pl-df" id="dF" hidden></div></dialog>
+    <div class="pl-toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+{% raw %}
+<script>
+(function () {
+"use strict";
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+var num = function (v) { v = Number(v); return isFinite(v) ? v : 0; };
+var fmt = function (n) { return num(n).toLocaleString(); };
+function D(day) { return new Date(day + "T12:00:00Z"); }
+function iso(d) { return d.toISOString().slice(0, 10); }
+function addDays(day, n) { var d = D(day); d.setUTCDate(d.getUTCDate() + n); return iso(d); }
+function nice(day, opts) { return D(day).toLocaleDateString([], Object.assign({ weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }, opts || {})); }
+function api(url, opts) {
+    opts = opts || {};
+    var o = { credentials: "same-origin", cache: "no-store", method: opts.method || "GET" };
+    if (opts.body) { o.body = JSON.stringify(opts.body); o.headers = { "Content-Type": "application/json" }; }
+    return fetch(url, o).then(function (r) {
+        if (r.status === 401) { location.href = "/login"; throw new Error("Please sign in again."); }
+        return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.success === false) throw new Error(d.message || "Something went wrong (" + r.status + ")."); return d; });
+    });
+}
+var toastT; function toast(m) { var t = $("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove("on"); }, 4200); }
+function note(m, k) { var n = $("note"); n.hidden = !m; n.className = "pl-note " + (k || "ok"); n.textContent = m || ""; }
+function shuffle(a, seed) { var s = seed || Math.random() * 1e9; var r = function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+/* ---------------- question bank: every course question + admin questions ---------------- */
+var COURSES = (window.ESCHOOL_COURSES || []).map(function (c) {
+    var g = String(c.level || "").match(/grade-(\d+)/);
+    return { id: c.id, name: c.name, grade: g ? "grade-" + g[1] : "", modules: (c.modules || []).map(function (m) { return m.name; }) };
+});
+var BANK = [];
+(window.ESCHOOL_COURSES || []).forEach(function (c) {
+    var g = String(c.level || "").match(/grade-(\d+)/), grade = g ? "grade-" + g[1] : "";
+    (c.quizQuestions || []).forEach(function (q, i) { push(c, grade, "Course quiz", q, "q" + i); });
+    (c.modules || []).forEach(function (m, mi) { (m.mcQuestions || []).forEach(function (q, i) { push(c, grade, m.name, q, "m" + mi + "-" + i); }); });
+});
+function push(c, grade, module, q, k) {
+    if (!q || !q.question || !Array.isArray(q.options) || typeof q.correct !== "number" || !q.options[q.correct]) return;
+    BANK.push({ key: c.id + ":" + k, course: c.id, module: String(module || "").slice(0, 120), grade: grade, question: String(q.question), options: q.options.map(String), correct: q.correct, why: q.explanation || "", source: "bank" });
+}
+var ADMINQ = [];
+function loadAdminQ() { return api("/api/admin/planner/questions").then(function (d) { ADMINQ = d.questions.map(function (q) { return Object.assign({ key: "a" + q.id }, q); }); }).catch(function () {}); }
+function allBank() { return ADMINQ.concat(BANK); }
+
+/* ---------------- overview ---------------- */
+var O = null, month = null, selDay = null, selWeek = null;
+function load() {
+    return api("/api/admin/planner/overview" + (month ? "?month=" + month : "")).then(function (d) {
+        O = d; month = d.month;
+        if (!selDay) selDay = d.today;
+        if (!selWeek) selWeek = d.this_week;
+        render();
+    }).catch(function (e) { note("Couldn’t load the planner: " + e.message, "bad"); });
+}
+function render() {
+    var k = O.kpis;
+    var cards = [
+        ["Daily quizzes ready", fmt(k.planned_30) + " / 30", (k.drafts_30 ? fmt(k.drafts_30) + " drafts to check · " : "") + (k.next_gap ? "next day not ready: " + nice(k.next_gap) : "the next 30 days are all ready"), k.gaps_30 - (k.drafts_30 || 0) > 10 ? "alert" : ""],
+        ["Yesterday’s quiz", k.yesterday_pct + "%", "of active learners took it" + (k.yesterday_avg != null ? " · average score " + k.yesterday_avg + "%" : "")],
+        ["Missed yesterday", fmt(k.yesterday_missed), fmt(k.lost_streak) + " lost a streak · " + fmt(k.active) + " active learners"],
+        ["Career of the week", k.career_now ? k.career_now.emoji + " " + k.career_now.name : "–", fmt(k.career_weeks_planned) + " of 8 weeks planned · " + fmt(k.careers_not_recent) + " careers not featured lately"],
+        ["Missions planned", fmt(k.missions_weeks_planned) + (k.missions_weeks_planned === 1 ? " week" : " weeks"), k.missions_right != null ? k.missions_right + "% answered right (30 days)" : "no answers yet"],
+        ["Question bank", fmt(BANK.length + ADMINQ.length), fmt(COURSES.length) + " courses · " + fmt(ADMINQ.length) + " written by admins"]
+    ];
+    $("kpis").innerHTML = cards.map(function (c) { return '<div class="pl-card ' + (c[3] || "") + '"><div class="pl-kl">' + esc(c[0]) + '</div><div class="pl-kv" title="' + esc(c[1]) + '">' + esc(c[1]) + '</div><div class="pl-kn">' + esc(c[2]) + "</div></div>"; }).join("");
+    drawCal(); drawQueue(); drawWeek(); drawLib(); drawBars(); drawRem(); drawCov();
+}
+function dayCell(x) {
+    var q = x.quiz, gap = !q && !x.past && x.day <= addDays(O.today, 29);
+    var tag = q ? (q.status === "draft" ? '<span class="pl-pill warn">Draft</span>' : '<span class="pl-pill ok">Ready</span>') : x.past || x.today ? '<span class="pl-pill grey">Auto</span>' : gap ? '<span class="pl-pill bad">Gap</span>' : "";
+    var info = q ? esc(q.title) : "";
+    if (x.past || x.today) info = (q ? esc(q.title) + " · " : "") + fmt(x.takers) + " took it" + (x.avg != null ? " · " + x.avg + "%" : "");
+    return '<button type="button" class="pl-day' + (x.in_month ? "" : " out") + (x.past ? " past" : "") + (x.today ? " today" : "") + (gap ? " gap" : "") + (x.day === selDay ? " sel" : "") + '" data-day="' + x.day + '" aria-label="' + esc(nice(x.day, { year: "numeric" })) + '">' +
+        "<b>" + D(x.day).getUTCDate() + (x.today ? ' <span class="pl-pill info">Today</span>' : "") + "</b>" + tag + '<span class="t">' + info + "</span></button>";
+}
+function drawCal() {
+    var m = D(O.month + "-01"); $("calT").textContent = m.toLocaleDateString([], { month: "long", year: "numeric", timeZone: "UTC" });
+    var h = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(function (d) { return '<div class="h">' + d + "</div>"; }).join("");
+    O.weeks.forEach(function (w, i) {
+        var areas = Object.keys(w.areas), planned = areas.filter(function (a) { return w.areas[a].planned === 3; }).length;
+        var need = !w.past && !w.career_planned && w.week > O.this_week && w.week <= addDays(O.this_week, 21);
+        h += '<button type="button" class="pl-wk' + (need ? " need" : "") + '" data-week="' + w.week + '"><i class="fas fa-calendar-week" aria-hidden="true"></i> Week of ' + esc(nice(w.week, { weekday: undefined })) + " · <b>" + esc(w.career.emoji + " " + w.career.name) + "</b>" +
+            (w.career_planned ? ' <span class="pl-pill ok">chosen</span>' : ' <span class="pl-pill grey">automatic</span>') + '<span class="sp"></span>missions ' +
+            (planned ? '<span class="pl-pill ' + (planned === areas.length ? "ok" : "warn") + '">' + planned + " / " + areas.length + " areas chosen</span>" : '<span class="pl-pill grey">automatic</span>') + (w.current ? ' <span class="pl-pill info">This week</span>' : "") + "</button>";
+        h += O.days.slice(i * 7, i * 7 + 7).map(dayCell).join("");
+    });
+    $("cal").innerHTML = h;
+}
+$("cal").addEventListener("click", function (e) {
+    var d = e.target.closest("[data-day]"); if (d) { selDay = d.getAttribute("data-day"); drawCal(); openDay(selDay); return; }
+    var w = e.target.closest("[data-week]"); if (w) { selWeek = w.getAttribute("data-week"); drawWeek(); openWeek(selWeek); }
+});
+$("prevM").addEventListener("click", function () { month = iso(new Date(Date.UTC(+month.slice(0, 4), +month.slice(5) - 2, 1))).slice(0, 7); load(); });
+$("nextM").addEventListener("click", function () { month = iso(new Date(Date.UTC(+month.slice(0, 4), +month.slice(5), 1))).slice(0, 7); load(); });
+$("todayM").addEventListener("click", function () { month = null; selDay = null; load().then(function () { openDay(O.today); }); });
+
+/* ---------------- one day: the Daily Quiz editor ---------------- */
+var E = null, etab = "questions";
+function blankQuiz(day) {
+    var w = O.weeks.filter(function (x) { return day >= x.week && day <= addDays(x.week, 6); })[0];
+    return { title: "", courses: [], grades: [], countries: [], strategy_id: null, career_key: w ? w.career.key : null, career_note: "", questions: [], pass_pct: 60, status: "ready" };
+}
+function openDay(day) {
+    $("editor").innerHTML = '<span class="pl-skel"></span><span class="pl-skel" style="width:60%"></span><span class="pl-skel"></span>';
+    return api("/api/admin/planner/day/" + day).then(function (d) {
+        var q = d.quiz;
+        E = { day: day, locked: d.locked, exists: !!q, results: d.results, all: d.all_takers,
+              q: q ? { title: q.title, courses: q.courses, grades: q.grades, countries: q.countries, strategy_id: q.strategy ? q.strategy.id : null, career_key: q.career ? q.career.key : null,
+                      career_note: q.career ? q.career.note : "", questions: q.questions, pass_pct: q.pass_pct, status: q.status } : blankQuiz(day) };
+        if (day === O.today && d.results && d.results.takers) E.locked = true;
+        etab = E.exists || E.locked ? (E.locked ? "results" : "questions") : "questions";
+        drawEditor();
+    }).catch(function (e) { $("editor").innerHTML = '<div class="pl-note bad">' + esc(e.message) + "</div>"; });
+}
+function opt(list, cur, blank) { return (blank ? '<option value="">' + esc(blank) + "</option>" : "") + list.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (String(x[0]) === String(cur) ? " selected" : "") + ">" + esc(x[1]) + "</option>"; }).join(""); }
+function gradesAll() { var s = {}; COURSES.forEach(function (c) { if (c.grade) s[c.grade] = 1; }); for (var i = 1; i <= 12; i++) s["grade-" + i] = s["grade-" + i] || 0; return Object.keys(s).sort(function (a, b) { return parseInt(a.slice(6)) - parseInt(b.slice(6)); }); }
+function drawEditor() {
+    var q = E.q, lock = E.locked, h = "";
+    h += '<div class="pl-ch"><h3>Daily Quiz · ' + esc(nice(E.day, { year: "numeric" })) + "</h3>" + (lock ? '<span class="pl-pill grey">' + (E.day < O.today ? "Past day: read only" : "Learners have started it: read only") + "</span>" : E.exists ? (q.status === "draft" ? '<span class="pl-pill warn">Draft</span>' : '<span class="pl-pill ok">Ready</span>') : '<span class="pl-pill bad">Not planned: learners get an automatic quiz</span>') + "</div>";
+    h += '<div class="pl-tabs" role="tablist">' + [["questions", "Questions (" + q.questions.length + ")"], ["settings", "Settings"], ["preview", "Preview"], ["results", "Results"]].map(function (t) {
+        return '<button type="button" class="pl-tab" role="tab" data-et="' + t[0] + '" aria-selected="' + (etab === t[0]) + '">' + t[1] + "</button>";
+    }).join("") + "</div>";
+    if (etab === "questions") {
+        h += '<label for="eTitle">Title learners see</label><input class="pl-in" id="eTitle" maxlength="80" placeholder="e.g. Algebra warm-up" value="' + esc(q.title) + '"' + (lock ? " disabled" : "") + ">";
+        h += '<div id="qList">' + (q.questions.length ? q.questions.map(qCard).join("") : '<p class="pl-m" style="margin-top:10px">No questions yet. Pick some from the question bank or write your own.</p>') + "</div>";
+        if (!lock) h += '<div class="pl-btns" style="margin-top:10px"><button type="button" class="pl-btn sm" id="pickBtn"><i class="fas fa-layer-group" aria-hidden="true"></i> Pick from the bank</button><button type="button" class="pl-btn sm" id="writeBtn"><i class="fas fa-pen" aria-hidden="true"></i> Write a question</button><button type="button" class="pl-btn sm" id="quickBtn"><i class="fas fa-shuffle" aria-hidden="true"></i> Fill with 5 random</button></div>';
+    } else if (etab === "settings") {
+        h += '<label>Courses it covers</label><div class="pl-chips" id="eCourses">' + COURSES.map(function (c) { return '<button type="button" class="pl-chip" data-c="' + esc(c.id) + '" aria-pressed="' + (q.courses.indexOf(c.id) > -1) + '"' + (lock ? " disabled" : "") + ">" + esc(O.course_names[c.id] || c.name) + "</button>"; }).join("") + "</div>";
+        h += '<label>Grades</label><div class="pl-chips" id="eGrades">' + gradesAll().map(function (g) { return '<button type="button" class="pl-chip" data-g="' + g + '" aria-pressed="' + (q.grades.indexOf(g) > -1) + '"' + (lock ? " disabled" : "") + ">Grade " + g.slice(6) + "</button>"; }).join("") + "</div>";
+        h += '<div class="pl-row2"><div><label for="eStrat">Study strategy to practise</label><select class="pl-in" id="eStrat"' + (lock ? " disabled" : "") + ">" + opt(O.strategies.map(function (s) { return [s.id, s.name]; }), q.strategy_id, "None") + "</select></div>" +
+            '<div><label for="ePass">Pass mark</label><select class="pl-in" id="ePass"' + (lock ? " disabled" : "") + ">" + opt([[40, "40%"], [50, "50%"], [60, "60% (normal)"], [70, "70%"], [80, "80%"]], q.pass_pct) + "</select></div></div>";
+        var st = O.strategies.filter(function (s) { return s.id === q.strategy_id; })[0];
+        if (st) h += '<p class="pl-m" style="margin-top:6px"><i class="fas fa-lightbulb" aria-hidden="true"></i> Learners see this tip with the quiz: “' + esc(st.tip) + "”</p>";
+        h += '<div class="pl-row2"><div><label for="eCareer">Career link (shown after the quiz)</label><select class="pl-in" id="eCareer"' + (lock ? " disabled" : "") + ">" + opt(O.careers.map(function (c) { return [c.key, c.emoji + " " + c.name]; }), q.career_key, "None") + "</select></div>" +
+            '<div><label for="eNote">Why it matters for that career</label><input class="pl-in" id="eNote" maxlength="200" placeholder="e.g. Doctors use ratios to work out doses" value="' + esc(q.career_note) + '"' + (lock ? " disabled" : "") + "></div></div>";
+        if (O.countries.length > 1) h += '<label>Show to learners in</label><div class="pl-chips" id="eCountries">' + O.countries.map(function (c) { return '<button type="button" class="pl-chip" data-k="' + esc(c.code) + '" aria-pressed="' + (q.countries.indexOf(c.code) > -1) + '"' + (lock ? " disabled" : "") + ">" + esc(c.name) + "</button>"; }).join("") + '</div><p class="pl-m">None chosen = every country.</p>';
+        h += '<label for="eStatus">Status</label><select class="pl-in" id="eStatus"' + (lock ? " disabled" : "") + ">" + opt([["ready", "Ready: learners get it on the day"], ["draft", "Draft: not shown (the automatic quiz is used)"]], q.status) + "</select>";
+    } else if (etab === "preview") {
+        h += previewHTML();
+    } else {
+        h += resultsHTML();
+    }
+    h += '<div class="pl-err" id="eErr"></div>';
+    if (!lock) h += '<div class="pl-foot"><span class="pl-m">' + q.questions.length + " question" + (q.questions.length === 1 ? "" : "s") + " · pass mark " + q.pass_pct + "% · 5 EP</span><span class=\"pl-btns\">" +
+        (E.exists ? '<button type="button" class="pl-btn sm danger" id="delDay">Remove</button>' : "") + '<button type="button" class="pl-btn sm" id="copyDay"' + (q.questions.length ? "" : " disabled") + '>Copy to other days</button><button type="button" class="pl-btn sm primary" id="saveDay"><i class="fas fa-check" aria-hidden="true"></i> Save day</button></span></div>';
+    $("editor").innerHTML = h;
+}
+function qCard(x, i) {
+    var lock = E.locked, cname = O.course_names[x.course] || x.course || "";
+    return '<div class="pl-q">' + (lock ? "" : '<span class="tools"><button type="button" class="pl-btn xs" data-mv="' + i + '" data-d="-1" aria-label="Move up"' + (i ? "" : " disabled") + '>↑</button><button type="button" class="pl-btn xs" data-mv="' + i + '" data-d="1" aria-label="Move down"' + (i < E.q.questions.length - 1 ? "" : " disabled") + '>↓</button><button type="button" class="pl-btn xs danger" data-rm="' + i + '" aria-label="Remove question">✕</button></span>') +
+        (cname ? '<span class="pl-pill info">' + esc(cname) + (x.module ? " · " + esc(x.module) : "") + "</span>" : "") + '<span class="pl-pill ' + (x.source === "admin" ? "ok" : "grey") + '">' + (x.source === "admin" ? "written by an admin" : "from the courses") + "</span>" +
+        '<div class="qt">' + (i + 1) + ". " + esc(x.question) + "</div>" + x.options.map(function (o, k) { return '<span class="o' + (k === x.correct ? " c" : "") + '">' + esc(o) + "</span>"; }).join("") + (x.why ? '<div class="why">Why: ' + esc(x.why) + "</div>" : "") + "</div>";
+}
+function previewHTML() {
+    var q = E.q, st = O.strategies.filter(function (s) { return s.id === q.strategy_id; })[0], car = O.careers.filter(function (c) { return c.key === q.career_key; })[0];
+    if (!q.questions.length) return '<p class="pl-m" style="margin-top:10px">Add questions to see the preview.</p>';
+    var x = q.questions[0];
+    return '<div class="pl-prev" style="margin-top:10px"><div class="pl-m">Daily Quiz Test · question 1 of ' + q.questions.length + "</div><h4 style=\"margin:6px 0\">" + esc(q.title || "Daily Quiz") + "</h4>" +
+        (st ? '<p class="pl-m"><i class="fas fa-lightbulb" aria-hidden="true"></i> Today’s strategy: <b>' + esc(st.name) + "</b>. " + esc(st.tip) + "</p>" : "") +
+        '<p style="margin-top:10px;font-weight:600">' + esc(x.question) + "</p>" + x.options.map(function (o) { return '<span class="o">' + esc(o) + "</span>"; }).join("") +
+        (car ? '<p class="pl-m" style="margin-top:12px">After the quiz: ' + esc(car.emoji + " " + car.name) + (q.career_note ? " — “" + esc(q.career_note) + "”" : "") + "</p>" : "") + "</div>";
+}
+function resultsHTML() {
+    var r = E.results;
+    if (E.day > O.today) return '<p class="pl-m" style="margin-top:10px">Results show here once learners have taken the quiz.</p>';
+    if (!r) return '<p class="pl-m" style="margin-top:10px">' + fmt(E.all) + " learner" + (E.all === 1 ? "" : "s") + " took the automatic quiz this day. Detailed results are only kept for planned quizzes.</p>";
+    var h = '<div class="pl-row3" style="margin-top:10px"><div class="pl-card"><div class="pl-kl">Took it</div><div class="pl-kv">' + fmt(r.takers) + '</div></div><div class="pl-card"><div class="pl-kl">Passed</div><div class="pl-kv">' + fmt(r.passed) + '</div></div><div class="pl-card"><div class="pl-kl">Average</div><div class="pl-kv">' + (r.avg != null ? r.avg + "%" : "–") + "</div></div></div>";
+    h += '<h4 style="margin:12px 0 4px;font-size:.9rem">Right answers per question</h4>' + E.q.questions.map(function (x, i) {
+        var p = r.per_question[i] || {}, v = p.right;
+        return '<div class="pl-hb"><span class="nm" title="' + esc(x.question) + '">' + (i + 1) + ". " + esc(x.question) + '</span><span class="tr"><i class="' + (v != null && v < 40 ? "bad" : v != null && v < 60 ? "low" : "") + '" style="width:' + (v || 0) + '%"></i></span><b>' + (v != null ? v + "%" : "–") + "</b></div>";
+    }).join("");
+    return h;
+}
+function collect() {
+    var q = E.q;
+    if ($("eTitle")) q.title = $("eTitle").value.trim();
+    if ($("eStrat")) { q.strategy_id = $("eStrat").value ? Number($("eStrat").value) : null; q.pass_pct = Number($("ePass").value); q.career_key = $("eCareer").value || null; q.career_note = $("eNote").value.trim(); q.status = $("eStatus").value; }
+}
+$("editor").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-et]"); if (t) { collect(); etab = t.getAttribute("data-et"); drawEditor(); return; }
+    if (E.locked) return;
+    var c = e.target.closest("[data-c]"); if (c) { tog(E.q.courses, c.getAttribute("data-c")); c.setAttribute("aria-pressed", E.q.courses.indexOf(c.getAttribute("data-c")) > -1); return; }
+    var g = e.target.closest("[data-g]"); if (g) { tog(E.q.grades, g.getAttribute("data-g")); g.setAttribute("aria-pressed", E.q.grades.indexOf(g.getAttribute("data-g")) > -1); return; }
+    var k = e.target.closest("[data-k]"); if (k) { tog(E.q.countries, k.getAttribute("data-k")); k.setAttribute("aria-pressed", E.q.countries.indexOf(k.getAttribute("data-k")) > -1); return; }
+    var mv = e.target.closest("[data-mv]"); if (mv) { collect(); var i = Number(mv.getAttribute("data-mv")), j = i + Number(mv.getAttribute("data-d")), a = E.q.questions; var tmp = a[i]; a[i] = a[j]; a[j] = tmp; drawEditor(); return; }
+    var rm = e.target.closest("[data-rm]"); if (rm) { collect(); E.q.questions.splice(Number(rm.getAttribute("data-rm")), 1); drawEditor(); return; }
+    var id = e.target.closest("button") && e.target.closest("button").id;
+    if (id === "pickBtn") { collect(); pickDialog(); }
+    else if (id === "writeBtn") { collect(); writeDialog(); }
+    else if (id === "quickBtn") { collect(); E.q.questions = randomSet(E.day, 5, E.q.courses); autoCourses(); drawEditor(); }
+    else if (id === "saveDay") saveDay();
+    else if (id === "delDay") delDay();
+    else if (id === "copyDay") { collect(); copyDialog(); }
+});
+$("editor").addEventListener("change", function (e) { if (e.target.id === "eStrat") { collect(); drawEditor(); } });
+function tog(a, v) { var i = a.indexOf(v); if (i > -1) a.splice(i, 1); else a.push(v); }
+function autoCourses() { var s = {}; E.q.questions.forEach(function (x) { if (x.course && O.course_names[x.course]) s[x.course] = 1; }); E.q.courses = Object.keys(s); }
+function strip(x) { return { question: x.question, options: x.options, correct: x.correct, why: x.why || "", course: x.course || "", module: x.module || "", source: x.source === "admin" ? "admin" : "bank" }; }
+function payload(q) { return { title: q.title, courses: q.courses, grades: q.grades, countries: q.countries, strategy_id: q.strategy_id, career_key: q.career_key, career_note: q.career_note, questions: q.questions.map(strip), pass_pct: q.pass_pct, status: q.status }; }
+function saveDay() {
+    collect(); $("eErr").textContent = "";
+    if (!E.q.questions.length) { $("eErr").textContent = "Add at least one question."; return; }
+    if (!E.q.courses.length) autoCourses();
+    var b = $("saveDay"); b.disabled = true;
+    api("/api/admin/planner/day/" + E.day, { method: "PUT", body: payload(E.q) }).then(function () {
+        toast("Saved the Daily Quiz for " + nice(E.day) + "."); return load().then(function () { openDay(E.day); });
+    }).catch(function (e) { $("eErr").textContent = e.message; b.disabled = false; });
+}
+function delDay() {
+    var b = $("delDay"); if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tap again to remove"; return; }
+    api("/api/admin/planner/day/" + E.day, { method: "DELETE" }).then(function () { toast("Removed. Learners get the automatic quiz that day."); return load().then(function () { openDay(E.day); }); })
+        .catch(function (e) { $("eErr").textContent = e.message; });
+}
+function randomSet(day, n, courses) {
+    var pool = allBank().filter(function (x) { return !courses || !courses.length || courses.indexOf(x.course) > -1; });
+    var seed = 0; for (var i = 0; i < day.length; i++) seed = (seed * 31 + day.charCodeAt(i)) % 233280;
+    // a fair mix: take turns between courses
+    var by = {}; shuffle(pool.slice(), seed).forEach(function (x) { (by[x.course] = by[x.course] || []).push(x); });
+    var keys = Object.keys(by), out = [], k = 0;
+    while (out.length < n && keys.some(function (c) { return by[c].length; })) { var c = keys[k++ % keys.length]; if (by[c].length) out.push(strip(by[c].shift())); }
+    return out;
+}
+
+/* ---------------- dialogs ---------------- */
+var dlg = $("dlg"), lastF = null;
+function openDlg(title, body, foot, wide) {
+    lastF = document.activeElement; $("dT").textContent = title; $("dB").innerHTML = body; $("dF").innerHTML = foot || ""; $("dF").hidden = !foot;
+    dlg.classList.toggle("wide", !!wide); if (!dlg.open) dlg.showModal();
+}
+function closeDlg() { if (dlg.open) dlg.close(); }
+dlg.addEventListener("close", function () { $("dB").innerHTML = ""; if (lastF && lastF.isConnected) lastF.focus(); });
+$("dX").addEventListener("click", closeDlg);
+dlg.addEventListener("click", function (e) { if (e.target === dlg) closeDlg(); });
+
+function pickDialog() {
+    var picked = {};
+    openDlg("Pick questions from the bank", '<div class="pl-row3" style="margin-bottom:10px"><div><label class="pl-sr" for="bC">Course</label><select class="pl-in" id="bC">' + opt(COURSES.map(function (c) { return [c.id, O.course_names[c.id] || c.name]; }), "", "All courses") + '</select></div>' +
+        '<div><label class="pl-sr" for="bM">Module</label><select class="pl-in" id="bM"><option value="">All modules</option></select></div><div><label class="pl-sr" for="bS">Source</label><select class="pl-in" id="bS"><option value="">Courses and admins</option><option value="bank">From the courses</option><option value="admin">Written by admins</option></select></div></div>' +
+        '<label class="pl-sr" for="bQ">Search</label><input class="pl-in" id="bQ" placeholder="Search question text" style="margin-bottom:10px"><div class="pl-m" id="bInfo" style="margin-bottom:6px"></div><div class="pl-bank" id="bList"></div>',
+        '<span class="pl-m" id="bCount" style="margin-right:auto">0 chosen</span><button type="button" class="pl-btn" id="bNo">Cancel</button><button type="button" class="pl-btn primary" id="bYes">Add chosen</button>', true);
+    var used = {}; E.q.questions.forEach(function (x) { used[x.question] = 1; });
+    function list() {
+        var c = $("bC").value, m = $("bM").value, s = $("bS").value, q = $("bQ").value.trim().toLowerCase();
+        var items = allBank().filter(function (x) { return (!c || x.course === c) && (!m || x.module === m) && (!s || x.source === s) && (!q || x.question.toLowerCase().indexOf(q) > -1) && !used[x.question]; });
+        $("bInfo").textContent = fmt(items.length) + " questions" + (items.length > 300 ? " (showing the first 300, narrow it down with the filters)" : "");
+        $("bList").innerHTML = items.slice(0, 300).map(function (x) {
+            return '<label><input type="checkbox" data-key="' + esc(x.key) + '"' + (picked[x.key] ? " checked" : "") + '><span><b>' + esc(x.question) + '</b><br><span class="pl-m">' + esc((O.course_names[x.course] || x.course) + " · " + x.module + " · answer: " + x.options[x.correct]) + (x.source === "admin" ? " · written by an admin" : "") + "</span></span></label>";
+        }).join("") || '<p class="pl-m" style="padding:12px">Nothing matches.</p>';
+    }
+    $("bC").addEventListener("change", function () { var co = COURSES.filter(function (x) { return x.id === $("bC").value; })[0]; $("bM").innerHTML = '<option value="">All modules</option>' + (co ? ['Course quiz'].concat(co.modules) : []).map(function (m) { return '<option value="' + esc(m) + '">' + esc(m) + "</option>"; }).join(""); list(); });
+    ["bM", "bS"].forEach(function (id) { $(id).addEventListener("change", list); });
+    var qt; $("bQ").addEventListener("input", function () { clearTimeout(qt); qt = setTimeout(list, 200); });
+    $("bList").addEventListener("change", function (e) { var k = e.target.getAttribute("data-key"); if (!k) return; if (e.target.checked) picked[k] = 1; else delete picked[k]; $("bCount").textContent = Object.keys(picked).length + " chosen"; });
+    $("bNo").addEventListener("click", closeDlg);
+    $("bYes").addEventListener("click", function () {
+        var add = allBank().filter(function (x) { return picked[x.key]; }).map(strip);
+        if (E.q.questions.length + add.length > 15) { toast("A Daily Quiz can have at most 15 questions."); return; }
+        E.q.questions = E.q.questions.concat(add); autoCourses(); closeDlg(); etab = "questions"; drawEditor();
+    });
+    list();
+}
+function questionForm(prefix, withCourse) {
+    return (withCourse ? '<div class="pl-row3"><div><label for="' + prefix + 'C">Course</label><select class="pl-in" id="' + prefix + 'C">' + opt(COURSES.map(function (c) { return [c.id, O.course_names[c.id] || c.name]; }), "", "No course") + "</select></div>" +
+        '<div><label for="' + prefix + 'G">Grade</label><select class="pl-in" id="' + prefix + 'G">' + opt(gradesAll().map(function (g) { return [g, "Grade " + g.slice(6)]; }), "", "Any grade") + "</select></div>" +
+        '<div><label for="' + prefix + 'L">How hard</label><select class="pl-in" id="' + prefix + 'L"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></div></div>' +
+        '<label for="' + prefix + 'M">Topic or module (optional)</label><input class="pl-in" id="' + prefix + 'M" maxlength="120">' : "") +
+        '<label for="' + prefix + 'Q">Question</label><textarea class="pl-in" id="' + prefix + 'Q" maxlength="500"></textarea>' +
+        '<label>Answers (tick the right one)</label>' + [0, 1, 2, 3].map(function (i) { return '<div style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="radio" name="' + prefix + 'R" value="' + i + '"' + (i ? "" : " checked") + ' aria-label="Answer ' + (i + 1) + ' is right" style="width:18px;height:18px;accent-color:var(--pl-ok)"><input class="pl-in" data-ans="' + i + '" maxlength="200" placeholder="Answer ' + (i + 1) + (i > 1 ? " (optional)" : "") + '"></div>'; }).join("") +
+        '<label for="' + prefix + 'W">Why it’s right (shown after answering)</label><input class="pl-in" id="' + prefix + 'W" maxlength="300">';
+}
+function readForm(prefix) {
+    var opts = [], correct = -1, chosen = Number((document.querySelector('input[name="' + prefix + 'R"]:checked') || {}).value);
+    $("dB").querySelectorAll("[data-ans]").forEach(function (el) { var v = el.value.trim(); if (v) { if (Number(el.getAttribute("data-ans")) === chosen) correct = opts.length; opts.push(v); } });
+    return { question: $(prefix + "Q").value.trim(), options: opts, correct: correct, why: $(prefix + "W").value.trim() };
+}
+function writeDialog() {
+    openDlg("Write a question", '<div class="pl-f">' + questionForm("w", true) + '<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="wSave" checked style="width:18px;height:18px;accent-color:var(--pl-accent)"> Also save it to the question bank so it can be used again</label><div class="pl-err" id="wErr"></div></div>',
+        '<button type="button" class="pl-btn" id="wNo">Cancel</button><button type="button" class="pl-btn primary" id="wYes">Add question</button>');
+    $("wQ").focus();
+    $("wNo").addEventListener("click", closeDlg);
+    $("wYes").addEventListener("click", function () {
+        var x = readForm("w"); x.course = $("wC").value; x.module = $("wM").value.trim(); x.source = "admin";
+        if (x.question.length < 3) { $("wErr").textContent = "Write the question."; return; }
+        if (x.options.length < 2) { $("wErr").textContent = "Write at least 2 answers."; return; }
+        if (x.correct < 0) { $("wErr").textContent = "Tick the right answer next to an answer you wrote."; return; }
+        var go = function () { E.q.questions.push(strip(x)); autoCourses(); closeDlg(); etab = "questions"; drawEditor(); };
+        if ($("wSave").checked) api("/api/admin/planner/questions", { method: "POST", body: Object.assign({ grade: $("wG").value, difficulty: $("wL").value }, x) }).then(function () { loadAdminQ(); go(); }).catch(function (e) { $("wErr").textContent = e.message; });
+        else go();
+    });
+}
+function copyDialog() {
+    var days = []; for (var i = 1; i <= 21; i++) days.push(addDays(E.day > O.today ? E.day : O.today, i));
+    var planned = {}; O.days.forEach(function (x) { if (x.quiz) planned[x.day] = 1; });
+    openDlg("Copy this quiz to other days", '<p class="pl-m" style="margin-bottom:10px">The same questions in a new order. Days that already have a quiz are replaced only if you tick them.</p><div class="pl-chips" id="cpDays">' + days.map(function (d) {
+        return '<button type="button" class="pl-chip" data-cd="' + d + '" aria-pressed="false">' + esc(nice(d)) + (planned[d] ? " · planned" : "") + "</button>";
+    }).join("") + '</div><div class="pl-err" id="cpErr"></div>', '<button type="button" class="pl-btn" id="cpNo">Cancel</button><button type="button" class="pl-btn primary" id="cpYes">Copy</button>');
+    $("cpDays").addEventListener("click", function (e) { var b = e.target.closest("[data-cd]"); if (b) b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true"); });
+    $("cpNo").addEventListener("click", closeDlg);
+    $("cpYes").addEventListener("click", function () {
+        var chosen = Array.prototype.map.call($("cpDays").querySelectorAll('[aria-pressed="true"]'), function (b) { return b.getAttribute("data-cd"); });
+        if (!chosen.length) { $("cpErr").textContent = "Choose at least one day."; return; }
+        var base = payload(E.q);
+        var items = chosen.map(function (d, i) { return Object.assign({}, base, { day: d, questions: shuffle(base.questions.slice(), i + 7) }); });
+        api("/api/admin/planner/bulk", { method: "POST", body: { items: items } }).then(function (r) { closeDlg(); toast("Copied to " + r.saved.length + " day" + (r.saved.length === 1 ? "" : "s") + (r.skipped.length ? ", " + r.skipped.length + " skipped" : "") + "."); load(); })
+            .catch(function (e) { $("cpErr").textContent = e.message; });
+    });
+}
+/* Auto-fill: every day in the next 30 with nothing planned gets 5 questions from a focus course, with a strategy and the week's career */
+$("autoBtn").addEventListener("click", function () {
+    var gaps = []; for (var i = 1; i <= 30; i++) { var d = addDays(O.today, i); if (!O.days.some(function (x) { return x.day === d && x.quiz; })) gaps.push(d); }
+    // the overview only holds this month's grid: ask the server per month we need
+    var months = {}; gaps.forEach(function (d) { months[d.slice(0, 7)] = 1; });
+    Promise.all(Object.keys(months).map(function (m) { return m === O.month ? Promise.resolve(O) : api("/api/admin/planner/overview?month=" + m); })).then(function (all) {
+        var plannedAll = {}, weekCareer = {};
+        all.forEach(function (o) { o.days.forEach(function (x) { if (x.quiz) plannedAll[x.day] = 1; }); o.weeks.forEach(function (w) { weekCareer[w.week] = w.career; }); });
+        var todo = gaps.filter(function (d) { return !plannedAll[d]; });
+        if (!todo.length) { toast("The next 30 days are already planned."); return; }
+        if (!BANK.length && !ADMINQ.length) { toast("No course questions were found to build quizzes from."); return; }
+        openDlg("Auto-fill " + todo.length + " day" + (todo.length === 1 ? "" : "s"), '<p>Each empty day in the next 30 gets 5 questions, rotating a focus course, a study strategy to practise, and that week’s Career of the week as its career link. They are saved as <b>Draft</b> so you can check them, or as <b>Ready</b> to go straight to learners.</p><div class="pl-err" id="afErr"></div>',
+            '<button type="button" class="pl-btn" id="afNo">Cancel</button><button type="button" class="pl-btn" id="afDraft">Save as drafts</button><button type="button" class="pl-btn primary" id="afReady">Save as ready</button>');
+        $("afNo").addEventListener("click", closeDlg);
+        var run = function (status) {
+            var cids = COURSES.map(function (c) { return c.id; }), strats = O.strategies.map(function (s) { return s.id; });
+            var items = todo.map(function (d, i) {
+                var focus = cids.length ? cids[i % cids.length] : null, wk = (function () { var x = D(d); var dow = (x.getUTCDay() + 6) % 7; x.setUTCDate(x.getUTCDate() - dow); return iso(x); })();
+                var qs = randomSet(d, 3, focus ? [focus] : null).concat(randomSet(d + "m", 5, null)).filter(function (x, k, arr) { return arr.findIndex(function (y) { return y.question === x.question; }) === k; }).slice(0, 5);
+                var car = weekCareer[wk];
+                return { day: d, title: (focus && D(d).getUTCDay() % 6 ? (O.course_names[focus] || focus) + " focus" : "Mixed review"), questions: qs, courses: Array.from(new Set(qs.map(function (x) { return x.course; }).filter(Boolean))),
+                         strategy_id: strats[i % strats.length] || null, career_key: car ? car.key : null, career_note: "", pass_pct: 60, status: status };
+            });
+            api("/api/admin/planner/bulk", { method: "POST", body: { items: items } }).then(function (r) { closeDlg(); toast("Planned " + r.saved.length + " days" + (status === "draft" ? " as drafts" : "") + "."); load(); })
+                .catch(function (e) { $("afErr").textContent = e.message; });
+        };
+        $("afDraft").addEventListener("click", function () { run("draft"); });
+        $("afReady").addEventListener("click", function () { run("ready"); });
+    }).catch(function (e) { note(e.message, "bad"); });
+});
+$("newBtn").addEventListener("click", function () {
+    var d = O.kpis.next_gap || addDays(O.today, 1);
+    if (d.slice(0, 7) !== O.month) { month = d.slice(0, 7); selDay = d; load().then(function () { openDay(d); $("editor").scrollIntoView({ behavior: "smooth" }); }); }
+    else { selDay = d; drawCal(); openDay(d); $("editor").scrollIntoView({ behavior: "smooth" }); }
+});
+
+/* ---------------- careers ---------------- */
+var MIS = null, AREAS = {};
+function loadMissions() { return api("/api/admin/planner/missions").then(function (d) { MIS = d; d.areas.forEach(function (a) { AREAS[a.key] = a; }); }).catch(function () { MIS = { missions: [], areas: [], subjects: {} }; }); }
+function drawQueue() {
+    $("queue").innerHTML = O.queue.map(function (q, i) {
+        var cls = i === 0 ? "now" : (!q.planned && i <= 3 ? "need" : "");
+        return '<div class="pl-cc ' + cls + '"><span class="em" aria-hidden="true">' + esc(q.career.emoji) + '</span><span class="tx"><b>' + esc(q.career.name) + '</b><span class="pl-m">' + (i === 0 ? "This week" : "Week of " + esc(nice(q.week, { weekday: undefined }))) + " · " + fmt(q.learners) + " learner" + (q.learners === 1 ? "" : "s") + " chose it" + (q.note ? " · note set" : "") + "</span></span>" +
+            (q.planned ? '<span class="pl-pill ok">Chosen</span>' : '<span class="pl-pill grey">Automatic</span>') + '<button type="button" class="pl-btn xs" data-qw="' + q.week + '">' + (q.planned ? "Change" : "Choose") + "</button></div>";
+    }).join("");
+    var nr = O.careers.filter(function (c) { return !c.last_featured; });
+    $("notRecent").textContent = nr.length ? "Not featured in the last 20 weeks: " + nr.map(function (c) { return c.name; }).join(", ") + "." : "Every career was featured in the last 20 weeks.";
+}
+$("queue").addEventListener("click", function (e) { var b = e.target.closest("[data-qw]"); if (b) { selWeek = b.getAttribute("data-qw"); drawWeek(); openWeek(selWeek); } });
+function drawWeek() {
+    var w = O.weeks.filter(function (x) { return x.week === selWeek; })[0] || O.weeks.filter(function (x) { return x.current; })[0] || O.weeks[0];
+    if (!w) return;
+    selWeek = w.week;
+    $("wmT").textContent = "Weekly missions · week of " + nice(w.week, { weekday: undefined });
+    $("wm").innerHTML = O.areas.map(function (a) {
+        var s = w.areas[a.key] || {};
+        return '<div class="pl-rowi"><span>' + esc(a.emoji + " " + a.label) + "</span>" + (s.auto ? '<span class="pl-pill grey">automatic</span>' : '<span class="pl-pill ' + (s.planned === 3 ? "ok" : "warn") + '">' + s.planned + " / 3 chosen</span>") + "</div>";
+    }).join("") + '<p class="pl-m" style="margin-top:8px">Automatic areas rotate through the library on their own. Choose missions to control exactly what learners get.</p>';
+    $("wmPlan").disabled = w.past;
+}
+$("wmPlan").addEventListener("click", function () { openWeek(selWeek); });
+function drawLib() {
+    var max = Math.max.apply(null, [1].concat(O.areas.map(function (a) { return a.missions; })));
+    $("lib").innerHTML = O.areas.map(function (a) {
+        var weeks = Math.floor(a.missions / 3), cls = weeks <= 1 ? "bad" : weeks <= 2 ? "low" : "";
+        return '<div class="pl-hb"><span class="nm" title="' + esc(a.label) + '">' + esc(a.emoji + " " + a.label) + '</span><span class="tr"><i class="' + cls + '" style="width:' + Math.max(3, a.missions / max * 100) + '%"></i></span><b>' + a.missions + " · " + weeks + " wk</b></div>";
+    }).join("") + '<div class="pl-btns" style="margin-top:8px"><button type="button" class="pl-btn sm" id="browseMis">Browse all missions</button></div>';
+    $("libNote").textContent = "Number = missions in the area · weeks before they start repeating (3 a week)." + (O.hardest ? "" : "");
+}
+$("lib").addEventListener("click", function (e) { if (e.target.closest("#browseMis")) browseMissions(); });
+$("newMis").addEventListener("click", function () { missionDialog(); });
+function misLine(m) { return '<b>' + esc(m.emoji + " " + m.title) + '</b> <span class="pl-m">· ' + esc(m.subject_name || "") + (m.admin ? " · written by an admin" : "") + (m.right != null ? " · " + m.right + "% right of " + m.answers : "") + "</span>"; }
+function browseMissions() {
+    loadMissions().then(function () {
+        openDlg("Mission library", '<div class="pl-chips" id="mbA" style="margin-bottom:10px">' + MIS.areas.map(function (a, i) { return '<button type="button" class="pl-chip" data-ma="' + a.key + '" aria-pressed="' + (i === 0) + '">' + esc(a.emoji + " " + a.label) + "</button>"; }).join("") + '</div><div id="mbL"></div>', "", true);
+        var area = MIS.areas[0] && MIS.areas[0].key;
+        function list() {
+            var ms = MIS.missions.filter(function (m) { return m.area === area; });
+            $("mbL").innerHTML = ms.map(function (m) {
+                return '<div class="pl-mis">' + misLine(m) + (m.admin ? ' <span style="float:right"><button type="button" class="pl-btn xs" data-me="' + esc(m.id) + '">Edit</button> <button type="button" class="pl-btn xs danger" data-md="' + esc(m.id) + '">Remove</button></span>' : "") +
+                    '<div style="margin-top:6px">' + esc(m.question) + '</div><div>' + m.options.map(function (o, k) { return '<span class="pl-pill ' + (k === m.correct ? "ok" : "grey") + '">' + esc(o) + "</span>"; }).join("") + '</div><div class="pl-m">Why: ' + esc(m.why) + (m.planned_weeks.length ? " · planned for " + m.planned_weeks.map(function (w) { return nice(w, { weekday: undefined }); }).join(", ") : "") + "</div></div>";
+            }).join("") || '<p class="pl-m">No missions yet in this area.</p>';
+        }
+        $("mbA").addEventListener("click", function (e) { var b = e.target.closest("[data-ma]"); if (!b) return; area = b.getAttribute("data-ma"); $("mbA").querySelectorAll("[data-ma]").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); }); list(); });
+        $("mbL").addEventListener("click", function (e) {
+            var ed = e.target.closest("[data-me]"); if (ed) { missionDialog(MIS.missions.filter(function (m) { return m.id === ed.getAttribute("data-me"); })[0]); return; }
+            var dl = e.target.closest("[data-md]"); if (dl) {
+                if (!dl.dataset.sure) { dl.dataset.sure = "1"; dl.textContent = "Tap again"; return; }
+                api("/api/admin/planner/missions/" + encodeURIComponent(dl.getAttribute("data-md")), { method: "DELETE" }).then(function () { toast("Mission removed."); return loadMissions(); }).then(function () { list(); load(); }).catch(function (er) { toast(er.message); });
+            }
+        });
+        list();
+    });
+}
+function missionDialog(m) {
+    loadMissions().then(function () {
+        openDlg(m ? "Edit mission" : "New career mission", '<div class="pl-f"><div class="pl-row3"><div><label for="nA">Career area</label><select class="pl-in" id="nA">' + opt(MIS.areas.map(function (a) { return [a.key, a.emoji + " " + a.label]; }), m ? m.area : "") + '</select></div>' +
+            '<div><label for="nS">School subject it uses</label><select class="pl-in" id="nS">' + opt(Object.keys(MIS.subjects).map(function (k) { return [k, MIS.subjects[k]]; }), m ? m.subject : "", "None") + '</select></div>' +
+            '<div><label for="nE">Emoji</label><input class="pl-in" id="nE" maxlength="4" value="' + esc(m ? m.emoji : "⭐") + '"></div></div><label for="nT">Short title</label><input class="pl-in" id="nT" maxlength="60" placeholder="e.g. Right dose, right patient" value="' + esc(m ? m.title : "") + '">' +
+            questionForm("n", false) + '<p class="pl-m" style="margin-top:8px">Learners earn 25 EP for a right answer (up to the weekly limit). A mission can’t be edited once learners have answered it.</p><div class="pl-err" id="nErr"></div></div>',
+            '<button type="button" class="pl-btn" id="nNo">Cancel</button><button type="button" class="pl-btn primary" id="nYes">Save mission</button>');
+        if (m) { $("nQ").value = m.question; $("nW").value = m.why; $("dB").querySelectorAll("[data-ans]").forEach(function (el, i) { el.value = m.options[i] || ""; }); var r = document.querySelector('input[name="nR"][value="' + m.correct + '"]'); if (r) r.checked = true; }
+        $("nNo").addEventListener("click", closeDlg);
+        $("nYes").addEventListener("click", function () {
+            var x = readForm("n");
+            if (x.correct < 0) { $("nErr").textContent = "Tick the right answer next to an answer you wrote."; return; }
+            api("/api/admin/planner/missions", { method: "POST", body: Object.assign(x, { id: m ? m.id : null, area: $("nA").value, subject: $("nS").value, emoji: $("nE").value.trim(), title: $("nT").value.trim() }) })
+                .then(function () { closeDlg(); toast("Mission saved to the library."); return Promise.all([loadMissions(), load()]); }).catch(function (e) { $("nErr").textContent = e.message; });
+        });
+    });
+}
+function openWeek(week) {
+    Promise.all([api("/api/admin/planner/week/" + week), loadMissions()]).then(function (r) {
+        var w = r[0], cur = w.career, notes = w.note || "";
+        var past = addDays(w.week, 6) < O.today;
+        var careerOpts = O.careers.map(function (c) { return [c.key, c.emoji + " " + c.name + " · " + c.learners + " learners" + (c.last_featured ? "" : " · not featured lately")]; });
+        var areaBlocks = MIS.areas.map(function (a) {
+            var ms = MIS.missions.filter(function (m) { return m.area === a.key; }), chosen = w.missions[a.key] || [];
+            return '<div class="pl-mis"><div class="pl-ch" style="margin-bottom:6px"><b>' + esc(a.emoji + " " + a.label) + '</b><label class="pl-m" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-auto="' + a.key + '"' + (w.missions_planned[a.key] ? "" : " checked") + "> Automatic</label></div>" +
+                '<div class="pl-row3" data-area="' + a.key + '">' + [0, 1, 2].map(function (i) { return '<select class="pl-in" data-slot="' + i + '"' + (w.missions_planned[a.key] ? "" : " disabled") + ">" + opt(ms.map(function (m) { return [m.id, m.emoji + " " + m.title + (m.right != null ? " (" + m.right + "% right)" : "")]; }), chosen[i]) + "</select>"; }).join("") + "</div></div>";
+        }).join("");
+        openDlg("Plan the week of " + nice(w.week, { weekday: undefined, year: "numeric" }), (w.started && !past ? '<div class="pl-note info">This week has started. You can still change the career and note; missions can only change if no learner has answered one yet.</div>' : "") + (past ? '<div class="pl-note info">This week is over and can’t be changed.</div>' : "") +
+            '<div class="pl-f"><div class="pl-row2"><div><label for="wkC">Career of the week</label><select class="pl-in" id="wkC">' + opt(careerOpts, w.career_planned ? cur.key : "", "Automatic (" + cur.emoji + " " + cur.name + ")") + '</select></div>' +
+            '<div><label for="wkF">Featured mission (from the career’s area)</label><select class="pl-in" id="wkF"></select></div></div>' +
+            '<label for="wkN">Note learners see with the career (optional)</label><input class="pl-in" id="wkN" maxlength="300" placeholder="e.g. This week, ask a nurse or doctor what they studied at school." value="' + esc(notes) + '">' +
+            '<h4 style="margin:16px 0 8px;font-size:.95rem">Missions for each career area (3 each)</h4>' + areaBlocks + '<div class="pl-err" id="wkErr"></div></div>',
+            past ? "" : '<button type="button" class="pl-btn danger" id="wkReset" style="margin-right:auto">Reset to automatic</button><button type="button" class="pl-btn" id="wkNo">Cancel</button><button type="button" class="pl-btn primary" id="wkYes">Save week</button>', true);
+        function feat() {
+            var key = $("wkC").value || cur.key, c = O.careers.filter(function (x) { return x.key === key; })[0], area = c ? c.area : cur.area;
+            $("wkF").innerHTML = opt(MIS.missions.filter(function (m) { return m.area === area; }).map(function (m) { return [m.id, m.emoji + " " + m.title]; }), w.featured_mission, "Automatic");
+        }
+        $("wkC").addEventListener("change", feat); feat();
+        $("dB").addEventListener("change", function (e) { var a = e.target.getAttribute && e.target.getAttribute("data-auto"); if (a) $("dB").querySelectorAll('[data-area="' + a + '"] select').forEach(function (s) { s.disabled = e.target.checked; }); });
+        if (past) { $("dB").querySelectorAll("input, select").forEach(function (x) { x.disabled = true; }); return; }
+        $("wkNo").addEventListener("click", closeDlg);
+        $("wkReset").addEventListener("click", function () { api("/api/admin/planner/week/" + w.week, { method: "DELETE" }).then(function () { closeDlg(); toast("The week is automatic again."); load(); }).catch(function (e) { $("wkErr").textContent = e.message; }); });
+        $("wkYes").addEventListener("click", function () {
+            var missions = {};
+            MIS.areas.forEach(function (a) {
+                var auto = $("dB").querySelector('[data-auto="' + a.key + '"]').checked;
+                missions[a.key] = auto ? [] : Array.prototype.map.call($("dB").querySelectorAll('[data-area="' + a.key + '"] select'), function (s) { return s.value; });
+            });
+            api("/api/admin/planner/week/" + w.week, { method: "PUT", body: { career_key: $("wkC").value || null, featured_mission: $("wkF").value || null, note: $("wkN").value.trim(), missions: missions } })
+                .then(function () { closeDlg(); toast("Week saved."); load(); }).catch(function (e) { $("wkErr").textContent = e.message; });
+        });
+    }).catch(function (e) { toast(e.message); });
+}
+
+/* ---------------- results, reminders, coverage ---------------- */
+function drawBars() {
+    var s = O.series, max = Math.max.apply(null, [1].concat(s.map(function (x) { return x.pct; })));
+    $("bars").innerHTML = s.map(function (x) { return '<span class="' + (x.planned ? "" : "auto") + '" style="height:' + Math.max(2, x.pct / max * 100) + '%" data-t="' + esc(nice(x.day) + ": " + x.pct + "% · " + x.takers + " took it" + (x.avg != null ? " · avg " + x.avg + "%" : "") + (x.planned ? " · planned" : " · automatic")) + '" aria-label="' + esc(nice(x.day) + ": " + x.pct + "% took it") + '"></span>'; }).join("");
+    $("barsNote").innerHTML = "Share of active learners who took the quiz each day. Darker bars are planned quizzes, lighter ones automatic." + (O.hardest ? " Hardest planned question: “" + esc(O.hardest.question) + "” (" + O.hardest.right + "% right, " + esc(nice(O.hardest.day)) + ")." : "");
+}
+function drawRem() {
+    var s = O.settings;
+    $("rem").innerHTML = [["remind_ready", "Tell learners when today’s quiz is ready"], ["remind_evening", "Remind learners who haven’t done it"], ["remind_last", "Last call: their streak is about to break"]].map(function (r) {
+        var v = s[r[0]] || {};
+        return '<div class="pl-tog"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-ron="' + r[0] + '"' + (v.on ? " checked" : "") + "> " + esc(r[1]) + '</label><label class="pl-sr" for="t' + r[0] + '">Time</label><input type="time" id="t' + r[0] + '" data-rat="' + r[0] + '" value="' + esc(v.at || "18:00") + '"></div>';
+    }).join("") + '<div class="pl-tog"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-ron="remind_parents"' + ((s.remind_parents || {}).on ? " checked" : "") + '> Tell parents if their child missed it for</label><span><label class="pl-sr" for="pd">Days</label><input type="number" id="pd" min="2" max="7" value="' + num((s.remind_parents || {}).days || 3) + '" style="width:58px"> days</span></div>';
+}
+$("goRem").addEventListener("click", function () { $("remCard").scrollIntoView({ behavior: "smooth", block: "center" }); });
+$("saveRem").addEventListener("click", function () {
+    var body = {}; $("rem").querySelectorAll("[data-ron]").forEach(function (c) { var k = c.getAttribute("data-ron"); body[k] = { on: c.checked }; var t = $("rem").querySelector('[data-rat="' + k + '"]'); if (t) body[k].at = t.value; });
+    body.remind_parents.days = Number($("pd").value) || 3;
+    $("remErr").textContent = "";
+    api("/api/admin/planner/settings", { method: "PUT", body: body }).then(function (d) { O.settings = d.settings; toast("Reminders saved."); }).catch(function (e) { $("remErr").textContent = e.message; });
+});
+function drawCov() {
+    var c = O.coverage.courses, s = O.coverage.strategies, maxc = Math.max.apply(null, [1].concat(Object.keys(c).map(function (k) { return c[k]; })));
+    var h = COURSES.map(function (co) { var v = c[co.id] || 0; return '<div class="pl-hb"><span class="nm">' + esc(O.course_names[co.id] || co.name) + '</span><span class="tr"><i class="' + (v < 3 ? "low" : "") + '" style="width:' + Math.max(2, v / maxc * 100) + '%"></i></span><b>' + v + (v === 1 ? " day" : " days") + "</b></div>"; }).join("");
+    var used = O.strategies.filter(function (x) { return s[x.name]; }), unused = O.strategies.filter(function (x) { return !s[x.name]; });
+    h += '<p class="pl-m" style="margin-top:8px">Strategies practised: ' + (used.length ? esc(used.map(function (x) { return x.name + " " + s[x.name]; }).join(" · ")) : "none yet") + (unused.length ? ". Not used: " + esc(unused.map(function (x) { return x.name; }).join(", ")) + "." : ".") + "</p>";
+    $("cov").innerHTML = h;
+}
+
+Promise.all([loadAdminQ(), loadMissions()]).then(load).then(function () { openDay(selDay); });
+})();
+</script>
+{% endraw %}
+{% endblock %}

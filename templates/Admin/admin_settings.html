@@ -1,0 +1,188 @@
+{% extends "Admin/admin_body.html" %}
+{% block title %}Settings{% endblock %}
+{% block allcontent %}
+{#
+    ADMIN - Settings  (templates/Admin/admin_settings.html)   Route: /admin-settings
+    GET/POST /api/profile/details          name and phone
+    POST     /api/settings/upload-photo    photo (form field "photo")
+    POST     /api/account/change-password  {currentPassword, newPassword}
+    GET/POST /api/settings                 {loginNotifications, sessionTimeoutMinutes}
+    POST     /api/account/logout-all
+    GET      /api/admin/team               the admins on eSchool
+    Appearance is saved on this device, like every eSchool page.
+#}
+<div class="ad-page-h"><div><h1>Settings</h1><p>Your admin account, its security, and how the admin pages look on this device.</p></div></div>
+
+<div class="ad-split half">
+<div>
+    <form class="ad-card" id="sProfile" novalidate>
+        <div class="ad-card-h"><h2>Your details</h2></div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+            <span class="ad-avatar" id="sPhoto" data-profile-avatar style="width:64px;height:64px;font-size:1.2rem">{% if avatar_url %}<img src="{{ avatar_url }}" alt="">{% else %}{{ (firstname or 'A')[:1] }}{{ (lastname or '')[:1] }}{% endif %}</span>
+            <input type="file" id="sPhotoIn" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+            <button type="button" class="ad-btn" id="sPhotoBtn"><i class="fas fa-upload"></i> Change photo</button>
+            <span class="ad-muted">JPG, PNG, GIF or WEBP, up to 2 MB.</span>
+        </div>
+        <div class="ad-form">
+            <div class="ad-field"><label for="sFirst">First name</label><input class="ad-input" id="sFirst" maxlength="50" autocomplete="given-name"></div>
+            <div class="ad-field"><label for="sLast">Last name</label><input class="ad-input" id="sLast" maxlength="50" autocomplete="family-name"></div>
+            <div class="ad-field"><label for="sEmail">Email</label><input class="ad-input" id="sEmail" value="{{ session.get('email', '') }}" readonly><small>Your sign-in. Ask another admin to change it.</small></div>
+            <div class="ad-field"><label for="sPhone">Phone</label><input class="ad-input" id="sPhone" maxlength="20" autocomplete="tel" placeholder="+254 712 345 678"></div>
+        </div>
+        <div class="ad-note" id="sProfileNote" role="status" style="margin-top:12px"></div>
+        <div class="ad-actions" style="justify-content:flex-end;margin-top:12px"><button type="submit" class="ad-btn primary" id="sProfileSave" disabled><i class="fas fa-check"></i> Save details</button></div>
+    </form>
+
+    <form class="ad-card" id="sPw" novalidate>
+        <div class="ad-card-h"><h2>Password</h2><p>Use at least 10 characters for an admin account. Your other devices are signed out when you change it.</p></div>
+        <div class="ad-form">
+            <div class="ad-field full"><label for="sPwCur">Current password</label><input type="password" class="ad-input" id="sPwCur" autocomplete="current-password"></div>
+            <div class="ad-field"><label for="sPwNew">New password</label><input type="password" class="ad-input" id="sPwNew" autocomplete="new-password"><small id="sPwHint">At least 10 characters.</small></div>
+            <div class="ad-field"><label for="sPwNew2">Type it again</label><input type="password" class="ad-input" id="sPwNew2" autocomplete="new-password"></div>
+        </div>
+        <label style="display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--ab-text-2);margin-top:10px;cursor:pointer"><input type="checkbox" id="sPwShow"> Show passwords</label>
+        <div class="ad-note" id="sPwNote" role="status" style="margin-top:12px"></div>
+        <div class="ad-actions" style="justify-content:flex-end;margin-top:12px"><button type="submit" class="ad-btn primary"><i class="fas fa-key"></i> Change password</button></div>
+    </form>
+</div>
+<div>
+    <div class="ad-card">
+        <div class="ad-card-h"><h2>Sign-in &amp; security</h2></div>
+        <label style="display:flex;justify-content:space-between;gap:12px;align-items:center;cursor:pointer;padding:4px 0">
+            <span><b style="display:block;font-size:.88rem;color:var(--ab-text)">Tell me every time I sign in</b><span class="ad-muted">A notice in your bell with the time of each sign-in.</span></span>
+            <input type="checkbox" id="sAlerts" disabled style="width:20px;height:20px;accent-color:var(--primary-color)">
+        </label>
+        <div class="ad-sec-t">Automatic sign-out</div>
+        <div style="display:flex;align-items:center;gap:12px"><input type="range" id="sTimeout" min="5" max="120" step="5" value="30" style="flex:1;accent-color:var(--primary-color)" aria-label="Minutes before automatic sign-out"><b id="sTimeoutOut" style="min-width:80px;text-align:right;color:var(--ab-text)">30 min</b></div>
+        <p class="ad-muted" style="margin-top:4px">After this long with no activity you get a 1-minute warning, then you're signed out. Shorter is safer on shared computers.</p>
+        <div class="ad-note" id="sSecNote" role="status" style="margin-top:10px"></div>
+        <div class="ad-sec-t">Devices</div>
+        <button type="button" class="ad-btn" id="sOut"><i class="fas fa-right-from-bracket"></i> Sign out of all devices</button>
+        <div id="sOutBox"></div>
+    </div>
+
+    <div class="ad-card">
+        <div class="ad-card-h"><h2>Appearance</h2><p>Saved on this device for your account. The learner, teacher and parent pages you open here use it too.</p></div>
+        <div class="ad-sec-t" style="margin-top:0">Theme</div>
+        <div class="ad-tabs" id="sMode" role="radiogroup" aria-label="Theme"><button type="button" class="ad-tab" data-mode="light"><i class="fas fa-sun"></i> Light</button><button type="button" class="ad-tab" data-mode="dark"><i class="fas fa-moon"></i> Dark</button><button type="button" class="ad-tab" data-mode="auto"><i class="fas fa-circle-half-stroke"></i> Same as device</button></div>
+        <div class="ad-sec-t">Colour</div>
+        <div class="ad-tabs" id="sColor" role="radiogroup" aria-label="Colour">
+            <button type="button" class="ad-tab" data-color="blue"><i class="fas fa-circle" style="color:#4361ee"></i> Ocean blue</button>
+            <button type="button" class="ad-tab" data-color="green"><i class="fas fa-circle" style="color:#10b981"></i> Emerald</button>
+            <button type="button" class="ad-tab" data-color="purple"><i class="fas fa-circle" style="color:#8b5cf6"></i> Violet</button>
+            <button type="button" class="ad-tab" data-color="dark"><i class="fas fa-circle" style="color:#1e293b"></i> Slate</button>
+        </div>
+        <div class="ad-sec-t">Text size</div>
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-size:.8rem">A</span><input type="range" id="sSize" min="12" max="20" step="1" value="16" style="flex:1;accent-color:var(--primary-color)" aria-label="Text size"><span style="font-size:1.2rem">A</span><b id="sSizeOut" style="min-width:44px;text-align:right;color:var(--ab-text)">16px</b></div>
+    </div>
+
+    <div class="ad-card">
+        <div class="ad-card-h"><h2>Admin team</h2><p>Everyone with admin access. Change who is an admin on the Users page.</p></div>
+        <div id="sTeam"><div class="ad-skel"></div></div>
+    </div>
+</div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var A = window.AD, $ = function (id) { return document.getElementById(id); };
+    var KEY = {{ (session.get('email') or 'anonymous') | tojson }};
+    function ls(n, v) { var k = 'settings.' + n + '.' + KEY; try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+    function refresh() { if (window.eschoolTheme) window.eschoolTheme.refresh(); }
+
+    /* profile */
+    var D = null;
+    async function loadProfile() {
+        try { D = (await A.api('/api/profile/details')).details || {}; $('sFirst').value = D.firstname || ''; $('sLast').value = D.lastname || ''; $('sPhone').value = D.phone || ''; dirty(); }
+        catch (e) { A.note('sProfileNote', e.message, 'bad'); }
+    }
+    function dirty() { var d = D && ($('sFirst').value.trim() !== (D.firstname || '') || $('sLast').value.trim() !== (D.lastname || '') || $('sPhone').value.trim() !== (D.phone || '')); $('sProfileSave').disabled = !d; }
+    ['sFirst', 'sLast', 'sPhone'].forEach(function (id) { $(id).addEventListener('input', dirty); });
+    $('sProfile').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var body = { firstname: $('sFirst').value.trim(), lastname: $('sLast').value.trim(), phone: $('sPhone').value.trim() };
+        if (!body.firstname || !body.lastname) { A.note('sProfileNote', 'First and last name are both needed.', 'bad'); return; }
+        $('sProfileSave').disabled = true;
+        try {
+            D = (await A.api('/api/profile/details', { method: 'POST', body: body })).details || body;
+            document.querySelectorAll('.user-name').forEach(function (el) { el.textContent = body.firstname + ' ' + body.lastname; });
+            A.note('sProfileNote', 'Details saved.', 'ok'); dirty();
+        } catch (err) { A.note('sProfileNote', err.message, 'bad'); dirty(); }
+    });
+    $('sPhotoBtn').addEventListener('click', function () { $('sPhotoIn').click(); });
+    $('sPhotoIn').addEventListener('change', async function () {
+        var f = this.files && this.files[0]; if (!f) return;
+        if (!/^image\/(png|jpe?g|gif|webp)$/.test(f.type)) { A.note('sProfileNote', 'Use a JPG, PNG, GIF or WEBP picture.', 'bad'); this.value = ''; return; }
+        if (f.size > 2 * 1024 * 1024) { A.note('sProfileNote', 'That picture is over 2 MB.', 'bad'); this.value = ''; return; }
+        var fd = new FormData(); fd.append('photo', f); $('sPhotoBtn').disabled = true; A.note('sProfileNote', 'Uploading...', 'info', true);
+        try {
+            var r = await fetch('/api/settings/upload-photo', { method: 'POST', body: fd, credentials: 'same-origin' }), d = await r.json();
+            if (!r.ok || d.success === false) throw new Error(d.message || 'Upload failed.');
+            document.querySelectorAll('[data-profile-avatar]').forEach(function (el) { el.innerHTML = '<img src="' + A.esc(d.avatar_url) + '" alt="" style="width:100%;height:100%;object-fit:cover">'; });
+            A.note('sProfileNote', 'Photo updated.', 'ok');
+        } catch (err) { A.note('sProfileNote', err.message, 'bad'); }
+        finally { $('sPhotoBtn').disabled = false; this.value = ''; }
+    });
+
+    /* password */
+    $('sPwShow').addEventListener('change', function () { ['sPwCur', 'sPwNew', 'sPwNew2'].forEach(function (id) { $(id).type = $('sPwShow').checked ? 'text' : 'password'; }); });
+    $('sPwNew').addEventListener('input', function () { var v = this.value; $('sPwHint').textContent = !v ? 'At least 10 characters.' : v.length < 10 ? (10 - v.length) + ' more character' + (10 - v.length === 1 ? '' : 's') + ' needed.' : /\d/.test(v) && /[^A-Za-z0-9]/.test(v) && /[A-Z]/.test(v) ? 'Strong.' : 'Good. Add a capital, number and symbol to make it strong.'; });
+    $('sPw').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var cur = $('sPwCur').value, a = $('sPwNew').value, b = $('sPwNew2').value;
+        if (a.length < 10) { A.note('sPwNote', 'Use at least 10 characters for an admin password.', 'bad'); $('sPwNew').focus(); return; }
+        if (a !== b) { A.note('sPwNote', 'The two new passwords don\'t match.', 'bad'); $('sPwNew2').focus(); return; }
+        try { var d = await A.api('/api/account/change-password', { method: 'POST', body: { currentPassword: cur, newPassword: a } }); this.reset(); A.note('sPwNote', d.message || 'Password changed.', 'ok', true); }
+        catch (err) { A.note('sPwNote', err.message, 'bad'); }
+    });
+
+    /* security */
+    function showT() { var m = +$('sTimeout').value; $('sTimeoutOut').textContent = m >= 60 ? (m % 60 ? Math.floor(m / 60) + ' h ' + m % 60 + ' min' : m / 60 + ' h') : m + ' min'; }
+    (async function () {
+        try { var a = ((await A.api('/api/settings')).account) || {}; $('sAlerts').checked = !!a.loginNotifications; $('sAlerts').disabled = false; if (a.sessionTimeoutMinutes) { $('sTimeout').value = a.sessionTimeoutMinutes; ls('sessionTimeout', String(a.sessionTimeoutMinutes)); } showT(); }
+        catch (e) { A.note('sSecNote', e.message, 'bad'); }
+    })();
+    $('sAlerts').addEventListener('change', async function () {
+        var t = this; t.disabled = true;
+        try { await A.api('/api/settings', { method: 'POST', body: { loginNotifications: t.checked } }); A.note('sSecNote', t.checked ? 'Sign-in alerts are on.' : 'Sign-in alerts are off.', 'ok'); }
+        catch (e) { t.checked = !t.checked; A.note('sSecNote', e.message, 'bad'); } finally { t.disabled = false; }
+    });
+    $('sTimeout').addEventListener('input', showT);
+    $('sTimeout').addEventListener('change', async function () {
+        var m = +this.value;
+        try { await A.api('/api/settings', { method: 'POST', body: { sessionTimeoutMinutes: m } }); ls('sessionTimeout', String(m)); A.note('sSecNote', 'Saved. You\'ll be signed out after ' + $('sTimeoutOut').textContent + ' of no activity.', 'ok'); }
+        catch (e) { A.note('sSecNote', e.message, 'bad'); }
+    });
+    $('sOut').addEventListener('click', function () {
+        A.confirmIn('sOutBox', { title: 'Sign out of every device?', text: 'Every browser signed in to your admin account is signed out, including this one.', yes: 'Sign out everywhere',
+            run: async function () { await A.api('/api/account/logout-all', { method: 'POST', body: {} }); try { localStorage.setItem('eschool_logout', String(Date.now())); } catch (e) { /* ignore */ } location.href = '/Login'; } });
+    });
+
+    /* appearance */
+    function showAp() {
+        var m = ls('themeMode') || 'light', c = ls('themeColor') || 'blue', s = +(ls('fontSize') || 16);
+        document.querySelectorAll('#sMode [data-mode]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.mode === m)); });
+        document.querySelectorAll('#sColor [data-color]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.color === c)); });
+        $('sSize').value = s; $('sSizeOut').textContent = s + 'px';
+    }
+    $('sMode').addEventListener('click', function (e) { var b = e.target.closest('[data-mode]'); if (b) { ls('themeMode', b.dataset.mode); refresh(); showAp(); } });
+    $('sColor').addEventListener('click', function (e) { var b = e.target.closest('[data-color]'); if (b) { ls('themeColor', b.dataset.color); refresh(); showAp(); } });
+    $('sSize').addEventListener('input', function () { ls('fontSize', this.value); refresh(); $('sSizeOut').textContent = this.value + 'px'; });
+    window.addEventListener('storage', function (e) { if (e.key && e.key.indexOf('settings.') === 0) showAp(); });
+
+    /* team */
+    (async function () {
+        try {
+            var d = await A.api('/api/admin/team');
+            $('sTeam').innerHTML = d.team.map(function (t) {
+                return '<div class="ad-who" style="padding:8px 0;border-bottom:1px solid var(--ab-border)">' + A.avatar(t.name, t.avatar_url) + '<span style="flex:1"><b>' + A.esc(t.name) + (t.id === d.me ? ' <span class="ad-pill info">You</span>' : '') + '</b><small>' + A.esc(t.email) + '</small></span>' +
+                    '<span class="ad-muted" style="text-align:right">' + t.actions + ' action' + (t.actions === 1 ? '' : 's') + (t.last_at ? '<br>last ' + A.esc(A.ago(t.last_at)) : '') + '</span></div>';
+            }).join('') + '<div class="ad-actions" style="margin-top:12px"><a class="ad-btn sm" href="/admin-users?role=admin"><i class="fas fa-users"></i> Manage on Users</a><a class="ad-btn sm" href="/admin-activity"><i class="fas fa-clock-rotate-left"></i> Activity log</a></div>';
+        } catch (e) { $('sTeam').innerHTML = '<div class="ad-note bad"><span>' + A.esc(e.message) + '</span></div>'; }
+    })();
+
+    loadProfile(); showAp(); showT();
+})();
+</script>
+{% endblock %}

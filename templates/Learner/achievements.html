@@ -1,0 +1,849 @@
+{% extends "Learner/body.html" %}
+
+{% block allcontent %}
+{#
+    ACHIEVEMENTS — every achievement a learner can unlock, grouped by category.
+    Gold, Platinum and Diamond achievements are BADGES (shown in the Badge Cabinet).
+    Data: GET /api/achievements            (you)
+          GET /api/achievements?user_id=N  (another learner, read-only)
+    Everything is worked out on the server from EP, streaks, goals and monthly ranks.
+    The server refuses (403 + private) when the learner hides their achievements, and only
+    the learner themselves sees NEW flags. Legendary badges carry `order` (Genesis first).
+    Clicking (or Enter on) any card, medal or Legendary badge opens a detail window.
+    #ach-<key> in the address scrolls to that achievement.
+#}
+<style>
+    .ac-page {
+        --s-surface: #ffffff;
+        --s-border: #e5e7eb;
+        --s-text: #1e293b;
+        --s-dim: #64748b;
+        --s-pill: #eef2f7;
+        --s-locked: #f1f5f9;
+        --bronze: #b45309; --silver: #64748b; --gold: #d97706; --platinum: #0891b2; --diamond: #7c3aed;
+        font-family: 'Inter', 'Open Sans', sans-serif;
+        color: var(--s-text);
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    body.dark-mode .ac-page {
+        --s-surface: #1e293b;
+        --s-border: #334155;
+        --s-text: #f1f5f9;
+        --s-dim: #94a3b8;
+        --s-pill: #334155;
+        --s-locked: #172033;
+        --silver: #94a3b8;
+    }
+    .ac-page * { box-sizing: border-box; }
+
+    .ac-card {
+        background: var(--s-surface);
+        border: 1px solid var(--s-border);
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    }
+
+    /* ---------- Back ---------- */
+    .ac-back {
+        display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px;
+        padding: 9px 16px; border-radius: 999px; cursor: pointer;
+        border: 1.5px solid var(--s-border); background: var(--s-surface); color: var(--s-text);
+        font-family: inherit; font-size: 0.9rem; font-weight: 600;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); transition: all 0.2s ease;
+    }
+    .ac-back:hover { border-color: var(--primary-color, #4361ee); color: var(--primary-color, #4361ee); transform: translateX(-2px); }
+    .ac-back:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.2); }
+
+    /* ---------- Hero ---------- */
+    .ac-hero {
+        position: relative; overflow: hidden;
+        background: radial-gradient(circle at 85% 0%, rgba(124, 58, 237, 0.55), transparent 55%),
+                    linear-gradient(135deg, #111c3a, #1e1b4b 60%, #312e81);
+        color: #fff; border-radius: 18px; padding: 26px 28px; margin-bottom: 20px;
+        display: flex; align-items: center; justify-content: space-between; gap: 22px; flex-wrap: wrap;
+    }
+    .ac-hero h1 { font-family: 'Poppins', sans-serif; font-size: 1.85rem; margin: 0 0 6px; display: flex; align-items: center; gap: 12px; }
+    .ac-hero h1 i { color: #fbbf24; }
+    .ac-hero p { margin: 0; opacity: 0.85; max-width: 520px; line-height: 1.55; }
+    .ac-hero-right { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .ac-ring {
+        --p: 0;
+        width: 104px; height: 104px; border-radius: 50%; flex-shrink: 0;
+        background: conic-gradient(#fbbf24 calc(var(--p) * 1%), rgba(255, 255, 255, 0.14) 0);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .ac-ring-inner {
+        width: 84px; height: 84px; border-radius: 50%; background: #1e1b4b;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .ac-ring-inner strong { font-family: 'Poppins', sans-serif; font-size: 1.35rem; line-height: 1.1; }
+    .ac-ring-inner span { font-size: 0.68rem; opacity: 0.8; letter-spacing: 0.4px; }
+    .ac-hero-stats { display: flex; flex-direction: column; gap: 8px; }
+    .ac-hero-stat {
+        background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 12px; padding: 8px 14px; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;
+    }
+    .ac-hero-stat i { width: 16px; text-align: center; color: #fbbf24; }
+    .ac-hero-stat strong { font-size: 1rem; }
+
+    /* ---------- Badge cabinet ---------- */
+    .ac-cabinet { padding: 20px 22px 8px; margin-bottom: 20px; }
+    .ac-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .ac-section-head h2 { font-family: 'Poppins', sans-serif; font-size: 1.05rem; margin: 0; display: flex; align-items: center; gap: 10px; }
+    .ac-section-head small { color: var(--s-dim); font-weight: 600; font-size: 0.82rem; }
+    .ac-cabinet-note { font-size: 0.82rem; color: var(--s-dim); margin: -6px 0 14px; }
+    .ac-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px 10px; }
+
+    .ac-medal { --t: var(--gold); display: flex; flex-direction: column; align-items: center; text-align: center; padding: 6px 4px 14px; min-width: 0; cursor: default; }
+    .ac-medal-disc {
+        position: relative; width: 74px; height: 74px; border-radius: 50%;
+        background: conic-gradient(from 210deg, var(--t), #fff8, var(--t), #0003, var(--t));
+        padding: 5px; box-shadow: 0 6px 16px color-mix(in srgb, var(--t) 40%, transparent);
+    }
+    .ac-medal-face {
+        width: 100%; height: 100%; border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--t) 55%, #fff), var(--t) 70%);
+        display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.45rem;
+        box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.25), inset 0 3px 6px rgba(255, 255, 255, 0.35);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    .ac-medal-ribbon {
+        margin-top: -6px; position: relative; z-index: 1;
+        background: color-mix(in srgb, var(--t) 78%, #000); color: #fff; font-size: 0.58rem; font-weight: 800; letter-spacing: 0.8px;
+        padding: 3px 10px 4px; clip-path: polygon(0 0, 100% 0, 92% 50%, 100% 100%, 0 100%, 8% 50%);
+        text-transform: uppercase;
+    }
+    .ac-medal-name { font-size: 0.78rem; font-weight: 700; margin-top: 6px; line-height: 1.25; max-width: 100%; }
+    .ac-medal.locked .ac-medal-disc { filter: grayscale(1); opacity: 0.35; box-shadow: none; }
+    .ac-medal.locked .ac-medal-ribbon { background: var(--s-pill); color: var(--s-dim); }
+    .ac-medal.locked .ac-medal-name { color: var(--s-dim); font-weight: 600; }
+    .ac-medal.tier-bronze { --t: var(--bronze); }
+    .ac-medal.tier-platinum { --t: var(--platinum); }
+    .ac-medal.tier-diamond { --t: var(--diamond); }
+    .ac-medal.tier-platinum .ac-medal-ribbon { background: color-mix(in srgb, var(--platinum) 78%, #000); }
+    .ac-medal.tier-diamond .ac-medal-ribbon { background: linear-gradient(90deg, #7c3aed, #06b6d4); }
+    .ac-medal.locked.tier-platinum .ac-medal-ribbon, .ac-medal.locked.tier-diamond .ac-medal-ribbon { background: var(--s-pill); }
+    .ac-medal-lock {
+        position: absolute; right: -2px; bottom: -2px; width: 24px; height: 24px; border-radius: 50%;
+        background: var(--s-surface); border: 1px solid var(--s-border); color: var(--s-dim);
+        display: flex; align-items: center; justify-content: center; font-size: 0.65rem;
+    }
+    .ac-medal-wrap { position: relative; }
+
+    /* ---------- Toolbar ---------- */
+    .ac-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+    .ac-chip {
+        border: 1.5px solid var(--s-border); background: var(--s-surface); color: var(--s-dim);
+        border-radius: 999px; padding: 8px 15px; font-size: 0.84rem; font-weight: 600; cursor: pointer; font-family: inherit;
+        display: inline-flex; align-items: center; gap: 7px;
+    }
+    .ac-chip:hover { border-color: var(--primary-color, #4361ee); color: var(--primary-color, #4361ee); }
+    .ac-chip[aria-pressed="true"] { background: var(--primary-color, #4361ee); border-color: var(--primary-color, #4361ee); color: #fff; }
+    .ac-filter-note { font-size: 0.8rem; color: var(--s-dim); margin: -10px 2px 16px; }
+    .ac-chip .n { font-size: 0.72rem; opacity: 0.8; }
+
+    /* ---------- Category sections ---------- */
+    .ac-section { margin-bottom: 26px; }
+    .ac-cat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 2px 12px; }
+    .ac-cat-head h3 { font-size: 0.78rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--s-dim); margin: 0; }
+    .ac-cat-head span { font-size: 0.78rem; font-weight: 700; color: var(--s-dim); }
+    .ac-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+
+    .ac-item {
+        position: relative; padding: 18px 14px 14px; text-align: center; min-width: 0;
+        display: flex; flex-direction: column; align-items: center;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .ac-item.unlocked:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1); }
+    .ac-item.locked { background: var(--s-locked); }
+    .ac-icon {
+        width: 54px; height: 54px; border-radius: 16px; margin-bottom: 10px;
+        display: flex; align-items: center; justify-content: center; font-size: 1.35rem;
+        color: #fff; background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 60%, #000));
+        box-shadow: 0 6px 14px color-mix(in srgb, var(--c) 35%, transparent);
+    }
+    .ac-item.locked .ac-icon { background: var(--s-pill); color: var(--s-dim); box-shadow: none; }
+    .ac-title { font-weight: 700; font-size: 0.92rem; line-height: 1.3; }
+    .ac-desc { font-size: 0.78rem; color: var(--s-dim); margin: 3px 0 10px; line-height: 1.4; min-height: 2.2em; }
+    .ac-foot { margin-top: auto; width: 100%; }
+    .ac-done { font-size: 0.76rem; font-weight: 700; color: #047857; display: inline-flex; align-items: center; gap: 5px; }
+    .ac-lock { font-size: 0.76rem; color: var(--s-dim); display: inline-flex; align-items: center; gap: 5px; }
+    .ac-bar { height: 6px; border-radius: 999px; background: var(--s-pill); overflow: hidden; margin: 2px 0 5px; }
+    .ac-bar-fill { height: 100%; border-radius: 999px; background: var(--c); }
+    .ac-tags { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: -4px 0 10px; }
+    .ac-tier {
+        font-size: 0.6rem; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase;
+        padding: 2px 7px; border-radius: 999px; color: var(--tt, var(--tc)); background: color-mix(in srgb, var(--tc) 13%, transparent);
+    }
+    .ac-new {
+        font-size: 0.6rem; font-weight: 800; letter-spacing: 0.6px;
+        padding: 2px 7px; border-radius: 999px; color: #fff; background: #b91c1c;
+    }
+    body.dark-mode .ac-done { color: #34d399; }
+
+    /* Badge-tier cards: medal ring + ribbon, shine when earned */
+    .ac-item.badge { border-width: 1.5px; }
+    .ac-item.badge.unlocked { border-color: color-mix(in srgb, var(--tc) 55%, transparent); }
+    .ac-item.badge .ac-icon {
+        border-radius: 50%; width: 60px; height: 60px; position: relative;
+        outline: 3px solid color-mix(in srgb, var(--tc) 70%, #fff); outline-offset: 3px;
+    }
+    .ac-item.badge.locked .ac-icon { outline-color: var(--s-border); }
+    .ac-item.badge.unlocked::after {
+        content: ""; position: absolute; inset: 0; border-radius: 16px; pointer-events: none;
+        background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+        background-size: 250% 100%; animation: acShine 4s ease-in-out infinite;
+    }
+    body.dark-mode .ac-item.badge.unlocked::after { background-image: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.12) 50%, transparent 65%); }
+    @keyframes acShine { 0%, 60% { background-position: 150% 0; } 100% { background-position: -100% 0; } }
+    @media (prefers-reduced-motion: reduce) { .ac-item.badge.unlocked::after { animation: none; } }
+
+
+    /* ======================================================================
+       LEGENDARY VAULT: the rarest badges on Eschool. Each needs several
+       hard things at once and takes many months. Always dark, like a vault.
+       ====================================================================== */
+    .lg-vault {
+        position: relative; overflow: hidden; margin-bottom: 20px; border-radius: 22px; padding: 26px 26px 28px; color: #f8fafc;
+        background:
+            radial-gradient(900px 300px at 50% -120px, rgba(251, 191, 36, 0.22), transparent 70%),
+            radial-gradient(500px 260px at 100% 100%, rgba(124, 58, 237, 0.18), transparent 70%),
+            linear-gradient(180deg, #0b0f1a, #05070d);
+        border: 1px solid rgba(251, 191, 36, 0.28);
+        box-shadow: 0 20px 50px rgba(2, 6, 23, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+    .lg-vault::before {   /* fine gold pin-stripe frame */
+        content: ""; position: absolute; inset: 8px; border-radius: 16px; pointer-events: none;
+        border: 1px solid rgba(251, 191, 36, 0.12);
+    }
+    .lg-stars { position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
+        background-image: radial-gradient(1px 1px at 12% 22%, #fff, transparent), radial-gradient(1px 1px at 78% 14%, #fde68a, transparent),
+            radial-gradient(1.5px 1.5px at 42% 68%, #fff, transparent), radial-gradient(1px 1px at 88% 58%, #c4b5fd, transparent),
+            radial-gradient(1px 1px at 22% 86%, #fde68a, transparent), radial-gradient(1px 1px at 62% 34%, #fff, transparent),
+            radial-gradient(1.2px 1.2px at 6% 52%, #fff, transparent), radial-gradient(1px 1px at 95% 88%, #fff, transparent); }
+    .lg-head { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+    .lg-eyebrow { font-size: 0.7rem; letter-spacing: 0.32em; text-transform: uppercase; color: #fbbf24; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .lg-eyebrow::before, .lg-eyebrow::after { content: ""; width: 26px; height: 1px; background: linear-gradient(90deg, transparent, #fbbf24); }
+    .lg-eyebrow::after { transform: scaleX(-1); }
+    .lg-head h2 {
+        font-family: 'Poppins', sans-serif; font-size: 1.9rem; font-weight: 800; margin: 8px 0 6px; letter-spacing: 0.01em;
+        color: #fbbf24;
+    }
+    @supports (-webkit-background-clip: text) or (background-clip: text) {
+        .lg-head h2 { background: linear-gradient(180deg, #fff7d6 0%, #fbbf24 55%, #b45309 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    }
+    .lg-head p { margin: 0; color: #94a3b8; font-size: 0.88rem; max-width: 560px; line-height: 1.6; }
+    .lg-count { text-align: right; }
+    .lg-count strong { display: block; font-family: 'Poppins', sans-serif; font-size: 2rem; line-height: 1; color: #fde68a; }
+    .lg-count span { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: #94a3b8; }
+
+    .lg-grid { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 16px; }
+    .lg-card {
+        --a: #fbbf24; --b: #7c3aed;
+        position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0;
+        padding: 22px 18px 18px; border-radius: 18px; overflow: hidden;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+    }
+    .lg-card:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--a) 45%, transparent); }
+    .lg-card.earned {
+        border-color: color-mix(in srgb, var(--a) 55%, transparent);
+        background: radial-gradient(260px 200px at 50% 0%, color-mix(in srgb, var(--a) 22%, transparent), transparent 70%),
+                    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--a) 20%, transparent), 0 18px 40px color-mix(in srgb, var(--a) 18%, transparent);
+    }
+    .lg-card.earned::after {     /* slow sheen across earned cards */
+        content: ""; position: absolute; inset: 0; pointer-events: none;
+        background: linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.14) 50%, transparent 62%);
+        background-size: 260% 100%; animation: lgSheen 6s ease-in-out infinite;
+    }
+    @keyframes lgSheen { 0%, 55% { background-position: 160% 0; } 100% { background-position: -120% 0; } }
+
+    .lg-emblem { position: relative; width: 150px; height: 150px; margin-bottom: 14px; }
+    .lg-emblem img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+    .lg-emblem img.lg-genesis-img { border-radius: 0; }   /* Genesis has its own outline: keep it whole */
+    .lg-halo { position: absolute; inset: -14px; border-radius: 50%; pointer-events: none; opacity: 0;
+        background: conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--a) 70%, transparent), transparent 30%, color-mix(in srgb, var(--b) 70%, transparent), transparent 60%);
+        filter: blur(14px); }
+    .lg-card.earned .lg-halo { opacity: 0.9; animation: lgSpin 9s linear infinite; }
+    .lg-card.earned .lg-emblem img { filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--a) 55%, transparent)); animation: lgFloat 5s ease-in-out infinite; }
+    @keyframes lgSpin { to { transform: rotate(360deg); } }
+    @keyframes lgFloat { 50% { transform: translateY(-4px); } }
+    .lg-icon { position: absolute; inset: 0; display: grid; place-items: center; font-size: 2.4rem; color: #fff;
+        text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 18px color-mix(in srgb, var(--a) 80%, transparent); }
+    .lg-card:not(.earned) .lg-emblem img { filter: grayscale(0.8) brightness(0.55) contrast(1.05); }
+    .lg-card:not(.earned) .lg-icon { color: rgba(255, 255, 255, 0.35); text-shadow: none; }
+    .lg-lock { position: absolute; right: 8px; bottom: 8px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+        background: #0b0f1a; border: 1px solid rgba(251, 191, 36, 0.45); color: #fbbf24; font-size: 0.8rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); }
+
+    .lg-ribbon { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px; margin-bottom: 8px;
+        font-size: 0.62rem; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; color: #1c1206;
+        background: linear-gradient(90deg, #b45309, #fde68a, #f59e0b); }
+    .lg-card:not(.earned) .lg-ribbon { color: #94a3b8; background: rgba(148, 163, 184, 0.14); }
+    .lg-name { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.12rem; line-height: 1.25; color: #fff7d6; }
+    @supports ((-webkit-background-clip: text) or (background-clip: text)) and (color: color-mix(in srgb, red 50%, blue)) {
+        .lg-card.earned .lg-name { background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--a) 60%, #fff)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    }
+    .lg-card:not(.earned) .lg-name { color: #e2e8f0; }
+    .lg-motto { font-size: 0.8rem; font-style: italic; color: #94a3b8; margin: 4px 0 12px; }
+    .lg-rarity { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .lg-pill { font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); color: #cbd5e1; }
+    .lg-pill.gold { color: #fde68a; border-color: rgba(251, 191, 36, 0.45); background: rgba(251, 191, 36, 0.1); }
+    .lg-reqs { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 9px; text-align: left; }
+    .lg-req { font-size: 0.76rem; color: #cbd5e1; }
+    .lg-req-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+    .lg-req-top span:first-child { display: flex; gap: 7px; align-items: baseline; }
+    .lg-req-top i { font-size: 0.7rem; color: #475569; }
+    .lg-req.done .lg-req-top i { color: #34d399; }
+    .lg-req-top b { color: #94a3b8; font-weight: 600; white-space: nowrap; }
+    .lg-req.done .lg-req-top b { color: #34d399; }
+    .lg-req-bar { height: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+    .lg-req-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--b), var(--a)); }
+    .lg-when { margin-top: 12px; font-size: 0.74rem; color: #fde68a; letter-spacing: 0.04em; }
+    .lg-new { position: absolute; top: 12px; right: 12px; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.12em; padding: 3px 8px; border-radius: 999px; color: #1c1206; background: #fde68a; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .lg-card.earned::after, .lg-card.earned .lg-halo, .lg-card.earned .lg-emblem img { animation: none; }
+    }
+    @media (max-width: 700px) {
+        .lg-vault { padding: 22px 16px; border-radius: 18px; }
+        .lg-head h2 { font-size: 1.5rem; }
+        .lg-count { text-align: left; }
+        .lg-grid { grid-template-columns: 1fr; }
+    }
+
+    .ac-empty, .ac-loading { padding: 40px 20px; text-align: center; color: var(--s-dim); line-height: 1.6; }
+    .ac-retry { margin-top: 12px; border: 1.5px solid var(--s-border); background: var(--s-surface); color: var(--s-text); border-radius: 999px;
+        padding: 8px 18px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .ac-sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    .ac-page [hidden] { display: none !important; }
+
+    /* cards and medals open a detail window (works with touch and keyboard, not just hover) */
+    .ac-item[role="button"], .ac-medal[role="button"], .lg-card[role="button"] { cursor: pointer; }
+    .ac-item[role="button"]:focus-visible, .ac-medal[role="button"]:focus-visible { outline: 3px solid var(--primary-color, #4361ee); outline-offset: 3px; }
+    .lg-card[role="button"]:focus-visible { outline: 3px solid #fbbf24; outline-offset: 3px; }
+    .ac-flash { animation: acFlash 2.2s ease-out 1; }
+    @keyframes acFlash { 0%, 40% { box-shadow: 0 0 0 4px var(--primary-color, #4361ee); } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+    /* Closest to unlocking */
+    .ac-close { padding: 18px 20px; margin-bottom: 20px; }
+    .ac-close h2 { font-family: 'Poppins', sans-serif; font-size: 1.05rem; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+    .ac-close-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .ac-close-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--s-border); border-radius: 12px;
+        background: var(--s-surface); color: inherit; font-family: inherit; text-align: left; cursor: pointer; min-width: 0; }
+    .ac-close-item:hover { border-color: var(--primary-color, #4361ee); }
+    .ac-close-item .ac-icon { width: 40px; height: 40px; border-radius: 12px; font-size: 1rem; margin: 0; flex-shrink: 0; }
+    .ac-close-text { flex: 1; min-width: 0; }
+    .ac-close-text strong { display: block; font-size: 0.86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ac-close-text span { font-size: 0.74rem; color: var(--s-dim); }
+
+    /* Detail window */
+    .ac-modal { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 16px;
+        background: rgba(15, 23, 42, 0.55); }
+    .ac-dialog { width: min(420px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--s-surface); color: var(--s-text);
+        border-radius: 18px; padding: 22px; box-shadow: 0 24px 60px rgba(2, 6, 23, 0.35); position: relative; text-align: center; }
+    .ac-dialog .ac-icon { margin: 4px auto 12px; }
+    .ac-dialog h3 { font-family: 'Poppins', sans-serif; font-size: 1.2rem; margin: 0 0 4px; }
+    .ac-dialog p { margin: 6px 0; color: var(--s-dim); font-size: 0.9rem; line-height: 1.5; }
+    .ac-dialog .ac-bar { margin: 14px 0 6px; height: 8px; }
+    .ac-dialog-facts { list-style: none; padding: 0; margin: 14px 0 0; text-align: left; font-size: 0.86rem; }
+    .ac-dialog-facts li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--s-border); }
+    .ac-dialog-facts li span:first-child { color: var(--s-dim); }
+    .ac-dialog-close { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
+        background: var(--s-pill); color: var(--s-text); font-size: 1rem; }
+    .ac-dialog-go { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; padding: 10px 18px; border-radius: 999px; text-decoration: none;
+        background: var(--primary-color, #4361ee); color: #fff; font-weight: 700; font-size: 0.88rem; }
+
+    /* Infinite animations only run while the card is on screen (saves battery on low-end phones) */
+    .ac-item.badge.unlocked:not(.in-view)::after, .lg-card.earned:not(.in-view)::after,
+    .lg-card.earned:not(.in-view) .lg-halo, .lg-card.earned:not(.in-view) .lg-emblem img { animation-play-state: paused; }
+
+    /* Browsers without color-mix(): plain colours instead of blank ones */
+    @supports not (color: color-mix(in srgb, red 50%, blue)) {
+        .ac-medal-disc { box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2); }
+        .ac-medal-face { background: var(--t); }
+        .ac-medal-ribbon, .ac-medal.tier-platinum .ac-medal-ribbon { background: #334155; }
+        .ac-icon { background: var(--c); box-shadow: none; }
+        .ac-tier { background: var(--s-pill); }
+        .ac-item.badge.unlocked { border-color: var(--tc); }
+        .ac-item.badge .ac-icon { outline-color: var(--tc); }
+        .lg-card:hover, .lg-card.earned { border-color: rgba(251, 191, 36, 0.45); }
+        .lg-card.earned { background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)); box-shadow: none; }
+        .lg-halo { display: none; }
+        .lg-card.earned .lg-emblem img { filter: drop-shadow(0 8px 18px rgba(251, 191, 36, 0.4)); }
+        .lg-icon { text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45); }
+    }
+
+    @media (max-width: 700px) {
+        .ac-hero { padding: 22px 18px; }
+        .ac-hero h1 { font-size: 1.5rem; }
+        .ac-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .ac-item { padding: 16px 10px 12px; }
+        .ac-shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .ac-medal-disc { width: 64px; height: 64px; }
+        .ac-cabinet { padding: 18px 14px 6px; }
+    }
+
+    .ac-more-row { grid-column: 1 / -1; display: flex; justify-content: center; margin-top: 12px; }
+    .ac-more { border: 1.5px solid var(--primary-color, #4361ee); background: transparent; color: var(--primary-color, #4361ee); font: inherit; font-weight: 600;
+        font-size: .86rem; padding: 9px 18px; border-radius: 999px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+    .ac-more:hover { background: color-mix(in srgb, var(--primary-color, #4361ee) 10%, transparent); }
+    .ac-more.dark { border-color: #fde68a; color: #fde68a; }
+    .ac-more.dark:hover { background: rgba(253, 230, 138, .12); }
+</style>
+
+<div class="ac-page">
+    <button type="button" class="ac-back" id="acBack">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i><span>Back</span>
+    </button>
+
+    <section class="ac-hero">
+        <div>
+            <h1><i class="fas fa-trophy" aria-hidden="true"></i> <span id="acTitle">Achievements</span></h1>
+            <p id="acSubtitle">Unlock achievements by passing modules, acing quizzes, keeping your streaks alive and climbing the monthly leaderboard. The very best ones are <strong>badges</strong>, and the rarest are <strong>Legendary</strong>.</p>
+        </div>
+        <div class="ac-hero-right">
+            <div class="ac-ring" id="acRing" role="progressbar" aria-label="Achievements unlocked (not counting Legendary)" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="ac-ring-inner"><strong id="acPct">–</strong><span>COMPLETE</span></div></div>
+            <div class="ac-hero-stats">
+                <div class="ac-hero-stat"><i class="fas fa-unlock" aria-hidden="true"></i> <strong id="acUnlocked">–</strong> achievements (not Legendary)</div>
+                <div class="ac-hero-stat"><i class="fas fa-medal" aria-hidden="true"></i> <strong id="acBadges">–</strong> badges (Gold, Platinum, Diamond)</div>
+                <div class="ac-hero-stat"><i class="fas fa-crown" aria-hidden="true"></i> <strong id="acLegends">–</strong> Legendary badges</div>
+                <div class="ac-hero-stat"><i class="fas fa-bolt" aria-hidden="true"></i> <span id="acLevel">–</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="lg-vault" id="lgVault" aria-labelledby="lgTitle" hidden>
+        <div class="lg-stars" aria-hidden="true"></div>
+        <div class="lg-head">
+            <div>
+                <div class="lg-eyebrow">The Legendary Vault</div>
+                <h2 id="lgTitle">Legendary Badges</h2>
+                <p>The rarest honours on Eschool. Every learner starts with Eschool Genesis, numbered by the order they joined. Each Legendary badge you earn after it gives you <strong style="color:#fde68a">+500 EP</strong> and becomes your profile picture by itself. Each one needs several hard things at the same time and takes many months of real work.</p>
+            </div>
+            <div class="lg-count"><strong id="lgCount">0 / 0</strong><span>Legends earned</span></div>
+        </div>
+        <div class="lg-grid" id="lgGrid"></div>
+    </section>
+
+    <section class="ac-card ac-close" id="acClose" hidden aria-labelledby="acCloseTitle">
+        <h2 id="acCloseTitle"><i class="fas fa-bullseye" style="color:var(--primary-color, #4361ee)" aria-hidden="true"></i> Closest to unlocking</h2>
+        <div class="ac-close-list" id="acCloseList"></div>
+    </section>
+
+    <section class="ac-card ac-cabinet" id="acCabinet" hidden>
+        <div class="ac-section-head">
+            <h2><i class="fas fa-award" style="color:var(--gold)" aria-hidden="true"></i> Badge Cabinet</h2>
+            <small id="acCabinetCount"></small>
+        </div>
+        <p class="ac-cabinet-note">Badges are the Gold, Platinum and Diamond achievements. Your profile picture is always your newest Legendary badge from the vault above.</p>
+        <div class="ac-shelf" id="acShelf"></div>
+    </section>
+
+    <div class="ac-toolbar" id="acFilters" role="group" aria-label="Show achievements">
+        <button type="button" class="ac-chip" data-filter="all" aria-pressed="true">All <span class="n" id="nAll"></span></button>
+        <button type="button" class="ac-chip" data-filter="unlocked" aria-pressed="false"><i class="fas fa-unlock" aria-hidden="true"></i> Unlocked <span class="n" id="nUnlocked"></span></button>
+        <button type="button" class="ac-chip" data-filter="locked" aria-pressed="false"><i class="fas fa-lock" aria-hidden="true"></i> Still to unlock <span class="n" id="nLocked"></span></button>
+        <button type="button" class="ac-chip" data-filter="badges" aria-pressed="false"><i class="fas fa-medal" aria-hidden="true"></i> Badges <span class="n" id="nBadges"></span></button>
+    </div>
+    <p class="ac-filter-note">These filters apply to the list below. Legendary badges are in the vault above.</p>
+    <div class="ac-sr" id="acLive" aria-live="polite"></div>
+
+    <div id="acSections"><div class="ac-card ac-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Loading achievements…</div></div>
+
+    <div class="ac-modal" id="acModal" hidden>
+        <div class="ac-dialog" role="dialog" aria-modal="true" aria-labelledby="acDlgTitle" tabindex="-1">
+            <button type="button" class="ac-dialog-close" id="acDlgClose" aria-label="Close"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+            <div id="acDlgBody"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    const params = new URLSearchParams(window.location.search);
+    const viewUser = params.get('user');   // /achievements?user=12 shows another learner's
+    let data = null;
+    let filter = 'all';
+    let byKey = {};
+
+    // ---------- small helpers ----------
+    const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    function esc(t) { return String(t ?? '').replace(/[&<>"']/g, c => ESC[c]); }   // safe in text AND attributes
+    function fmt(n) { return Number(n || 0).toLocaleString(); }
+    function hex(c, d) { return /^#[0-9a-f]{3,8}$/i.test(c || '') ? c : d; }
+    function icon(i) { return /^fa-[a-z0-9-]+$/.test(i || '') ? i : 'fa-star'; }
+    function word(t) { return /^[a-z_]+$/.test(t || '') ? t : ''; }
+    function pctOf(v) { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; }
+    function el(id) { return document.getElementById(id); }
+    function fmtDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d)) return '';
+        const sameYear = d.getFullYear() === new Date().getFullYear();
+        return d.toLocaleDateString('en-US', Object.assign({ timeZone: 'Africa/Nairobi', month: 'short', day: 'numeric' }, sameYear ? {} : { year: 'numeric' }));
+    }
+    // darker tier colours for small text (the bright ones stay for fills)
+    const TIER_TEXT = { bronze: '#92400e', silver: '#475569', gold: '#92400e', platinum: '#0e7490', diamond: '#6d28d9', legendary: '#92400e' };
+    const TIER_TEXT_DARK = { bronze: '#fdba74', silver: '#cbd5e1', gold: '#fcd34d', platinum: '#67e8f9', diamond: '#c4b5fd', legendary: '#fcd34d' };
+    function tierText(t) { return (document.body.classList.contains('dark-mode') ? TIER_TEXT_DARK : TIER_TEXT)[t] || ''; }
+    // where to go to work on each kind of achievement
+    const GO = { start: ['/courses', 'Go to Courses'], learning: ['/courses', 'Go to Courses'], quizzes: ['/courses', 'Take a quiz'],
+        streaks: ['/courses', 'Keep your streak going'], habits: ['/progres', 'See your progress'], ep: ['/progres', 'See your EP'],
+        leaderboard: ['/leaderboard', 'Open the leaderboard'] };
+
+    function shown(a) {
+        if (filter === 'unlocked') return a.unlocked;
+        if (filter === 'locked') return !a.unlocked;
+        if (filter === 'badges') return a.badge;
+        return true;
+    }
+    function itemAttrs(a, label) {
+        return `role="button" tabindex="0" data-key="${esc(a.key)}" aria-haspopup="dialog" aria-label="${esc(label)}"`;
+    }
+    function statusText(a) {
+        return a.unlocked ? 'unlocked' : (a.target > 1 ? `locked, ${fmt(a.progress)} of ${fmt(a.target)}` : 'locked');
+    }
+
+    function cardHTML(a) {
+        const pct = pctOf(a.percent);
+        const foot = a.unlocked
+            ? `<span class="ac-done"><i class="fas fa-circle-check" aria-hidden="true"></i> Unlocked${a.unlocked_at ? ' · ' + esc(fmtDate(a.unlocked_at)) : ''}</span>`
+            : (a.target > 1
+                ? `<div class="ac-bar" aria-hidden="true"><div class="ac-bar-fill" style="width:${pct}%"></div></div>
+                   <span class="ac-lock"><i class="fas fa-lock" aria-hidden="true"></i> ${fmt(a.progress)} / ${fmt(a.target)}</span>`
+                : `<span class="ac-lock"><i class="fas fa-lock" aria-hidden="true"></i> Locked</span>`);
+        const tt = tierText(a.tier);
+        return `
+            <div class="ac-card ac-item ${a.unlocked ? 'unlocked' : 'locked'} ${a.badge ? 'badge' : ''}" id="ach-${esc(a.key)}"
+                 style="--c:${hex(a.color, '#4361ee')}; --tc:${hex(a.tier_color, '#64748b')}${tt ? '; --tt:' + tt : ''}"
+                 ${itemAttrs(a, `${a.title}, ${a.tier_label}${a.badge ? ' badge' : ''}, ${statusText(a)}`)}>
+                <div class="ac-tags">
+                    <span class="ac-tier">${esc(a.tier_label)}${a.badge ? ' badge' : ''}</span>
+                    ${a.new ? '<span class="ac-new">NEW</span>' : ''}
+                </div>
+                <div class="ac-icon" aria-hidden="true"><i class="fas ${icon(a.icon)}"></i></div>
+                <div class="ac-title">${esc(a.title)}</div>
+                <div class="ac-desc">${esc(a.description)}</div>
+                <div class="ac-foot">${foot}</div>
+            </div>`;
+    }
+
+    function medalHTML(a) {
+        return `
+            <div class="ac-medal tier-${word(a.tier)} ${a.unlocked ? 'unlocked' : 'locked'}"
+                 ${itemAttrs(a, `${a.title}, ${a.tier_label} badge, ${statusText(a)}`)}>
+                <div class="ac-medal-wrap" aria-hidden="true">
+                    <div class="ac-medal-disc"><div class="ac-medal-face"><i class="fas ${icon(a.icon)}"></i></div></div>
+                    ${a.unlocked ? '' : '<span class="ac-medal-lock"><i class="fas fa-lock"></i></span>'}
+                </div>
+                <span class="ac-medal-ribbon" aria-hidden="true">${esc(a.tier_label)}</span>
+                <span class="ac-medal-name" aria-hidden="true">${esc(a.title)}</span>
+            </div>`;
+    }
+
+
+    // ---------- Legendary emblems ----------
+    // The crest is the same image the server uses for profile pictures (/badge-art/<theme>.svg),
+    // so a badge looks exactly the same here, in the header, on the leaderboard and on profiles.
+    const ACCENT = { genesis: ['#c2185b', '#22e4f5'], phoenix: ['#b91c1c', '#f97316'], arcane: ['#5b21b6', '#a855f7'],
+        celestial: ['#1e3a8a', '#fbbf24'], chronos: ['#0f766e', '#2dd4bf'], titan: ['#44403c', '#10b981'],
+        midas: ['#a16207', '#facc15'], prism: ['#7c3aed', '#06b6d4'],
+        storm: ['#1d4ed8', '#facc15'], summit: ['#0369a1', '#38bdf8'], guardian: ['#b91c1c', '#ef4444'], atlas: ['#047857', '#3b82f6'],
+        moonshot: ['#4338ca', '#f97316'], ironwill: ['#475569', '#f97316'], quill: ['#0369a1', '#e11d48'] };
+    function emblem(a) {
+        const n = '?d=16' + (a.genesis && a.serial ? '&n=' + encodeURIComponent(a.serial) : '');
+        return `<img src="/badge-art/${encodeURIComponent(a.theme || 'prism')}.svg${n}" alt="" loading="lazy"${a.genesis ? ' class="lg-genesis-img"' : ''}>`;
+    }
+    function reqPct(r) { return r.need ? Math.min(100, Math.round((r.have || 0) / r.need * 100)) : 100; }
+    function legendHTML(a) {
+        const t = ACCENT[a.theme] || ACCENT.prism;
+        const rarity = a.genesis ? 'Every learner\'s first legend' : a.holders === 0 ? 'No learner holds this yet'
+            : `Held by ${fmt(a.holders)} learner${a.holders === 1 ? '' : 's'}`;
+        const reqs = (a.requirements || []).map(r => `<li class="lg-req ${r.done ? 'done' : ''}">
+                <div class="lg-req-top"><span><i class="fas ${r.done ? 'fa-circle-check' : 'fa-circle'}" aria-hidden="true"></i>${esc(r.label)}<span class="ac-sr">${r.done ? ' (done)' : ''}</span></span><b>${fmt(r.have)} / ${fmt(r.need)}</b></div>
+                <div class="lg-req-bar" role="progressbar" aria-label="${esc(r.label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${reqPct(r)}"><i style="width:${reqPct(r)}%"></i></div></li>`).join('');
+        return `<article class="lg-card ${a.unlocked ? 'earned' : ''} ${a.genesis ? 'genesis' : ''}" style="--a:${t[1]};--b:${t[0]}"
+                 ${itemAttrs(a, `${a.title}, Legendary badge, ${a.unlocked ? 'earned' : 'locked, ' + pctOf(a.percent) + '% there'}`)}>
+            ${a.new ? '<span class="lg-new">NEW</span>' : ''}
+            <div class="lg-emblem"><div class="lg-halo"></div>${emblem(a)}
+                ${a.unlocked ? '' : '<span class="lg-lock"><i class="fas fa-lock" aria-hidden="true"></i><span class="ac-sr">Locked</span></span>'}</div>
+            <span class="lg-ribbon"><i class="fas fa-crown" aria-hidden="true"></i> Legendary</span>
+            <div class="lg-name">${esc(a.title)}</div>
+            <div class="lg-motto">“${esc(a.motto)}”</div>
+            <div class="lg-rarity">
+                ${a.serial ? `<span class="lg-pill gold">${a.genesis ? 'Learner' : ''} No. ${fmt(a.serial)}</span>` : ''}
+                <span class="lg-pill">${rarity}</span>
+                ${a.unlocked ? '' : `<span class="lg-pill">${pctOf(a.percent)}% there</span>`}
+                ${a.genesis ? '' : `<span class="lg-pill gold">+500 EP</span>`}
+            </div>
+            <ul class="lg-reqs">${reqs}</ul>
+            ${a.unlocked && a.unlocked_at ? `<div class="lg-when"><i class="fas fa-crown" aria-hidden="true"></i> ${a.genesis ? 'Yours since' : 'Earned'} ${esc(fmtDate(a.unlocked_at))}</div>` : ''}
+        </article>`;
+    }
+
+    // ---------- the parts of the page (each one on its own, so one bad record can't blank the page) ----------
+    function lists() {
+        const all = Array.isArray(data.achievements) ? data.achievements.filter(a => a && typeof a === 'object') : [];
+        return { legends: all.filter(a => a.legendary), list: all.filter(a => !a.legendary) };
+    }
+    function safely(name, fn) {
+        try { fn(); } catch (err) { console.error('achievements: ' + name, err); }
+    }
+
+    function renderHeader() {
+        const { legends, list } = lists();
+        const unlocked = list.filter(a => a.unlocked).length;
+        const pct = list.length ? Math.round(unlocked / list.length * 100) : 0;
+        const legendsEarned = data.legendary_earned != null ? data.legendary_earned : legends.filter(a => a.unlocked).length;
+        el('acRing').style.setProperty('--p', pct);
+        el('acRing').setAttribute('aria-valuenow', pct);
+        el('acPct').textContent = pct + '%';
+        el('acUnlocked').textContent = `${unlocked} / ${list.length}`;
+        el('acBadges').textContent = `${fmt(data.badges_earned)} / ${fmt(data.badges_total)}`;
+        el('acLegends').textContent = `${legendsEarned} / ${legends.length}`;
+        el('acLevel').innerHTML = `Level <strong>${fmt(data.level)}</strong> · ${fmt(data.ep_total)} total EP`;
+        el('nAll').textContent = list.length;
+        el('nUnlocked').textContent = unlocked;
+        el('nLocked').textContent = list.length - unlocked;
+        el('nBadges').textContent = list.filter(a => a.badge).length;
+    }
+
+    function renderVault() {
+        const { legends } = lists();
+        el('lgVault').hidden = !legends.length;
+        const earned = data.legendary_earned != null ? data.legendary_earned : legends.filter(a => a.unlocked).length;
+        el('lgCount').textContent = `${earned} / ${legends.length}`;
+        // Genesis first and Living Legend last (the server sends `order`), then earned, then closest
+        const sorted = legends.slice()
+            .sort((a, b) => ((a.order ?? 10) - (b.order ?? 10)) || (b.unlocked - a.unlocked) || ((b.percent || 0) - (a.percent || 0)));
+        const open = expanded.has('legends');
+        el('lgGrid').innerHTML = (open ? sorted : sorted.slice(0, SHOW_LEGENDS))
+            .map(a => { try { return legendHTML(a); } catch (e) { console.error(e); return ''; } }).join('') +
+            moreButton('legends', sorted.length - SHOW_LEGENDS, open, 'Legendary badges', true);
+    }
+
+    function renderCabinet() {
+        const { list } = lists();
+        // Badge cabinet: earned first, then by tier (Diamond > Platinum > Gold)
+        const tierOrder = { diamond: 0, platinum: 1, gold: 2, bronze: 3 };
+        const badges = list.filter(a => a.badge)
+            .sort((a, b) => (b.unlocked - a.unlocked) || ((tierOrder[a.tier] ?? 9) - (tierOrder[b.tier] ?? 9)));
+        el('acCabinet').hidden = !badges.length;
+        el('acCabinetCount').textContent = `${fmt(data.badges_earned)} of ${fmt(data.badges_total)} earned`;
+        const open = expanded.has('cabinet');
+        el('acShelf').innerHTML = (open ? badges : badges.slice(0, SHOW_BADGES)).map(medalHTML).join('') +
+            moreButton('cabinet', badges.length - SHOW_BADGES, open, 'badges');
+    }
+
+    function renderClosest() {
+        const { list } = lists();
+        const close = data.is_me === false ? [] : list.filter(a => !a.unlocked && a.target > 1 && (a.percent || 0) > 0)
+            .sort((a, b) => (b.percent || 0) - (a.percent || 0)).slice(0, 3);
+        el('acClose').hidden = !close.length;
+        el('acCloseList').innerHTML = close.map(a => `
+            <button type="button" class="ac-close-item" data-key="${esc(a.key)}" aria-haspopup="dialog">
+                <span class="ac-icon" style="--c:${hex(a.color, '#4361ee')}" aria-hidden="true"><i class="fas ${icon(a.icon)}"></i></span>
+                <span class="ac-close-text"><strong>${esc(a.title)}</strong><span>${fmt(a.progress)} / ${fmt(a.target)} · ${pctOf(a.percent)}% there</span></span>
+            </button>`).join('');
+    }
+
+    // The page shows a few of each kind first, so it isn't one very long list.
+    // "Show all" opens the rest of that part; the choice lasts until the page is reloaded.
+    const SHOW_LEGENDS = 3, SHOW_BADGES = 8, SHOW_PER_SECTION = 6;
+    const expanded = new Set();
+    function moreButton(key, hidden, open, what, dark) {
+        if (hidden <= 0 && !open) return '';
+        return `<div class="ac-more-row"><button type="button" class="ac-more${dark ? ' dark' : ''}" data-more="${esc(key)}" aria-expanded="${open}">
+            ${open ? '<i class="fas fa-chevron-up" aria-hidden="true"></i> Show fewer' : `<i class="fas fa-chevron-down" aria-hidden="true"></i> Show ${hidden} more ${esc(what)}`}</button></div>`;
+    }
+    document.addEventListener('click', e => {
+        const b = e.target.closest('[data-more]');
+        if (!b) return;
+        const k = b.dataset.more;
+        if (expanded.has(k)) expanded.delete(k); else expanded.add(k);
+        if (k === 'legends') renderVault(); else if (k === 'cabinet') renderCabinet(); else renderSections();
+        const again = document.querySelector('[data-more="' + CSS.escape(k) + '"]');
+        if (again) again.focus({ preventScroll: true });
+        watchAnimations();
+    });
+
+    function renderSections() {
+        const { list } = lists();
+        const cats = (Array.isArray(data.categories) ? data.categories : []).slice();
+        const known = new Set(cats.map(c => c.key));
+        if (list.some(a => !known.has(a.category))) cats.push({ key: '__other', title: 'Other' });   // nothing goes missing
+        let count = 0;
+        const sections = cats.map(cat => {
+            const all = list.filter(a => cat.key === '__other' ? !known.has(a.category) : a.category === cat.key);
+            const items = all.filter(shown);
+            if (!items.length) return '';
+            count += items.length;
+            const done = all.filter(a => a.unlocked).length;
+            return `
+                <section class="ac-section" aria-label="${esc(cat.title)}">
+                    <div class="ac-cat-head"><h3>${esc(cat.title)}</h3><span>${done} / ${all.length}</span></div>
+                    <div class="ac-grid">${(expanded.has(cat.key) || filter !== 'all' ? items : items.slice(0, SHOW_PER_SECTION)).map(a => { try { return cardHTML(a); } catch (e) { console.error(e); return ''; } }).join('')}</div>
+                    ${filter === 'all' ? moreButton(cat.key, items.length - SHOW_PER_SECTION, expanded.has(cat.key), 'in ' + cat.title) : ''}
+                </section>`;
+        }).join('');
+        el('acSections').innerHTML = sections ||
+            `<div class="ac-card ac-empty">${filter === 'unlocked'
+                ? (data.is_me === false ? 'Nothing unlocked yet.' : 'Nothing unlocked yet. Pass a module or a quiz to earn your first achievement! <a href="/courses">Go to Courses</a>')
+                : 'Nothing to show here.'}</div>`;
+        el('acLive').textContent = `${count} achievement${count === 1 ? '' : 's'} shown.`;
+        watchAnimations();
+    }
+
+    // ---------- run the shine/halo animations only while a card is on screen ----------
+    let io = null;
+    function watchAnimations() {
+        const targets = document.querySelectorAll('.ac-item.badge.unlocked, .lg-card.earned');
+        if (!('IntersectionObserver' in window)) { targets.forEach(t => t.classList.add('in-view')); return; }
+        if (!io) io = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('in-view', e.isIntersecting)), { rootMargin: '50px' });
+        targets.forEach(t => io.observe(t));
+    }
+
+    // ---------- detail window ----------
+    let lastFocus = null;
+    function openDetail(key) {
+        const a = byKey[key];
+        if (!a) return;
+        lastFocus = document.activeElement;
+        const pct = pctOf(a.percent);
+        const go = GO[a.category];
+        const rarity = a.genesis ? 'Every learner has this'
+            : a.holders != null ? (a.holders === 0 ? 'No learner has this yet' : `${fmt(a.holders)} learner${a.holders === 1 ? '' : 's'}${a.rarity != null ? ` (${a.rarity}%)` : ''}`) : '';
+        const reqs = (a.requirements || []).map(r => `<li><span>${esc(r.label)}</span><span>${fmt(r.have)} / ${fmt(r.need)}${r.done ? ' ✓' : ''}</span></li>`).join('');
+        el('acDlgBody').innerHTML = `
+            <div class="ac-icon" style="--c:${hex(a.color, '#4361ee')}" aria-hidden="true"><i class="fas ${icon(a.icon)}"></i></div>
+            <h3 id="acDlgTitle">${esc(a.title)}</h3>
+            <p><strong style="color:${tierText(a.tier) || 'inherit'}">${esc(a.tier_label)}${a.badge ? ' badge' : ''}</strong></p>
+            <p>${esc(a.legendary ? (a.motto || a.description) : a.description)}</p>
+            ${a.unlocked ? '' : `<div class="ac-bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div class="ac-bar-fill" style="width:${pct}%;--c:${hex(a.color, '#4361ee')}"></div></div>`}
+            <ul class="ac-dialog-facts">
+                <li><span>Status</span><span>${a.unlocked ? 'Unlocked' + (a.unlocked_at ? ' ' + esc(fmtDate(a.unlocked_at)) : '') : `${fmt(a.progress)} / ${fmt(a.target)} (${pct}%)`}</span></li>
+                ${rarity ? `<li><span>Who has it</span><span>${rarity}</span></li>` : ''}
+                ${a.legendary && !a.genesis ? '<li><span>Reward</span><span>+500 EP</span></li>' : ''}
+                ${reqs}
+            </ul>
+            ${!a.unlocked && go && data.is_me !== false ? `<a class="ac-dialog-go" href="${go[0]}">${go[1]} <i class="fas fa-arrow-right" aria-hidden="true"></i></a>` : ''}`;
+        el('acModal').hidden = false;
+        document.body.style.overflow = 'hidden';
+        el('acDlgClose').focus();
+    }
+    function closeDetail() {
+        if (el('acModal').hidden) return;
+        el('acModal').hidden = true;
+        document.body.style.overflow = '';
+        if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+    }
+    el('acDlgClose').addEventListener('click', closeDetail);
+    el('acModal').addEventListener('click', e => { if (e.target === el('acModal')) closeDetail(); });
+    document.addEventListener('keydown', e => {
+        if (el('acModal').hidden) return;
+        if (e.key === 'Escape') { e.preventDefault(); closeDetail(); return; }
+        if (e.key === 'Tab') {   // keep Tab inside the window
+            const f = [...el('acModal').querySelectorAll('a[href], button')].filter(x => x.getClientRects().length);
+            if (!f.length) return;
+            const first = f[0], last = f[f.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+    });
+    document.addEventListener('click', e => {
+        const t = e.target.closest('[data-key]');
+        if (t && !t.closest('#acModal')) openDetail(t.dataset.key);
+        if (e.target.closest('[data-retry]')) load();
+    });
+    document.addEventListener('keydown', e => {
+        const t = e.target.closest && e.target.closest('[role="button"][data-key]');
+        if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDetail(t.dataset.key); }
+    });
+
+    // #ach-<key> in the address scrolls to that achievement and highlights it
+    function showHash() {
+        const m = /^#ach-([a-z0-9_]+)$/.exec(location.hash);
+        if (!m || !byKey[m[1]]) return;
+        if (filter !== 'all' && !shown(byKey[m[1]])) setFilter('all');
+        const node = document.querySelector(`[data-key="${m[1]}"]:not(.ac-close-item)`);
+        if (!node) return;
+        node.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        node.classList.remove('ac-flash'); void node.offsetWidth; node.classList.add('ac-flash');
+        node.focus({ preventScroll: true });
+    }
+    window.addEventListener('hashchange', showHash);
+
+    function showError(msg) {
+        el('acSections').innerHTML = `<div class="ac-card ac-empty">${esc(msg)}<br><button type="button" class="ac-retry" data-retry>Try again</button></div>`;
+    }
+
+    async function load() {
+        el('acSections').innerHTML = '<div class="ac-card ac-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Loading achievements…</div>';
+        let res, d;
+        try {
+            const url = '/api/achievements' + (viewUser ? `?user_id=${encodeURIComponent(viewUser)}` : '');
+            res = await fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+        } catch (err) {
+            showError("Couldn't reach Eschool. Check your internet connection.");
+            return;
+        }
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        try { d = await res.json(); } catch (e) { d = null; }
+        if (res.status === 403 && d && d.private) {
+            el('acSections').innerHTML = `<div class="ac-card ac-empty"><i class="fas fa-lock" aria-hidden="true"></i> ${esc(d.message || 'This learner keeps their achievements private.')}</div>`;
+            el('acTitle').textContent = 'Achievements';
+            el('acSubtitle').textContent = 'These achievements are private.';
+            return;
+        }
+        if (!res.ok || !d || !d.success) {
+            showError(d && d.message && res.status < 500 ? d.message : "Couldn't load achievements. Something went wrong on our side.");
+            return;
+        }
+        data = d;
+        byKey = {};
+        (Array.isArray(d.achievements) ? d.achievements : []).forEach(a => { if (a && a.key) byKey[a.key] = a; });
+        if (d.is_me === false) {
+            const name = (d.user && d.user.name) || 'This learner';
+            el('acTitle').textContent = `${name}'s Achievements`;
+            el('acSubtitle').textContent = `See what ${name} has unlocked on Eschool.`;
+        }
+        safely('header', renderHeader);
+        safely('vault', renderVault);
+        safely('closest', renderClosest);
+        safely('cabinet', renderCabinet);
+        safely('sections', renderSections);
+        showHash();
+    }
+
+    function setFilter(f) {
+        filter = f;
+        document.querySelectorAll('#acFilters .ac-chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filter === f)));
+        safely('sections', renderSections);   // the vault, cabinet and header don't change, so they aren't redrawn
+    }
+    el('acFilters').addEventListener('click', e => {
+        const btn = e.target.closest('[data-filter]');
+        if (!btn || btn.dataset.filter === filter || !data) return;
+        setFilter(btn.dataset.filter);
+    });
+
+    // Back: previous Eschool page, or the dashboard if opened directly (this page is for learners only)
+    el('acBack').addEventListener('click', function () {
+        let fromThisSite = false;
+        try {
+            fromThisSite = !!document.referrer &&
+                new URL(document.referrer).origin === window.location.origin &&
+                document.referrer !== window.location.href;
+        } catch (e) { /* bad referrer */ }
+        if (fromThisSite && window.history.length > 1) window.history.back();
+        else window.location.href = '/dashboard';
+    });
+
+    load();
+})();
+</script>
+{% endblock %}

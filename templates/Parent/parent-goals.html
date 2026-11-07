@@ -1,0 +1,963 @@
+{% extends "Parent/parent-body.html" %}
+
+{% block allcontent %}
+{#
+    PARENT PAGE - Goals & rewards  (templates/Parent/parent-goals.html)
+    A parent sets a goal for a child and the reward for reaching it. eSchool
+    measures progress itself from what the child does (see "PARENT: GOALS &
+    REWARDS" in backen.py):
+      GET   /api/parent/goals                      children, every goal, goal types, courses
+      GET   /api/parent/goals/suggestions?child=ID goals worth setting, with the numbers behind them
+      POST  /api/parent/goals                      set a goal
+      PATCH /api/parent/goals/<id>                 change end date, reward or note
+      POST  /api/parent/goals/<id>/cancel          remove a running goal
+      POST  /api/parent/goals/<id>/reward          mark the reward as given (the child is told)
+    The child sees their goals on their dashboard (GET /api/my-goals).
+#}
+<style>
+/* ======================================================================
+   GOALS & REWARDS
+   Scoped to .gr. Own light and dark colours (data-no-theme); the main
+   colour follows Settings > Appearance through --primary-color. No pop-ups.
+   ====================================================================== */
+.gr {
+    --gr-accent: var(--primary-color, #4361ee);
+    --gr-accent-2: var(--secondary-color, #3a0ca3);
+    --gr-accent-dark: var(--primary-dark, #2a44c7);
+    --gr-accent-soft: color-mix(in srgb, var(--gr-accent) 11%, transparent);
+    --gr-accent-line: color-mix(in srgb, var(--gr-accent) 35%, transparent);
+    --gr-accent-text: var(--gr-accent);
+    --gr-surface: #ffffff; --gr-surface-2: #f8fafc; --gr-hover: #f1f5f9;
+    --gr-border: #e5e7eb; --gr-track: #e8edf3;
+    --gr-text: #0f172a; --gr-text-2: #475569; --gr-text-3: #64748b;
+    --gr-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06);
+    --gr-ok: #059669;   --gr-ok-soft: #ecfdf5;
+    --gr-warn: #b45309; --gr-warn-soft: #fffbeb;
+    --gr-bad: #dc2626;  --gr-bad-soft: #fef2f2;
+    --gr-gift: #db2777; --gr-gift-soft: #fdf2f8;
+    --gr-muted-soft: #f1f5f9;
+    --gr-radius: 16px;
+    max-width: 1360px; margin: 0 auto; padding: 6px 0 40px;
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--gr-text);
+}
+body.dark-mode .gr {
+    --gr-accent-soft: color-mix(in srgb, var(--gr-accent) 20%, transparent);
+    --gr-accent-line: color-mix(in srgb, var(--gr-accent) 45%, transparent);
+    --gr-accent-text: color-mix(in srgb, var(--gr-accent) 55%, #ffffff);
+    --gr-surface: #111827; --gr-surface-2: #0f172a; --gr-hover: #1e293b;
+    --gr-border: #263244; --gr-track: #263244;
+    --gr-text: #e5e7eb; --gr-text-2: #cbd5e1; --gr-text-3: #94a3b8;
+    --gr-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25);
+    --gr-ok: #34d399;   --gr-ok-soft: rgba(16, 185, 129, .14);
+    --gr-warn: #fbbf24; --gr-warn-soft: rgba(245, 158, 11, .14);
+    --gr-bad: #f87171;  --gr-bad-soft: rgba(239, 68, 68, .14);
+    --gr-gift: #f472b6; --gr-gift-soft: rgba(236, 72, 153, .14);
+    --gr-muted-soft: #1e293b;
+}
+.gr *, .gr *::before, .gr *::after { box-sizing: border-box; }
+.gr h1, .gr h2, .gr h3, .gr h4, .gr p { margin: 0; }
+.gr button, .gr input, .gr select, .gr textarea { font-family: inherit; }
+.gr :focus-visible { outline: 3px solid var(--gr-accent-line); outline-offset: 2px; }
+.gr [hidden] { display: none !important; }
+
+/* hero */
+.gr-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 22px 26px; margin-bottom: 14px;
+    border-radius: var(--gr-radius); color: #fff; background: linear-gradient(135deg, var(--gr-accent), var(--gr-accent-2)); box-shadow: var(--gr-shadow); }
+.gr-hero::after { content: ""; position: absolute; right: -70px; top: -90px; width: 280px; height: 280px; border-radius: 50%; background: rgba(255, 255, 255, .08); pointer-events: none; }
+.gr-hero-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: rgba(255, 255, 255, .18); border: 1px solid rgba(255, 255, 255, .28); position: relative; z-index: 1; flex-shrink: 0; }
+.gr-hero-text { flex: 1; min-width: 240px; position: relative; z-index: 1; }
+.gr-hero h1 { font-family: 'Poppins', sans-serif; font-size: 1.6rem; font-weight: 700; color: #fff; }
+.gr-hero p { margin-top: 5px; opacity: .93; font-size: .93rem; line-height: 1.55; color: #fff; max-width: 700px; }
+.gr-hero .gr-btn { position: relative; z-index: 1; background: #fff; color: var(--gr-accent); }
+.gr-hero .gr-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .88); color: var(--gr-accent-dark); }
+body.dark-mode .gr-hero .gr-btn { background: rgba(15, 23, 42, .35); color: #fff; border-color: rgba(255, 255, 255, .35); }
+body.dark-mode .gr-hero .gr-btn:hover:not(:disabled) { background: rgba(15, 23, 42, .55); color: #fff; }
+
+/* buttons, notes */
+.gr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 14px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; font-weight: 600; font-size: .85rem; text-decoration: none; line-height: 1.2; transition: background-color .15s, border-color .15s, color .15s; }
+.gr-btn-primary { background: var(--gr-accent); color: #fff; }
+.gr-btn-primary:hover:not(:disabled) { background: var(--gr-accent-dark); color: #fff; }
+.gr-btn-ghost { background: var(--gr-surface); color: var(--gr-text-2); border-color: var(--gr-border); }
+.gr-btn-ghost:hover:not(:disabled) { background: var(--gr-hover); color: var(--gr-text); border-color: var(--gr-accent-line); }
+.gr-btn-danger { background: var(--gr-surface); color: var(--gr-bad); border-color: color-mix(in srgb, var(--gr-bad) 35%, transparent); }
+.gr-btn-danger:hover:not(:disabled) { background: var(--gr-bad-soft); }
+.gr-btn-danger.solid { background: var(--gr-bad); color: #fff; border-color: var(--gr-bad); }
+.gr-btn-gift { background: var(--gr-gift); color: #fff; }
+.gr-btn-gift:hover:not(:disabled) { background: color-mix(in srgb, var(--gr-gift) 85%, #000); color: #fff; }
+.gr-btn-sm { padding: 6px 11px; font-size: .79rem; }
+.gr-btn:disabled { opacity: .55; cursor: default; }
+.gr-note { font-size: .84rem; line-height: 1.45; }
+.gr-note:empty { display: none; }
+.gr-note.ok { color: var(--gr-ok); } .gr-note.bad { color: var(--gr-bad); } .gr-note.info { color: var(--gr-text-2); }
+.gr-status { margin: -4px 0 12px; }
+
+/* banner */
+.gr-banner { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 14px 18px; border-radius: 14px; margin-bottom: 12px; background: var(--gr-surface); border: 1px solid var(--gr-border); border-left: 5px solid var(--gr-gift); box-shadow: var(--gr-shadow); }
+.gr-banner > i { font-size: 1.4rem; color: var(--gr-gift); }
+.gr-banner .txt { flex: 1; min-width: 200px; font-size: .9rem; line-height: 1.5; color: var(--gr-text-2); }
+.gr-banner .txt strong { color: var(--gr-text); }
+
+/* child picker */
+.gr-toolbar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 10px 12px; margin-bottom: 14px; background: var(--gr-surface); border: 1px solid var(--gr-border); border-radius: var(--gr-radius); box-shadow: var(--gr-shadow); }
+.gr-toolbar::-webkit-scrollbar { display: none; }
+.gr-kid { flex-shrink: 0; display: flex; align-items: center; gap: 9px; padding: 5px 14px 5px 5px; border: 1px solid var(--gr-border); background: var(--gr-surface); border-radius: 99px; cursor: pointer; font-size: .88rem; font-weight: 600; color: var(--gr-text-2); text-align: left; }
+.gr-kid small { display: block; font-weight: 500; color: var(--gr-text-3); font-size: .7rem; }
+.gr-kid:hover { background: var(--gr-hover); color: var(--gr-text); }
+.gr-kid[aria-pressed="true"] { background: var(--gr-accent); border-color: var(--gr-accent); color: #fff; }
+.gr-kid[aria-pressed="true"] small { color: rgba(255, 255, 255, .85); }
+.gr-kid .gr-avatar { width: 34px; height: 34px; font-size: .78rem; }
+.gr-kid.all { padding-left: 14px; }
+.gr-avatar { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--gr-accent), var(--gr-accent-2)); color: #fff; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .95rem; }
+.gr-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.gr-avatar.xs { width: 22px; height: 22px; font-size: .6rem; }
+
+/* KPIs */
+.gr-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.gr-kpi { background: var(--gr-surface); border: 1px solid var(--gr-border); border-radius: 14px; box-shadow: var(--gr-shadow); padding: 14px 16px; display: flex; gap: 12px; align-items: center; min-width: 0; }
+.gr-kpi .ic { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--gr-accent-soft); color: var(--gr-accent-text); }
+.gr-kpi .ic.ok { background: var(--gr-ok-soft); color: var(--gr-ok); }
+.gr-kpi .ic.gift { background: var(--gr-gift-soft); color: var(--gr-gift); }
+.gr-kpi .ic.warn { background: var(--gr-warn-soft); color: var(--gr-warn); }
+.gr-kpi > div:last-child { min-width: 0; }
+.gr-kpi b { display: block; font-family: 'Poppins', sans-serif; font-size: 1.35rem; line-height: 1.15; color: var(--gr-text); }
+.gr-kpi span { display: block; font-size: .76rem; line-height: 1.3; color: var(--gr-text-3); }
+
+/* tabs */
+.gr-tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; padding: 4px; border-radius: 14px; background: var(--gr-surface); border: 1px solid var(--gr-border); box-shadow: var(--gr-shadow); }
+.gr-tabs::-webkit-scrollbar { display: none; }
+.gr-tab { flex: 1 1 0; min-width: max-content; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 0; border-radius: 10px; background: transparent; color: var(--gr-text-2); font-weight: 600; font-size: .88rem; cursor: pointer; white-space: nowrap; }
+.gr-tab:hover { background: var(--gr-hover); color: var(--gr-text); }
+.gr-tab[aria-selected="true"] { background: var(--gr-accent); color: #fff; }
+.gr-count { font-size: .7rem; padding: 1px 7px; border-radius: 99px; background: var(--gr-track); color: var(--gr-text-2); }
+.gr-tab[aria-selected="true"] .gr-count { background: rgba(255, 255, 255, .25); color: #fff; }
+.gr-count.gift { background: var(--gr-gift); color: #fff; }
+
+/* cards */
+.gr-card { background: var(--gr-surface); border: 1px solid var(--gr-border); border-radius: var(--gr-radius); box-shadow: var(--gr-shadow); padding: 20px; min-width: 0; }
+.gr-card + .gr-card { margin-top: 14px; }
+.gr-title { display: flex; align-items: center; gap: 10px; font-family: 'Poppins', sans-serif; font-size: 1.04rem; font-weight: 600; color: var(--gr-text); margin-bottom: 4px; flex-wrap: wrap; }
+.gr-title .ic { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--gr-accent-soft); color: var(--gr-accent-text); font-size: .85rem; }
+.gr-title .right { margin-left: auto; font-size: .8rem; font-weight: 500; font-family: 'Inter', sans-serif; color: var(--gr-text-3); }
+.gr-sub { font-size: .84rem; color: var(--gr-text-3); line-height: 1.5; margin-bottom: 14px; }
+.gr-empty { text-align: center; padding: 28px 14px; color: var(--gr-text-3); font-size: .9rem; }
+.gr-empty > i { display: block; font-size: 2rem; opacity: .5; margin-bottom: 10px; }
+.gr-empty h3 { font-family: 'Poppins', sans-serif; font-size: 1.05rem; color: var(--gr-text); margin-bottom: 6px; }
+.gr-empty p { max-width: 480px; margin: 0 auto 12px; line-height: 1.6; }
+.gr-loading { padding: 40px; text-align: center; color: var(--gr-text-3); }
+
+/* goal list */
+.gr-goals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.gr-goal { background: var(--gr-surface); border: 1px solid var(--gr-border); border-radius: var(--gr-radius); box-shadow: var(--gr-shadow); padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.gr-goal.achieved { border-color: color-mix(in srgb, var(--gr-gift) 45%, var(--gr-border)); }
+.gr-goal-top { display: flex; gap: 12px; align-items: flex-start; }
+.gr-goal-ic { width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--gr-accent-soft); color: var(--gr-accent-text); font-size: 1.05rem; }
+.gr-goal.achieved .gr-goal-ic, .gr-goal.rewarded .gr-goal-ic { background: var(--gr-ok-soft); color: var(--gr-ok); }
+.gr-goal.missed .gr-goal-ic { background: var(--gr-warn-soft); color: var(--gr-warn); }
+.gr-goal.cancelled .gr-goal-ic { background: var(--gr-muted-soft); color: var(--gr-text-3); }
+.gr-goal-head { flex: 1; min-width: 0; }
+.gr-goal-head h3 { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 600; color: var(--gr-text); line-height: 1.35; }
+.gr-goal-meta { display: flex; gap: 6px 10px; flex-wrap: wrap; align-items: center; margin-top: 4px; font-size: .78rem; color: var(--gr-text-3); }
+.gr-who { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--gr-text-2); }
+.gr-pill { display: inline-flex; align-items: center; gap: 5px; font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; }
+.gr-pill.active { background: var(--gr-accent-soft); color: var(--gr-accent-text); }
+.gr-pill.achieved { background: var(--gr-gift-soft); color: var(--gr-gift); }
+.gr-pill.rewarded { background: var(--gr-ok-soft); color: var(--gr-ok); }
+.gr-pill.missed { background: var(--gr-warn-soft); color: var(--gr-warn); }
+.gr-pill.cancelled { background: var(--gr-muted-soft); color: var(--gr-text-3); }
+.gr-pill.late { background: var(--gr-bad-soft); color: var(--gr-bad); }
+.gr-prog { display: flex; flex-direction: column; gap: 6px; }
+.gr-prog-row { display: flex; justify-content: space-between; gap: 10px; font-size: .84rem; color: var(--gr-text-2); }
+.gr-prog-row b { color: var(--gr-text); font-family: 'Poppins', sans-serif; }
+.gr-bar { height: 10px; border-radius: 99px; background: var(--gr-track); overflow: hidden; position: relative; }
+.gr-bar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--gr-accent), var(--gr-accent-2)); transition: width .5s ease; }
+.gr-bar > i.ok { background: var(--gr-ok); } .gr-bar > i.warn { background: var(--gr-warn); } .gr-bar > i.muted { background: var(--gr-text-3); opacity: .5; }
+.gr-bar .time { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--gr-text-2); opacity: .55; border-radius: 2px; }
+.gr-prog-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: .76rem; color: var(--gr-text-3); }
+.gr-pace { font-weight: 600; }
+.gr-pace.ok { color: var(--gr-ok); } .gr-pace.warn { color: var(--gr-warn); } .gr-pace.bad { color: var(--gr-bad); }
+.gr-reward { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--gr-gift-soft); color: var(--gr-text-2); font-size: .85rem; line-height: 1.45; }
+.gr-reward > i { color: var(--gr-gift); margin-top: 3px; }
+.gr-reward b { color: var(--gr-text); }
+.gr-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.gr-chip { display: inline-flex; align-items: center; gap: 5px; font-size: .74rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--gr-surface); border: 1px solid var(--gr-border); color: var(--gr-text-2); }
+.gr-quote { font-size: .83rem; color: var(--gr-text-2); line-height: 1.5; padding-left: 10px; border-left: 3px solid var(--gr-border); }
+.gr-goal-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
+.gr-goal-acts .gr-btn-primary, .gr-goal-acts .gr-btn-gift { margin-left: auto; }
+
+/* section header inside a tab */
+.gr-sec { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; }
+.gr-sec h2 { font-family: 'Poppins', sans-serif; font-size: 1.05rem; color: var(--gr-text); }
+.gr-sec p { font-size: .82rem; color: var(--gr-text-3); flex-basis: 100%; }
+.gr-sec .gr-filters { margin-left: auto; }
+.gr-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.gr-fchip { border: 1px solid var(--gr-border); background: var(--gr-surface); color: var(--gr-text-2); padding: 6px 12px; border-radius: 99px; font-size: .8rem; font-weight: 600; cursor: pointer; }
+.gr-fchip:hover { background: var(--gr-hover); color: var(--gr-text); }
+.gr-fchip[aria-pressed="true"] { background: var(--gr-accent-soft); border-color: var(--gr-accent-line); color: var(--gr-accent-text); }
+
+/* suggestions */
+.gr-sugs { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.gr-sug { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; border: 1px dashed var(--gr-accent-line); background: var(--gr-surface-2); }
+.gr-sug h4 { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--gr-text); font-family: 'Poppins', sans-serif; font-weight: 600; }
+.gr-sug h4 i { color: var(--gr-accent-text); }
+.gr-sug p { font-size: .8rem; color: var(--gr-text-3); line-height: 1.5; flex: 1; }
+.gr-sug .gr-btn { align-self: flex-start; }
+
+/* history table */
+.gr-table-wrap { overflow-x: auto; border: 1px solid var(--gr-border); border-radius: 12px; }
+.gr-table { width: 100%; border-collapse: collapse; font-size: .85rem; min-width: 720px; }
+.gr-table th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--gr-text-3); font-weight: 700; padding: 10px 12px; background: var(--gr-surface-2); border-bottom: 1px solid var(--gr-border); }
+.gr-table td { padding: 11px 12px; border-bottom: 1px solid var(--gr-border); color: var(--gr-text-2); vertical-align: middle; }
+.gr-table tr:last-child td { border-bottom: 0; }
+.gr-table tr:hover td { background: var(--gr-hover); }
+.gr-table td b { color: var(--gr-text); font-weight: 600; }
+.gr-table .sm { display: block; font-size: .74rem; color: var(--gr-text-3); }
+
+/* insights */
+.gr-ins { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.gr-ring { width: 92px; height: 92px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    background: conic-gradient(var(--gr-accent) calc(var(--p) * 1%), var(--gr-track) 0); }
+.gr-ring span { width: 70px; height: 70px; border-radius: 50%; background: var(--gr-surface); display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.1rem; color: var(--gr-text); line-height: 1.1; }
+.gr-ring span small { font-family: 'Inter', sans-serif; font-weight: 500; font-size: .62rem; color: var(--gr-text-3); }
+.gr-ins-top { display: flex; gap: 16px; align-items: center; margin-bottom: 14px; }
+.gr-ins-top .gr-mini { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; font-size: .84rem; color: var(--gr-text-2); flex: 1; }
+.gr-ins-top .gr-mini b { color: var(--gr-text); }
+.gr-hbars { display: flex; flex-direction: column; gap: 9px; }
+.gr-hbar { display: grid; grid-template-columns: 170px minmax(0, 1fr) 70px; gap: 10px; align-items: center; font-size: .82rem; color: var(--gr-text-2); }
+.gr-hbar .gr-bar { height: 8px; }
+.gr-hbar .v { text-align: right; color: var(--gr-text-3); font-size: .78rem; }
+.gr-tip { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; background: var(--gr-accent-soft); font-size: .84rem; line-height: 1.5; color: var(--gr-text-2); margin-top: 12px; }
+.gr-tip i { color: var(--gr-accent-text); margin-top: 3px; }
+.gr-howto { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.gr-step { padding: 14px; border-radius: 12px; background: var(--gr-surface-2); border: 1px solid var(--gr-border); font-size: .83rem; color: var(--gr-text-2); line-height: 1.5; }
+.gr-step b { display: flex; align-items: center; gap: 8px; color: var(--gr-text); margin-bottom: 4px; font-size: .88rem; }
+.gr-step b span { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--gr-accent); color: #fff; font-size: .74rem; }
+
+/* dialogs */
+.gr-modal { position: fixed; inset: 0; z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, .55); }
+.gr-modal.open { display: flex; }
+.gr-dialog { width: min(480px, 100%); max-height: calc(100vh - 40px); overflow: auto; border-radius: 18px; background: var(--gr-surface); color: var(--gr-text); border: 1px solid var(--gr-border); box-shadow: 0 24px 60px rgba(0, 0, 0, .3); animation: grIn .18s ease-out; }
+.gr-dialog.lg { width: min(760px, 100%); }
+@keyframes grIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.gr-dhead { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: var(--gr-surface); border-bottom: 1px solid var(--gr-border); }
+.gr-dhead h2 { font-family: 'Poppins', sans-serif; font-size: 1.08rem; color: var(--gr-text); }
+.gr-dhead p { font-size: .8rem; color: var(--gr-text-3); margin-top: 2px; }
+.gr-x { margin-left: auto; width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--gr-border); background: var(--gr-surface); color: var(--gr-text-2); cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.gr-x:hover { background: var(--gr-hover); color: var(--gr-text); }
+.gr-dbody { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+.gr-dfoot { position: sticky; bottom: 0; display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap; padding: 14px 20px; background: var(--gr-surface); border-top: 1px solid var(--gr-border); }
+.gr-dfoot .gr-note { margin-right: auto; flex: 1 1 200px; }
+.gr-field { display: flex; flex-direction: column; gap: 7px; }
+.gr-field > label, .gr-field > .lbl { font-size: .82rem; font-weight: 700; color: var(--gr-text); }
+.gr-field .hint { font-size: .76rem; color: var(--gr-text-3); line-height: 1.45; }
+.gr-input, .gr-select, .gr-textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--gr-border); background: var(--gr-surface); color: var(--gr-text); font-size: .9rem; }
+.gr-input:focus, .gr-select:focus, .gr-textarea:focus { outline: none; border-color: var(--gr-accent); box-shadow: 0 0 0 3px var(--gr-accent-soft); }
+.gr-textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+.gr-row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.gr-unit { display: flex; align-items: center; gap: 8px; }
+.gr-unit .gr-input { max-width: 140px; }
+.gr-unit span { font-size: .85rem; color: var(--gr-text-3); }
+.gr-types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.gr-type { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 11px 12px; border: 2px solid var(--gr-border); border-radius: 12px; background: var(--gr-surface); cursor: pointer; color: var(--gr-text-2); font-size: .82rem; }
+.gr-type i { width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--gr-accent-soft); color: var(--gr-accent-text); font-size: .85rem; }
+.gr-type b { display: block; color: var(--gr-text); font-size: .84rem; line-height: 1.3; }
+.gr-type:hover { background: var(--gr-hover); }
+.gr-type[aria-checked="true"] { border-color: var(--gr-accent); background: var(--gr-accent-soft); }
+.gr-type[aria-checked="true"] i { background: var(--gr-accent); color: #fff; }
+.gr-seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.gr-seg button { border: 1px solid var(--gr-border); background: var(--gr-surface); color: var(--gr-text-2); padding: 8px 12px; border-radius: 10px; font-size: .82rem; font-weight: 600; cursor: pointer; }
+.gr-seg button:hover { background: var(--gr-hover); color: var(--gr-text); }
+.gr-seg button[aria-checked="true"] { background: var(--gr-accent); border-color: var(--gr-accent); color: #fff; }
+.gr-seg button small { display: block; font-weight: 500; font-size: .7rem; opacity: .85; }
+.gr-ideas { display: flex; gap: 6px; flex-wrap: wrap; }
+.gr-idea { border: 1px dashed var(--gr-border); background: transparent; color: var(--gr-text-2); padding: 5px 10px; border-radius: 99px; font-size: .76rem; cursor: pointer; }
+.gr-idea:hover { border-color: var(--gr-gift); color: var(--gr-gift); background: var(--gr-gift-soft); }
+.gr-preview { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: var(--gr-surface-2); border: 1px solid var(--gr-border); font-size: .85rem; line-height: 1.5; color: var(--gr-text-2); }
+.gr-preview i { color: var(--gr-accent-text); margin-top: 3px; }
+.gr-preview b { color: var(--gr-text); }
+.gr-locked { padding: 12px 14px; border-radius: 12px; background: var(--gr-surface-2); border: 1px solid var(--gr-border); display: flex; gap: 12px; align-items: center; font-size: .86rem; color: var(--gr-text-2); }
+.gr-locked b { display: block; color: var(--gr-text); }
+body.gr-lock { overflow: hidden; }
+
+@media (max-width: 1200px) { .gr-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .gr-goals, .gr-ins { grid-template-columns: minmax(0, 1fr); } .gr-howto { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .gr-types { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+    .gr-hero { padding: 18px; }
+    .gr-hero h1 { font-size: 1.3rem; }
+    .gr-hero-icon { width: 46px; height: 46px; font-size: 1.15rem; }
+    .gr-hero .gr-btn { width: 100%; }
+    .gr-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .gr-kpi { padding: 12px; }
+    .gr-kpi .ic { width: 34px; height: 34px; }
+    .gr-card, .gr-goal { padding: 15px; }
+    .gr-row2, .gr-howto { grid-template-columns: minmax(0, 1fr); }
+    .gr-types { grid-template-columns: minmax(0, 1fr); }
+    .gr-hbar { grid-template-columns: 110px minmax(0, 1fr) 54px; }
+    .gr-goal-acts .gr-btn { flex: 1; }
+    .gr-goal-acts .gr-btn-primary, .gr-goal-acts .gr-btn-gift { margin-left: 0; flex-basis: 100%; }
+    .gr-modal { padding: 0; align-items: flex-end; }
+    .gr-dialog, .gr-dialog.lg { width: 100%; max-height: 94vh; border-radius: 18px 18px 0 0; }
+    .gr-sec .gr-filters { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .gr *, .gr *::before, .gr *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="gr" data-no-theme>
+    <header class="gr-hero">
+        <div class="gr-hero-icon" aria-hidden="true"><i class="fas fa-trophy"></i></div>
+        <div class="gr-hero-text">
+            <h1>Goals &amp; rewards</h1>
+            <p>Set a goal for your child and the reward for reaching it. eSchool tracks the progress itself from their tests, quizzes, streaks and time on eSchool, tells your child how they're doing, and lets you know the moment the goal is reached.</p>
+        </div>
+        <button type="button" class="gr-btn" id="grNewTop"><i class="fas fa-plus"></i> Set a goal</button>
+    </header>
+
+    <div id="grBanner"></div>
+    <div class="gr-toolbar" id="grKids" role="group" aria-label="Choose a child" hidden></div>
+    <div class="gr-note gr-status" id="grStatus" role="status" aria-live="polite"></div>
+    <div id="grContent"><div class="gr-loading">Loading goals...</div></div>
+
+    <!-- set / edit a goal -->
+    <div class="gr-modal" id="goalModal" aria-hidden="true">
+        <div class="gr-dialog lg" role="dialog" aria-modal="true" aria-labelledby="goalTitle">
+            <div class="gr-dhead">
+                <div><h2 id="goalTitle">Set a goal</h2><p id="goalSub">Your child is told straight away and sees it on their dashboard.</p></div>
+                <button type="button" class="gr-x" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>
+            </div>
+            <form class="gr-dbody" id="goalForm" novalidate>
+                <div id="gfLocked" hidden></div>
+                <div class="gr-field" id="gfChildWrap">
+                    <span class="lbl" id="gfChildLbl">For</span>
+                    <div class="gr-seg" id="gfChild" role="radiogroup" aria-labelledby="gfChildLbl"></div>
+                </div>
+                <div class="gr-field" id="gfTypeWrap">
+                    <span class="lbl" id="gfTypeLbl">What is the goal?</span>
+                    <div class="gr-types" id="gfTypes" role="radiogroup" aria-labelledby="gfTypeLbl"></div>
+                </div>
+                <div class="gr-row2" id="gfTargetRow">
+                    <div class="gr-field" id="gfTargetWrap">
+                        <label for="gfTarget" id="gfTargetLbl">Target</label>
+                        <div class="gr-unit"><input type="number" class="gr-input" id="gfTarget" inputmode="numeric"><span id="gfUnit"></span></div>
+                        <span class="hint" id="gfTargetHint"></span>
+                    </div>
+                    <div class="gr-field" id="gfCourseWrap">
+                        <label for="gfCourse">Course</label>
+                        <select class="gr-select" id="gfCourse"></select>
+                        <span class="hint" id="gfCourseHint"></span>
+                    </div>
+                </div>
+                <div class="gr-field">
+                    <span class="lbl" id="gfDueLbl">By when?</span>
+                    <div class="gr-seg" id="gfPeriods" role="radiogroup" aria-labelledby="gfDueLbl"></div>
+                    <div class="gr-unit" id="gfDueRow"><input type="date" class="gr-input" id="gfDue" aria-label="End date"><span id="gfDueHint"></span></div>
+                </div>
+                <div class="gr-field">
+                    <label for="gfReward">Reward</label>
+                    <input type="text" class="gr-input" id="gfReward" maxlength="120" placeholder="e.g. Movie night on Saturday" autocomplete="off">
+                    <div class="gr-ideas" id="gfIdeas"></div>
+                    <span class="hint">What you'll give your child when they reach the goal. Pick an idea or write your own.</span>
+                </div>
+                <div class="gr-field">
+                    <label for="gfNote">Message to your child <span style="font-weight:500;color:var(--gr-text-3)">(optional)</span></label>
+                    <textarea class="gr-textarea" id="gfNote" maxlength="300" placeholder="e.g. I know you can do this. Ask me if you get stuck."></textarea>
+                </div>
+                <div class="gr-preview" id="gfPreview" aria-live="polite"></div>
+            </form>
+            <div class="gr-dfoot">
+                <div class="gr-note" id="goalNote" role="status" aria-live="polite"></div>
+                <button type="button" class="gr-btn gr-btn-ghost" data-close>Cancel</button>
+                <button type="button" class="gr-btn gr-btn-primary" id="goalSave"><i class="fas fa-check"></i> <span>Set goal</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- give a reward -->
+    <div class="gr-modal" id="rewardModal" aria-hidden="true">
+        <div class="gr-dialog" role="dialog" aria-modal="true" aria-labelledby="rewardTitle">
+            <div class="gr-dhead">
+                <div><h2 id="rewardTitle">Give the reward</h2><p id="rewardSub"></p></div>
+                <button type="button" class="gr-x" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="gr-dbody">
+                <div id="rewardWhat"></div>
+                <div class="gr-field">
+                    <label for="rewardMsg">A message with it <span style="font-weight:500;color:var(--gr-text-3)">(optional)</span></label>
+                    <textarea class="gr-textarea" id="rewardMsg" maxlength="300" placeholder="e.g. So proud of you! Movie night is on Saturday."></textarea>
+                </div>
+            </div>
+            <div class="gr-dfoot">
+                <div class="gr-note" id="rewardNote" role="status" aria-live="polite"></div>
+                <button type="button" class="gr-btn gr-btn-ghost" data-close>Not yet</button>
+                <button type="button" class="gr-btn gr-btn-gift" id="rewardSave"><i class="fas fa-gift"></i> Mark as given</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- remove a goal -->
+    <div class="gr-modal" id="removeModal" aria-hidden="true">
+        <div class="gr-dialog" role="dialog" aria-modal="true" aria-labelledby="removeTitle">
+            <div class="gr-dhead">
+                <div><h2 id="removeTitle">Remove this goal?</h2><p id="removeSub"></p></div>
+                <button type="button" class="gr-x" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="gr-dbody"><p class="gr-sub" style="margin:0" id="removeText"></p></div>
+            <div class="gr-dfoot">
+                <div class="gr-note" id="removeNote" role="status" aria-live="polite"></div>
+                <button type="button" class="gr-btn gr-btn-ghost" data-close>Keep it</button>
+                <button type="button" class="gr-btn gr-btn-danger solid" id="removeSave"><i class="fas fa-trash"></i> Remove goal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var S = { children: [], goals: [], types: [], courses: [], ideas: [], limits: {}, today: '', weekEnd: '',
+              kid: 'all', tab: 'running', hist: 'all', sugs: {}, form: null, editing: null, rewarding: null, removing: null };
+    var TABS = [['running', 'fa-person-running', 'Running'], ['reward', 'fa-gift', 'To reward'], ['history', 'fa-clock-rotate-left', 'History'], ['insights', 'fa-chart-pie', 'Insights']];
+    var STATUS = { active: 'Running', achieved: 'Reached', rewarded: 'Rewarded', missed: 'Missed', cancelled: 'Removed' };
+    var STATUS_IC = { active: 'fa-person-running', achieved: 'fa-trophy', rewarded: 'fa-gift', missed: 'fa-flag', cancelled: 'fa-ban' };
+
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function say(msg, type, el) {
+        el = el || $('grStatus');
+        el.className = 'gr-note ' + (el === $('grStatus') ? 'gr-status ' : '') + (type || 'info');
+        el.textContent = msg || '';
+        if (msg && el === $('grStatus')) setTimeout(function () { if (el.textContent === msg) el.textContent = ''; }, 8000);
+    }
+    function avatar(name, url, cls) { return '<div class="gr-avatar ' + (cls || '') + '">' + (url ? '<img src="' + esc(url) + '" alt="">' : esc(String(name || '?').split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase())) + '</div>'; }
+    function pDate(s) { var p = String(s || '').split('-'); return new Date(+p[0], (+p[1] || 1) - 1, +p[2] || 1); }
+    function fDate(s, withYear) { if (!s) return ''; var d = pDate(s); return d.toLocaleDateString('en-GB', withYear ? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'short' }); }
+    function fIso(iso) { if (!iso) return ''; var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+    function addDays(s, n) { var d = pDate(s); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function daysBetween(a, b) { return Math.round((pDate(b) - pDate(a)) / 86400000); }
+    function kidById(id) { return S.children.filter(function (c) { return c.id === id; })[0]; }
+    function typeByKey(k) { return S.types.filter(function (t) { return t.key === k; })[0] || {}; }
+    function courseName(k) { var c = S.courses.filter(function (x) { return x.key === k; })[0]; return c ? c.name : ''; }
+    function plural(n, w, ws) { return n + ' ' + (n === 1 ? w : (ws || w + 's')); }
+    function empty(icon, title, text, extra) { return '<div class="gr-empty"><i class="fas ' + icon + '"></i><h3>' + esc(title) + '</h3><p>' + esc(text) + '</p>' + (extra || '') + '</div>'; }
+    async function api(url, opt) {
+        var r = await fetch(url, Object.assign({ credentials: 'same-origin' }, opt || {}));
+        if (r.status === 401) { location.href = '/Login'; throw new Error('Please sign in again.'); }
+        var d = null; try { d = await r.json(); } catch (e) { /* none */ }
+        if (!r.ok || (d && d.success === false)) throw new Error((d && d.message) || ('Something went wrong (' + r.status + ').'));
+        return d || {};
+    }
+    function send(url, method, body) { return api(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }); }
+
+    /* ---------- dialogs ---------- */
+    var openM = null, lastF = null;
+    function show(id, focusSel) {
+        lastF = document.activeElement; openM = $(id);
+        openM.classList.add('open'); openM.setAttribute('aria-hidden', 'false'); document.body.classList.add('gr-lock');
+        setTimeout(function () { var f = openM.querySelector(focusSel || 'textarea, input, button:not([data-close])'); if (f) f.focus(); }, 30);
+    }
+    function hide() {
+        if (!openM) return;
+        openM.classList.remove('open'); openM.setAttribute('aria-hidden', 'true'); document.body.classList.remove('gr-lock');
+        openM = null; if (lastF && lastF.focus && document.contains(lastF)) lastF.focus();
+    }
+    document.querySelectorAll('.gr-modal').forEach(function (m) { m.addEventListener('click', function (e) { if (e.target === m || e.target.closest('[data-close]')) hide(); }); });
+    document.addEventListener('keydown', function (e) {
+        if (!openM) return;
+        if (e.key === 'Escape') { hide(); return; }
+        if (e.key !== 'Tab') return;
+        var f = Array.prototype.filter.call(openM.querySelectorAll('button, input, select, textarea, a[href]'), function (el) { return !el.disabled && el.offsetParent !== null; });
+        if (!f.length) return;
+        if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    });
+
+    /* ---------- load ---------- */
+    async function load(quiet) {
+        try {
+            var d = await api('/api/parent/goals');
+            S.children = d.children || []; S.goals = d.goals || []; S.types = d.types || []; S.courses = d.courses || [];
+            S.ideas = d.reward_ideas || []; S.limits = d.limits || {};
+            S.today = d.today; S.weekEnd = d.week_end;
+        } catch (e) {
+            if (!quiet) $('grContent').innerHTML = '<div class="gr-card">' + empty('fa-triangle-exclamation', "Couldn't load goals", e.message, '<button type="button" class="gr-btn gr-btn-primary" id="grRetry"><i class="fas fa-rotate"></i> Try again</button>') + '</div>';
+            var b = $('grRetry'); if (b) b.addEventListener('click', function () { load(); });
+            return;
+        }
+        if (S.kid !== 'all' && !kidById(S.kid)) S.kid = 'all';
+        render();
+    }
+
+    function visible() { return S.goals.filter(function (g) { return S.kid === 'all' || g.child_id === S.kid; }); }
+
+    function render() {
+        $('grNewTop').hidden = !S.children.length;
+        if (!S.children.length) {
+            $('grKids').hidden = true; $('grBanner').innerHTML = '';
+            $('grContent').innerHTML = '<div class="gr-card">' + empty('fa-user-plus', 'Link a child first', "Goals are set for a linked child. Link your child's account and come back to set their first goal.", '<a class="gr-btn gr-btn-primary" href="/parent-link"><i class="fas fa-link"></i> Link a child</a>') + '</div>';
+            return;
+        }
+        renderKids(); renderBanner();
+        var list = visible();
+        var by = function (s) { return list.filter(function (g) { return g.status === s; }); };
+        var running = by('active'), toReward = by('achieved');
+        var hist = list.filter(function (g) { return ['rewarded', 'missed', 'cancelled'].indexOf(g.status) > -1; });
+        var reached = toReward.length + by('rewarded').length, missed = by('missed').length;
+        var rate = (reached + missed) ? Math.round(reached / (reached + missed) * 100) : null;
+        var kpis = [
+            ['fa-person-running', '', running.length, 'Running now'],
+            ['fa-trophy', 'gift', toReward.length, 'To reward'],
+            ['fa-gift', 'ok', by('rewarded').length, 'Rewards given'],
+            ['fa-bullseye', '', rate === null ? '-' : rate + '%', 'Goals reached'],
+            ['fa-flag', 'warn', missed, 'Missed'],
+            ['fa-list-check', '', list.length, 'Goals set in total']
+        ];
+        var counts = { running: running.length, reward: toReward.length, history: hist.length };
+        var html = '<div class="gr-kpis">' + kpis.map(function (k) { return '<div class="gr-kpi"><div class="ic ' + k[1] + '"><i class="fas ' + k[0] + '"></i></div><div><b>' + esc(k[2]) + '</b><span>' + esc(k[3]) + '</span></div></div>'; }).join('') + '</div>';
+        html += '<div class="gr-tabs" role="tablist" aria-label="Goals">' + TABS.map(function (t) {
+            var c = counts[t[0]];
+            return '<button type="button" class="gr-tab" role="tab" id="tab-' + t[0] + '" aria-controls="panel" aria-selected="' + (S.tab === t[0]) + '" tabindex="' + (S.tab === t[0] ? 0 : -1) + '" data-tab="' + t[0] + '"><i class="fas ' + t[1] + '"></i> ' + t[2] +
+                (c !== undefined ? ' <span class="gr-count' + (t[0] === 'reward' && c ? ' gift' : '') + '">' + c + '</span>' : '') + '</button>';
+        }).join('') + '</div>';
+        html += '<div id="panel" role="tabpanel" aria-labelledby="tab-' + S.tab + '">';
+        if (S.tab === 'running') html += panelRunning(running);
+        else if (S.tab === 'reward') html += panelReward(toReward);
+        else if (S.tab === 'history') html += panelHistory(hist);
+        else html += panelInsights(list);
+        html += '</div>';
+        $('grContent').innerHTML = html;
+        if (S.tab === 'running') loadSuggestions();
+    }
+
+    function renderKids() {
+        var bar = $('grKids');
+        bar.hidden = false;
+        var waitingAll = S.goals.filter(function (g) { return g.status === 'achieved'; }).length;
+        var h = '';
+        if (S.children.length > 1) {
+            h += '<button type="button" class="gr-kid all" data-kid="all" aria-pressed="' + (S.kid === 'all') + '"><span>All children<small>' + plural(S.goals.filter(function (g) { return g.status === 'active'; }).length, 'goal') + ' running' + (waitingAll ? ' · ' + waitingAll + ' to reward' : '') + '</small></span></button>';
+        }
+        h += S.children.map(function (c) {
+            var st = c.stats || {};
+            var on = S.kid === c.id || (S.children.length === 1);
+            return '<button type="button" class="gr-kid" data-kid="' + c.id + '" aria-pressed="' + on + '">' + avatar(c.name, c.avatar_url) +
+                '<span>' + esc(c.name) + '<small>' + plural(st.active || 0, 'goal') + ' running' + (st.waiting ? ' · ' + st.waiting + ' to reward' : '') + '</small></span></button>';
+        }).join('');
+        bar.innerHTML = h;
+        if (S.children.length === 1) S.kid = S.children[0].id;
+    }
+
+    function renderBanner() {
+        var waiting = visible().filter(function (g) { return g.status === 'achieved'; });
+        if (!waiting.length || S.tab === 'reward') { $('grBanner').innerHTML = ''; return; }
+        var names = Array.from(new Set(waiting.map(function (g) { return (kidById(g.child_id) || {}).first_name; }))).filter(Boolean);
+        $('grBanner').innerHTML = '<div class="gr-banner" role="status"><i class="fas fa-gift"></i><div class="txt"><strong>' + plural(waiting.length, 'reward') + ' to give.</strong> ' +
+            esc(names.join(' and ')) + ' reached ' + (waiting.length === 1 ? 'a goal' : 'goals') + '. Give the reward, then mark it as given so they know you saw it.</div>' +
+            '<button type="button" class="gr-btn gr-btn-gift gr-btn-sm" data-go="reward"><i class="fas fa-arrow-right"></i> See rewards</button></div>';
+    }
+
+    /* ---------- one goal ---------- */
+    function pace(g) {
+        if (g.status !== 'active') return null;
+        if (['quiz_streak', 'rank', 'course', 'score'].indexOf(g.type) > -1) return null;   // these aren't counted up day by day
+        var passed = Math.min(g.days_total, g.days_total - g.days_left - 1);   // whole days already over
+        if (passed <= 0) return null;                                          // too early to judge
+        var expected = Math.round(passed / g.days_total * 100);
+        if (g.pct >= expected) return ['ok', 'On track'];
+        if (g.pct >= expected - 20) return ['warn', 'A little behind'];
+        return ['bad', 'Behind'];
+    }
+    function dueText(g) {
+        if (g.status === 'active') {
+            if (g.days_left < 0) return 'Ended';
+            if (g.days_left === 0) return 'Ends today';
+            if (g.days_left === 1) return 'Ends tomorrow';
+            return g.days_left + ' days left';
+        }
+        if (g.status === 'achieved' || g.status === 'rewarded') return 'Reached ' + fIso(g.achieved_at);
+        if (g.status === 'missed') return 'Ended ' + fDate(g.due_day, true);
+        return 'Removed ' + fIso(g.cancelled_at);
+    }
+    function goalCard(g) {
+        var kid = kidById(g.child_id) || { name: 'Child' };
+        var bar = g.status === 'active' ? '' : g.status === 'missed' ? 'warn' : g.status === 'cancelled' ? 'muted' : 'ok';
+        var timePct = g.status === 'active' ? Math.min(100, Math.max(0, Math.round((g.days_total - Math.max(0, g.days_left) - 0) / g.days_total * 100))) : null;
+        var p = pace(g);
+        var late = g.status === 'active' && g.days_left <= 1;
+        var h = '<article class="gr-goal ' + g.status + '" data-id="' + g.id + '">';
+        h += '<div class="gr-goal-top"><div class="gr-goal-ic"><i class="fas ' + esc(g.icon) + '"></i></div><div class="gr-goal-head"><h3>' + esc(g.title) + '</h3>' +
+            '<div class="gr-goal-meta"><span class="gr-who">' + avatar(kid.name, kid.avatar_url, 'xs') + esc(kid.first_name || kid.name) + '</span><span>' + esc(g.type_label) + '</span><span>Set by ' + (g.set_by.you ? 'you' : esc(g.set_by.name)) + '</span></div></div>' +
+            '<span class="gr-pill ' + (late && g.status === 'active' ? 'late' : g.status) + '"><i class="fas ' + STATUS_IC[g.status] + '"></i> ' + (late ? dueText(g) : STATUS[g.status]) + '</span></div>';
+        h += '<div class="gr-prog"><div class="gr-prog-row"><span>' + esc(g.progress_text || 'Not started') + '</span><b>' + g.pct + '%</b></div>' +
+            '<div class="gr-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + g.pct + '" aria-label="Progress"><i class="' + bar + '" style="width:' + g.pct + '%"></i>' +
+            (timePct !== null && timePct > 0 && timePct < 100 ? '<span class="time" style="left:' + timePct + '%" aria-hidden="true"></span>' : '') + '</div>' +
+            '<div class="gr-prog-foot"><span>' + fDate(g.start_day) + ' → ' + fDate(g.due_day) + ' · ' + esc(dueText(g)) + '</span>' + (p ? '<span class="gr-pace ' + p[0] + '">' + p[1] + '</span>' : '') + '</div></div>';
+        h += '<div class="gr-reward"><i class="fas fa-gift"></i><div><b>' + (g.reward ? esc(g.reward) : 'Reward') + '</b>' +
+            (g.status === 'rewarded' ? '<div style="margin-top:4px;font-size:.78rem">Given ' + esc(fIso(g.rewarded_at)) + (g.rewarded_by ? ' by ' + esc(g.rewarded_by) : '') + '</div>' : '') + '</div></div>';
+        if (g.note) h += '<div class="gr-quote"><i class="fas fa-quote-left" style="opacity:.5"></i> ' + esc(g.note) + '</div>';
+        if (g.reward_message) h += '<div class="gr-quote"><i class="fas fa-heart" style="color:var(--gr-gift)"></i> ' + esc(g.reward_message) + '</div>';
+        h += '<div class="gr-goal-acts">';
+        if (g.status === 'active') h += '<button type="button" class="gr-btn gr-btn-ghost gr-btn-sm" data-act="edit"><i class="fas fa-pen"></i> Change</button><button type="button" class="gr-btn gr-btn-danger gr-btn-sm" data-act="remove"><i class="fas fa-trash"></i> Remove</button>';
+        if (g.status === 'achieved') h += '<button type="button" class="gr-btn gr-btn-ghost gr-btn-sm" data-act="edit"><i class="fas fa-pen"></i> Change reward</button><button type="button" class="gr-btn gr-btn-gift gr-btn-sm" data-act="reward"><i class="fas fa-gift"></i> Give reward</button>';
+        if (g.status === 'missed' || g.status === 'cancelled') h += '<button type="button" class="gr-btn gr-btn-primary gr-btn-sm" data-act="retry"><i class="fas fa-rotate-right"></i> Try again</button>';
+        if (g.status === 'rewarded') h += '<button type="button" class="gr-btn gr-btn-ghost gr-btn-sm" data-act="again"><i class="fas fa-plus"></i> Set a bigger one</button>';
+        h += '</div></article>';
+        return h;
+    }
+
+    /* ---------- panels ---------- */
+    function panelRunning(list) {
+        var h = '';
+        var kid = S.kid !== 'all' ? kidById(S.kid) : null;
+        h += '<div class="gr-sec"><h2>Running goals</h2><button type="button" class="gr-btn gr-btn-primary gr-btn-sm" data-new style="margin-left:auto"><i class="fas fa-plus"></i> Set a goal</button>' +
+            '<p>Progress updates on its own as your child learns. The thin line on each bar shows how much of the time has passed.</p></div>';
+        if (list.length) h += '<div class="gr-goals">' + list.map(goalCard).join('') + '</div>';
+        else h += '<div class="gr-card">' + empty('fa-bullseye', kid ? kid.first_name + ' has no goals running' : 'No goals running', 'A clear goal with a reward your child cares about is one of the best ways to keep them learning. Start with something they can reach this week.', '<button type="button" class="gr-btn gr-btn-primary" data-new><i class="fas fa-plus"></i> Set a goal</button>') + '</div>';
+        h += '<div class="gr-card" style="margin-top:14px" id="grSugCard"><div class="gr-title"><span class="ic"><i class="fas fa-lightbulb"></i></span> Suggested goals' + (kid ? ' for ' + esc(kid.first_name) : '') + '</div>' +
+            '<p class="gr-sub">Based on ' + (kid ? esc(kid.first_name) + "'s" : 'your child\'s') + ' real results: weakest course, streak, points and how often they learn.</p><div id="grSugs">' +
+            (kid ? '<div class="gr-loading" style="padding:16px">Looking at the results...</div>' : '<p class="gr-sub" style="margin:0">Choose a child above to see goals suggested for them.</p>') + '</div></div>';
+        h += howTo();
+        return h;
+    }
+    function howTo() {
+        return '<div class="gr-card" style="margin-top:14px"><div class="gr-title"><span class="ic"><i class="fas fa-circle-info"></i></span> How it works</div><p class="gr-sub">Nothing to tick off by hand. eSchool checks progress whenever your child uses it and when you open this page.</p>' +
+            '<div class="gr-howto">' +
+            '<div class="gr-step"><b><span>1</span> Set the goal</b>Pick what to reach, by when, and the reward. Your child is told straight away.</div>' +
+            '<div class="gr-step"><b><span>2</span> They work on it</b>The goal and its progress bar sit on their dashboard. They get a reminder the day before it ends.</div>' +
+            '<div class="gr-step"><b><span>3</span> You hear when it\'s done</b>The moment the target is reached, you and your child get a notification.</div>' +
+            '<div class="gr-step"><b><span>4</span> Give the reward</b>Give it, then mark it as given here. Your child gets a thank-you notification with your message.</div>' +
+            '</div></div>';
+    }
+    function panelReward(list) {
+        var h = '<div class="gr-sec"><h2>Waiting for a reward</h2><p>These goals were reached. Give the reward, then mark it as given so your child knows you noticed.</p></div>';
+        if (!list.length) return h + '<div class="gr-card">' + empty('fa-gift', 'Nothing to reward right now', "When your child reaches a goal it shows up here, and you'll get a notification too.") + '</div>';
+        return h + '<div class="gr-goals">' + list.map(goalCard).join('') + '</div>';
+    }
+    function panelHistory(list) {
+        var f = S.hist;
+        var shown = list.filter(function (g) { return f === 'all' || g.status === f; });
+        var chip = function (k, l) { var n = k === 'all' ? list.length : list.filter(function (g) { return g.status === k; }).length; return '<button type="button" class="gr-fchip" data-hist="' + k + '" aria-pressed="' + (f === k) + '">' + l + ' (' + n + ')</button>'; };
+        var h = '<div class="gr-sec"><h2>History</h2><div class="gr-filters">' + chip('all', 'All') + chip('rewarded', 'Rewarded') + chip('missed', 'Missed') + chip('cancelled', 'Removed') + '</div>' +
+            (list.length ? '<button type="button" class="gr-btn gr-btn-ghost gr-btn-sm" id="grCsv"><i class="fas fa-download"></i> Download CSV</button>' : '') + '</div>';
+        if (!shown.length) return h + '<div class="gr-card">' + empty('fa-clock-rotate-left', 'Nothing here yet', 'Finished, missed and removed goals are kept here so you can see what works for your child.') + '</div>';
+        h += '<div class="gr-card" style="padding:0"><div class="gr-table-wrap" style="border:0"><table class="gr-table"><thead><tr><th>Goal</th><th>Child</th><th>Period</th><th>Result</th><th>Reward</th><th>Status</th><th><span class="sr-only" style="position:absolute;left:-9999px">Actions</span></th></tr></thead><tbody>';
+        h += shown.map(function (g) {
+            var kid = kidById(g.child_id) || {};
+            return '<tr data-id="' + g.id + '"><td><b>' + esc(g.title) + '</b><span class="sm">' + esc(g.type_label) + '</span></td><td>' + esc(kid.first_name || '') + '</td>' +
+                '<td>' + esc(fDate(g.start_day)) + ' → ' + esc(fDate(g.due_day)) + '<span class="sm">' + plural(g.days_total, 'day') + '</span></td>' +
+                '<td>' + esc(g.progress_text) + '<span class="sm">' + g.pct + '% of the target</span></td>' +
+                '<td>' + esc(g.reward || '-') + '</td>' +
+                '<td><span class="gr-pill ' + g.status + '"><i class="fas ' + STATUS_IC[g.status] + '"></i> ' + STATUS[g.status] + '</span><span class="sm">' + esc(g.status === 'rewarded' ? fIso(g.rewarded_at) : g.status === 'missed' ? fDate(g.due_day, true) : fIso(g.cancelled_at)) + '</span></td>' +
+                '<td>' + (g.status === 'rewarded' ? '<button type="button" class="gr-btn gr-btn-ghost gr-btn-sm" data-act="again">Bigger one</button>' : '<button type="button" class="gr-btn gr-btn-ghost gr-btn-sm" data-act="retry">Try again</button>') + '</td></tr>';
+        }).join('');
+        return h + '</tbody></table></div></div>';
+    }
+    function panelInsights(list) {
+        var kids = S.kid === 'all' ? S.children : [kidById(S.kid)];
+        var h = '<div class="gr-sec"><h2>What works</h2><p>Hit rate is goals reached out of goals that finished (reached or missed). Removed goals don\'t count.</p></div><div class="gr-ins">';
+        kids.forEach(function (k) {
+            var gs = list.filter(function (g) { return g.child_id === k.id; });
+            var reached = gs.filter(function (g) { return g.status === 'achieved' || g.status === 'rewarded'; });
+            var missed = gs.filter(function (g) { return g.status === 'missed'; });
+            var fin = reached.length + missed.length;
+            var rate = fin ? Math.round(reached.length / fin * 100) : 0;
+            var types = {};
+            gs.forEach(function (g) { if (g.status === 'active' || g.status === 'cancelled') return; var t = types[g.type] = types[g.type] || { r: 0, n: 0, label: g.type_label }; t.n++; if (g.status !== 'missed') t.r++; });
+            var rows = Object.keys(types).map(function (k2) { return types[k2]; }).sort(function (a, b) { return b.r / b.n - a.r / a.n || b.n - a.n; });
+            var onTime = reached.filter(function (g) { return g.achieved_at; }).map(function (g) { return daysBetween(g.start_day, isoDay(g.achieved_at)) + 1; });
+            var avgDays = onTime.length ? Math.round(onTime.reduce(function (a, b) { return a + b; }, 0) / onTime.length * 10) / 10 : null;
+            var given = gs.filter(function (g) { return g.status === 'rewarded'; });
+            var waitDays = given.filter(function (g) { return g.achieved_at && g.rewarded_at; }).map(function (g) { return (new Date(g.rewarded_at) - new Date(g.achieved_at)) / 86400000; });
+            var avgWait = waitDays.length ? waitDays.reduce(function (a, b) { return a + b; }, 0) / waitDays.length : null;
+            h += '<div class="gr-card"><div class="gr-title">' + avatar(k.name, k.avatar_url, 'xs') + ' ' + esc(k.name) + '<span class="right">' + plural(gs.length, 'goal') + ' in total</span></div>';
+            if (!fin) {
+                h += empty('fa-chart-pie', 'Not enough history yet', 'Insights appear once ' + k.first_name + "'s first goals finish.") + '</div>';
+                return;
+            }
+            h += '<div class="gr-ins-top"><div class="gr-ring" style="--p:' + rate + '"><span>' + rate + '%<small>reached</small></span></div><div class="gr-mini">' +
+                '<div>Reached<br><b>' + reached.length + '</b></div><div>Missed<br><b>' + missed.length + '</b></div>' +
+                '<div>Avg. days to reach<br><b>' + (avgDays === null ? '-' : avgDays) + '</b></div><div>Rewards given<br><b>' + given.length + '</b></div></div></div>';
+            h += '<div class="gr-hbars">' + rows.map(function (t) { var p = Math.round(t.r / t.n * 100); return '<div class="gr-hbar"><span>' + esc(t.label) + '</span><div class="gr-bar"><i class="' + (p >= 60 ? 'ok' : p >= 34 ? '' : 'warn') + '" style="width:' + p + '%"></i></div><span class="v">' + t.r + ' of ' + t.n + '</span></div>'; }).join('') + '</div>';
+            var tips = [];
+            if (rows.length && rows[0].n >= 2 && rows[0].r / rows[0].n >= 0.6) tips.push(k.first_name + ' does best with "' + rows[0].label + '" goals (' + rows[0].r + ' of ' + rows[0].n + ' reached).');
+            var worst = rows[rows.length - 1];
+            if (rows.length > 1 && worst.n >= 2 && worst.r / worst.n < 0.4) tips.push('"' + worst.label + '" goals are often missed. Try a smaller target or a longer period.');
+            if (rate < 50 && fin >= 3) tips.push('Fewer than half the goals are reached. Smaller, one-week goals usually work better than big ones.');
+            if (rate >= 85 && fin >= 3) tips.push('Almost every goal is reached. ' + k.first_name + ' is ready for bigger targets.');
+            if (avgWait !== null && avgWait > 3) tips.push('Rewards are given about ' + Math.round(avgWait) + ' days after a goal is reached. Rewards given quickly tend to motivate more.');
+            if (tips.length) h += tips.map(function (t) { return '<div class="gr-tip"><i class="fas fa-lightbulb"></i><span>' + esc(t) + '</span></div>'; }).join('');
+            h += '</div>';
+        });
+        return h + '</div>';
+    }
+    function isoDay(iso) { var d = new Date(new Date(iso).getTime() + 3 * 3600000); return d.toISOString().slice(0, 10); }
+
+    /* ---------- suggestions ---------- */
+    async function loadSuggestions() {
+        var box = $('grSugs'); if (!box || S.kid === 'all') return;
+        var id = S.kid;
+        try {
+            if (!S.sugs[id]) S.sugs[id] = (await api('/api/parent/goals/suggestions?child=' + id)).suggestions || [];
+        } catch (e) { box.innerHTML = '<p class="gr-note bad">' + esc(e.message) + '</p>'; return; }
+        if (!$('grSugs') || S.kid !== id) return;
+        var running = S.goals.filter(function (g) { return g.child_id === id && g.status === 'active'; });
+        var list = S.sugs[id].filter(function (s) { return !running.some(function (g) { return g.type === s.type && (g.course || null) === (s.course || null); }); });
+        $('grSugs').innerHTML = list.length ? '<div class="gr-sugs">' + list.map(function (s, i) {
+            return '<div class="gr-sug"><h4><i class="fas ' + esc(typeByKey(s.type).icon || 'fa-bullseye') + '"></i> ' + esc(s.title) + '</h4><p>' + esc(s.why) + ' Ends ' + esc(fDate(s.due)) + '.</p>' +
+                '<button type="button" class="gr-btn gr-btn-ghost gr-btn-sm" data-sug="' + i + '"><i class="fas fa-plus"></i> Use this</button></div>';
+        }).join('') + '</div>' : '<p class="gr-sub" style="margin:0">No suggestions right now. Goals like these are already running.</p>';
+        $('grSugs').dataset.list = JSON.stringify(list);
+    }
+
+    /* ---------- set / change a goal ---------- */
+    function periods() {
+        var t = S.today, out = [];
+        var sun = S.weekEnd;
+        out.push(['week', 'This week', 'to ' + fDate(sun), sun]);
+        out.push(['2w', '2 weeks', 'to ' + fDate(addDays(t, 13)), addDays(t, 13)]);
+        out.push(['month', '1 month', 'to ' + fDate(addDays(t, 29)), addDays(t, 29)]);
+        out.push(['term', '3 months', 'to ' + fDate(addDays(t, 89)), addDays(t, 89)]);
+        out.push(['custom', 'Pick a date', '', null]);
+        return out;
+    }
+    function openForm(prefill, editGoal) {
+        S.editing = editGoal || null;
+        var f = S.form = Object.assign({ child: S.kid !== 'all' ? S.kid : (S.children[0] || {}).id, type: 'quizzes', target: null, course: '', due: S.weekEnd, period: 'week',
+                                         reward: '', note: '', retry_of: null }, prefill || {});
+        if (f.target === null) f.target = typeByKey(f.type).default;
+        $('goalTitle').textContent = editGoal ? (editGoal.status === 'achieved' ? 'Change the reward' : 'Change this goal') : (f.retry_of ? 'Try this goal again' : 'Set a goal');
+        $('goalSub').textContent = editGoal ? 'Your child is told what changed.' : 'Your child is told straight away and sees it on their dashboard.';
+        $('goalSave').querySelector('span').textContent = editGoal ? 'Save changes' : 'Set goal';
+        var locked = !!editGoal;
+        $('gfChildWrap').hidden = locked || S.children.length < 2;
+        $('gfTypeWrap').hidden = locked;
+        $('gfTargetRow').hidden = locked;
+        $('gfLocked').hidden = !locked;
+        if (locked) {
+            var kid = kidById(editGoal.child_id) || {};
+            $('gfLocked').innerHTML = '<div class="gr-locked"><div class="gr-goal-ic"><i class="fas ' + esc(editGoal.icon) + '"></i></div><div><b>' + esc(editGoal.title) + '</b>' + esc(kid.first_name || '') + ' · ' + esc(editGoal.progress_text) + '. What and how much can\'t change; remove it and set a new one for that.</div></div>';
+        }
+        $('gfDueLbl').parentNode.hidden = !!(editGoal && editGoal.status === 'achieved');
+        $('gfChild').innerHTML = S.children.map(function (c) { return '<button type="button" role="radio" data-child="' + c.id + '" aria-checked="' + (c.id === f.child) + '">' + esc(c.name) + '</button>'; }).join('');
+        $('gfTypes').innerHTML = S.types.map(function (t) { return '<button type="button" class="gr-type" role="radio" data-type="' + t.key + '" aria-checked="' + (t.key === f.type) + '"><i class="fas ' + esc(t.icon) + '"></i><span><b>' + esc(t.label) + '</b>' + esc(t.help) + '</span></button>'; }).join('');
+        $('gfCourse').innerHTML = S.courses.map(function (c) { return '<option value="' + esc(c.key) + '">' + esc(c.name) + ' (' + c.modules + ' modules)</option>'; }).join('');
+        $('gfIdeas').innerHTML = S.ideas.map(function (i) { return '<button type="button" class="gr-idea" data-idea="' + esc(i) + '">' + esc(i) + '</button>'; }).join('');
+        $('gfPeriods').innerHTML = periods().map(function (p) { return '<button type="button" role="radio" data-period="' + p[0] + '" aria-checked="' + (p[0] === f.period) + '">' + esc(p[1]) + (p[2] ? '<small>' + esc(p[2]) + '</small>' : '') + '</button>'; }).join('');
+        $('gfTarget').value = f.target; $('gfReward').value = f.reward; $('gfNote').value = f.note;
+        $('gfDue').value = f.due; $('gfDue').min = S.today; $('gfDue').max = addDays(editGoal ? editGoal.start_day : S.today, S.limits.max_days || 120);
+        say('', 'info', $('goalNote'));
+        syncForm();
+        show('goalModal', locked ? '#gfReward' : 'button[aria-checked="true"].gr-type');
+    }
+    function syncForm() {
+        var f = S.form, t = typeByKey(f.type);
+        document.querySelectorAll('#gfTypes [data-type]').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.type === f.type)); });
+        document.querySelectorAll('#gfChild [data-child]').forEach(function (b) { b.setAttribute('aria-checked', String(+b.dataset.child === f.child)); });
+        document.querySelectorAll('#gfPeriods [data-period]').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.period === f.period)); });
+        var isCourse = f.type === 'course';
+        $('gfTargetWrap').hidden = isCourse;
+        $('gfCourseWrap').hidden = t.course === 'none';
+        $('gfUnit').textContent = t.unit || '';
+        $('gfTarget').min = t.min; $('gfTarget').max = t.max;
+        $('gfTargetLbl').textContent = f.type === 'rank' ? 'Place (or higher)' : f.type === 'score' ? 'Average score' : 'Target';
+        $('gfTargetHint').textContent = t.min + ' to ' + t.max + (f.type === 'score' ? '. Needs at least ' + (S.limits.score_min_tests || 3) + ' tests in the period.' : f.type === 'rank' ? '. 1 means first place.' : '');
+        var sel = $('gfCourse');
+        if (t.course === 'optional' && !sel.querySelector('option[value=""]')) sel.insertAdjacentHTML('afterbegin', '<option value="">Any course</option>');
+        if (t.course === 'required') { var any = sel.querySelector('option[value=""]'); if (any) any.remove(); if (!f.course) f.course = S.courses[0] ? S.courses[0].key : ''; }
+        sel.value = f.course || '';
+        $('gfCourseHint').textContent = isCourse ? 'Done when every module is passed.' : (t.course === 'optional' ? 'Count only this course, or any.' : '');
+        $('gfDueRow').hidden = f.period !== 'custom';
+        $('gfDueHint').textContent = f.due ? daysBetween(S.today, f.due) + 1 + ' days including today' : '';
+        preview();
+    }
+    function readForm() {
+        var f = S.form;
+        f.target = parseInt($('gfTarget').value, 10);
+        f.course = $('gfCourse').value;
+        f.reward = $('gfReward').value.trim();
+        f.note = $('gfNote').value.trim();
+        if (f.period === 'custom') f.due = $('gfDue').value;
+    }
+    function titleFor(f) {
+        var t = f.target, c = courseName(f.course);
+        switch (f.type) {
+            case 'points': return 'Earn ' + t + ' EP';
+            case 'quizzes': return 'Pass ' + t + ' quiz' + (t === 1 ? '' : 'zes');
+            case 'modules': return 'Pass ' + t + ' ' + (c ? c + ' ' : '') + 'module test' + (t === 1 ? '' : 's');
+            case 'course': return 'Finish ' + (c || 'a course');
+            case 'active_days': return 'Learn on ' + t + ' different day' + (t === 1 ? '' : 's');
+            case 'study_time': return 'Spend ' + t + ' hour' + (t === 1 ? '' : 's') + ' learning on eSchool';
+            case 'quiz_streak': return 'Reach a ' + t + '-day quiz streak';
+            case 'rank': return t === 1 ? 'Reach 1st on the monthly leaderboard' : 'Reach the monthly top ' + t;
+            case 'score': return 'Average ' + t + '% or more in ' + (c ? c + ' ' : '') + 'module tests';
+        }
+        return 'Goal';
+    }
+    function preview() {
+        readForm();
+        if ($('goalNote').classList.contains('bad')) say('', 'info', $('goalNote'));   // the problem is being fixed
+        var f = S.form, kid = kidById(S.editing ? S.editing.child_id : f.child) || {};
+        var title = S.editing ? S.editing.title : titleFor(f);
+        $('gfPreview').innerHTML = '<i class="fas fa-eye"></i><div><b>' + esc(kid.first_name || 'Your child') + ' will see:</b> "' + esc(title) + '"' + (f.due ? ' by ' + esc(fDate(f.due)) : '') + '. ' +
+            (f.reward ? 'Reward: ' + esc(f.reward) + '.' : '<span style="color:var(--gr-warn)">Add a reward so they know what they are working for.</span>') + '</div>';
+    }
+    async function saveForm() {
+        readForm();
+        var f = S.form, btn = $('goalSave'), t = typeByKey(f.type);
+        if (!S.editing) {
+            if (!f.child) return say('Choose which child the goal is for.', 'bad', $('goalNote'));
+            if (f.type !== 'course' && (isNaN(f.target) || f.target < t.min || f.target > t.max)) { say('The target must be between ' + t.min + ' and ' + t.max + '.', 'bad', $('goalNote')); $('gfTarget').focus(); return; }
+        }
+        if (!f.due) { say('Choose an end date.', 'bad', $('goalNote')); return; }
+        if (!f.reward) { say('Write the reward your child will get, or tap one of the ideas.', 'bad', $('goalNote')); $('gfReward').focus(); return; }
+        btn.disabled = true; say('Saving...', 'info', $('goalNote'));
+        try {
+            var body = { due: f.due, reward: f.reward, note: f.note };
+            var name = (kidById(S.editing ? S.editing.child_id : f.child) || {}).first_name || 'Your child';
+            if (S.editing) {
+                await send('/api/parent/goals/' + S.editing.id, 'PATCH', body);
+                hide(); say('Saved. ' + name + ' has been told what changed.', 'ok');
+            } else {
+                Object.assign(body, { child_id: f.child, type: f.type, target: f.target, course: f.course || null, retry_of: f.retry_of });
+                await send('/api/parent/goals', 'POST', body);
+                hide(); say('Goal set. ' + name + ' has been told and can see it on their dashboard.', 'ok');
+                S.tab = 'running'; S.kid = S.children.length > 1 ? f.child : S.kid; delete S.sugs[f.child];
+                setHash();
+            }
+            await load(true);
+        } catch (e) { say(e.message, 'bad', $('goalNote')); }
+        finally { btn.disabled = false; }
+    }
+
+    /* ---------- reward / remove ---------- */
+    function openReward(g) {
+        S.rewarding = g;
+        var kid = kidById(g.child_id) || {};
+        $('rewardSub').textContent = kid.first_name + ' reached "' + g.title + '" on ' + fIso(g.achieved_at) + '.';
+        var lines = [];
+        if (g.reward) lines.push('<li><b>' + esc(g.reward) + '</b>: give this to ' + esc(kid.first_name) + ' yourself.</li>');
+        lines.push('<li>The goal moves to History as rewarded.</li>');
+        lines.push('<li>' + esc(kid.first_name) + ' gets a notification with your message.</li>');
+        $('rewardWhat').innerHTML = '<div class="gr-reward"><i class="fas fa-gift"></i><div><b>When you mark it as given</b><ul style="margin:6px 0 0;padding-left:18px">' + lines.join('') + '</ul></div></div>';
+        $('rewardMsg').value = '';
+        say('', 'info', $('rewardNote'));
+        show('rewardModal', '#rewardMsg');
+    }
+    async function saveReward() {
+        var g = S.rewarding, btn = $('rewardSave');
+        btn.disabled = true; say('Saving...', 'info', $('rewardNote'));
+        try {
+            await send('/api/parent/goals/' + g.id + '/reward', 'POST', { message: $('rewardMsg').value.trim() });
+            hide(); say('Reward marked as given. ' + ((kidById(g.child_id) || {}).first_name || 'Your child') + ' has been told.', 'ok');
+            await load(true);
+        } catch (e) { say(e.message, 'bad', $('rewardNote')); }
+        finally { btn.disabled = false; }
+    }
+    function openRemove(g) {
+        S.removing = g;
+        var kid = kidById(g.child_id) || {};
+        $('removeSub').textContent = g.title;
+        $('removeText').textContent = kid.first_name + ' is at ' + g.progress_text + ' (' + g.pct + '%). Removing it stops the goal and tells ' + kid.first_name + '. It stays in History.';
+        say('', 'info', $('removeNote'));
+        show('removeModal', '#removeSave');
+    }
+    async function saveRemove() {
+        var g = S.removing, btn = $('removeSave');
+        btn.disabled = true;
+        try {
+            await send('/api/parent/goals/' + g.id + '/cancel', 'POST', {});
+            hide(); say('Goal removed.', 'ok');
+            await load(true);
+        } catch (e) { say(e.message, 'bad', $('removeNote')); }
+        finally { btn.disabled = false; }
+    }
+
+    /* ---------- CSV ---------- */
+    function csv() {
+        var rows = [['Goal', 'Type', 'Child', 'Start', 'End', 'Result', 'Percent', 'Status', 'Reward', 'Reached', 'Rewarded', 'Set by']];
+        visible().filter(function (g) { return ['rewarded', 'missed', 'cancelled'].indexOf(g.status) > -1; }).forEach(function (g) {
+            rows.push([g.title, g.type_label, (kidById(g.child_id) || {}).name, g.start_day, g.due_day, g.progress_text, g.pct, STATUS[g.status], g.reward, g.achieved_at || '', g.rewarded_at || '', g.set_by.name]);
+        });
+        var text = rows.map(function (r) { return r.map(function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','); }).join('\n');
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' }));
+        a.download = 'goals-history-' + S.today + '.csv';
+        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+        say('History downloaded.', 'ok');
+    }
+
+    /* ---------- events ---------- */
+    function goalOf(el) { var c = el.closest('[data-id]'); return c ? S.goals.filter(function (g) { return g.id === +c.dataset.id; })[0] : null; }
+    function retryPrefill(g, bigger) {
+        var t = typeByKey(g.type);
+        var target = g.target;
+        if (bigger && g.type !== 'course') target = g.type === 'rank' ? Math.max(t.min, Math.floor(g.target / 2) || 1) : Math.min(t.max, Math.ceil(g.target * 1.25));
+        var len = Math.max(1, g.days_total);
+        var due = addDays(S.today, len - 1);
+        return { child: g.child_id, type: g.type, target: target, course: g.course || '', reward: g.reward,
+                 note: g.note, period: 'custom', due: due, retry_of: bigger ? null : g.id };
+    }
+    function setHash() { try { history.replaceState(null, '', '#' + S.tab); } catch (e) { /* ignore */ } }
+    function remember() { try { localStorage.setItem('gr.kid', String(S.kid)); } catch (e) { /* ignore */ } }
+
+    document.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t.closest || !t.closest('.gr')) return;
+        var b;
+        if ((b = t.closest('[data-kid]'))) { S.kid = b.dataset.kid === 'all' ? 'all' : +b.dataset.kid; remember(); render(); return; }
+        if ((b = t.closest('[data-tab]'))) { S.tab = b.dataset.tab; setHash(); render(); var nt = $('tab-' + S.tab); if (nt) nt.focus(); return; }
+        if ((b = t.closest('[data-go]'))) { S.tab = b.dataset.go; setHash(); render(); return; }
+        if ((b = t.closest('[data-hist]'))) { S.hist = b.dataset.hist; render(); return; }
+        if (t.closest('#grCsv')) { csv(); return; }
+        if (t.closest('#grNewTop') || t.closest('[data-new]')) { openForm(); return; }
+        if ((b = t.closest('[data-sug]'))) {
+            var list = JSON.parse($('grSugs').dataset.list || '[]'), s = list[+b.dataset.sug];
+            if (s) openForm({ child: S.kid, type: s.type, target: s.target, course: s.course || '', period: 'custom', due: s.due });
+            return;
+        }
+        if ((b = t.closest('[data-act]'))) {
+            var g = goalOf(b); if (!g) return;
+            var a = b.dataset.act;
+            if (a === 'edit') openForm({ child: g.child_id, type: g.type, target: g.target, course: g.course || '', reward: g.reward, note: g.note, period: 'custom', due: g.due_day }, g);
+            else if (a === 'remove') openRemove(g);
+            else if (a === 'reward') openReward(g);
+            else if (a === 'retry') openForm(retryPrefill(g, false));
+            else if (a === 'again') openForm(retryPrefill(g, true));
+            return;
+        }
+        /* inside the goal form */
+        if ((b = t.closest('#gfTypes [data-type]'))) { S.form.type = b.dataset.type; var ty = typeByKey(S.form.type); $('gfTarget').value = ty.default; if (ty.course === 'none') S.form.course = ''; syncForm(); return; }
+        if ((b = t.closest('#gfChild [data-child]'))) { S.form.child = +b.dataset.child; syncForm(); return; }
+        if ((b = t.closest('#gfPeriods [data-period]'))) {
+            var p = periods().filter(function (x) { return x[0] === b.dataset.period; })[0];
+            S.form.period = p[0];
+            if (p[3]) { S.form.due = p[3]; $('gfDue').value = p[3]; }
+            syncForm(); if (p[0] === 'custom') $('gfDue').focus();
+            return;
+        }
+        if ((b = t.closest('[data-idea]'))) { $('gfReward').value = b.dataset.idea; preview(); return; }
+    });
+    ['gfTarget', 'gfReward', 'gfNote', 'gfCourse'].forEach(function (id) { $(id).addEventListener('input', preview); $(id).addEventListener('change', preview); });
+    $('gfCourse').addEventListener('change', function () { S.form.course = this.value; syncForm(); });
+    $('gfDue').addEventListener('change', function () { S.form.due = this.value; syncForm(); });
+    $('goalForm').addEventListener('submit', function (e) { e.preventDefault(); saveForm(); });
+    $('goalSave').addEventListener('click', saveForm);
+    $('rewardSave').addEventListener('click', saveReward);
+    $('removeSave').addEventListener('click', saveRemove);
+    document.addEventListener('keydown', function (e) {
+        var tab = e.target.closest && e.target.closest('.gr-tab');
+        if (!tab || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+        var keys = TABS.map(function (t) { return t[0]; });
+        var i = (keys.indexOf(S.tab) + (e.key === 'ArrowRight' ? 1 : keys.length - 1)) % keys.length;
+        S.tab = keys[i]; setHash(); render(); $('tab-' + S.tab).focus();
+    });
+
+    /* ---------- start ---------- */
+    var h = (location.hash || '').slice(1);
+    if (TABS.some(function (t) { return t[0] === h; })) S.tab = h;
+    try { var k = localStorage.getItem('gr.kid'); if (k) S.kid = k === 'all' ? 'all' : +k; } catch (e) { /* ignore */ }
+    var q = new URLSearchParams(location.search);
+    if (q.get('child')) S.kid = +q.get('child');
+    load().then(function () { if (q.get('new') === '1' && S.children.length) openForm(); });
+    setInterval(function () { if (!document.hidden && !openM) load(true); }, 60000);
+})();
+</script>
+{% endblock %}

@@ -1,10 +1,11 @@
 {% extends "Home/fronten.html" %}
 
 {% block content %}
+{% set hs = home_stats|default({}) %}
 <style>
   /* ===================================================================
      ESCHOOL EARN — Design tokens
-     Display: Poppins · Body: Inter · Data/Utility: Manrope
+     Display: Manrope · Body: Inter · Numbers: Poppins (same as the other pages)
      Signature element: the "Earnings Constellation" — glowing nodes
      (Course / Notes / Mentoring / Live) orbiting and streaming into a
      central Payout node. It reappears, smaller, wherever money moves.
@@ -24,9 +25,9 @@
     --glass-border: rgba(255,255,255,0.85);
     --ring: rgba(37,99,235,0.16);
 
-    --font-display: 'Poppins', 'Inter', sans-serif;
+    --font-display: 'Manrope', 'Inter', sans-serif;
     --font-body: 'Inter', sans-serif;
-    --font-data: 'Manrope', sans-serif;
+    --font-data: 'Poppins', 'Inter', sans-serif;
 
     background: var(--bg);
     color: var(--ink);
@@ -40,31 +41,23 @@
 
   #earn-root h1, #earn-root h2, #earn-root h3, #earn-root h4 {
     font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -.02em;
     color: var(--ink);
     margin: 0;
   }
 
   #earn-root .eyebrow {
-    font-family: var(--font-data);
-    font-weight: 800;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    font-size: .72rem;
-    color: var(--primary);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  #earn-root .eyebrow::before {
-    content: "";
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 0 4px rgba(20,184,166,.18);
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-display); font-weight: 700;
+    font-size: .78rem; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--primary); background: rgba(37,99,235,.08);
+    padding: 7px 16px; border-radius: 999px; margin-bottom: 18px;
   }
 
   #earn-root section { position: relative; padding: 110px 6vw; }
   #earn-root .section-head { max-width: 700px; margin: 0 auto 56px; text-align: center; }
-  #earn-root .section-head h2 { font-size: clamp(2rem, 3.4vw, 2.9rem); font-weight: 800; line-height: 1.15; }
+  #earn-root .section-head h2 { font-size: clamp(1.9rem, 3.2vw, 2.4rem); font-weight: 800; line-height: 1.15; }
   #earn-root .section-head p { color: var(--gray); font-size: 1.05rem; margin-top: 14px; line-height: 1.65; }
 
   #earn-root a { text-decoration: none; color: inherit; }
@@ -94,43 +87,25 @@
     display: flex;
     align-items: center;
     padding: 140px 6vw 90px;
-    background: radial-gradient(120% 120% at 15% 0%, #0B1730 0%, #0F1E3D 38%, #16295A 62%, #1A2F66 100%);
+    background: var(--bg);
     overflow: hidden;
   }
   #earn-root .hero-bg {
     position: absolute; inset: 0; z-index: 0; overflow: hidden;
   }
-  #earn-root .mesh {
-    position: absolute; inset: -10%;
-    background:
-      radial-gradient(38% 32% at 20% 22%, rgba(37,99,235,.55), transparent 60%),
-      radial-gradient(32% 30% at 82% 18%, rgba(20,184,166,.42), transparent 60%),
-      radial-gradient(40% 36% at 68% 82%, rgba(59,130,246,.4), transparent 60%),
-      radial-gradient(28% 26% at 8% 84%, rgba(245,158,11,.18), transparent 60%);
-    filter: blur(10px);
-    animation: meshDrift 22s ease-in-out infinite alternate;
+  #earn-root .blob {
+    position: absolute; border-radius: 50%; filter: blur(80px); opacity: .5;
+    animation: drift 24s ease-in-out infinite alternate;
   }
-  @keyframes meshDrift {
-    0% { transform: translate(0,0) scale(1); }
-    100% { transform: translate(-2%, 2%) scale(1.06); }
-  }
-  #earn-root .orb {
-    position: absolute; border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,0) 70%);
-    opacity: .12; filter: blur(1px);
-    animation: floaty 9s ease-in-out infinite;
-  }
-  @keyframes floaty {
-    0%, 100% { transform: translateY(0) translateX(0); }
-    50% { transform: translateY(-22px) translateX(10px); }
-  }
-  #earn-root .grid-lines {
+  #earn-root .blob.b1 { width: 480px; height: 480px; top: -160px; right: -120px; background: radial-gradient(circle, var(--primary), transparent 70%); }
+  #earn-root .blob.b2 { width: 380px; height: 380px; bottom: -140px; left: -100px; background: radial-gradient(circle, var(--accent), transparent 70%); animation-duration: 30s; animation-delay: -8s; }
+  @keyframes drift { to { transform: translate(36px,-40px) scale(1.08); } }
+  #earn-root .dotgrid {
     position: absolute; inset: 0;
-    background-image:
-      linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
-    background-size: 46px 46px;
-    mask-image: radial-gradient(70% 60% at 50% 40%, black, transparent);
+    background-image: radial-gradient(rgba(15,23,42,.06) 1px, transparent 1px);
+    background-size: 26px 26px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, black, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, black, transparent 80%);
   }
 
   #earn-root .hero-inner {
@@ -141,22 +116,19 @@
     gap: 40px;
     align-items: center;
   }
-  #earn-root .hero-copy .eyebrow { color: #8FC2FF; }
-  #earn-root .hero-copy .eyebrow::before { background: var(--accent); box-shadow: 0 0 0 4px rgba(20,184,166,.28); }
   #earn-root .hero-copy h1 {
-    font-size: clamp(2.6rem, 5vw, 4.1rem);
+    font-size: clamp(2.3rem, 4.4vw, 3.2rem);
     font-weight: 800;
-    line-height: 1.06;
-    color: #fff;
-    margin: 18px 0 22px;
-    letter-spacing: -.01em;
+    line-height: 1.12;
+    color: var(--ink);
+    margin: 0 0 20px;
   }
   #earn-root .hero-copy h1 .grad {
-    background: linear-gradient(100deg, #8FC2FF, #B9F3E7 55%, #F5D08C);
+    background: linear-gradient(90deg, var(--primary), var(--accent));
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   #earn-root .hero-copy p.sub {
-    color: #C9D6EE; font-size: 1.14rem; line-height: 1.7; max-width: 540px;
+    color: var(--gray); font-size: 1.05rem; line-height: 1.7; max-width: 540px; margin: 0;
   }
   #earn-root .hero-ctas { display: flex; gap: 16px; margin-top: 34px; flex-wrap: wrap; }
 
@@ -164,15 +136,15 @@
     position: relative; overflow: hidden;
     display: inline-flex; align-items: center; gap: 10px;
     padding: 15px 30px; border-radius: 100px;
-    font-weight: 700; font-size: .98rem; border: none;
+    font-family: var(--font-display); font-weight: 700; font-size: .92rem; border: none;
     transition: transform .25s ease, box-shadow .25s ease;
   }
   #earn-root .btn-primary {
     color: #fff;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
-    box-shadow: 0 10px 26px rgba(37,99,235,.45);
+    box-shadow: 0 14px 30px -10px rgba(37,99,235,.55);
   }
-  #earn-root .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(37,99,235,.55); }
+  #earn-root .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 18px 36px -8px rgba(37,99,235,.65); }
   #earn-root .btn-primary::after {
     content: ""; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
     background: linear-gradient(120deg, transparent, rgba(255,255,255,.55), transparent);
@@ -182,21 +154,11 @@
   @keyframes shine { 0% { left: -60%; } 45% { left: 130%; } 100% { left: 130%; } }
 
   #earn-root .btn-ghost {
-    color: #fff; background: rgba(255,255,255,.08);
-    border: 1.5px solid rgba(255,255,255,.35);
-    backdrop-filter: blur(6px);
+    color: var(--ink); background: rgba(255,255,255,.7);
+    border: 1.5px solid rgba(15,23,42,.12);
+    backdrop-filter: blur(8px);
   }
-  #earn-root .btn-ghost:hover { background: rgba(255,255,255,.16); transform: translateY(-3px); }
-
-  #earn-root .hero-stats {
-    display: grid; grid-template-columns: repeat(4, auto);
-    gap: 34px; margin-top: 56px; max-width: 620px;
-  }
-  #earn-root .hero-stats .stat b {
-    display: block; font-family: var(--font-data); font-weight: 800;
-    font-size: 1.7rem; color: #fff;
-  }
-  #earn-root .hero-stats .stat span { color: #93A5C4; font-size: .8rem; }
+  #earn-root .btn-ghost:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-2px); }
 
   /* --- signature SVG: earnings constellation --- */
   #earn-root .constellation-wrap { position: relative; z-index: 2; }
@@ -284,43 +246,41 @@
   #earn-root .road-body p { color: var(--gray); font-size: .93rem; line-height: 1.6; }
 
   /* =================== DASHBOARD PREVIEW =================== */
-  #earn-root .dash { background: #0B1226; color: #fff; }
-  #earn-root .dash .section-head h2 { color: #fff; }
-  #earn-root .dash .section-head p { color: #96A3C4; }
+  #earn-root .dash { background: #fff; }
   #earn-root .dash-panel {
     max-width: 1180px; margin: 0 auto; border-radius: 26px; padding: 34px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.09);
+    background: var(--bg); border: 1px solid #EAF0FB; position: relative;
+    box-shadow: 0 20px 50px -24px rgba(15,23,42,.18);
+  }
+  #earn-root .sample-tag {
+    position: absolute; top: 16px; right: 18px; font-size: .7rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--gray); background: #fff; border: 1px solid #EAF0FB;
+    padding: 4px 10px; border-radius: 999px;
   }
   #earn-root .dash-top {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 26px;
   }
-  #earn-root .dash-metric {
-    border-radius: 16px; padding: 20px;
-    background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.08);
-  }
-  #earn-root .dash-metric span { color: #8FA0C8; font-size: .78rem; font-family: var(--font-data); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
-  #earn-root .dash-metric b { display: block; font-family: var(--font-data); font-size: 1.7rem; font-weight: 800; margin-top: 8px; }
-  #earn-root .dash-metric .delta { color: var(--success); font-size: .78rem; font-weight: 700; margin-top: 6px; display: block; }
+  #earn-root .dash-metric { border-radius: 16px; padding: 20px; background: #fff; border: 1px solid #EAF0FB; }
+  #earn-root .dash-metric span { color: var(--gray); font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  #earn-root .dash-metric b { display: block; font-family: var(--font-data); font-size: 1.6rem; font-weight: 700; margin-top: 8px; color: var(--ink); }
+  #earn-root .dash-metric .delta { color: var(--gray); font-size: .78rem; font-weight: 500; text-transform: none; letter-spacing: 0; margin-top: 6px; display: block; }
   #earn-root .dash-main { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
-  #earn-root .dash-card { border-radius: 16px; padding: 22px; background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.08); }
-  #earn-root .dash-card h4 { color: #fff; font-size: .95rem; margin-bottom: 16px; font-weight: 700; }
-  #earn-root .bars { display: flex; align-items: flex-end; gap: 10px; height: 150px; }
+  #earn-root .dash-card { border-radius: 16px; padding: 22px; background: #fff; border: 1px solid #EAF0FB; }
+  #earn-root .dash-card h4 { color: var(--ink); font-size: .95rem; margin-bottom: 16px; font-weight: 700; }
+  #earn-root .bars { display: flex; align-items: flex-end; gap: 10px; height: 150px; margin-top: 26px; }
   #earn-root .bars .bar {
     flex: 1; border-radius: 6px 6px 0 0;
-    background: linear-gradient(180deg, var(--secondary), var(--primary));
+    background: linear-gradient(180deg, var(--accent), var(--primary));
     height: 0; transition: height 1.1s cubic-bezier(.2,.8,.2,1);
     position: relative;
   }
   #earn-root .bars .bar span {
-    position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-    font-family: var(--font-data); font-size: .68rem; color: #8FA0C8;
+    position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%);
+    font-family: var(--font-data); font-size: .68rem; color: var(--gray);
   }
-  #earn-root .donut-wrap { display: flex; align-items: center; gap: 18px; }
-  #earn-root .donut { width: 120px; height: 120px; flex: none; }
-  #earn-root .donut circle { transition: stroke-dashoffset 1.2s ease; }
-  #earn-root .legend { display: flex; flex-direction: column; gap: 10px; font-size: .8rem; color: #C7D2EA; }
-  #earn-root .legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+  #earn-root .track-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  #earn-root .track-list li { display: flex; align-items: center; gap: 10px; font-size: .88rem; color: var(--ink); }
+  #earn-root .track-list .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
   /* =================== BENEFITS =================== */
   #earn-root .benefits { background: var(--bg); }
@@ -354,7 +314,8 @@
 
   /* =================== PAYMENT SYSTEM =================== */
   #earn-root .payments { background: #fff; }
-  #earn-root .pay-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; max-width: 1180px; margin: 0 auto 46px; }
+  #earn-root .pay-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 980px; margin: 0 auto 46px; }
+  #earn-root .soon { display: inline-block; margin-top: 10px; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #B45309; background: rgba(245,158,11,.14); padding: 4px 10px; border-radius: 999px; }
   #earn-root .pay-card {
     border-radius: 18px; padding: 24px 18px; text-align: center;
     background: linear-gradient(180deg, #fff, #F8FAFC); border: 1px solid #EAF0FB;
@@ -368,26 +329,6 @@
 
   #earn-root .flow-diagram { max-width: 900px; margin: 0 auto; }
   #earn-root .flow-diagram svg { width: 100%; height: auto; }
-
-  /* =================== TESTIMONIALS =================== */
-  #earn-root .stories { background: linear-gradient(180deg, #fff, #F3F7FF); }
-  #earn-root .story-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1180px; margin: 0 auto; }
-  #earn-root .story-card {
-    border-radius: 20px; padding: 28px; background: #fff; border: 1px solid #EAF0FB;
-    transition: transform .3s, box-shadow .3s;
-  }
-  #earn-root .story-card:hover { transform: translateY(-8px); box-shadow: 0 20px 36px rgba(15,23,42,.1); }
-  #earn-root .story-top { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
-  #earn-root .avatar {
-    width: 50px; height: 50px; border-radius: 50%; flex: none;
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-data); font-weight: 800; color: #fff; font-size: .95rem;
-  }
-  #earn-root .story-name { font-weight: 700; font-size: .95rem; }
-  #earn-root .story-meta { font-size: .78rem; color: var(--gray); }
-  #earn-root .stars { color: var(--gold); font-size: .85rem; margin-bottom: 10px; letter-spacing: 2px; }
-  #earn-root .story-card p.quote { color: var(--ink); font-size: .92rem; line-height: 1.65; margin-bottom: 14px; }
-  #earn-root .story-earn { font-family: var(--font-data); font-weight: 800; color: var(--success); font-size: .92rem; }
 
   /* =================== WHY TEACH =================== */
   #earn-root .why { background: #fff; }
@@ -409,7 +350,7 @@
   #earn-root .faq-q {
     width: 100%; background: none; border: none; padding: 20px 22px;
     display: flex; align-items: center; justify-content: space-between;
-    font-family: var(--font-body); font-weight: 700; font-size: .98rem; color: var(--ink);
+    font-family: var(--font-display); font-weight: 700; font-size: .95rem; color: var(--ink);
     text-align: left;
   }
   #earn-root .faq-q svg { width: 18px; height: 18px; flex: none; transition: transform .3s ease; color: var(--primary); }
@@ -419,83 +360,90 @@
   #earn-root .faq-item.open .faq-a { max-height: 240px; }
 
   /* =================== PLATFORM STATS =================== */
-  #earn-root .platform-stats { background: #0B1226; }
-  #earn-root .ps-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; max-width: 1180px; margin: 0 auto; text-align: center; }
+  #earn-root .platform-stats { background: var(--bg); padding-top: 40px; padding-bottom: 40px; }
+  #earn-root .ps-card {
+    max-width: 1180px; margin: 0 auto; border-radius: 28px; padding: 70px 40px;
+    background: linear-gradient(135deg, var(--ink), #1e293b);
+  }
+  #earn-root .ps-card .eyebrow { background: rgba(255,255,255,.1); color: #93c5fd; }
+  #earn-root .ps-card .section-head { margin-bottom: 40px; }
+  #earn-root .ps-card .section-head h2 { color: #fff; }
+  #earn-root .ps-card .section-head p { color: #94a3b8; font-size: .9rem; }
+  #earn-root .ps-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; text-align: center; }
   #earn-root .ps-item b {
-    display: block; font-family: var(--font-data); font-weight: 800; color: #fff;
-    font-size: clamp(1.8rem, 3vw, 2.4rem);
-    background: linear-gradient(120deg, #8FC2FF, #B9F3E7);
+    display: block; font-family: var(--font-data); font-weight: 700;
+    font-size: clamp(1.8rem, 3vw, 2.2rem);
+    background: linear-gradient(90deg, #fff, #bfdbfe);
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  #earn-root .ps-item span { color: #93A5C4; font-size: .82rem; font-weight: 600; }
+  #earn-root .ps-item span { color: #94a3b8; font-size: .8rem; }
 
-  /* =================== CTA =================== */
+  /* =================== CTA (same gradient card as the other pages) =================== */
+  #earn-root .cta-wrap { background: var(--bg); padding-top: 40px; }
   #earn-root .cta {
-    background: radial-gradient(120% 140% at 50% 0%, #16295A, #0B1730);
-    text-align: center; padding: 120px 6vw;
+    position: relative; overflow: hidden; max-width: 1180px; margin: 0 auto;
+    border-radius: 28px; padding: 80px 40px; text-align: center;
+    background: linear-gradient(120deg, var(--primary), var(--accent));
   }
-  #earn-root .cta h2 { color: #fff; font-size: clamp(2rem, 3.6vw, 3rem); font-weight: 800; max-width: 700px; margin: 0 auto 16px; }
-  #earn-root .cta p { color: #C9D6EE; max-width: 560px; margin: 0 auto 36px; font-size: 1.05rem; line-height: 1.7; }
-  #earn-root .cta-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  #earn-root .cta .blob { opacity: .25; }
+  #earn-root .cta > *:not(.blob) { position: relative; z-index: 1; }
+  #earn-root .cta .eyebrow { background: rgba(255,255,255,.16); color: #fff; }
+  #earn-root .cta h2 { color: #fff; font-size: clamp(1.8rem, 3vw, 2.2rem); max-width: 700px; margin: 0 auto 14px; }
+  #earn-root .cta p { color: rgba(255,255,255,.92); max-width: 540px; margin: 0 auto 30px; font-size: 1rem; line-height: 1.7; }
+  #earn-root .cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  #earn-root .cta .btn-primary { background: #fff; color: var(--primary); box-shadow: 0 14px 30px -10px rgba(0,0,0,.3); }
+  #earn-root .cta .btn-primary::after { display: none; }
+  #earn-root .cta .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.4); }
 
-  /* =================== FOOTER =================== */
-  #earn-root .site-footer {
-    background: #0B1226; color: #C9D6EE; padding: 70px 6vw 26px; position: relative;
+  /* =================== FOOTER (shared Eschool footer) =================== */
+  #earn-root .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  #earn-root footer.site-foot { background: linear-gradient(180deg, var(--ink), #060b16); color: #fff; padding: 70px 0 26px; margin-top: 90px; }
+  #earn-root .foot-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap: 40px; margin-bottom: 44px; }
+  #earn-root .foot-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  #earn-root .foot-brand span { font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+  #earn-root .foot-col p { font-size: 13px; color: #94a3b8; line-height: 1.7; margin: 0; }
+  #earn-root .foot-col h5 { font-family: var(--font-display); font-size: 13.5px; margin: 0 0 16px; color: #e2e8f0; }
+  #earn-root .foot-col ul { list-style: none; margin: 0; padding: 0; }
+  #earn-root .foot-col ul li { margin-bottom: 10px; }
+  #earn-root .foot-col ul a { color: #94a3b8; font-size: 13px; transition: color .2s ease; }
+  #earn-root .foot-col ul a:hover { color: #fff; }
+  #earn-root .help-box { border-radius: 14px; padding: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }
+  #earn-root .help-box p { margin: 0 0 12px; }
+  #earn-root .help-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 14px; border-radius: 10px;
+    background: linear-gradient(100deg, var(--primary), var(--accent)); color: #fff; font-weight: 700; font-size: 13px;
+    transition: transform .2s ease, box-shadow .2s ease;
   }
-  #earn-root .footer-grid { display: grid; grid-template-columns: 1.4fr repeat(4, 1fr); gap: 30px; max-width: 1180px; margin: 0 auto 46px; }
-  #earn-root .footer-brand h3 { color: #fff; font-size: 1.3rem; margin-bottom: 12px; }
-  #earn-root .footer-brand p { color: #8FA0C8; font-size: .88rem; line-height: 1.6; max-width: 260px; }
-  #earn-root .footer-col h5 { color: #fff; font-size: .85rem; font-weight: 700; margin-bottom: 14px; text-transform: uppercase; letter-spacing: .05em; }
-  #earn-root .footer-col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-  #earn-root .footer-col a { color: #8FA0C8; font-size: .87rem; transition: color .2s; }
-  #earn-root .footer-col a:hover { color: #fff; }
-  #earn-root .newsletter { display: flex; gap: 8px; margin-top: 14px; }
-  #earn-root .newsletter input {
-    flex: 1; min-width: 0; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.15);
-    background: rgba(255,255,255,.06); color: #fff; font-size: .85rem;
-  }
-  #earn-root .newsletter input::placeholder { color: #7186AC; }
-  #earn-root .newsletter button {
-    padding: 11px 18px; border-radius: 10px; border: none; font-weight: 700; font-size: .85rem;
-    background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff;
-  }
-  #earn-root .social-row { display: flex; gap: 12px; margin-top: 18px; }
-  #earn-root .social-row a {
-    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); transition: background .2s, transform .2s;
-  }
-  #earn-root .social-row a:hover { background: var(--primary); transform: translateY(-3px); }
-  #earn-root .social-row svg { width: 15px; height: 15px; }
-  #earn-root .footer-bottom {
-    max-width: 1180px; margin: 0 auto; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.08);
-    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-    font-size: .8rem; color: #7186AC;
-  }
-  #earn-root .footer-bottom a { color: #7186AC; }
-  #earn-root .footer-bottom a:hover { color: #fff; }
+  #earn-root .help-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 22px -10px rgba(20,184,166,.7); }
+  #earn-root .help-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+  #earn-root .copyright { text-align: center; padding-top: 26px; border-top: 1px solid rgba(255,255,255,.08); color: #64748B; font-size: 12px; }
+  #earn-root .copyright a { color: #94a3b8; }
+  #earn-root .copyright a:hover { color: #fff; }
 
   /* =================== RESPONSIVE =================== */
   @media (max-width: 1024px) {
     #earn-root .hero-inner { grid-template-columns: 1fr; }
     #earn-root .constellation-wrap { max-width: 460px; margin: 0 auto; }
-    #earn-root .ways-grid, #earn-root .benefit-grid, #earn-root .story-grid, #earn-root .why-grid { grid-template-columns: repeat(2, 1fr); }
+    #earn-root .ways-grid, #earn-root .benefit-grid, #earn-root .why-grid { grid-template-columns: repeat(2, 1fr); }
     #earn-root .cat-grid { grid-template-columns: repeat(3, 1fr); }
     #earn-root .pay-grid { grid-template-columns: repeat(3, 1fr); }
+    #earn-root .flow-diagram { overflow-x: auto; }
+    #earn-root .flow-diagram svg { min-width: 640px; }
     #earn-root .dash-top { grid-template-columns: repeat(2, 1fr); }
     #earn-root .dash-main { grid-template-columns: 1fr; }
     #earn-root .ps-grid { grid-template-columns: repeat(3, 1fr); row-gap: 30px; }
-    #earn-root .footer-grid { grid-template-columns: 1fr 1fr; }
+    #earn-root .foot-grid { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 640px) {
     #earn-root section { padding: 76px 6vw; }
     #earn-root .hero { padding-top: 120px; min-height: unset; }
-    #earn-root .hero-stats { grid-template-columns: repeat(2, 1fr); }
-    #earn-root .ways-grid, #earn-root .benefit-grid, #earn-root .story-grid, #earn-root .why-grid { grid-template-columns: 1fr; }
+    #earn-root .ways-grid, #earn-root .benefit-grid, #earn-root .why-grid { grid-template-columns: 1fr; }
+    #earn-root .ps-card, #earn-root .cta { padding: 50px 22px; border-radius: 22px; }
     #earn-root .cat-grid { grid-template-columns: repeat(2, 1fr); }
     #earn-root .pay-grid { grid-template-columns: repeat(2, 1fr); }
     #earn-root .dash-top { grid-template-columns: 1fr 1fr; }
     #earn-root .ps-grid { grid-template-columns: repeat(2, 1fr); }
-    #earn-root .footer-grid { grid-template-columns: 1fr; }
+    #earn-root .foot-grid { grid-template-columns: 1fr; }
     #earn-root .btn { width: 100%; justify-content: center; }
     #earn-root .hero-ctas, #earn-root .cta-btns { flex-direction: column; }
     #earn-root .hero-ctas .btn, #earn-root .cta-btns .btn { width: 100%; }
@@ -507,22 +455,19 @@
   <!-- ============ HERO ============ -->
   <section class="hero" aria-label="Earn on Eschool introduction">
     <div class="hero-bg" aria-hidden="true">
-      <div class="mesh"></div>
-      <div class="grid-lines"></div>
-      <div class="orb" style="width:220px;height:220px;top:10%;left:6%;animation-delay:0s;"></div>
-      <div class="orb" style="width:140px;height:140px;top:60%;left:12%;animation-delay:2s;"></div>
-      <div class="orb" style="width:180px;height:180px;top:22%;left:88%;animation-delay:1s;"></div>
-      <div class="orb" style="width:110px;height:110px;top:75%;left:80%;animation-delay:3s;"></div>
+      <div class="dotgrid"></div>
+      <div class="blob b1"></div>
+      <div class="blob b2"></div>
     </div>
 
     <div class="hero-inner">
       <div class="hero-copy">
-        <span class="eyebrow">Creator marketplace</span>
+        <span class="eyebrow">Teach &amp; earn</span>
         <h1>Turn Your Knowledge Into <span class="grad">Income</span></h1>
-        <p class="sub">Teach, mentor, publish educational resources, and earn money while helping thousands of learners around the world.</p>
+        <p class="sub">Teach private lessons that parents book and pay for through Eschool, and run live classes that show families how you teach. You set your price; Eschool handles the payment.</p>
         <div class="hero-ctas">
           <button class="btn btn-primary" onclick="window.location.href='/register'">
-            Become a Creator
+            Become a Teacher
             <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <a href="#how-it-works" class="btn btn-ghost">
@@ -530,19 +475,13 @@
           </a>
         </div>
 
-        <div class="hero-stats" role="list" aria-label="Platform highlights">
-          <div class="stat" role="listitem"><b class="counter" data-target="10000" data-suffix="+">0</b><span>Active Educators</span></div>
-          <div class="stat" role="listitem"><b class="counter" data-target="2" data-prefix="$" data-suffix="M+">0</b><span>Paid to Creators</span></div>
-          <div class="stat" role="listitem"><b class="counter" data-target="50000" data-suffix="+">0</b><span>Learning Resources</span></div>
-          <div class="stat" role="listitem"><b class="counter" data-target="150" data-suffix="+">0</b><span>Countries Reached</span></div>
-        </div>
       </div>
 
       <div class="constellation-wrap" aria-hidden="true">
         <svg viewBox="0 0 520 460">
           <defs>
             <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#8FC2FF"/>
+              <stop offset="0%" stop-color="#2563EB"/>
               <stop offset="100%" stop-color="#14B8A6"/>
             </linearGradient>
           </defs>
@@ -554,14 +493,14 @@
 
           <!-- central payout node -->
           <g transform="translate(270,236)">
-            <circle r="30" class="pulse-ring" fill="none" stroke="#F5D08C" stroke-width="1.5"/>
-            <circle r="34" fill="#0F1E3D" stroke="#F5D08C" stroke-width="1.5" class="node-glow" style="color:#F5D08C"/>
-            <text x="0" y="6" text-anchor="middle" fill="#F5D08C" font-family="Manrope" font-weight="800" font-size="13">$</text>
+            <circle r="30" class="pulse-ring" fill="none" stroke="#14B8A6" stroke-width="1.5"/>
+            <circle r="34" fill="#fff" stroke="#2563EB" stroke-width="1.5" class="node-glow" style="color:rgba(37,99,235,.45)"/>
+            <path d="M-9 -3 L0 -8 L9 -3 L0 2 Z M-5 0 V5 C-5 7 5 7 5 5 V0" fill="none" stroke="#2563EB" stroke-width="2" stroke-linejoin="round"/>
           </g>
 
 
           <!-- moving dots along lines -->
-          <circle r="3.4" fill="#8FC2FF" style="offset-path: path('M120 100 C 200 150, 240 190, 268 232'); offset-rotate: 0deg;" class="flow-dot"/>
+          <circle r="3.4" fill="#2563EB" style="offset-path: path('M120 100 C 200 150, 240 190, 268 232'); offset-rotate: 0deg;" class="flow-dot"/>
           <circle r="3.4" fill="#14B8A6" style="offset-path: path('M420 90 C 340 140, 300 190, 270 230'); offset-rotate: 0deg; animation-delay:.9s" class="flow-dot"/>
           <circle r="3.4" fill="#F59E0B" style="offset-path: path('M96 340 C 170 300, 220 270, 265 236'); offset-rotate: 0deg; animation-delay:1.8s" class="flow-dot"/>
           <circle r="3.4" fill="#3B82F6" style="offset-path: path('M430 350 C 360 300, 310 270, 272 238'); offset-rotate: 0deg; animation-delay:2.6s" class="flow-dot"/>
@@ -574,30 +513,30 @@
   <section class="ways" aria-labelledby="ways-h">
     <div class="section-head reveal">
       <span class="eyebrow">Earning paths</span>
-      <h2 id="ways-h">Three ways to build income on Eschool</h2>
-      <p>Pick one path or combine several — every format you publish adds another stream to your payout.</p>
+      <h2 id="ways-h">How teachers earn and grow on Eschool</h2>
+      <p>Private lessons are how teachers earn on Eschool. Your live classes and teaching profile bring the parents who book them.</p>
     </div>
     <div class="ways-grid">
 
       <div class="way-card reveal">
-        <div class="way-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8"><path d="M15 10l4.55-2.6A1 1 0 0121 8.27v7.46a1 1 0 01-1.45.87L15 14M5 6h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"/></svg></div>
-        <h3>Create Video Courses</h3>
-        <p>Upload professional educational videos and build a library students purchase again and again.</p>
-        <span class="way-link">Learn more <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="way-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/><path d="M19 8v6M22 11h-6"/></svg></div>
+        <h3>Teach Private Lessons</h3>
+        <p>Parents find you, send a request for their child and pay for sessions through Eschool. You set your price per session. Online lessons happen in an Eschool call.</p>
+        <a href="#how-it-works" class="way-link">How it works <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
 
       <div class="way-card reveal" style="transition-delay:.05s">
-        <div class="way-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z"/></svg></div>
-        <h3>Create Study Notes</h3>
-        <p>Publish premium revision notes and earn every time a student downloads your work.</p>
-        <span class="way-link">Learn more <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="way-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.55-2.6A1 1 0 0121 8.27v7.46a1 1 0 01-1.45.87L15 14M5 6h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"/></svg></div>
+        <h3>Run Live Classes</h3>
+        <p>Teach live inside Eschool with chat and raise-hand. Every class grows your followers and shows parents how you teach before they book you.</p>
+        <a href="#how-it-works" class="way-link">How it works <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
 
-      <div class="way-card reveal" style="transition-delay:.2s">
-        <div class="way-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
-        <h3>Create Practice Exams</h3>
-        <p>Design quizzes and mock examinations that students rely on before test day.</p>
-        <span class="way-link">Learn more <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <div class="way-card reveal" style="transition-delay:.1s">
+        <div class="way-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z"/></svg></div>
+        <h3>Build Your Teaching Profile</h3>
+        <p>Your headline, subjects, levels, price and parents' reviews are what families see when they choose a teacher. Learning resources are prepared by Eschool, so your time goes into teaching.</p>
+        <a href="#payments" class="way-link">How you get paid <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
 
     </div>
@@ -608,28 +547,28 @@
     <div class="section-head reveal">
       <span class="eyebrow">Getting started</span>
       <h2 id="how-h">Five steps from idea to income</h2>
-      <p>A clear, guided path — because the sequence itself is the roadmap.</p>
+      <p>From sign-up to your first paid lesson.</p>
     </div>
     <div class="roadmap">
       <div class="road-step reveal-left">
         <div class="road-num">1</div>
-        <div class="road-body"><h4>Create an Instructor Account</h4><p>Sign up in minutes and tell us what you'll teach.</p></div>
+        <div class="road-body"><h4>Create a Teacher Account</h4><p>Register and choose the teacher role. It is free to join.</p></div>
       </div>
       <div class="road-step reveal-left" style="transition-delay:.08s">
         <div class="road-num">2</div>
-        <div class="road-body"><h4>Verify Your Profile</h4><p>Confirm your identity and expertise so students can trust you.</p></div>
+        <div class="road-body"><h4>Fill In Your Teaching Profile</h4><p>Add a headline, a short bio, your subjects and levels, your price per session and whether you teach online, in person or both.</p></div>
       </div>
       <div class="road-step reveal-left" style="transition-delay:.16s">
         <div class="road-num">3</div>
-        <div class="road-body"><h4>Upload Content</h4><p>Publish courses, notes, or open your mentoring calendar.</p></div>
+        <div class="road-body"><h4>Get Found</h4><p>Run live classes and complete your profile. Parents see teachers matched to their child's subjects and level.</p></div>
       </div>
       <div class="road-step reveal-left" style="transition-delay:.24s">
         <div class="road-num">4</div>
-        <div class="road-body"><h4>Students Learn</h4><p>Learners discover and enroll in what you've created.</p></div>
+        <div class="road-body"><h4>Accept Lesson Requests</h4><p>A parent sends a request with the subject, lesson mode and preferred times. Accept it or decline it.</p></div>
       </div>
       <div class="road-step reveal-left done" style="transition-delay:.32s">
         <div class="road-num">5</div>
-        <div class="road-body"><h4>Receive Payments</h4><p>Payouts land on schedule, tracked in your dashboard.</p></div>
+        <div class="road-body"><h4>Teach and Get Paid</h4><p>Once the parent's payment is confirmed, schedule the sessions and call the learner on Eschool at lesson time. The call confirms each lesson, and Eschool pays you for the lessons taught.</p></div>
       </div>
     </div>
   </section>
@@ -637,44 +576,40 @@
   <!-- ============ DASHBOARD PREVIEW ============ -->
   <section class="dash" aria-labelledby="dash-h">
     <div class="section-head reveal">
-      <span class="eyebrow">Creator dashboard</span>
-      <h2 id="dash-h">Every dollar, tracked in real time</h2>
-      <p>A live preview of the dashboard you get the moment you publish.</p>
+      <span class="eyebrow">Teacher analytics</span>
+      <h2 id="dash-h">See what your teaching earns and reaches</h2>
+      <p>Your analytics page shows how your lessons and live classes are doing over time. The numbers below are an example layout.</p>
     </div>
     <div class="dash-panel reveal">
+      <span class="sample-tag">Example</span>
       <div class="dash-top">
-        <div class="dash-metric"><span>Monthly Revenue</span><b>$4,280</b><span class="delta">▲ 18% vs last month</span></div>
-        <div class="dash-metric"><span>Total Earnings</span><b>$38,940</b><span class="delta">▲ Lifetime</span></div>
-        <div class="dash-metric"><span>Active Students</span><b>2,164</b><span class="delta">▲ 312 this month</span></div>
-        <div class="dash-metric"><span>Courses Published</span><b>14</b><span class="delta">2 in review</span></div>
+        <div class="dash-metric"><span>Lessons taught</span><b>18</b><span class="delta">confirmed by the lesson call</span></div>
+        <div class="dash-metric"><span>Live viewers</span><b>142</b><span class="delta">in your live classes</span></div>
+        <div class="dash-metric"><span>Followers</span><b>96</b><span class="delta">people following you</span></div>
+        <div class="dash-metric"><span>Earnings</span><b>12</b><span class="delta">confirmed lesson payments</span></div>
       </div>
       <div class="dash-main">
         <div class="dash-card">
-          <h4>Revenue — last 6 months</h4>
+          <h4>Lesson minutes this week</h4>
           <div class="bars" id="revBars">
-            <div class="bar" data-h="42"><span>Mar</span></div>
-            <div class="bar" data-h="55"><span>Apr</span></div>
-            <div class="bar" data-h="48"><span>May</span></div>
-            <div class="bar" data-h="70"><span>Jun</span></div>
-            <div class="bar" data-h="63"><span>Jul</span></div>
-            <div class="bar" data-h="92"><span>Aug</span></div>
+            <div class="bar" data-h="42"><span>Mon</span></div>
+            <div class="bar" data-h="55"><span>Tue</span></div>
+            <div class="bar" data-h="48"><span>Wed</span></div>
+            <div class="bar" data-h="70"><span>Thu</span></div>
+            <div class="bar" data-h="63"><span>Fri</span></div>
+            <div class="bar" data-h="92"><span>Sat</span></div>
+            <div class="bar" data-h="58"><span>Sun</span></div>
           </div>
         </div>
         <div class="dash-card">
-          <h4>Earnings by source</h4>
-          <div class="donut-wrap">
-            <svg class="donut" viewBox="0 0 120 120">
-              <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="14"/>
-              <circle id="segNotes" cx="60" cy="60" r="50" fill="none" stroke="#F59E0B" stroke-width="14" stroke-dasharray="314" stroke-dashoffset="314" transform="rotate(-90 60 60)" stroke-linecap="round"/>
-              <circle id="segMentor" cx="60" cy="60" r="50" fill="none" stroke="#14B8A6" stroke-width="14" stroke-dasharray="314" stroke-dashoffset="314" transform="rotate(-90 60 60)" stroke-linecap="round"/>
-              <circle id="segCourse" cx="60" cy="60" r="50" fill="none" stroke="#3B82F6" stroke-width="14" stroke-dasharray="314" stroke-dashoffset="314" transform="rotate(-90 60 60)" stroke-linecap="round"/>
-            </svg>
-            <div class="legend">
-              <span><i class="dot" style="background:#3B82F6"></i>Courses — 52%</span>
-              <span><i class="dot" style="background:#14B8A6"></i>Mentoring — 30%</span>
-              <span><i class="dot" style="background:#F59E0B"></i>Notes sold — 18%</span>
-            </div>
-          </div>
+          <h4>What you can track</h4>
+          <ul class="track-list">
+            <li><i class="dot" style="background:#2563EB"></i>Lessons taught, missed and being checked</li>
+            <li><i class="dot" style="background:#14B8A6"></i>New followers</li>
+            <li><i class="dot" style="background:#3B82F6"></i>Live class viewers and chat</li>
+            <li><i class="dot" style="background:#F59E0B"></i>Confirmed lesson payments</li>
+            <li><i class="dot" style="background:#22C55E"></i>Busiest days and hours</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -683,17 +618,17 @@
   <!-- ============ CREATOR BENEFITS ============ -->
   <section class="benefits" aria-labelledby="ben-h">
     <div class="section-head reveal">
-      <span class="eyebrow">Creator benefits</span>
+      <span class="eyebrow">Teacher benefits</span>
       <h2 id="ben-h">Built for people who teach</h2>
-      <p>Everything that makes creating on Eschool worth your time.</p>
+      <p>Everything that makes teaching on Eschool worth your time.</p>
     </div>
     <div class="benefit-grid">
-      <div class="benefit-card reveal"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18 14 14 0 010-18z"/></svg></div><h4>Global Audience</h4><p>Reach learners across 150+ countries from day one.</p></div>
-      <div class="benefit-card reveal" style="transition-delay:.05s"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div><h4>Flexible Schedule</h4><p>Teach, mentor, or publish entirely on your own time.</p></div>
-      <div class="benefit-card reveal" style="transition-delay:.1s"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div><h4>Passive Income</h4><p>Content you publish once keeps earning long after.</p></div>
-      <div class="benefit-card reveal" style="transition-delay:.15s"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg></div><h4>Secure Payments</h4><p>Encrypted, reliable payouts you can count on.</p></div>
-      <div class="benefit-card reveal" style="transition-delay:.2s"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="1.8"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></div><h4>Personal Brand Growth</h4><p>Build a following that recognizes your name.</p></div>
-      <div class="benefit-card reveal" style="transition-delay:.25s"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8"><path d="M4 19h16M4 15h10M4 11h16M4 7h7"/></svg></div><h4>Unlimited Publishing</h4><p>No cap on courses, notes, or mentoring slots.</p></div>
+      <div class="benefit-card reveal"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18 14 14 0 010-18z"/></svg></div><h4>Teach From Anywhere</h4><p>Lessons and live classes happen online inside Eschool, so learners can reach you wherever they are.</p></div>
+      <div class="benefit-card reveal" style="transition-delay:.05s"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div><h4>Flexible Schedule</h4><p>You choose your times, plan sessions in your schedule and keep a to-do list in your dashboard.</p></div>
+      <div class="benefit-card reveal" style="transition-delay:.1s"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div><h4>You Set Your Price</h4><p>Choose your price per session. Parents can pay for 1, 4, 8 or 12 sessions at a time.</p></div>
+      <div class="benefit-card reveal" style="transition-delay:.15s"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg></div><h4>Payments Handled for You</h4><p>Parents pay Eschool, every payment is checked, and Eschool pays you. No chasing invoices.</p></div>
+      <div class="benefit-card reveal" style="transition-delay:.2s"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="1.8"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></div><h4>A Profile That Builds Trust</h4><p>Your teaching profile shows your subjects, ratings and reviews from parents.</p></div>
+      <div class="benefit-card reveal" style="transition-delay:.25s"><div class="b-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8"><path d="M4 19h16M4 15h10M4 11h16M4 7h7"/></svg></div><h4>Ready-Made Resources</h4><p>Eschool prepares the videos, notes and past papers learners use, so you can focus on teaching.</p></div>
     </div>
   </section>
 
@@ -705,32 +640,32 @@
       <p>Every field has students looking for a guide — find yours.</p>
     </div>
     <div class="cat-grid">
-      <div class="cat-card reveal"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M8 5l-6 7 6 7M16 5l6 7-6 7"/></svg></div><h5>Physics</h5><p>Matter, energy and their relationships</p></div>
-      <div class="cat-card reveal" style="transition-delay:.03s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg></div><h5>Mathematics</h5><p>Algebra to advanced calculus</p></div>
-      <div class="cat-card reveal" style="transition-delay:.06s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M9 2v6L4 20h16L15 8V2"/></svg></div><h5>Chemistry</h5><p>Atoms and their properties</p></div>
-      <div class="cat-card reveal" style="transition-delay:.09s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/></svg></div><h5>Business</h5><p>Strategy, operations, startups</p></div>
-      <div class="cat-card reveal" style="transition-delay:.12s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18"/></svg></div><h5>Languages</h5><p>Conversation to fluency</p></div>
-      <div class="cat-card reveal" style="transition-delay:.15s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z"/></svg></div><h5>History</h5><p>Civilizations and turning points</p></div>
-      <div class="cat-card reveal" style="transition-delay:.18s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3"/></svg></div><h5>Biology</h5><p>Living things and life</p></div>
-      <div class="cat-card reveal" style="transition-delay:.21s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M12 2l9 5v10l-9 5-9-5V7z"/></svg></div><h5>Engineering</h5><p>Mechanical, civil, electrical</p></div>
-      <div class="cat-card reveal" style="transition-delay:.24s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="8" cy="8" r="4"/><path d="M16 4l4 4-8 8H8v-4z"/></svg></div><h5>Graphic Design</h5><p>Visual craft and branding</p></div>
-      <div class="cat-card reveal" style="transition-delay:.27s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div><h5>Finance</h5><p>Markets, budgeting, investing</p></div>
-      <div class="cat-card reveal" style="transition-delay:.3s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-3.9 3.6-7 8-7s8 3.1 8 7"/></svg></div><h5>Career Guidance</h5><p>Roadmaps for first jobs</p></div>
-      <div class="cat-card reveal" style="transition-delay:.33s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div><h5>Exam Preparation</h5><p>Mocks, drills, review plans</p></div>
+      <div class="cat-card reveal"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg></div><h5>Mathematics</h5><p>Numbers, algebra and beyond</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.03s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z"/></svg></div><h5>English</h5><p>Reading, writing and grammar</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.06s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="12" r="2"/><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/></svg></div><h5>Science</h5><p>How the world works</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.09s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M8 5l-6 7 6 7M16 5l6 7-6 7"/></svg></div><h5>Physics</h5><p>Matter, energy and forces</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.12s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M9 2v6L4 20h16L15 8V2"/></svg></div><h5>Chemistry</h5><p>Atoms and reactions</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.15s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3"/></svg></div><h5>Biology</h5><p>Living things and life</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.18s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg></div><h5>History</h5><p>People, places and turning points</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.21s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/></svg></div><h5>Business</h5><p>Trade, money and enterprise</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.24s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div><h5>Computer Studies</h5><p>Computers and coding</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.27s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18"/></svg></div><h5>Languages</h5><p>Conversation to fluency</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.3s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div><h5>Revision</h5><p>Practice and test preparation</p></div>
+      <div class="cat-card reveal" style="transition-delay:0.33s"><div class="c-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></div><h5>Other Subjects</h5><p>Teach what you know best</p></div>
     </div>
   </section>
 
   <!-- ============ PAYMENT SYSTEM ============ -->
-  <section class="payments" aria-labelledby="pay-h">
+  <section class="payments" id="payments" aria-labelledby="pay-h">
     <div class="section-head reveal">
       <span class="eyebrow">How you get paid</span>
-      <h2 id="pay-h">Three ways your work turns into revenue</h2>
-      <p>Transparent, per-action earning — you always know what generated a payout.</p>
+      <h2 id="pay-h">How your teaching turns into income</h2>
+      <p>Clear and simple: parents pay Eschool for lessons, and Eschool pays you for the sessions you teach.</p>
     </div>
     <div class="pay-grid">
-      <div class="pay-card reveal"><div class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8"><path d="M15 10l4.55-2.6A1 1 0 0121 8.27v7.46a1 1 0 01-1.45.87L15 14M5 6h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"/></svg></div><h4>Video courses</h4><p>Earn likes your courses.</p></div>
-      <div class="pay-card reveal" style="transition-delay:.05s"><div class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z"/></svg></div><h4>Study Notes</h4><p>Earn whenever notes are downloaded.</p></div>
-      <div class="pay-card reveal" style="transition-delay:.2s"><div class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.8"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></div><h4>Audio and images</h4><p>Bonuses for created audio and images.</p></div>
+      <div class="pay-card reveal"><div class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/></svg></div><h4>Private lessons</h4><p>Earn your price for every session a parent pays for.</p></div>
+      <div class="pay-card reveal" style="transition-delay:.05s"><div class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></div><h4>Session packs</h4><p>Parents can pay for 1, 4, 8 or 12 sessions at once, so your lessons are booked ahead.</p></div>
+      <div class="pay-card reveal" style="transition-delay:.1s"><div class="pay-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="1.8"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></div><h4>Paid for proved lessons</h4><p>Each lesson is confirmed by the Eschool call, so you're paid for every lesson you teach.</p></div>
     </div>
 
     <div class="flow-diagram reveal" aria-hidden="true">
@@ -743,52 +678,14 @@
         <line x1="60" y1="70" x2="840" y2="70" stroke="#E2E8F0" stroke-width="2"/>
         <line x1="60" y1="70" x2="840" y2="70" stroke="url(#payLine)" stroke-width="2" stroke-dasharray="8 10" class="flow-line"/>
         <g font-family="Inter" font-size="12" fill="#64748B" text-anchor="middle">
-          <circle cx="60" cy="70" r="9" fill="#2563EB"/><text x="60" y="100">Student pays</text>
-          <circle cx="280" cy="70" r="9" fill="#3B82F6"/><text x="280" y="100">Eschool processes</text>
-          <circle cx="500" cy="70" r="9" fill="#14B8A6"/><text x="500" y="100">Platform fee applied</text>
-          <circle cx="720" cy="70" r="9" fill="#F59E0B"/><text x="720" y="100">Payout scheduled</text>
-          <circle cx="840" cy="70" r="10" fill="#22C55E"/><text x="840" y="40" font-weight="700" fill="#0F172A">You get paid</text>
+          <circle cx="60" cy="70" r="9" fill="#2563EB"/><text x="60" y="100">Parent asks</text>
+          <circle cx="255" cy="70" r="9" fill="#3B82F6"/><text x="255" y="100">You accept</text>
+          <circle cx="450" cy="70" r="9" fill="#14B8A6"/><text x="450" y="100">Parent pays Eschool</text>
+          <circle cx="645" cy="70" r="9" fill="#F59E0B"/><text x="645" y="100">You teach the sessions</text>
+          <circle cx="840" cy="70" r="10" fill="#22C55E"/><text x="840" y="40" font-weight="700" fill="#0F172A">Eschool pays you</text>
         </g>
         <circle r="4.5" fill="#0F172A" style="offset-path: path('M60 70 L840 70'); offset-rotate:0deg" class="flow-dot"/>
       </svg>
-    </div>
-  </section>
-
-  <!-- ============ SUCCESS STORIES ============ -->
-  <section class="stories" aria-labelledby="stories-h">
-    <div class="section-head reveal">
-      <span class="eyebrow">Success stories</span>
-      <h2 id="stories-h">Creators already earning</h2>
-      <p>Real people building real income on Eschool.</p>
-    </div>
-    <div class="story-grid">
-      <div class="story-card reveal">
-        <div class="story-top">
-          <div class="avatar" style="background:linear-gradient(135deg,#2563EB,#3B82F6)">AK</div>
-          <div><div class="story-name">A. K.</div><div class="story-meta">Software Engineer · Nigeria</div></div>
-        </div>
-        <div class="stars">★★★★★</div>
-        <p class="quote">Started with two coding courses; within a year mentoring sessions became my biggest earner.</p>
-        <div class="story-earn">$18,400 earned</div>
-      </div>
-      <div class="story-card reveal" style="transition-delay:.05s">
-        <div class="story-top">
-          <div class="avatar" style="background:linear-gradient(135deg,#14B8A6,#22C55E)">RM</div>
-          <div><div class="story-name">R. M.</div><div class="story-meta">Math Teacher · Philippines</div></div>
-        </div>
-        <div class="stars">★★★★★</div>
-        <p class="quote">My exam-prep notes now reach students in eleven countries I've never even visited.</p>
-        <div class="story-earn">$9,750 earned</div>
-      </div>
-      <div class="story-card reveal" style="transition-delay:.1s">
-        <div class="story-top">
-          <div class="avatar" style="background:linear-gradient(135deg,#F59E0B,#EF6C4D)">SP</div>
-          <div><div class="story-name">S. P.</div><div class="story-meta">Product Designer · Kenya</div></div>
-        </div>
-        <div class="stars">★★★★★</div>
-        <p class="quote">Live design critiques turned into a waitlist — I now teach two cohorts every month.</p>
-        <div class="story-earn">$24,900 earned</div>
-      </div>
     </div>
   </section>
 
@@ -797,15 +694,15 @@
     <div class="section-head reveal">
       <span class="eyebrow">Why Eschool</span>
       <h2 id="why-h">Why teach on Eschool</h2>
-      <p>The infrastructure to teach well, minus the busywork.</p>
+      <p>The tools to teach well, without the busywork.</p>
     </div>
     <div class="why-grid">
-      <div class="why-card reveal"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg></div><h4>Reach Thousands of Students</h4><p>Your content surfaces to learners actively searching your subject.</p></div>
-      <div class="why-card reveal" style="transition-delay:.05s"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.8"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg></div><h4>Professional Teaching Tools</h4><p>Recording, quizzes, and grading built into one workspace.</p></div>
-      <div class="why-card reveal" style="transition-delay:.1s"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="1.8"><path d="M12 2v20M2 12h20"/></svg></div><h4>Fast Payments</h4><p>Predictable payout schedules with full history logged.</p></div>
-      <div class="why-card reveal" style="transition-delay:.15s"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="1.8"><path d="M3 20V10M10 20V4M17 20v-7"/></svg></div><h4>Powerful Analytics</h4><p>See exactly what content earns and where students drop off.</p></div>
-      <div class="why-card reveal" style="transition-delay:.2s"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.8"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></div><h4>Marketing Support</h4><p>Featured placement and campaigns for standout creators.</p></div>
-      <div class="why-card reveal" style="transition-delay:.25s"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8"><path d="M4 19l6-6 4 4 8-8"/><path d="M14 9h7v7"/></svg></div><h4>Career Growth</h4><p>Build a portfolio and reputation that follows you beyond Eschool.</p></div>
+      <div class="why-card reveal"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg></div><h4>Matched to the Right Families</h4><p>Parents see teachers ranked for their child's subjects and level, so your requests fit what you teach.</p></div>
+      <div class="why-card reveal" style="transition-delay:.05s"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.8"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg></div><h4>Teaching Tools in One Place</h4><p>Live classes with chat and raise-hand, lesson calls, a schedule and a to-do list, all in your dashboard.</p></div>
+      <div class="why-card reveal" style="transition-delay:.1s"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="1.8"><path d="M12 2v20M2 12h20"/></svg></div><h4>Clear Payment Records</h4><p>Every confirmed payment shows in your analytics, together with the sessions it covers.</p></div>
+      <div class="why-card reveal" style="transition-delay:.15s"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="1.8"><path d="M3 20V10M10 20V4M17 20v-7"/></svg></div><h4>Useful Analytics</h4><p>See your lessons, live class viewers, followers and confirmed payments over time.</p></div>
+      <div class="why-card reveal" style="transition-delay:.2s"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="1.8"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></div><h4>Reviews That Build Trust</h4><p>Parents rate your sessions, and good ratings help new families choose you.</p></div>
+      <div class="why-card reveal" style="transition-delay:.25s"><div class="w-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8"><path d="M4 19l6-6 4 4 8-8"/><path d="M14 9h7v7"/></svg></div><h4>Session Records Parents Value</h4><p>Write notes and homework for each lesson, so parents can follow their child's progress.</p></div>
     </div>
   </section>
 
@@ -817,95 +714,104 @@
     </div>
     <div class="faq-list reveal">
       <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">How do I become a creator?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><div class="faq-a-in">Register for a free instructor account, complete your profile, and submit your first piece of content for review.</div></div>
+        <button class="faq-q" aria-expanded="false">How do I become a teacher on Eschool?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
+        <div class="faq-a"><div class="faq-a-in">Register and choose the teacher role, then fill in your teaching profile: headline, bio, subjects, levels, price per session and lesson mode.</div></div>
       </div>
       <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">How do I receive payments?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><div class="faq-a-in">Link a payout method in your dashboard. Earnings are calculated automatically and sent out on your chosen schedule.</div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">Who owns my content?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><div class="faq-a-in">You do. Eschool hosts and distributes it, but the rights to what you create stay with you.</div></div>
+        <button class="faq-q" aria-expanded="false">How do I get paid?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
+        <div class="faq-a"><div class="faq-a-in">Parents pay Eschool for the sessions they book. Each payment is checked, then you schedule the sessions. At lesson time you call the learner on Eschool; the call confirms the lesson. Eschool holds the money and pays you for the lessons taught. For questions about a payment, contact support.</div></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" aria-expanded="false">How much can I earn?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><div class="faq-a-in">There's no cap. Earnings scale with how much you publish and how many students you reach.</div></div>
+        <div class="faq-a"><div class="faq-a-in">You set your own price per session, so your earnings depend on your price and how many sessions parents pay for. Private lessons are the only way teachers earn on Eschool. Live classes are free and help families find you.</div></div>
       </div>
       <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">How often are payments made?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><div class="faq-a-in">Most creators are paid monthly, with the exact date visible in your dashboard's payout tab.</div></div>
+        <button class="faq-q" aria-expanded="false">Do I need to create learning resources?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
+        <div class="faq-a"><div class="faq-a-in">No. All learning resources are prepared and published by Eschool. Teachers focus on teaching their private lessons and live classes.</div></div>
       </div>
       <div class="faq-item">
-        <button class="faq-q" aria-expanded="false">Can anyone become an instructor?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><div class="faq-a-in">Yes — we review submissions for quality, not credentials. What matters is that your content helps students learn.</div></div>
+        <button class="faq-q" aria-expanded="false">Can I teach online and in person?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
+        <div class="faq-a"><div class="faq-a-in">Yes. On your teaching profile you choose online, in person, or both. Parents see this before they send a request.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">Can anyone become a teacher?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
+        <div class="faq-a"><div class="faq-a-in">Yes. Anyone can register as a teacher. Parents decide who to hire based on your profile, your subjects, your ratings and the live classes you run.</div></div>
       </div>
     </div>
   </section>
 
   <!-- ============ PLATFORM STATS ============ -->
   <section class="platform-stats" aria-labelledby="ps-h">
-    <div class="section-head reveal">
-      <span class="eyebrow" style="color:#8FC2FF">By the numbers</span>
-      <h2 id="ps-h" style="color:#fff">A growing creator economy</h2>
-    </div>
-    <div class="ps-grid">
-      <div class="ps-item reveal"><b class="counter" data-target="10000" data-suffix="+">0</b><span>Educators</span></div>
-      <div class="ps-item reveal" style="transition-delay:.05s"><b class="counter" data-target="50000" data-suffix="+">0</b><span>Resources</span></div>
-      <div class="ps-item reveal" style="transition-delay:.1s"><b class="counter" data-target="500000" data-suffix="+">0</b><span>Students</span></div>
-      <div class="ps-item reveal" style="transition-delay:.15s"><b class="counter" data-target="2" data-prefix="$" data-suffix="M+">0</b><span>Creator Earnings</span></div>
-      <div class="ps-item reveal" style="transition-delay:.2s"><b class="counter" data-target="150" data-suffix="+">0</b><span>Countries</span></div>
+    <div class="ps-card reveal">
+      <div class="section-head">
+        <span class="eyebrow">By the numbers</span>
+        <h2 id="ps-h">Eschool at a glance</h2>
+        <p>Live numbers, straight from the platform</p>
+      </div>
+      <div class="ps-grid">
+        {% for key, label, suffix in [('teachers', 'Teachers', ''), ('students', 'Students', ''), ('parents', 'Parents', ''), ('courses', 'Courses', ''), ('avg_score', 'Average test score', '%')] %}
+        {% set n = (hs.get(key) or 0)|int %}
+        <div class="ps-item"><b class="counter" data-stat="{{ key }}" data-target="{{ n }}" data-suffix="{{ suffix }}">{{ '{:,}'.format(n) }}{{ suffix }}</b><span>{{ label }}</span></div>
+        {% endfor %}
+      </div>
     </div>
   </section>
 
   <!-- ============ CTA ============ -->
-  <section class="cta" aria-labelledby="cta-h">
-    <span class="eyebrow" style="color:#8FC2FF">Ready when you are</span>
-    <h2 id="cta-h">Start Earning With Your Knowledge Today</h2>
-    <p>Join thousands of educators who are building their careers while helping learners succeed.</p>
-    <div class="cta-btns">
-      <button class="btn btn-primary" onclick="window.location.href='/register'">
-        Become an Instructor
-        <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
+  <section class="cta-wrap" aria-labelledby="cta-h">
+    <div class="cta reveal">
+      <div class="blob b1" aria-hidden="true"></div>
+      <div class="blob b2" aria-hidden="true"></div>
+      <span class="eyebrow">Ready when you are</span>
+      <h2 id="cta-h">Start Earning With Your Knowledge Today</h2>
+      <p>Create your teacher account, fill in your teaching profile and start taking private lessons. Questions first? Our team is happy to help.</p>
+      <div class="cta-btns">
+        <button class="btn btn-primary" onclick="window.location.href='/register'">
+          Become a Teacher
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <a href="/contact" class="btn btn-ghost">Talk to us</a>
+      </div>
     </div>
   </section>
 
   <!-- ============ FOOTER ============ -->
-  <footer class="site-footer">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <h3>Eschool</h3>
-        <p>The all-in-one platform for modern and online learning.</p>
-        <div class="social-row" aria-label="Social media">
-          <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="#fff"><path d="M13 22v-9h3l1-4h-4V7c0-1 .3-2 2-2h2V1h-3c-3 0-4.5 1.7-4.5 4.5V9H7v4h3v9z"/></svg></a>
-          <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24" fill="#fff"><path d="M22 5.9c-.7.3-1.5.6-2.3.7.8-.5 1.4-1.3 1.7-2.3-.8.5-1.7.8-2.6 1a4 4 0 00-6.9 3.6A11.4 11.4 0 013 4.9a4 4 0 001.2 5.3c-.6 0-1.2-.2-1.7-.5v.1a4 4 0 003.2 3.9c-.6.2-1.2.2-1.8.1a4 4 0 003.7 2.8A8 8 0 012 18.4a11.3 11.3 0 006.1 1.8c7.4 0 11.4-6.1 11.4-11.4v-.5c.8-.6 1.4-1.3 2-2.1z"/></svg></a>
-          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="#fff"><path d="M4.98 3.5a2.5 2.5 0 11-.02 5 2.5 2.5 0 01.02-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2 3.77-2 4 0 4.8 2.6 4.8 6V21h-4v-5.3c0-1.3 0-2.9-1.8-2.9s-2 1.4-2 2.8V21H9z"/></svg></a>
-          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="#fff"><path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm5 5.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zm5.8-.6a1.1 1.1 0 11-2.2 0 1.1 1.1 0 012.2 0z"/></svg></a>
+  <footer class="site-foot">
+    <div class="container foot-grid">
+        <div class="foot-col">
+            <div class="foot-brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3L1 8l11 5 9-4.09V17h2V8L12 3z" fill="url(#lfg1)"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="url(#lfg1)" opacity=".7"/><defs><linearGradient id="lfg1" x1="1" y1="3" x2="23" y2="21"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#14B8A6"/></linearGradient></defs></svg>
+                <span>Eschool</span>
+            </div>
+            <p>Premium online learning built around real skills, clear video lessons, and a path that actually gets you somewhere.</p>
         </div>
-      </div>
-      <div class="footer-col"><h5>Product</h5><ul>
-        <li><a href="#">Courses</a></li><li><a href="#">Earn</a></li><li><a href="#">Pricing</a></li><li><a href="#">Integrations</a></li>
-      </ul></div>
-      <div class="footer-col"><h5>Company</h5><ul>
-        <li><a href="#">About Us</a></li><li><a href="#">Careers</a></li><li><a href="#">Contact</a></li><li><a href="#">Support</a></li>
-      </ul></div>
-      <div class="footer-col"><h5>Legal</h5><ul>
-        <li><a href="#">Privacy Policy</a></li><li><a href="#">Terms of Service</a></li><li><a href="#">Cookie Policy</a></li>
-      </ul></div>
-      <div class="footer-col">
-        <h5>Newsletter</h5>
-        <p style="font-size:.83rem;color:#8FA0C8;margin-bottom:0;">Get creator tips in your inbox.</p>
-        <form class="newsletter" onsubmit="event.preventDefault();">
-          <label for="nl-email" class="sr-only" style="position:absolute;left:-9999px;">Email address</label>
-          <input id="nl-email" type="email" placeholder="you@email.com" required>
-          <button type="submit">Join</button>
-        </form>
-      </div>
+        <div class="foot-col">
+            <h5>Quick Links</h5>
+            <ul>
+                <li><a href="/#categories">Courses</a></li>
+                <li><a href="/aboutus">About us</a></li>
+                <li><a href="/services">Services</a></li>
+                <li><a href="/earn">Earn</a></li>
+            </ul>
+        </div>
+        <div class="foot-col">
+            <h5>Support</h5>
+            <ul>
+                <li><a href="/contact">Contact</a></li>
+                <li><a href="/policies#privacy">Privacy Policy</a></li>
+                <li><a href="/policies#terms">Terms of Service</a></li>
+            </ul>
+        </div>
+        <div class="foot-col">
+            <h5>Need help now?</h5>
+            <div class="help-box">
+                <p>Questions about your account, a payment or a lesson? Our team will help, usually within one working day.</p>
+                <a class="help-btn" href="/contact"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Contact support</a>
+            </div>
+        </div>
     </div>
-    <div class="footer-bottom">
-      <span>&copy; 2025 Eschool. All rights reserved.</span>
-      <span><a href="#">Privacy</a> &nbsp;·&nbsp; <a href="#">Terms</a> &nbsp;·&nbsp; <a href="#">Donate</a></span>
+    <div class="container">
+        <div class="copyright">&copy; <span data-year>2026</span> Eschool. All rights reserved. &middot; <a href="/policies#privacy">Privacy</a> &middot; <a href="/policies#terms">Terms</a></div>
     </div>
   </footer>
 
@@ -926,7 +832,7 @@
 
   /* ---- animated counters ---- */
   function animateCounter(el) {
-    var target = parseFloat(el.dataset.target);
+    var target = parseFloat(el.dataset.target) || 0;
     var prefix = el.dataset.prefix || '';
     var suffix = el.dataset.suffix || '';
     var start = 0, dur = 1500, t0 = null;
@@ -961,34 +867,6 @@
   var barsEl = document.getElementById('revBars');
   if (barsEl) barsIO.observe(barsEl);
 
-  /* ---- donut chart segments ---- */
-  var donutIO = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) {
-      if (e.isIntersecting) {
-        var circ = 314;
-        var course = document.getElementById('segCourse');
-        var mentor = document.getElementById('segMentor');
-        var notes = document.getElementById('segNotes');
-        if (course) course.style.strokeDashoffset = circ - (circ * 0.52);
-        if (mentor) {
-          mentor.style.strokeDasharray = circ;
-          mentor.style.strokeDashoffset = circ - (circ * 0.30);
-          mentor.style.transform = 'rotate(' + (-90 + 360 * 0.52) + 'deg)';
-          mentor.style.transformOrigin = '60px 60px';
-        }
-        if (notes) {
-          notes.style.strokeDasharray = circ;
-          notes.style.strokeDashoffset = circ - (circ * 0.18);
-          notes.style.transform = 'rotate(' + (-90 + 360 * 0.82) + 'deg)';
-          notes.style.transformOrigin = '60px 60px';
-        }
-        donutIO.unobserve(e.target);
-      }
-    });
-  }, { threshold: 0.3 });
-  var donutEl = root.querySelector('.donut');
-  if (donutEl) donutIO.observe(donutEl);
-
   /* ---- FAQ accordion ---- */
   root.querySelectorAll('.faq-item').forEach(function (item) {
     var q = item.querySelector('.faq-q');
@@ -1004,6 +882,26 @@
       }
     });
   });
+
+  /* ---- footer year ---- */
+  root.querySelectorAll('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
+
+  /* ---- live numbers: refresh every 60 seconds while the page is open ---- */
+  var liveTimer = setInterval(function () {
+    if (document.hidden) return;
+    fetch('/api/home-stats', { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (data) {
+        root.querySelectorAll('[data-stat]').forEach(function (el) {
+          var raw = el.dataset.stat.split('.').reduce(function (o, k) { return o == null ? undefined : o[k]; }, data);
+          var v = parseInt(raw, 10);
+          if (isNaN(v)) return;
+          el.dataset.target = v;
+          el.textContent = v.toLocaleString() + (el.dataset.suffix || '');
+        });
+      })
+      .catch(function () { clearInterval(liveTimer); });
+  }, 60000);
 })();
 </script>
 {% endblock %}

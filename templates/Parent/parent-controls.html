@@ -1,0 +1,735 @@
+{% extends "Parent/parent-body.html" %}
+
+{% block allcontent %}
+{#
+    PARENT PAGE - Parental Controls  (templates/Parent/parent-controls.html)
+    Every rule here is enforced by the server (see "PARENTAL CONTROLS" in backen.py):
+      GET/PUT /api/parent/children/<id>/controls          rules, today's time, pause state
+      POST/DELETE /api/parent/children/<id>/pause         pause now / resume
+      GET  /api/parent/children/<id>/contacts             everyone the child talks to
+      GET  /api/parent/children/<id>/contacts/<o>/messages  a conversation (needs "Messages" access)
+      POST /api/parent/children/<id>/contacts/<o>         block / unblock / approve / unapprove
+      GET  /api/parent/children/<id>/requests             contact requests
+      POST /api/parent/contact-requests/<id>              approve / deny
+      GET  /api/parent/children/<id>/people?q=            find someone to approve or block
+      GET  /api/parent/children/<id>/activity             timeline
+      PATCH /api/parent/links/<link_id>/permissions       turn "Messages" access on or off
+#}
+<style>
+/* ======================================================================
+   PARENTAL CONTROLS
+   Scoped to .pc so nothing leaks into the rest of the site. Own light and
+   dark colours (data-no-theme); the main colour follows Settings >
+   Appearance through --primary-color. No pop-ups.
+   ====================================================================== */
+.pc {
+    --pc-accent: var(--primary-color, #4361ee);
+    --pc-accent-2: var(--secondary-color, #3a0ca3);
+    --pc-accent-dark: var(--primary-dark, #2a44c7);
+    --pc-accent-soft: color-mix(in srgb, var(--pc-accent) 11%, transparent);
+    --pc-accent-line: color-mix(in srgb, var(--pc-accent) 35%, transparent);
+    --pc-accent-text: var(--pc-accent);
+    --pc-surface: #ffffff; --pc-surface-2: #f8fafc; --pc-hover: #f1f5f9;
+    --pc-border: #e5e7eb; --pc-track: #e8edf3;
+    --pc-text: #0f172a; --pc-text-2: #475569; --pc-text-3: #64748b;
+    --pc-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06);
+    --pc-ok: #059669;   --pc-ok-soft: #ecfdf5;
+    --pc-warn: #b45309; --pc-warn-soft: #fffbeb;
+    --pc-bad: #dc2626;  --pc-bad-soft: #fef2f2;
+    --pc-info: #2563eb; --pc-info-soft: #eff6ff;
+    --pc-radius: 16px;
+    max-width: 1360px; margin: 0 auto; padding: 6px 0 100px;
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--pc-text);
+}
+body.dark-mode .pc {
+    --pc-accent-soft: color-mix(in srgb, var(--pc-accent) 20%, transparent);
+    --pc-accent-line: color-mix(in srgb, var(--pc-accent) 45%, transparent);
+    --pc-accent-text: color-mix(in srgb, var(--pc-accent) 55%, #ffffff);
+    --pc-surface: #111827; --pc-surface-2: #0f172a; --pc-hover: #1e293b;
+    --pc-border: #263244; --pc-track: #263244;
+    --pc-text: #e5e7eb; --pc-text-2: #cbd5e1; --pc-text-3: #94a3b8;
+    --pc-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25);
+    --pc-ok: #34d399;   --pc-ok-soft: rgba(16, 185, 129, .14);
+    --pc-warn: #fbbf24; --pc-warn-soft: rgba(245, 158, 11, .14);
+    --pc-bad: #f87171;  --pc-bad-soft: rgba(239, 68, 68, .14);
+    --pc-info: #60a5fa; --pc-info-soft: rgba(59, 130, 246, .14);
+}
+.pc *, .pc *::before, .pc *::after { box-sizing: border-box; }
+.pc h1, .pc h2, .pc h3, .pc h4, .pc p { margin: 0; }
+.pc button, .pc input, .pc select, .pc textarea { font-family: inherit; }
+.pc :focus-visible { outline: 3px solid var(--pc-accent-line); outline-offset: 2px; }
+.pc [hidden] { display: none !important; }
+
+.pc-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 22px 26px; margin-bottom: 14px;
+    border-radius: var(--pc-radius); color: #fff; background: linear-gradient(135deg, var(--pc-accent), var(--pc-accent-2)); box-shadow: var(--pc-shadow); }
+.pc-hero::after { content: ""; position: absolute; right: -70px; top: -90px; width: 280px; height: 280px; border-radius: 50%; background: rgba(255, 255, 255, .08); pointer-events: none; }
+.pc-hero-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: rgba(255, 255, 255, .18); border: 1px solid rgba(255, 255, 255, .28); position: relative; z-index: 1; flex-shrink: 0; }
+.pc-hero-text { flex: 1; min-width: 240px; position: relative; z-index: 1; }
+.pc-hero h1 { font-family: 'Poppins', sans-serif; font-size: 1.6rem; font-weight: 700; color: #fff; }
+.pc-hero p { margin-top: 5px; opacity: .93; font-size: .93rem; line-height: 1.55; color: #fff; max-width: 680px; }
+
+.pc-toolbar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 10px 12px; margin-bottom: 14px; background: var(--pc-surface); border: 1px solid var(--pc-border); border-radius: var(--pc-radius); box-shadow: var(--pc-shadow); }
+.pc-toolbar::-webkit-scrollbar { display: none; }
+.pc-kid { flex-shrink: 0; display: flex; align-items: center; gap: 9px; padding: 5px 14px 5px 5px; border: 1px solid var(--pc-border); background: var(--pc-surface); border-radius: 99px; cursor: pointer; font-size: .88rem; font-weight: 600; color: var(--pc-text-2); text-align: left; }
+.pc-kid small { display: block; font-weight: 500; color: var(--pc-text-3); font-size: .7rem; }
+.pc-kid:hover { background: var(--pc-hover); color: var(--pc-text); }
+.pc-kid[aria-pressed="true"] { background: var(--pc-accent); border-color: var(--pc-accent); color: #fff; }
+.pc-kid[aria-pressed="true"] small { color: rgba(255, 255, 255, .85); }
+.pc-avatar { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--pc-accent), var(--pc-accent-2)); color: #fff; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .95rem; }
+.pc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pc-avatar.sm { width: 30px; height: 30px; font-size: .7rem; }
+
+.pc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 14px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; font-weight: 600; font-size: .85rem; text-decoration: none; line-height: 1.2; transition: background-color .15s, border-color .15s, color .15s; }
+.pc-btn-primary { background: var(--pc-accent); color: #fff; }
+.pc-btn-primary:hover:not(:disabled) { background: var(--pc-accent-dark); color: #fff; }
+.pc-btn-ghost { background: var(--pc-surface); color: var(--pc-text-2); border-color: var(--pc-border); }
+.pc-btn-ghost:hover:not(:disabled) { background: var(--pc-hover); color: var(--pc-text); border-color: var(--pc-accent-line); }
+.pc-btn-danger { background: var(--pc-surface); color: var(--pc-bad); border-color: color-mix(in srgb, var(--pc-bad) 35%, transparent); }
+.pc-btn-danger:hover:not(:disabled) { background: var(--pc-bad-soft); }
+.pc-btn-danger.solid { background: var(--pc-bad); color: #fff; border-color: var(--pc-bad); }
+.pc-btn-ok { background: var(--pc-ok); color: #fff; }
+.pc-btn-sm { padding: 6px 11px; font-size: .79rem; }
+.pc-btn:disabled { opacity: .55; cursor: default; }
+.pc-note { font-size: .84rem; line-height: 1.45; }
+.pc-note:empty { display: none; }
+.pc-note.ok { color: var(--pc-ok); } .pc-note.bad { color: var(--pc-bad); } .pc-note.info { color: var(--pc-text-2); }
+.pc-status { margin: -4px 0 12px; }
+
+/* banners */
+.pc-banner { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 14px 18px; border-radius: 14px; margin-bottom: 12px; background: var(--pc-surface); border: 1px solid var(--pc-border); border-left: 5px solid var(--pc-bad); box-shadow: var(--pc-shadow); }
+.pc-banner > i { font-size: 1.4rem; color: var(--pc-bad); }
+.pc-banner.warn { border-left-color: var(--pc-warn); } .pc-banner.warn > i { color: var(--pc-warn); }
+.pc-banner.info { border-left-color: var(--pc-info); } .pc-banner.info > i { color: var(--pc-info); }
+.pc-banner .txt { flex: 1; min-width: 200px; font-size: .9rem; line-height: 1.5; color: var(--pc-text-2); }
+.pc-banner .txt strong { color: var(--pc-text); }
+
+/* tabs */
+.pc-tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; padding: 4px; border-radius: 14px; background: var(--pc-surface); border: 1px solid var(--pc-border); box-shadow: var(--pc-shadow); }
+.pc-tabs::-webkit-scrollbar { display: none; }
+.pc-tab { flex: 1 1 0; min-width: max-content; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 0; border-radius: 10px; background: transparent; color: var(--pc-text-2); font-weight: 600; font-size: .88rem; cursor: pointer; white-space: nowrap; }
+.pc-tab:hover { background: var(--pc-hover); color: var(--pc-text); }
+.pc-tab[aria-selected="true"] { background: var(--pc-accent); color: #fff; }
+.pc-badge { font-size: .7rem; padding: 1px 7px; border-radius: 99px; background: var(--pc-bad); color: #fff; }
+
+/* cards */
+.pc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
+.pc-card { background: var(--pc-surface); border: 1px solid var(--pc-border); border-radius: var(--pc-radius); box-shadow: var(--pc-shadow); padding: 20px; min-width: 0; }
+.pc-card + .pc-card { margin-top: 14px; }
+.pc-grid > .pc-card + .pc-card { margin-top: 0; }
+.pc-title { display: flex; align-items: center; gap: 10px; font-family: 'Poppins', sans-serif; font-size: 1.04rem; font-weight: 600; color: var(--pc-text); margin-bottom: 4px; }
+.pc-title .ic { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--pc-accent-soft); color: var(--pc-accent-text); font-size: .85rem; }
+.pc-title .right { margin-left: auto; font-size: .8rem; font-weight: 500; font-family: 'Inter', sans-serif; color: var(--pc-text-3); }
+.pc-sub { font-size: .84rem; color: var(--pc-text-3); line-height: 1.5; margin-bottom: 16px; }
+.pc-big { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.pc-big strong { font-family: 'Poppins', sans-serif; font-size: 2.1rem; color: var(--pc-text); }
+.pc-big span { color: var(--pc-text-3); font-size: .9rem; }
+.pc-bar { height: 12px; border-radius: 99px; background: var(--pc-track); overflow: hidden; margin-bottom: 14px; }
+.pc-bar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--pc-accent), var(--pc-accent-2)); }
+.pc-bar > i.warn { background: var(--pc-warn); } .pc-bar > i.over { background: var(--pc-bad); }
+.pc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pc-bars { display: flex; align-items: flex-end; gap: 8px; height: 170px; padding: 22px 6px 0; border-radius: 12px; background: var(--pc-surface-2); border: 1px solid var(--pc-border); }
+.pc-bcol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+.pc-bcol .col { width: 100%; max-width: 34px; border-radius: 6px 6px 0 0; background: linear-gradient(to top, var(--pc-accent), var(--pc-accent-2)); position: relative; min-height: 3px; }
+.pc-bcol .col.zero { background: var(--pc-track); }
+.pc-bcol .col.over { background: var(--pc-bad); }
+.pc-bcol .val { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: .66rem; font-weight: 700; white-space: nowrap; color: var(--pc-text); }
+.pc-bcol .lab { font-size: .7rem; color: var(--pc-text-3); margin: 6px 0; }
+.pc-rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pc-rule { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--pc-surface-2); border: 1px solid var(--pc-border); font-size: .86rem; color: var(--pc-text); min-width: 0; }
+.pc-rule > i { width: 30px; height: 30px; border-radius: 9px; background: var(--pc-accent-soft); color: var(--pc-accent-text); display: flex; align-items: center; justify-content: center; font-size: .8rem; flex-shrink: 0; }
+.pc-rule .state { margin-left: auto; font-weight: 700; font-size: .78rem; white-space: nowrap; color: var(--pc-text-3); }
+.pc-rule .state.on { color: var(--pc-ok); }
+
+/* settings */
+.pc-setting { display: flex; align-items: center; gap: 14px; padding: 13px 14px; border: 1px solid var(--pc-border); border-radius: 12px; background: var(--pc-surface-2); }
+.pc-setting + .pc-setting { margin-top: 8px; }
+.pc-setting > i { width: 38px; height: 38px; border-radius: 10px; background: var(--pc-accent-soft); color: var(--pc-accent-text); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pc-setting .txt { flex: 1; min-width: 0; }
+.pc-setting .txt strong { display: block; font-size: .92rem; color: var(--pc-text); }
+.pc-setting .txt span { font-size: .8rem; color: var(--pc-text-3); line-height: 1.5; }
+.pc-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.pc-switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 1; }
+.pc-slider { position: absolute; inset: 0; background: var(--pc-track); border-radius: 24px; transition: background-color .15s; }
+.pc-slider::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .15s; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
+.pc-switch input:checked + .pc-slider { background: var(--pc-accent); }
+.pc-switch input:checked + .pc-slider::before { transform: translateX(20px); }
+.pc-switch input:focus-visible + .pc-slider { outline: 3px solid var(--pc-accent-line); outline-offset: 2px; }
+.pc-input, .pc-select { width: 100%; padding: 9px 12px; border: 1px solid var(--pc-border); border-radius: 10px; font-size: .9rem; background: var(--pc-surface); color: var(--pc-text); }
+.pc-input::placeholder { color: var(--pc-text-3); }
+.pc-input:focus, .pc-select:focus { outline: none; border-color: var(--pc-accent); box-shadow: 0 0 0 3px var(--pc-accent-soft); }
+.pc-input:disabled { opacity: .55; }
+.pc-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr)); gap: 10px; }
+.pc-day { border: 1px solid var(--pc-border); border-radius: 12px; padding: 12px; background: var(--pc-surface-2); }
+.pc-day label { display: flex; justify-content: space-between; font-weight: 700; font-size: .84rem; margin-bottom: 8px; color: var(--pc-text); }
+.pc-day .val { color: var(--pc-accent-text); }
+.pc-day.today { border-color: var(--pc-accent); }
+.pc input[type=range] { width: 100%; accent-color: var(--pc-accent); }
+.pc-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-top: 12px; }
+.pc-row > div { flex: 1 1 140px; }
+.pc-lbl { display: block; font-size: .8rem; font-weight: 700; color: var(--pc-text-2); margin-bottom: 6px; }
+
+/* contact mode */
+.pc-modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.pc-mode { position: relative; cursor: pointer; display: block; }
+.pc-mode input { position: absolute; opacity: 0; pointer-events: none; }
+.pc-mode span { display: block; height: 100%; padding: 14px; border-radius: 14px; border: 2px solid var(--pc-border); background: var(--pc-surface); }
+.pc-mode:hover span { border-color: var(--pc-accent-line); }
+.pc-mode input:checked + span { border-color: var(--pc-accent); background: var(--pc-accent-soft); }
+.pc-mode input:focus-visible + span { outline: 3px solid var(--pc-accent-line); outline-offset: 2px; }
+.pc-mode b { display: flex; gap: 8px; align-items: center; color: var(--pc-text); font-size: .92rem; }
+.pc-mode b i { color: var(--pc-accent-text); }
+.pc-mode small { display: block; margin-top: 4px; font-size: .78rem; color: var(--pc-text-3); line-height: 1.45; }
+
+/* people */
+.pc-people { display: flex; flex-direction: column; gap: 10px; }
+.pc-person { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 14px; background: var(--pc-surface-2); border: 1px solid var(--pc-border); border-left: 4px solid var(--pc-border); }
+.pc-person.blocked { border-left-color: var(--pc-bad); }
+.pc-person.approved { border-left-color: var(--pc-ok); }
+.pc-person-info { flex: 1 1 200px; min-width: 0; }
+.pc-person-info b { color: var(--pc-text); font-size: .95rem; }
+.pc-person-info small { display: block; font-size: .78rem; color: var(--pc-text-3); margin-top: 2px; }
+.pc-role { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 2px 8px; border-radius: 99px; background: var(--pc-hover); color: var(--pc-text-3); margin-left: 6px; vertical-align: middle; }
+.pc-role.teacher { background: var(--pc-info-soft); color: var(--pc-info); }
+.pc-stats { display: flex; gap: 6px; flex-wrap: wrap; }
+.pc-stat { text-align: center; padding: 6px 10px; border-radius: 10px; background: var(--pc-surface); border: 1px solid var(--pc-border); min-width: 66px; }
+.pc-stat b { display: block; font-family: 'Poppins', sans-serif; font-size: .98rem; color: var(--pc-text); }
+.pc-stat span { font-size: .66rem; color: var(--pc-text-3); }
+.pc-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.pc-pill.allowed { background: var(--pc-hover); color: var(--pc-text-3); }
+.pc-pill.approved, .pc-pill.on { background: var(--pc-ok-soft); color: var(--pc-ok); }
+.pc-pill.blocked, .pc-pill.denied { background: var(--pc-bad-soft); color: var(--pc-bad); }
+.pc-pill.pending { background: var(--pc-warn-soft); color: var(--pc-warn); }
+.pc-person-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.pc-search-box { position: relative; }
+.pc-results { margin-top: 8px; border: 1px solid var(--pc-border); border-radius: 12px; overflow: hidden; }
+.pc-results:empty { display: none; }
+.pc-res { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--pc-border); font-size: .88rem; color: var(--pc-text); flex-wrap: wrap; }
+.pc-res:last-child { border-bottom: 0; }
+.pc-res span { flex: 1; }
+
+/* requests */
+.pc-req { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; padding: 14px; border-radius: 14px; border: 1px solid var(--pc-border); border-left: 4px solid var(--pc-warn); background: var(--pc-surface-2); margin-bottom: 10px; }
+.pc-req.approved { border-left-color: var(--pc-ok); } .pc-req.denied { border-left-color: var(--pc-bad); }
+.pc-req-body { flex: 1 1 240px; min-width: 0; }
+.pc-req-body h4 { font-size: .95rem; color: var(--pc-text); }
+.pc-req-body p { font-size: .84rem; color: var(--pc-text-2); line-height: 1.5; margin-top: 3px; }
+.pc-req-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; width: 100%; }
+.pc-req-acts .pc-input { flex: 1 1 200px; width: auto; }
+
+/* activity */
+.pc-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.pc-chip { padding: 6px 13px; border-radius: 99px; border: 1px solid var(--pc-border); background: var(--pc-surface); color: var(--pc-text-2); font-size: .8rem; font-weight: 600; cursor: pointer; }
+.pc-chip:hover { background: var(--pc-hover); color: var(--pc-text); }
+.pc-chip[aria-pressed="true"] { background: var(--pc-accent); border-color: var(--pc-accent); color: #fff; }
+.pc-dayhead { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--pc-text-3); margin: 14px 0 4px; }
+.pc-dayhead:first-child { margin-top: 0; }
+.pc-act { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--pc-border); align-items: flex-start; }
+.pc-act:last-child { border-bottom: 0; }
+.pc-act .dot { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .82rem; color: var(--k); background: color-mix(in srgb, var(--k) 14%, transparent); }
+.k-learning { --k: #059669; } .k-social { --k: #2563eb; } .k-posts { --k: #7c3aed; } .k-rules { --k: #d97706; }
+body.dark-mode .k-learning { --k: #34d399; } body.dark-mode .k-social { --k: #60a5fa; } body.dark-mode .k-posts { --k: #a78bfa; } body.dark-mode .k-rules { --k: #fbbf24; }
+.pc-act .t { font-size: .88rem; line-height: 1.5; color: var(--pc-text); }
+.pc-act .tm { font-size: .74rem; color: var(--pc-text-3); margin-top: 1px; }
+
+.pc-empty { text-align: center; padding: 28px 14px; color: var(--pc-text-3); font-size: .9rem; }
+.pc-empty > i { display: block; font-size: 2rem; opacity: .5; margin-bottom: 10px; }
+.pc-empty h3 { font-family: 'Poppins', sans-serif; font-size: 1.05rem; color: var(--pc-text); margin-bottom: 6px; }
+.pc-empty p { max-width: 460px; margin: 0 auto 12px; line-height: 1.6; }
+.pc-loading { padding: 40px; text-align: center; color: var(--pc-text-3); }
+
+/* save bar */
+.pc-save { position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, 160%); z-index: 2500; display: flex; gap: 10px; align-items: center; padding: 10px 10px 10px 18px; border-radius: 99px;
+    background: #0f172a; color: #fff; box-shadow: 0 10px 40px rgba(0, 0, 0, .35); transition: transform .3s ease, visibility 0s .3s; max-width: calc(100vw - 24px); visibility: hidden; }
+.pc-save.show { transform: translate(-50%, 0); visibility: visible; transition: transform .3s ease, visibility 0s; }
+.pc-save span { font-size: .88rem; }
+.pc-save .pc-btn-ghost { background: transparent; color: #e2e8f0; border-color: #475569; }
+.pc-save .pc-btn-ghost:hover { background: #1e293b; color: #fff; }
+
+/* windows */
+.pc-modal { position: fixed; inset: 0; z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, .55); }
+.pc-modal.open { display: flex; }
+.pc-dialog { width: min(480px, 100%); max-height: calc(100vh - 40px); overflow: auto; border-radius: 18px; background: var(--pc-surface); color: var(--pc-text); border: 1px solid var(--pc-border); box-shadow: 0 24px 60px rgba(0, 0, 0, .3); animation: pcIn .18s ease-out; }
+.pc-dialog.md { width: min(620px, 100%); }
+@keyframes pcIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.pc-dhead { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: var(--pc-surface); border-bottom: 1px solid var(--pc-border); }
+.pc-dhead h2 { font-family: 'Poppins', sans-serif; font-size: 1.08rem; color: var(--pc-text); }
+.pc-dhead p { font-size: .8rem; color: var(--pc-text-3); margin-top: 2px; }
+.pc-x { margin-left: auto; width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--pc-border); background: var(--pc-surface); color: var(--pc-text-2); cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.pc-x:hover { background: var(--pc-hover); color: var(--pc-text); }
+.pc-dbody { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.pc-dfoot { display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap; padding: 0 20px 20px; }
+.pc-dfoot .pc-note { margin-right: auto; }
+.pc-opts { display: flex; flex-direction: column; gap: 8px; }
+.pc-opt { display: flex; gap: 10px; align-items: center; padding: 11px 14px; border: 2px solid var(--pc-border); border-radius: 12px; cursor: pointer; font-size: .9rem; color: var(--pc-text); }
+.pc-opt:has(input:checked) { border-color: var(--pc-accent); background: var(--pc-accent-soft); }
+.pc-opt input { accent-color: var(--pc-accent); }
+.pc-chat { display: flex; flex-direction: column; gap: 8px; }
+.pc-msg { max-width: 82%; padding: 9px 12px; border-radius: 14px; font-size: .87rem; line-height: 1.5; word-wrap: break-word; }
+.pc-msg small { display: block; font-size: .7rem; opacity: .75; margin-top: 3px; }
+.pc-msg.them { align-self: flex-start; background: var(--pc-surface-2); border: 1px solid var(--pc-border); border-bottom-left-radius: 4px; }
+.pc-msg.child { align-self: flex-end; background: var(--pc-accent-soft); border-bottom-right-radius: 4px; }
+body.pc-lock { overflow: hidden; }
+
+@media (max-width: 1100px) { .pc-grid { grid-template-columns: minmax(0, 1fr); } .pc-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+    .pc-hero { padding: 18px 16px; }
+    .pc-hero h1 { font-size: 1.3rem; }
+    .pc-hero-icon { width: 46px; height: 46px; font-size: 1.15rem; }
+    .pc-card { padding: 15px; }
+    .pc-rules, .pc-modes { grid-template-columns: minmax(0, 1fr); }
+    .pc-person-acts .pc-btn { flex: 1; }
+    .pc-save { width: calc(100vw - 24px); justify-content: space-between; border-radius: 16px; flex-wrap: wrap; }
+    .pc-modal { padding: 0; align-items: flex-end; }
+    .pc-dialog, .pc-dialog.md { width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0; }
+}
+@media (prefers-reduced-motion: reduce) { .pc *, .pc *::before, .pc *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="pc" data-no-theme>
+    <header class="pc-hero">
+        <div class="pc-hero-icon" aria-hidden="true"><i class="fas fa-user-shield"></i></div>
+        <div class="pc-hero-text">
+            <h1>Parental controls</h1>
+            <p>See who your child talks to, decide who they can contact, switch features on or off, pause Eschool when you need to, and follow everything they do. Eschool enforces every rule, and your child is told when rules change.</p>
+        </div>
+    </header>
+
+    <div class="pc-toolbar" id="pcKids" role="group" aria-label="Choose a child"></div>
+    <div class="pc-note pc-status" id="pcStatus" role="status" aria-live="polite"></div>
+    <div id="pcContent"><div class="pc-loading">Loading...</div></div>
+
+    <!-- save bar -->
+    <div class="pc-save" id="pcSave" role="region" aria-label="Unsaved changes">
+        <span><i class="fas fa-circle-exclamation"></i> <span id="pcSaveText">You have unsaved changes</span></span>
+        <button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" id="pcDiscard">Discard</button>
+        <button type="button" class="pc-btn pc-btn-primary pc-btn-sm" id="pcSaveBtn"><i class="fas fa-floppy-disk"></i> Save</button>
+    </div>
+
+    <!-- pause -->
+    <div class="pc-modal" id="pauseModal" aria-hidden="true">
+        <div class="pc-dialog" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+            <div class="pc-dhead"><div><h2 id="pauseTitle">Pause Eschool</h2><p>Pages show "Paused by your parent", and messages and calls stop. Work and progress are kept.</p></div><button type="button" class="pc-x" data-close aria-label="Close"><i class="fas fa-xmark"></i></button></div>
+            <div class="pc-dbody">
+                <div class="pc-opts" role="radiogroup" aria-label="How long">
+                    <label class="pc-opt"><input type="radio" name="pauseFor" value="30" checked> For 30 minutes</label>
+                    <label class="pc-opt"><input type="radio" name="pauseFor" value="60"> For 1 hour</label>
+                    <label class="pc-opt"><input type="radio" name="pauseFor" value="120"> For 2 hours</label>
+                    <label class="pc-opt"><input type="radio" name="pauseFor" value="tomorrow"> Until 6:00 tomorrow morning</label>
+                    <label class="pc-opt"><input type="radio" name="pauseFor" value="indefinite"> Until I turn it back on</label>
+                </div>
+                <div><label class="pc-lbl" for="pauseMsg">Message for your child (optional)</label><input id="pauseMsg" class="pc-input" maxlength="140" placeholder="e.g. Dinner time. Back at 7pm!"></div>
+            </div>
+            <div class="pc-dfoot"><span class="pc-note" id="pauseNote"></span><button type="button" class="pc-btn pc-btn-ghost" data-close>Cancel</button><button type="button" class="pc-btn pc-btn-danger solid" id="pauseGo"><i class="fas fa-circle-pause"></i> Pause now</button></div>
+        </div>
+    </div>
+
+    <!-- extra time -->
+    <div class="pc-modal" id="bonusModal" aria-hidden="true">
+        <div class="pc-dialog" role="dialog" aria-modal="true" aria-labelledby="bonusTitle">
+            <div class="pc-dhead"><div><h2 id="bonusTitle">Extra time today</h2><p>Adds to today's limit only. Tomorrow goes back to normal.</p></div><button type="button" class="pc-x" data-close aria-label="Close"><i class="fas fa-xmark"></i></button></div>
+            <div class="pc-dbody"><div class="pc-opts" role="radiogroup" aria-label="How much">
+                <label class="pc-opt"><input type="radio" name="bonus" value="15" checked> +15 minutes</label>
+                <label class="pc-opt"><input type="radio" name="bonus" value="30"> +30 minutes</label>
+                <label class="pc-opt"><input type="radio" name="bonus" value="60"> +1 hour</label>
+                <label class="pc-opt"><input type="radio" name="bonus" value="120"> +2 hours</label>
+            </div></div>
+            <div class="pc-dfoot"><span class="pc-note" id="bonusNote"></span><button type="button" class="pc-btn pc-btn-ghost" data-close>Cancel</button><button type="button" class="pc-btn pc-btn-primary" id="bonusGo"><i class="fas fa-plus"></i> Add time</button></div>
+        </div>
+    </div>
+
+    <!-- conversation -->
+    <div class="pc-modal" id="chatModal" aria-hidden="true">
+        <div class="pc-dialog md" role="dialog" aria-modal="true" aria-labelledby="chatTitle">
+            <div class="pc-dhead"><div><h2 id="chatTitle">Conversation</h2><p id="chatSub"></p></div><button type="button" class="pc-x" data-close aria-label="Close"><i class="fas fa-xmark"></i></button></div>
+            <div class="pc-dbody"><div class="pc-chat" id="chatBody"></div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var DAYS = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']];
+    var FEATURES = [
+        { k: 'messaging', ic: 'fa-envelope', t: 'Messaging', d: 'Send and receive direct messages. Parents can always message their child.' },
+        { k: 'calls', ic: 'fa-phone', t: 'Voice and video calls', d: 'Make and receive calls. Parents can always call their child.' },
+        { k: 'following', ic: 'fa-user-plus', t: 'Following people', d: 'Follow teachers and other learners.' },
+        { k: 'posting', ic: 'fa-lightbulb', t: 'Posting study tips', d: 'Share tips on the Learning Strategies page.' },
+        { k: 'uploads', ic: 'fa-cloud-arrow-up', t: 'Uploading files', d: 'Share files and resources with others.' }
+    ];
+    var MODES = [
+        ['everyone', 'fa-globe', 'Everyone', 'Anyone on Eschool, except people you block.'],
+        ['teachers', 'fa-chalkboard-user', 'Teachers only', 'Teachers, plus people you approve.'],
+        ['approved', 'fa-user-check', 'Only people I approve', 'Anyone new needs your approval first.'],
+        ['nobody', 'fa-ban', 'Nobody', 'Only you and other linked parents.']
+    ];
+    var S = { children: [], active: null, d: null, orig: null, contacts: [], requests: [], activity: [], tab: 'overview', act: 'all', loaded: {} };
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function say(msg, type, el) { el = el || $('pcStatus'); el.className = 'pc-note ' + (el === $('pcStatus') ? 'pc-status ' : '') + (type || 'info'); el.textContent = msg || ''; if (msg && el === $('pcStatus')) setTimeout(function () { if (el.textContent === msg) el.textContent = ''; }, 7000); }
+    function clone(o) { return JSON.parse(JSON.stringify(o)); }
+    function avatar(name, url, cls) { return '<div class="pc-avatar ' + (cls || '') + '">' + (url ? '<img src="' + esc(url) + '" alt="">' : esc(String(name || '?').split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase())) + '</div>'; }
+    function fmtMin(m) { m = Math.round(m || 0); if (!m) return 'No limit'; return m < 60 ? m + ' min' : Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : ''); }
+    function fmtTime(sec) { var m = Math.round((sec || 0) / 60); return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm'; }
+    function rel(iso) { if (!iso) return 'never'; var s = (Date.now() - new Date(iso)) / 1000; if (isNaN(s)) return ''; if (s < 120) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago'; var d = Math.floor(s / 86400); return d === 1 ? 'yesterday' : d < 30 ? d + ' days ago' : new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' }); }
+    function todayKey() { return ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()]; }
+    function child() { return S.children.filter(function (c) { return c.id === S.active; })[0]; }
+    function first() { return child() ? child().first_name : 'your child'; }
+    function empty(icon, title, text, extra) { return '<div class="pc-empty"><i class="fas ' + icon + '"></i><h3>' + esc(title) + '</h3><p>' + esc(text) + '</p>' + (extra || '') + '</div>'; }
+    function sw(checked, attrs, label) { return '<label class="pc-switch"><input type="checkbox" role="switch" ' + (checked ? 'checked ' : '') + attrs + ' aria-label="' + esc(label) + '"><span class="pc-slider"></span></label>'; }
+    async function api(url, opt) {
+        var r = await fetch(url, Object.assign({ credentials: 'same-origin' }, opt || {}));
+        if (r.status === 401) { location.href = '/Login'; throw new Error('Please sign in again.'); }
+        var d = null; try { d = await r.json(); } catch (e) { /* none */ }
+        if (!r.ok || (d && d.success === false)) { var e = new Error((d && (d.message || d.error)) || ('Something went wrong (' + r.status + ').')); e.status = r.status; e.code = d && d.code; throw e; }
+        return d || {};
+    }
+    function send(url, method, body) { return api(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }); }
+
+    /* ---------- dialogs ---------- */
+    var openM = null, lastF = null;
+    function show(id) { lastF = document.activeElement; openM = $(id); openM.classList.add('open'); openM.setAttribute('aria-hidden', 'false'); document.body.classList.add('pc-lock'); setTimeout(function () { var f = openM.querySelector('input:checked, input, button:not([data-close])'); if (f) f.focus(); }, 30); }
+    function hide() { if (!openM) return; openM.classList.remove('open'); openM.setAttribute('aria-hidden', 'true'); document.body.classList.remove('pc-lock'); openM = null; if (lastF && lastF.focus) lastF.focus(); }
+    document.querySelectorAll('.pc-modal').forEach(function (m) { m.addEventListener('click', function (e) { if (e.target === m || e.target.closest('[data-close]')) hide(); }); });
+    document.addEventListener('keydown', function (e) {
+        if (!openM) return;
+        if (e.key === 'Escape') { hide(); return; }
+        if (e.key !== 'Tab') return;
+        var f = Array.prototype.filter.call(openM.querySelectorAll('button, input, a[href]'), function (el) { return !el.disabled && el.offsetParent !== null; });
+        if (!f.length) return;
+        if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    });
+
+    /* ---------- load ---------- */
+    async function init() {
+        try { S.children = (await api('/api/parent/children')).children || []; }
+        catch (e) { $('pcContent').innerHTML = '<div class="pc-card">' + empty('fa-triangle-exclamation', "Couldn't load your children", e.message) + '</div>'; return; }
+        if (!S.children.length) {
+            $('pcKids').hidden = true;
+            $('pcContent').innerHTML = '<div class="pc-card">' + empty('fa-user-plus', 'No linked children yet', "Link your child's account to set controls for them.", '<a class="pc-btn pc-btn-primary" href="/parent-link"><i class="fas fa-link"></i> Link a child</a>') + '</div>';
+            return;
+        }
+        var saved = null; try { saved = Number(sessionStorage.getItem('pc_child')); } catch (e) { /* ignore */ }
+        S.active = S.children.some(function (c) { return c.id === saved; }) ? saved : S.children[0].id;
+        var h = (location.hash || '').slice(1); if (TABS.some(function (t) { return t[0] === h; })) S.tab = h;
+        renderKids(); load();
+    }
+    function renderKids() {
+        $('pcKids').innerHTML = S.children.map(function (c) { return '<button type="button" class="pc-kid" data-kid="' + c.id + '" aria-pressed="' + (c.id === S.active) + '">' + avatar(c.name, c.avatar_url, 'sm') + '<span>' + esc(c.name) + '<small>' + esc(c.grade || 'Learner') + '</small></span></button>'; }).join('');
+    }
+    $('pcKids').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-kid]'); if (!b || Number(b.dataset.kid) === S.active) return;
+        if (dirty()) { say('Save or discard your changes for ' + first() + ' before switching child.', 'bad'); $('pcSave').classList.add('show'); return; }
+        S.active = Number(b.dataset.kid); try { sessionStorage.setItem('pc_child', S.active); } catch (err) { /* ignore */ }
+        renderKids(); load();
+    });
+    async function load() {
+        $('pcContent').innerHTML = '<div class="pc-loading">Loading ' + esc(first()) + '\'s controls...</div>';
+        S.loaded = {};
+        try {
+            var all = await Promise.all([api('/api/parent/children/' + S.active + '/controls'), api('/api/parent/children/' + S.active + '/contacts').catch(function () { return { contacts: [] }; }),
+                                         api('/api/parent/children/' + S.active + '/requests').catch(function () { return { requests: [] }; })]);
+            S.d = all[0]; S.orig = clone(S.d.controls); S.contacts = all[1].contacts || []; S.requests = all[2].requests || [];
+        } catch (e) { $('pcContent').innerHTML = '<div class="pc-card">' + empty('fa-triangle-exclamation', "Couldn't load controls", e.message) + '</div>'; return; }
+        render(); updateSave();
+    }
+    async function refreshCore() {
+        try { var d = await api('/api/parent/children/' + S.active + '/controls'); var wasDirty = dirty(), keep = S.d.controls; S.d = d; if (wasDirty) S.d.controls = keep; else S.orig = clone(d.controls); }
+        catch (e) { /* keep what we have */ }
+    }
+
+    /* ---------- page ---------- */
+    // (screen time was removed: no daily limits, quiet hours or extra time. Pause is on the Overview.)
+    var TABS = [['overview', 'fa-gauge-high', 'Overview'], ['contacts', 'fa-address-book', 'Contacts'],
+                ['requests', 'fa-inbox', 'Requests'], ['features', 'fa-toggle-on', 'Features'], ['activity', 'fa-clock-rotate-left', 'Activity']];
+    function pendingCount() { return S.requests.filter(function (r) { return r.status === 'pending'; }).length; }
+    function render() {
+        var d = S.d, st = d.state || {}, h = '';
+        if (st.blocked) {
+            var txt = st.reason === 'paused' ? (d.pause.until ? 'Paused until ' + new Date(d.pause.until).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) + '.' : 'Paused until you turn it back on.') + (d.pause.message ? ' Your message: "' + esc(d.pause.message) + '"' : '')
+                    : st.reason === 'quiet' ? 'Quiet hours are on until ' + esc(st.until) + '.' : "Today's time limit is used up.";
+            h += '<div class="pc-banner' + (st.reason === 'paused' ? '' : ' warn') + '"><i class="fas ' + (st.reason === 'paused' ? 'fa-circle-pause' : st.reason === 'quiet' ? 'fa-moon' : 'fa-hourglass-end') + '"></i><div class="txt"><strong>Eschool is locked for ' + esc(first()) + ' right now.</strong> ' + txt + '</div>' +
+                 (st.reason === 'paused' ? '<button type="button" class="pc-btn pc-btn-ok" data-act="resume"><i class="fas fa-play"></i> Resume now</button>' : st.reason === 'limit' ? '<button type="button" class="pc-btn pc-btn-primary" data-act="bonus"><i class="fas fa-plus"></i> Extra time</button>' : '') + '</div>';
+        }
+        if (pendingCount()) h += '<div class="pc-banner info"><i class="fas fa-user-clock"></i><div class="txt"><strong>' + pendingCount() + ' contact request' + (pendingCount() > 1 ? 's' : '') + ' waiting for you.</strong> ' + esc(first()) + ' can\'t talk to these people until you decide.</div><button type="button" class="pc-btn pc-btn-primary" data-goto="requests">Review</button></div>';
+        h += '<div class="pc-tabs" role="tablist" aria-label="Controls">' + TABS.map(function (t) { return '<button type="button" class="pc-tab" role="tab" id="pctab-' + t[0] + '" aria-controls="pcpanel-' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '" tabindex="' + (S.tab === t[0] ? 0 : -1) + '" data-tab="' + t[0] + '"><i class="fas ' + t[1] + '"></i> ' + t[2] + (t[0] === 'requests' && pendingCount() ? ' <span class="pc-badge">' + pendingCount() + '</span>' : '') + '</button>'; }).join('') + '</div>';
+        h += TABS.map(function (t) { return '<section role="tabpanel" id="pcpanel-' + t[0] + '" aria-labelledby="pctab-' + t[0] + '"' + (S.tab === t[0] ? '' : ' hidden') + '></section>'; }).join('');
+        $('pcContent').innerHTML = h;
+        TABS.forEach(function (t) { PANELS[t[0]](); });
+        if (S.tab === 'activity') loadActivity();
+    }
+    function showTab(t, focus) {
+        S.tab = t;
+        TABS.forEach(function (x) { var b = $('pctab-' + x[0]); b.setAttribute('aria-selected', x[0] === t); b.tabIndex = x[0] === t ? 0 : -1; $('pcpanel-' + x[0]).hidden = x[0] !== t; });
+        if (focus) $('pctab-' + t).focus();
+        try { history.replaceState(null, '', '#' + t); } catch (e) { /* ignore */ }
+        if (t === 'activity' && !S.loaded.activity) loadActivity();
+    }
+
+    var PANELS = {
+        overview: function () {
+            var d = S.d, c = d.controls, u = d.usage, lim = u.limit_minutes ? u.limit_minutes + u.bonus_minutes : 0;
+            var used = Math.round(u.today_seconds / 60), pct = lim ? Math.min(100, Math.round(used / lim * 100)) : 0;
+            var week = u.week || [], max = Math.max.apply(null, week.map(function (w) { return w.seconds; }).concat([1]));
+            var dayLim = function (date) { var k = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(date + 'T12:00:00').getDay()]; return c.screen_time.daily_limit_minutes[k]; };
+            var off = FEATURES.filter(function (f) { return !c.features[f.k]; }).length;
+            var rule = function (icon, label, state, on) { return '<div class="pc-rule"><i class="fas ' + icon + '"></i><span>' + label + '</span><span class="state' + (on ? ' on' : '') + '">' + state + '</span></div>'; };
+            var top = S.contacts.slice().sort(function (a, b) { return (b.messages_week || 0) - (a.messages_week || 0); }).filter(function (p) { return p.messages_week; }).slice(0, 5);
+            var modeName = MODES.filter(function (m) { return m[0] === c.contacts.mode; })[0][2];
+            $('pcpanel-overview').innerHTML = '<div class="pc-grid">' +
+                '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-circle-pause"></i></span>Pause Eschool</h3>' +
+                    '<p class="pc-sub">' + (d.pause.active ? esc(first()) + '\'s Eschool is paused ' + (d.pause.until ? 'until ' + esc(new Date(d.pause.until).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })) : 'until you turn it back on') + '.'
+                                         : 'Need a break, like dinner or family time? Pause stops Eschool for a while, with a message for ' + esc(first()) + '. Work and progress are kept.') + '</p>' +
+                    '<div class="pc-actions">' + (d.pause.active ? '<button type="button" class="pc-btn pc-btn-ok" data-act="resume"><i class="fas fa-play"></i> Resume now</button>'
+                                                                  : '<button type="button" class="pc-btn pc-btn-danger" data-act="pause"><i class="fas fa-circle-pause"></i> Pause now</button>') + '</div></div>' +
+                '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-list-check"></i></span>Rules in place</h3><p class="pc-sub">Change these in the tabs above.</p><div class="pc-rules">' +
+                    rule('fa-circle-pause', 'Paused', d.pause.active ? 'Yes' : 'No', d.pause.active) +
+                    rule('fa-address-book', 'Who can talk to them', esc(modeName), c.contacts.mode !== 'everyone') +
+                    rule('fa-user-slash', 'Blocked people', c.contacts.blocked.length, c.contacts.blocked.length) +
+                    rule('fa-toggle-off', 'Features off', off, off) +
+                    rule('fa-eye', 'You can read messages', d.permissions.messages ? 'Yes' : ((d.pending || []).indexOf('messages') > -1 ? 'Asked' : 'No'), d.permissions.messages) +
+                '</div></div></div><div class="pc-grid">' +
+                '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-comments"></i></span>Talking to most this week<span class="right">' + S.contacts.length + ' contacts in total</span></h3><p class="pc-sub">Messages in the last 7 days.</p>' +
+                    (top.length ? '<div class="pc-people">' + top.map(function (p) { return '<div class="pc-person ' + p.status + '">' + avatar(p.name, p.avatar_url, 'sm') + '<div class="pc-person-info"><b>' + esc(p.name) + '</b><span class="pc-role ' + esc(p.role) + '">' + esc(p.role) + '</span><small>' + p.messages_week + ' messages this week · last ' + esc(rel(p.last_contact_at)) + '</small></div></div>'; }).join('') + '</div><div style="margin-top:12px;"><button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" data-goto="contacts">See all contacts</button></div>'
+                                : empty('fa-comment-slash', 'No messages this week', first() + ' hasn\'t messaged anyone in the last 7 days.')) + '</div></div>';
+        },
+        time: function () {
+            var st = S.d.controls.screen_time, tk = todayKey();
+            $('pcpanel-time').innerHTML = '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-calendar-week"></i></span>Daily limits</h3><p class="pc-sub">The most time ' + esc(first()) + ' can spend on Eschool each day. Slide to 0 for no limit. When the time is used up, Eschool locks until the next day.</p>' +
+                '<div class="pc-actions" style="margin-bottom:12px;"><button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" data-copy="weekdays"><i class="fas fa-copy"></i> Copy Monday to weekdays</button><button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" data-copy="all"><i class="fas fa-copy"></i> Copy Monday to every day</button><button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" data-copy="none"><i class="fas fa-eraser"></i> Remove all limits</button></div>' +
+                '<div class="pc-days">' + DAYS.map(function (x) { return '<div class="pc-day' + (x[0] === tk ? ' today' : '') + '"><label for="lim_' + x[0] + '">' + x[1] + (x[0] === tk ? ' (today)' : '') + ' <span class="val" id="limv_' + x[0] + '">' + fmtMin(st.daily_limit_minutes[x[0]]) + '</span></label><input type="range" id="lim_' + x[0] + '" data-lim="' + x[0] + '" min="0" max="360" step="15" value="' + st.daily_limit_minutes[x[0]] + '"></div>'; }).join('') + '</div></div>' +
+                '<div class="pc-grid" style="margin-top:14px;">' +
+                '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-moon"></i></span>Quiet hours</h3><p class="pc-sub">Eschool is locked during these hours every day (Nairobi time).</p>' +
+                    '<div class="pc-setting"><i class="fas fa-bed"></i><div class="txt"><strong>Turn on quiet hours</strong><span>Good for nights and family time.</span></div>' + sw(st.quiet_hours.enabled, 'data-quiet="enabled"', 'Quiet hours') + '</div>' +
+                    '<div class="pc-row"><div><label class="pc-lbl" for="qStart">From</label><input type="time" id="qStart" class="pc-input" data-quiet="start" value="' + esc(st.quiet_hours.start) + '"' + (st.quiet_hours.enabled ? '' : ' disabled') + '></div><div><label class="pc-lbl" for="qEnd">Until</label><input type="time" id="qEnd" class="pc-input" data-quiet="end" value="' + esc(st.quiet_hours.end) + '"' + (st.quiet_hours.enabled ? '' : ' disabled') + '></div></div></div>' +
+                '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-bell"></i></span>Tell me when</h3><p class="pc-sub">Notifications to you.</p>' +
+                    '<div class="pc-setting"><i class="fas fa-hourglass-end"></i><div class="txt"><strong>The daily limit is reached</strong><span>Once a day, when the time runs out.</span></div>' + sw(S.d.controls.alerts.limit_reached, 'data-alert="limit_reached"', 'Daily limit alert') + '</div>' +
+                    '<div class="pc-setting"><i class="fas fa-user-clock"></i><div class="txt"><strong>Someone new wants to talk</strong><span>When a contact is waiting for your approval.</span></div>' + sw(S.d.controls.alerts.contact_requests, 'data-alert="contact_requests"', 'Contact request alert') + '</div></div>' +
+                '</div>';
+        },
+        contacts: function () {
+            var c = S.d.controls, perms = S.d.permissions;
+            var list = S.contacts;
+            var person = function (p) {
+                var acts = '<button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" data-chat="' + p.id + '"' + (p.sent + p.received ? '' : ' disabled') + '><i class="fas fa-comments"></i> Messages</button>';
+                acts += p.status === 'blocked' ? '<button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" data-rule="unblock" data-id="' + p.id + '">Unblock</button>'
+                      : (p.status === 'approved' ? '<button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" data-rule="unapprove" data-id="' + p.id + '">Remove approval</button>' : '<button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" data-rule="approve" data-id="' + p.id + '"><i class="fas fa-user-check"></i> Approve</button>') +
+                        '<button type="button" class="pc-btn pc-btn-danger pc-btn-sm" data-rule="block" data-id="' + p.id + '"><i class="fas fa-user-slash"></i> Block</button>';
+                return '<div class="pc-person ' + p.status + '">' + avatar(p.name, p.avatar_url) + '<div class="pc-person-info"><b>' + esc(p.name) + '</b><span class="pc-role ' + esc(p.role) + '">' + esc(p.role) + '</span> <span class="pc-pill ' + p.status + '">' + { allowed: 'Allowed', approved: 'Approved', blocked: 'Blocked' }[p.status] + '</span>' +
+                    '<small>Last contact ' + esc(rel(p.last_contact_at)) + (p.first_contact ? ' · first ' + esc(new Date(p.first_contact).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })) : '') + (p.child_follows ? ' · ' + esc(first()) + ' follows them' : '') + '</small></div>' +
+                    '<div class="pc-stats"><div class="pc-stat"><b>' + p.sent + '</b><span>Sent</span></div><div class="pc-stat"><b>' + p.received + '</b><span>Received</span></div><div class="pc-stat"><b>' + (p.messages_week || 0) + '</b><span>This week</span></div><div class="pc-stat"><b>' + p.calls + '</b><span>Calls' + (p.call_minutes ? ' · ' + p.call_minutes + 'm' : '') + '</span></div></div>' +
+                    '<div class="pc-person-acts">' + acts + '</div></div>';
+            };
+            var names = function (arr, kind) { return arr.length ? arr.map(function (u) { return '<div class="pc-res"><i class="fas ' + (kind === 'blocked' ? 'fa-user-slash' : 'fa-user-check') + '" style="color:var(--pc-' + (kind === 'blocked' ? 'bad' : 'ok') + ');"></i><span>' + esc(u.name) + ' <span class="pc-role ' + esc(u.role) + '">' + esc(u.role) + '</span></span><button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" data-rule="' + (kind === 'blocked' ? 'unblock' : 'unapprove') + '" data-id="' + u.id + '">' + (kind === 'blocked' ? 'Unblock' : 'Remove') + '</button></div>'; }).join('') : '<p class="pc-sub" style="margin:0;">Nobody yet.</p>'; };
+            $('pcpanel-contacts').innerHTML =
+                '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-shield-halved"></i></span>Who can talk to ' + esc(first()) + '</h3><p class="pc-sub">Applies to messages and calls in both directions. You and other linked parents can always reach your child. Save to apply.</p>' +
+                    '<div class="pc-modes" role="radiogroup" aria-label="Who can talk to your child">' + MODES.map(function (m) { return '<label class="pc-mode"><input type="radio" name="cmode" value="' + m[0] + '"' + (c.contacts.mode === m[0] ? ' checked' : '') + '><span><b><i class="fas ' + m[1] + '"></i>' + m[2] + '</b><small>' + m[3] + '</small></span></label>'; }).join('') + '</div>' +
+                    '<div class="pc-setting" style="margin-top:14px;"><i class="fas fa-eye"></i><div class="txt"><strong>Let me read ' + esc(first()) + '\'s messages</strong><span>Without this you see who they talk to and how much, but not what is said. ' +
+                        (msgWaiting() ? '<b>Waiting for ' + esc(first()) + ' to allow it.</b> Switch off to withdraw the request.' : 'Turning this on asks ' + esc(first()) + ' first: it starts once they allow it in their Settings. Turning it off works straight away.') +
+                        '</span></div>' + sw(perms.messages || msgWaiting(), 'id="permMsg"', 'Read messages') + '</div>' +
+                    '<div class="pc-setting"><i class="fas fa-user-clock"></i><div class="txt"><strong>Tell me when someone new wants to talk</strong><span>When a contact is waiting for your approval.</span></div>' + sw(S.d.controls.alerts.contact_requests, 'data-alert="contact_requests"', 'Contact request alert') + '</div>' +
+                    '<div class="pc-note" id="permNote" aria-live="polite"></div></div>' +
+                '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-address-book"></i></span>Everyone ' + esc(first()) + ' talks to<span class="right">' + list.length + ' people</span></h3><p class="pc-sub">From messages, calls and people they follow. Newest contact first.</p>' +
+                    '<div class="pc-note" id="ruleNote" aria-live="polite" style="margin-bottom:10px;"></div>' +
+                    (list.length ? '<div class="pc-people">' + list.map(person).join('') + '</div>' : empty('fa-address-book', 'No contacts yet', first() + ' hasn\'t messaged, called or followed anyone yet.')) + '</div>' +
+                '<div class="pc-grid" style="margin-top:14px;">' +
+                '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-magnifying-glass"></i></span>Approve or block someone ahead of time</h3><p class="pc-sub">Find a teacher or learner by name.</p><input type="search" id="peopleQ" class="pc-input" placeholder="Type a name" aria-label="Find a person"><div class="pc-results" id="peopleRes"></div></div>' +
+                '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-list"></i></span>Your lists</h3><p class="pc-sub" style="margin-bottom:8px;">Approved</p><div class="pc-results" style="margin:0 0 14px;">' + names(c.contacts.allowed, 'allowed') + '</div><p class="pc-sub" style="margin-bottom:8px;">Blocked</p><div class="pc-results" style="margin:0;">' + names(c.contacts.blocked, 'blocked') + '</div></div>' +
+                '</div>';
+        },
+        requests: function () {
+            var pend = S.requests.filter(function (r) { return r.status === 'pending'; }), past = S.requests.filter(function (r) { return r.status !== 'pending'; });
+            var card = function (r) {
+                var who = r.from_child ? esc(first()) + ' wants to talk to <b>' + esc(r.name) + '</b>' : '<b>' + esc(r.name) + '</b> wants to talk to ' + esc(first());
+                return '<div class="pc-req ' + r.status + '">' + avatar(r.name, r.avatar_url) + '<div class="pc-req-body"><h4>' + who + ' <span class="pc-role ' + esc(r.role) + '">' + esc(r.role) + '</span></h4>' +
+                    '<p>' + esc(rel(r.created_at)) + (r.past_messages ? ' · ' + r.past_messages + ' earlier messages between them' : ' · they haven\'t talked before') + (r.note ? ' · your note: "' + esc(r.note) + '"' : '') + '</p></div>' +
+                    (r.status === 'pending' ? '<div class="pc-req-acts"><input class="pc-input" maxlength="200" placeholder="Note for your child (optional)" data-note="' + r.id + '" aria-label="Note"><button type="button" class="pc-btn pc-btn-ok pc-btn-sm" data-decide="approve" data-id="' + r.id + '"><i class="fas fa-check"></i> Approve</button><button type="button" class="pc-btn pc-btn-danger pc-btn-sm" data-decide="deny" data-id="' + r.id + '"><i class="fas fa-xmark"></i> Decline</button></div>'
+                                          : '<span class="pc-pill ' + r.status + '">' + (r.status === 'approved' ? 'Approved' : 'Declined') + '</span>') + '</div>';
+            };
+            $('pcpanel-requests').innerHTML = '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-inbox"></i></span>Waiting for you</h3><p class="pc-sub">When ' + esc(first()) + ' or someone else tries to make contact and your rules hold it back, it waits here. Nothing is sent until you approve.</p>' +
+                '<div class="pc-note" id="reqNote" aria-live="polite" style="margin-bottom:10px;"></div>' +
+                (pend.length ? pend.map(card).join('') : empty('fa-circle-check', 'All caught up', S.d.controls.contacts.mode === 'everyone' ? 'Requests only appear when "Who can talk" is set to Teachers only or Only people I approve.' : 'No requests are waiting.')) + '</div>' +
+                (past.length ? '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-clock-rotate-left"></i></span>Earlier decisions</h3>' + past.slice(0, 20).map(card).join('') + '</div>' : '');
+        },
+        features: function () {
+            var f = S.d.controls.features;
+            $('pcpanel-features').innerHTML = '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-toggle-on"></i></span>What ' + esc(first()) + ' can do</h3><p class="pc-sub">Switch a feature off to stop it. ' + esc(first()) + ' sees that a parent turned it off. Save to apply.</p>' +
+                FEATURES.map(function (x) { return '<div class="pc-setting"><i class="fas ' + x.ic + '"></i><div class="txt"><strong>' + x.t + '</strong><span>' + x.d + '</span></div>' + sw(f[x.k], 'data-feat="' + x.k + '"', x.t) + '</div>'; }).join('') + '</div>' +
+                '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-circle-info"></i></span>Always available</h3><p class="pc-sub" style="margin:0;">Courses, quizzes, live classes and resources are never switched off here, so learning is not interrupted. Use screen time or Pause to stop all use.</p></div>';
+        },
+        activity: function () {
+            $('pcpanel-activity').innerHTML = '<div class="pc-card"><h3 class="pc-title"><span class="ic"><i class="fas fa-clock-rotate-left"></i></span>Everything ' + esc(first()) + ' did<span class="right">Last 30 days</span></h3><p class="pc-sub">Learning, messages, calls, follows, posts, uploads and rule changes.</p>' +
+                '<div class="pc-chips" role="group" aria-label="Filter">' + [['all', 'All'], ['learning', 'Learning'], ['social', 'Messages & calls'], ['posts', 'Posts & uploads'], ['rules', 'Rules & requests']].map(function (x) { return '<button type="button" class="pc-chip" data-actf="' + x[0] + '" aria-pressed="' + (S.act === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div><div id="actList"><div class="pc-loading">Loading...</div></div></div>';
+            if (S.loaded.activity) renderActivity();
+        }
+    };
+
+    /* ---------- activity ---------- */
+    async function loadActivity() {
+        S.loaded.activity = true;
+        try { S.activity = (await api('/api/parent/children/' + S.active + '/activity')).activity || []; } catch (e) { S.activity = []; if ($('actList')) $('actList').innerHTML = '<p class="pc-note bad">' + esc(e.message) + '</p>'; return; }
+        renderActivity();
+    }
+    function renderActivity() {
+        var box = $('actList'); if (!box) return;
+        var list = S.activity.filter(function (a) { return S.act === 'all' || a.category === S.act; });
+        if (!list.length) { box.innerHTML = empty('fa-clock', 'Nothing here yet', 'Activity shows up as ' + first() + ' uses Eschool.'); return; }
+        var last = '', h = '', today = new Date().toDateString(), yd = new Date(Date.now() - 864e5).toDateString();
+        list.forEach(function (a) {
+            var d = a.at ? new Date(a.at) : null, lab = !d ? 'Earlier' : d.toDateString() === today ? 'Today' : d.toDateString() === yd ? 'Yesterday' : d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
+            if (lab !== last) { h += '<div class="pc-dayhead">' + esc(lab) + '</div>'; last = lab; }
+            h += '<div class="pc-act"><div class="dot k-' + esc(a.category) + '"><i class="fas ' + esc(a.icon) + '"></i></div><div><div class="t">' + esc(a.text) + '</div><div class="tm">' + (d ? esc(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : '') + '</div></div></div>';
+        });
+        box.innerHTML = h;
+    }
+
+    /* ---------- edits (saved with the save bar) ---------- */
+    function dirty() { return S.d && S.orig && JSON.stringify(S.d.controls) !== JSON.stringify(S.orig); }
+    function updateSave() { $('pcSave').classList.toggle('show', !!dirty()); }
+    $('pcContent').addEventListener('input', function (e) {
+        var t = e.target, c = S.d && S.d.controls; if (!c) return;
+        if (t.dataset.lim) { c.screen_time.daily_limit_minutes[t.dataset.lim] = Number(t.value); $('limv_' + t.dataset.lim).textContent = fmtMin(t.value); updateSave(); }
+    });
+    $('pcContent').addEventListener('change', function (e) {
+        var t = e.target, c = S.d && S.d.controls; if (!c) return;
+        if (t.dataset.quiet) {
+            c.screen_time.quiet_hours[t.dataset.quiet] = t.type === 'checkbox' ? t.checked : t.value;
+            if (t.dataset.quiet === 'enabled') { $('qStart').disabled = $('qEnd').disabled = !t.checked; }
+        } else if (t.dataset.alert) c.alerts[t.dataset.alert] = t.checked;
+        else if (t.dataset.feat) c.features[t.dataset.feat] = t.checked;
+        else if (t.name === 'cmode') c.contacts.mode = t.value;
+        else if (t.id === 'permMsg') { toggleMessages(t); return; }
+        else return;
+        updateSave();
+    });
+    async function save() {
+        var btn = $('pcSaveBtn'); btn.disabled = true; $('pcSaveText').textContent = 'Saving...';
+        try {
+            var payload = clone(S.d.controls);
+            payload.contacts.allowed = payload.contacts.allowed.map(function (u) { return u.id; });
+            payload.contacts.blocked = payload.contacts.blocked.map(function (u) { return u.id; });
+            S.d = await send('/api/parent/children/' + S.active + '/controls', 'PUT', { controls: payload });
+            S.orig = clone(S.d.controls); render(); say('Saved. ' + first() + ' has been told about the new rules, and they apply straight away.', 'ok');
+        } catch (e) { say(e.message, 'bad'); }
+        btn.disabled = false; $('pcSaveText').textContent = 'You have unsaved changes'; updateSave();
+    }
+    $('pcSaveBtn').addEventListener('click', save);
+    $('pcDiscard').addEventListener('click', function () { S.d.controls = clone(S.orig); render(); updateSave(); say('Changes discarded.', 'info'); });
+
+    /* ---------- clicks ---------- */
+    $('pcContent').addEventListener('click', async function (e) {
+        var b;
+        if ((b = e.target.closest('.pc-tab'))) { showTab(b.dataset.tab); return; }
+        if ((b = e.target.closest('[data-goto]'))) { showTab(b.dataset.goto); return; }
+        if ((b = e.target.closest('[data-act]'))) {
+            if (b.dataset.act === 'pause') { $('pauseMsg').value = ''; say('', '', $('pauseNote')); show('pauseModal'); }
+            else if (b.dataset.act === 'bonus') { say('', '', $('bonusNote')); show('bonusModal'); }
+            else if (b.dataset.act === 'resume') { b.disabled = true; try { await send('/api/parent/children/' + S.active + '/pause', 'DELETE'); await refreshCore(); render(); say('Eschool is open again for ' + first() + '.', 'ok'); } catch (err) { say(err.message, 'bad'); b.disabled = false; } }
+            return;
+        }
+        if ((b = e.target.closest('[data-copy]'))) {
+            var lim = S.d.controls.screen_time.daily_limit_minutes, m = lim.mon;
+            DAYS.forEach(function (x) { if (b.dataset.copy === 'none') lim[x[0]] = 0; else if (b.dataset.copy === 'all' || ['sat', 'sun'].indexOf(x[0]) < 0) lim[x[0]] = m; });
+            PANELS.time(); updateSave(); return;
+        }
+        if ((b = e.target.closest('[data-actf]'))) { S.act = b.dataset.actf; document.querySelectorAll('[data-actf]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); renderActivity(); return; }
+        if ((b = e.target.closest('[data-rule]'))) { contactRule(b, Number(b.dataset.id), b.dataset.rule); return; }
+        if ((b = e.target.closest('[data-chat]'))) { openChat(Number(b.dataset.chat)); return; }
+        if ((b = e.target.closest('[data-decide]'))) {
+            var id = Number(b.dataset.id), note = (document.querySelector('[data-note="' + id + '"]') || {}).value || '';
+            b.disabled = true;
+            try {
+                await send('/api/parent/contact-requests/' + id, 'POST', { decision: b.dataset.decide, note: note.trim() });
+                await reloadPeople(); render(); say(b.dataset.decide === 'approve' ? 'Approved. ' + first() + ' can talk to them now.' : 'Declined. ' + first() + ' has been told.', 'ok');
+            } catch (err) { say(err.message, 'bad', $('reqNote')); b.disabled = false; }
+        }
+    });
+    async function reloadPeople() {
+        var r = await Promise.all([api('/api/parent/children/' + S.active + '/contacts').catch(function () { return null; }), api('/api/parent/children/' + S.active + '/requests').catch(function () { return null; })]);
+        if (r[0]) S.contacts = r[0].contacts || [];
+        if (r[1]) S.requests = r[1].requests || [];
+        await refreshCore();
+    }
+    async function contactRule(btn, id, action) {
+        if (dirty()) { say('Save or discard your other changes first.', 'bad'); return; }
+        btn.disabled = true;
+        try {
+            await send('/api/parent/children/' + S.active + '/contacts/' + id, 'POST', { action: action });
+            var cur = S.tab; await reloadPeople(); S.tab = cur; render();
+            say({ block: 'Blocked. They can no longer message or call ' + first() + '.', unblock: 'Unblocked.', approve: 'Approved. They can now talk to ' + first() + '.', unapprove: 'Approval removed.' }[action], 'ok');
+        } catch (err) { say(err.message, 'bad'); btn.disabled = false; }
+    }
+    function msgWaiting() { return !!(S.d && (S.d.pending || []).indexOf('messages') > -1); }
+    async function toggleMessages(input) {
+        input.disabled = true;
+        try {
+            var r = await send('/api/parent/links/' + S.d.link_id + '/permissions', 'PATCH', { permissions: { messages: input.checked } });
+            S.d.permissions = r.permissions || S.d.permissions;
+            S.d.pending = r.pending || [];
+            var msg = input.checked
+                ? 'Request sent. ' + first() + ' will see it in their Settings, and you can read messages once they allow it.'
+                : (S.d.permissions.messages ? '' : 'Done. You don\'t see the content of ' + first() + '\'s messages. They have been told.');
+            var cur = S.tab; render(); S.tab = cur;
+            say(msg, 'ok', $('permNote'));
+        } catch (e) { input.checked = !input.checked; say(e.message, 'bad', $('permNote')); input.disabled = false; }
+    }
+    async function openChat(id) {
+        var p = S.contacts.filter(function (x) { return x.id === id; })[0]; if (!p) return;
+        $('chatTitle').textContent = first() + ' and ' + p.name;
+        $('chatSub').textContent = p.sent + ' sent · ' + p.received + ' received · last ' + rel(p.last_message_at);
+        $('chatBody').innerHTML = '<div class="pc-loading">Loading...</div>'; show('chatModal');
+        try {
+            var msgs = (await api('/api/parent/children/' + S.active + '/contacts/' + id + '/messages')).messages || [];
+            $('chatBody').innerHTML = msgs.length ? msgs.map(function (m) { return '<div class="pc-msg ' + (m.from_child ? 'child' : 'them') + '"><div style="font-size:.7rem;font-weight:700;opacity:.7;">' + esc(m.from_child ? first() : p.name) + '</div>' + esc(m.text) + '<small>' + esc(new Date(m.at).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + '</small></div>'; }).join('') : empty('fa-comment-slash', 'No messages', 'They have only called or followed each other.');
+        } catch (e) {
+            $('chatBody').innerHTML = e.code === 'no_access'
+                ? empty('fa-lock', 'Message reading is off', 'Turn on "Let me read ' + first() + '\'s messages" in the Contacts tab to see what they say. ' + first() + ' will be told.')
+                : '<p class="pc-note bad">' + esc(e.message) + '</p>';
+        }
+    }
+    var peopleTimer = null;
+    $('pcContent').addEventListener('input', function (e) {
+        if (e.target.id !== 'peopleQ') return;
+        clearTimeout(peopleTimer); var q = e.target.value.trim();
+        if (q.length < 2) { $('peopleRes').innerHTML = ''; return; }
+        peopleTimer = setTimeout(async function () {
+            try {
+                var users = (await api('/api/parent/children/' + S.active + '/people?q=' + encodeURIComponent(q))).users || [];
+                var c = S.d.controls.contacts, isA = function (id) { return c.allowed.some(function (u) { return u.id === id; }); }, isB = function (id) { return c.blocked.some(function (u) { return u.id === id; }); };
+                $('peopleRes').innerHTML = users.length ? users.map(function (u) { return '<div class="pc-res"><i class="fas fa-user"></i><span>' + esc(u.name) + ' <span class="pc-role ' + esc(u.role) + '">' + esc(u.role) + '</span></span>' +
+                    (isA(u.id) ? '<span class="pc-pill approved">Approved</span>' : '<button type="button" class="pc-btn pc-btn-ghost pc-btn-sm" data-rule="approve" data-id="' + u.id + '">Approve</button>') +
+                    (isB(u.id) ? '<span class="pc-pill blocked">Blocked</span>' : '<button type="button" class="pc-btn pc-btn-danger pc-btn-sm" data-rule="block" data-id="' + u.id + '">Block</button>') + '</div>'; }).join('')
+                    : '<div class="pc-res"><span class="pc-muted">Nobody found.</span></div>';
+            } catch (err) { $('peopleRes').innerHTML = ''; }
+        }, 300);
+    });
+
+    /* ---------- pause + extra time ---------- */
+    $('pauseGo').addEventListener('click', async function () {
+        var v = document.querySelector('input[name="pauseFor"]:checked').value, body = { message: $('pauseMsg').value.trim() };
+        if (v === 'tomorrow') body.until_tomorrow = true; else if (v !== 'indefinite') body.minutes = Number(v);
+        this.disabled = true;
+        try { await send('/api/parent/children/' + S.active + '/pause', 'POST', body); hide(); await refreshCore(); render(); say('Eschool is paused for ' + first() + '. They have been told.', 'ok'); }
+        catch (e) { say(e.message, 'bad', $('pauseNote')); }
+        this.disabled = false;
+    });
+    $('bonusGo').addEventListener('click', async function () {
+        var m = Number(document.querySelector('input[name="bonus"]:checked').value);
+        this.disabled = true;
+        try { await send('/api/parent/children/' + S.active + '/bonus-time', 'POST', { minutes: m }); hide(); await refreshCore(); render(); say('Added ' + m + ' minutes for ' + first() + ' today.', 'ok'); }
+        catch (e) { say(e.message, 'bad', $('bonusNote')); }
+        this.disabled = false;
+    });
+
+    $('pcContent').addEventListener('keydown', function (e) {
+        var b = e.target.closest('.pc-tab'); if (!b || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+        e.preventDefault(); var i = TABS.findIndex(function (t) { return t[0] === b.dataset.tab; });
+        showTab(TABS[(i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length][0], true);
+    });
+    // keep "today" and the lock state fresh while the page is open
+    setInterval(async function () { if (!S.d || document.hidden || dirty() || openM) return; await refreshCore(); if (S.tab === 'overview') { var t = S.tab; render(); S.tab = t; } }, 60000);
+
+    init();
+})();
+</script>
+{% endblock %}

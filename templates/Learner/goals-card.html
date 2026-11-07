@@ -1,0 +1,97 @@
+{#
+    LEARNER SCHEDULE - "Goals from your parents" card  (templates/Learner/goals-card.html)
+    Included in schedule.html only for learners with goals from a parent:
+      {% if has_parent_goals %}{% include "Learner/goals-card.html" %}{% endif %}
+    Shows the goals a linked parent set on Goals & rewards (GET /api/my-goals).
+    Hidden when the learner has no goals. Progress is measured by the server.
+#}
+<style>
+.lgc { --lgc-accent: var(--primary-color, #4361ee); --lgc-accent-2: var(--secondary-color, #3a0ca3);
+    --lgc-surface: #ffffff; --lgc-surface-2: #f8fafc; --lgc-border: #e5e7eb; --lgc-track: #e8edf3;
+    --lgc-text: #0f172a; --lgc-text-2: #475569; --lgc-text-3: #64748b;
+    --lgc-ok: #059669; --lgc-ok-soft: #ecfdf5; --lgc-gift: #db2777; --lgc-gift-soft: #fdf2f8; --lgc-warn: #b45309;
+    --lgc-soft: color-mix(in srgb, var(--lgc-accent) 11%, transparent); --lgc-accent-text: var(--lgc-accent);
+    margin: 0 0 18px; padding: 20px; border-radius: 16px; background: var(--lgc-surface); border: 1px solid var(--lgc-border);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06); color: var(--lgc-text);
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body.dark-mode .lgc { --lgc-surface: #1e293b; --lgc-surface-2: #0f172a; --lgc-border: #334155; --lgc-track: #334155;
+    --lgc-text: #f1f5f9; --lgc-text-2: #cbd5e1; --lgc-text-3: #94a3b8;
+    --lgc-ok: #34d399; --lgc-ok-soft: rgba(16, 185, 129, .14); --lgc-gift: #f472b6; --lgc-gift-soft: rgba(236, 72, 153, .14); --lgc-warn: #fbbf24;
+    --lgc-soft: color-mix(in srgb, var(--lgc-accent) 22%, transparent); --lgc-accent-text: color-mix(in srgb, var(--lgc-accent) 55%, #ffffff);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25); }
+.lgc[hidden] { display: none !important; }
+.lgc *, .lgc *::before, .lgc *::after { box-sizing: border-box; }
+.lgc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
+.lgc-head h3 { margin: 0; font-family: 'Poppins', sans-serif; font-size: 1.1rem; color: var(--lgc-text); display: flex; gap: 10px; align-items: center; }
+.lgc-head h3 .ic { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--lgc-soft); color: var(--lgc-accent-text); font-size: .9rem; }
+.lgc-head .count { margin-left: auto; font-size: .8rem; color: var(--lgc-text-3); }
+.lgc-sub { margin: 0 0 14px; font-size: .84rem; color: var(--lgc-text-3); }
+.lgc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.lgc-goal { display: flex; flex-direction: column; gap: 9px; padding: 14px; border-radius: 14px; background: var(--lgc-surface-2); border: 1px solid var(--lgc-border); min-width: 0; }
+.lgc-goal.done { border-color: color-mix(in srgb, var(--lgc-gift) 45%, var(--lgc-border)); }
+.lgc-top { display: flex; gap: 10px; align-items: flex-start; }
+.lgc-ic { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--lgc-soft); color: var(--lgc-accent-text); }
+.lgc-goal.done .lgc-ic { background: var(--lgc-ok-soft); color: var(--lgc-ok); }
+.lgc-title { font-weight: 700; font-size: .92rem; color: var(--lgc-text); line-height: 1.35; }
+.lgc-from { font-size: .74rem; color: var(--lgc-text-3); margin-top: 2px; }
+.lgc-row { display: flex; justify-content: space-between; gap: 8px; font-size: .8rem; color: var(--lgc-text-2); }
+.lgc-row b { color: var(--lgc-text); }
+.lgc-bar { height: 9px; border-radius: 99px; background: var(--lgc-track); overflow: hidden; }
+.lgc-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--lgc-accent), var(--lgc-accent-2)); }
+.lgc-goal.done .lgc-bar i { background: var(--lgc-ok); }
+.lgc-due { font-size: .74rem; color: var(--lgc-text-3); }
+.lgc-due.soon { color: var(--lgc-warn); font-weight: 600; }
+.lgc-reward { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: var(--lgc-gift-soft); font-size: .8rem; color: var(--lgc-text-2); line-height: 1.4; }
+.lgc-reward i { color: var(--lgc-gift); margin-top: 2px; }
+.lgc-reward b { color: var(--lgc-text); }
+.lgc-note { font-size: .78rem; color: var(--lgc-text-2); font-style: italic; padding-left: 8px; border-left: 3px solid var(--lgc-border); }
+@media (max-width: 640px) { .lgc { padding: 15px; } .lgc-list { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+<section class="lgc" id="lgcCard" data-no-theme hidden aria-labelledby="lgcTitle">
+    <div class="lgc-head">
+        <h3 id="lgcTitle"><span class="ic"><i class="fas fa-trophy"></i></span>Goals from your parents</h3>
+        <span class="count" id="lgcCount"></span>
+    </div>
+    <p class="lgc-sub">Reach a goal and get the reward. Your progress updates by itself as you learn.</p>
+    <div class="lgc-list" id="lgcList"></div>
+</section>
+
+<script>
+(function () {
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function day(s) { var p = String(s).split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
+    function rewardText(g) {
+        return g.reward || '';
+    }
+    async function load() {
+        var card = document.getElementById('lgcCard');
+        try {
+            var r = await fetch('/api/my-goals', { credentials: 'same-origin' });
+            if (!r.ok) return;
+            var d = await r.json();
+            var goals = d.goals || [];
+            if (!goals.length) { card.hidden = true; return; }
+            var running = goals.filter(function (g) { return g.status === 'active'; }).length;
+            document.getElementById('lgcCount').textContent = running + ' running' + (goals.length > running ? ' · ' + (goals.length - running) + ' reached' : '');
+            document.getElementById('lgcList').innerHTML = goals.map(function (g) {
+                var done = g.status !== 'active';
+                var due = g.status === 'achieved' ? 'Reached! ' + esc(g.from) + ' will give you your reward.' :
+                          g.status === 'rewarded' ? 'Reward given. Well done!' :
+                          g.days_left <= 0 ? 'Ends today' : g.days_left === 1 ? 'Ends tomorrow' : 'Ends ' + day(g.due_day) + ' · ' + g.days_left + ' days left';
+                return '<article class="lgc-goal' + (done ? ' done' : '') + '">' +
+                    '<div class="lgc-top"><div class="lgc-ic"><i class="fas ' + esc(done ? 'fa-trophy' : g.icon) + '"></i></div><div><div class="lgc-title">' + esc(g.title) + '</div><div class="lgc-from">From ' + esc(g.from) + '</div></div></div>' +
+                    '<div class="lgc-row"><span>' + esc(g.progress_text) + '</span><b>' + g.pct + '%</b></div>' +
+                    '<div class="lgc-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + g.pct + '" aria-label="Progress"><i style="width:' + g.pct + '%"></i></div>' +
+                    '<div class="lgc-due' + (!done && g.days_left <= 1 ? ' soon' : '') + '">' + due + '</div>' +
+                    (rewardText(g) ? '<div class="lgc-reward"><i class="fas fa-gift"></i><span><b>Reward:</b> ' + esc(rewardText(g)) + '</span></div>' : '') +
+                    (g.reward_message ? '<div class="lgc-note">' + esc(g.reward_message) + '</div>' : g.note && !done ? '<div class="lgc-note">' + esc(g.note) + '</div>' : '') +
+                    '</article>';
+            }).join('');
+            card.hidden = false;
+        } catch (e) { /* the card just stays hidden */ }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load); else load();
+    setInterval(function () { if (!document.hidden) load(); }, 60000);
+})();
+</script>

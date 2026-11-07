@@ -1,5 +1,6 @@
 {% extends "Home/fronten.html" %}
 {% block content %}
+{% set hs = home_stats|default({}) %}
 <style>
   :root{
     --primary:#2563EB;
@@ -53,7 +54,7 @@
   .hero h1{ font-size:44px; line-height:1.12; margin-bottom:20px; }
   .hero h1 .grad{ background:linear-gradient(90deg,var(--primary),var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent; }
   .hero p.lead{ font-size:16.5px; color:var(--gray); line-height:1.7; max-width:520px; margin-bottom:32px; }
-  .btn-row{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:48px; }
+  .btn-row{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:0; }
   .btn{
     position:relative; overflow:hidden; display:inline-flex; align-items:center; gap:8px;
     padding:14px 26px; border-radius:999px; font-weight:700; font-size:14.5px; cursor:pointer; border:none;
@@ -118,6 +119,15 @@
   .learn-more svg{ width:13px; height:13px; transition:transform .2s ease; }
   .svc-card:hover .learn-more svg{ transform:translateX(3px); }
 
+  .aud-head{ display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:56px 0 20px; }
+  .aud-head.first{ margin-top:0; }
+  .aud-head .tag{ font-family:'Manrope',sans-serif; font-weight:800; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#fff; background:linear-gradient(90deg,var(--primary),var(--accent)); padding:6px 14px; border-radius:999px; }
+  .aud-head p{ margin:0; font-size:14px; color:var(--gray); }
+  .cat-stats{ list-style:none; margin:12px 0 0; padding:10px 0 0; border-top:1px dashed rgba(15,23,42,.12); display:flex; justify-content:center; flex-wrap:wrap; gap:4px 12px; }
+  .cat-stats li{ font-size:11.5px; color:var(--gray); }
+  .cat-stats b{ font-family:'Manrope',sans-serif; color:var(--dark); font-size:13px; }
+  .info-card .n.small{ font-size:15px; }
+
   /* ============ WHY CHOOSE ============ */
   .why-grid{ display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center; }
   .check-list{ display:flex; flex-direction:column; gap:14px; }
@@ -178,16 +188,6 @@
     background:linear-gradient(90deg,#fff, #bfdbfe); -webkit-background-clip:text; background-clip:text; color:transparent; }
   .stat-card span{ font-size:12px; color:#94a3b8; }
 
-  /* ============ TESTIMONIALS ============ */
-  .card{ background:var(--glass); backdrop-filter:blur(14px); border-radius:var(--radius-md); padding:28px 24px; border:1px solid rgba(15,23,42,.06); box-shadow:var(--shadow); transition:transform .25s ease, box-shadow .25s ease; }
-  .card:hover{ transform:translateY(-6px); box-shadow:0 30px 60px -18px rgba(37,99,235,.25); }
-  .testi-top{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
-  .avatar{ width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Manrope',sans-serif; font-weight:800; font-size:15px; color:#fff; background:linear-gradient(135deg, var(--primary), var(--accent)); }
-  .testi-name{ font-size:14px; font-weight:700; }
-  .testi-role{ font-size:11.5px; color:var(--gray); }
-  .stars{ display:flex; gap:2px; margin-bottom:10px; color:var(--highlight); }
-  .card p.quote{ font-size:13.5px; color:var(--gray); line-height:1.7; margin:0; }
-
   /* ============ FAQ ============ */
   .faq-list{ max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
   .faq-item{ background:#fff; border-radius:var(--radius-sm); border:1.5px solid rgba(15,23,42,.07); overflow:hidden; }
@@ -222,16 +222,20 @@
   .foot-col ul li{ margin-bottom:10px; }
   .foot-col ul a{ color:#94a3b8; text-decoration:none; font-size:13px; transition:color .2s ease; }
   .foot-col ul a:hover{ color:#fff; }
-  .social-row{ display:flex; gap:10px; margin-top:16px; }
-  .social-row a{ width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,.06); display:flex; align-items:center; justify-content:center; color:#94a3b8; transition:all .2s ease; }
-  .social-row a:hover{ background:var(--primary); color:#fff; transform:translateY(-2px); }
-  .social-row svg{ width:15px; height:15px; }
-  .newsletter{ display:flex; gap:8px; margin-top:6px; }
-  .newsletter input{ flex:1; height:42px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); color:#fff; padding:0 14px; font-size:12.5px; outline:none; }
-  .newsletter input::placeholder{ color:#64748B; }
-  .newsletter button{ height:42px; padding:0 16px; border-radius:10px; border:none; background:var(--primary); color:#fff; font-weight:700; font-size:12.5px; cursor:pointer; }
-  .newsletter-msg{ font-size:11.5px; color:var(--accent); margin-top:8px; min-height:14px; }
+  .help-box{ border-radius:14px; padding:16px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); }
+  .help-box p{ font-size:13px; color:#94a3b8; line-height:1.7; margin:0 0 12px; }
+  .help-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px; padding:11px 14px; border-radius:10px;
+    background:linear-gradient(100deg, var(--primary), var(--accent)); color:#fff; font-weight:700; font-size:13px;
+    text-decoration:none; transition:transform .2s ease, box-shadow .2s ease;
+  }
+  .help-btn:hover{ transform:translateY(-2px); box-shadow:0 10px 22px -10px rgba(20,184,166,.7); }
+  .help-btn svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; }
   .copyright{ text-align:center; padding-top:26px; border-top:1px solid rgba(255,255,255,.08); color:#64748B; font-size:12px; }
+  .copyright a{ color:#94a3b8; text-decoration:none; }
+  .copyright a:hover{ color:#fff; }
+  .foot-col h5{ margin-top:0; }
+  footer.site-foot a:focus-visible{ outline:3px solid var(--accent); outline-offset:2px; border-radius:6px; }
 
   @media (max-width:980px){
     .hero-grid, .why-grid{ grid-template-columns:1fr; }
@@ -268,15 +272,10 @@
     <div class="reveal in">
       <span class="eyebrow">Our Services</span>
       <h1>Everything You Need to <span class="grad">Learn, Grow, and Succeed</span></h1>
-      <p class="lead">Eschool brings complete educational solutions to students, teachers, and lifelong learners — video lessons, structured notes, mock exams, career guidance, and more, all in one place.</p>
+      <p class="lead">Eschool brings learners, parents and teachers together on one platform. Learners study with video lessons, notes, tests and live classes. Parents follow progress and set goals. Teachers share resources, teach live and earn from private lessons. All in one place.</p>
       <div class="btn-row">
         <a href="/#categories" class="btn btn-primary" data-ripple>Explore Courses</a>
         <a href="/register" class="btn btn-ghost" data-ripple>Get Started</a>
-      </div>
-      <div class="stat-row">
-        <div class="stat"><b data-count="350" data-suffix="+">0</b><span>Courses</span></div>
-        <div class="stat"><b data-count="15000" data-suffix="+">0</b><span>Students</span></div>
-        <div class="stat"><b data-count="98" data-suffix="%">0</b><span>Satisfaction</span></div>
       </div>
     </div>
     <div class="hero-visual reveal right in">
@@ -293,51 +292,96 @@
   <div class="container">
     <div class="center reveal">
       <span class="eyebrow">What We Offer</span>
-      <h2 class="sec-title">Ten ways Eschool helps you learn</h2>
-      <p class="sec-sub center">A complete toolkit for students, teachers, and lifelong learners — built to make studying clearer, faster, and more rewarding.</p>
+      <h2 class="sec-title">Everything Eschool does for you</h2>
+      <p class="sec-sub center">Learners, parents and teachers each get their own tools, all working together on one platform.</p>
     </div>
+    <div class="aud-head first reveal"><span class="tag">For learners</span><p>Learn, practise and see yourself improve.</p></div>
     <div class="grid-4">
       <div class="svc-card reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></div>
-        <h4>Video Lessons</h4><p>Interactive video courses taught by experienced educators.</p>
+        <h4>Video Lessons</h4><p>Clear lessons from teachers that you can pause, rewatch and revisit any time.</p>
         <a href="/courses" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
       <div class="svc-card reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
-        <h4>Study Notes</h4><p>Easy-to-understand, well-organized notes for every subject.</p>
+        <h4>Notes &amp; Resources</h4><p>Detailed notes, past papers and files shared by teachers, by subject and grade. Save the ones you need.</p>
         <a href="/resourses" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
       <div class="svc-card reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
-        <h4>Practice Tests</h4><p>Mock exams and quizzes with instant feedback.</p>
+        <h4>Tests &amp; Quizzes</h4><p>A test after every module (pass with 60%), course quizzes and a Daily Quiz Test, marked instantly.</p>
         <a href="/courses" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
       <div class="svc-card reveal">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M9 14l-2 7 5-3 5 3-2-7"/></svg></div>
-        <h4>Certification</h4><p>Receive certificates after completing your courses.</p>
-        <a href="/progres" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/></svg></div>
+        <h4>Live Classes</h4><p>Join teachers live inside Eschool. Ask in the chat, raise your hand and get a reminder before it starts.</p>
+        <a href="/live" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
-      
-      <div class="svc-card reveal">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9M14 17H5M17 3l3 4-3 4M7 13l-3 4 3 4"/></svg></div>
-        <h4>Career Guidance</h4><p>Career advice, mentorship, and professional development.</p>
-        <a href="/career" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      </div>
-      
       <div class="svc-card reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg></div>
-        <h4>Progress Tracking</h4><p>Track your learning progress with detailed analytics.</p>
+        <h4>Progress Tracking</h4><p>See every module passed, your scores, grades and streaks, course by course.</p>
         <a href="/progres" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
       <div class="svc-card reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
-        <h4>Study Planner</h4><p>Organize your learning schedule effectively.</p>
+        <h4>Study Planner</h4><p>Plan your study time, see your live classes and lessons, and keep up with goals from your parents.</p>
         <a href="/schedule" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
       <div class="svc-card reveal">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg></div>
-        <h4>Learn Anywhere</h4><p>Access your courses from any device, anytime.</p>
-        <a href="/courses" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M9 14l-2 7 5-3 5 3-2-7"/></svg></div>
+        <h4>Points &amp; Achievements</h4><p>Earn Eschool Points as you learn, level up, unlock badges and climb the monthly leaderboard.</p>
+        <a href="/points" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a6 6 0 0 0-4 10.4c.6.6 1 1.3 1 2.1V16h6v-1.5c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 2z"/></svg></div>
+        <h4>Study Strategies &amp; Careers</h4><p>Proven ways to study, tips shared by other learners, and guidance on careers your subjects lead to.</p>
+        <a href="/strategies" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+    </div>
+    <div class="aud-head reveal"><span class="tag">For parents</span><p>Follow and support your child's learning.</p></div>
+    <div class="grid-4">
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></div>
+        <h4>Link to Your Child</h4><p>Your child confirms the link and chooses what you see: grades, progress, schedule and more.</p>
+        <a href="/parent-link" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V6l-8-4z"/><path d="M12 8v4l2 2"/></svg></div>
+        <h4>Parental Controls</h4><p>Daily time limits, quiet hours, a pause button and who your child can talk to. Your child is always told.</p>
+        <a href="/parent-controls" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <h4>Goals &amp; Rewards</h4><p>Set a goal, like "pass 5 quizzes by Sunday", with a reward. Eschool tracks it and tells you when it is reached.</p>
+        <a href="/parent-goals" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7l10-4 10 4-10 4z"/><path d="M6 9v5c3 3 9 3 12 0V9"/></svg></div>
+        <h4>Private Teachers</h4><p>Find a teacher for your child, pay through Eschool, and see every lesson, message and call.</p>
+        <a href="/parent-teacher" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+    </div>
+    <div class="aud-head reveal"><span class="tag">For teachers</span><p>Share what you know and get paid for it.</p></div>
+    <div class="grid-4">
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg></div>
+        <h4>Share Resources</h4><p>Upload notes, videos and past papers for learners, and see how many view, like and save them.</p>
+        <a href="/teacher-upload" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4V8Z"/></svg></div>
+        <h4>Teach Live</h4><p>Run live classes from your Eschool studio, with chat you manage and learners raising their hands.</p>
+        <a href="/teacher-live" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/><path d="M6 10v5M18 10v5"/></svg></div>
+        <h4>Private Lessons &amp; Earnings</h4><p>Accept requests from parents and set your price. Parents pay Eschool, and Eschool pays you.</p>
+        <a href="/earn" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="svc-card reveal">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/><path d="m17 4 1.5 1.5L21 3"/></svg></div>
+        <h4>Profile &amp; Reviews</h4><p>A teaching profile with your subjects and qualifications, plus ratings and reviews that build trust.</p>
+        <a href="/teacher-profile" class="learn-more">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
     </div>
   </div>
@@ -350,20 +394,20 @@
       <span class="eyebrow">Why Choose Us</span>
       <h2 class="sec-title">Built for how you actually learn</h2>
       <div class="check-list" style="margin-top:26px;">
-        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Expert instructors</span></div>
-        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Flexible learning</span></div>
-        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Affordable education</span></div>
-        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Interactive content</span></div>
-        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Career-focused courses</span></div>
-        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Mobile-friendly learning</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Learners, parents and teachers on one platform</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Learn at your own pace</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Live classes inside Eschool</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Messages and voice or video calls</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Parents see what their child chooses to share</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Works on phone, tablet and computer</span></div>
+        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Privacy choices you control</span></div>
         <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Regular updates</span></div>
-        <div class="check-item"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Secure platform</span></div>
       </div>
     </div>
     <div class="float-panel reveal right">
-      <div class="info-card ic1"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><div><div class="n">5M+</div><div class="l">Lessons completed</div></div></div>
-      <div class="info-card ic2"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M9 14l-2 7 5-3 5 3-2-7"/></svg></span><div><div class="n">98%</div><div class="l">Would recommend</div></div></div>
-      <div class="info-card ic3"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V6l-8-4z"/></svg></span><div><div class="n">24/7</div><div class="l">Platform uptime</div></div></div>
+      <div class="info-card ic1"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><div><div class="n" data-stat="avg_score" data-count="{{ (hs.get('avg_score') or 0)|int }}" data-suffix="%">{{ (hs.get('avg_score') or 0)|int }}%</div><div class="l">Average test score</div></div></div>
+      <div class="info-card ic2"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M9 14l-2 7 5-3 5 3-2-7"/></svg></span><div><div class="n" data-stat="teachers" data-count="{{ (hs.get('teachers') or 0)|int }}">{{ '{:,}'.format((hs.get('teachers') or 0)|int) }}</div><div class="l">Teachers on Eschool</div></div></div>
+      <div class="info-card ic3"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V6l-8-4z"/></svg></span><div><div class="n small">Any device</div><div class="l">Phone, tablet or computer</div></div></div>
     </div>
   </div>
 </section>
@@ -374,16 +418,73 @@
     <div class="center reveal">
       <span class="eyebrow">Categories</span>
       <h2 class="sec-title">Explore what you can learn</h2>
+      <p class="sec-sub center" style="margin-bottom:0;">Eight subjects. The numbers under each one are live.</p>
     </div>
     <div class="grid-4" style="margin-top:44px;">
-      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 4v16M16 4v16M4 8h16M4 16h16"/></svg></div><h4>Mathematics</h4><p>Algebra to calculus</p></div>
-      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l1 6-4 4-4-4z"/><path d="M6 21c0-4 2-6 6-6s6 2 6 6"/></svg></div><h4>Physics</h4><p>Matter & energy</p></div>
-      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h4>English</h4><p>Grammar & literature</p></div>
-      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M13 5l-2 14"/></svg></div><h4>Chemistry</h4><p>Atoms to bonds</p></div>
-      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 16h.01M16 16h.01"/></svg></div><h4>Biology</h4><p>Living organisms & life</p></div>
-      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1"/></svg></div><h4>Business</h4><p>Management & finance</p></div>
-      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div><h4>History</h4><p>World & regional history</p></div>
-      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><h4>Computer Studies</h4><p>Systems & fundamentals</p></div>
+      {% set ss = (hs.get('subjects') or {}).get('Mathematics') or {} %}
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6M8 4v6M14 7h5M5 17h6M14 15l5 5M19 15l-5 5"/></svg></div><h4>Mathematics</h4><p>Arithmetic to calculus</p>
+        <ul class="cat-stats">
+          <li><b data-stat="subjects.Mathematics.courses">{{ (ss.get('courses') or 0)|int }}</b> courses</li>
+          <li><b data-stat="subjects.Mathematics.students">{{ (ss.get('students') or 0)|int }}</b> students</li>
+          <li><b data-stat="subjects.Mathematics.teachers">{{ (ss.get('teachers') or 0)|int }}</b> teachers</li>
+        </ul>
+      </div>
+      {% set ss = (hs.get('subjects') or {}).get('Science') or {} %}
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6M10 2v6L4.5 18a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 8V2"/></svg></div><h4>Science</h4><p>Experiments and ideas</p>
+        <ul class="cat-stats">
+          <li><b data-stat="subjects.Science.courses">{{ (ss.get('courses') or 0)|int }}</b> courses</li>
+          <li><b data-stat="subjects.Science.students">{{ (ss.get('students') or 0)|int }}</b> students</li>
+          <li><b data-stat="subjects.Science.teachers">{{ (ss.get('teachers') or 0)|int }}</b> teachers</li>
+        </ul>
+      </div>
+      {% set ss = (hs.get('subjects') or {}).get('History') or {} %}
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div><h4>History</h4><p>World and regional history</p>
+        <ul class="cat-stats">
+          <li><b data-stat="subjects.History.courses">{{ (ss.get('courses') or 0)|int }}</b> courses</li>
+          <li><b data-stat="subjects.History.students">{{ (ss.get('students') or 0)|int }}</b> students</li>
+          <li><b data-stat="subjects.History.teachers">{{ (ss.get('teachers') or 0)|int }}</b> teachers</li>
+        </ul>
+      </div>
+      {% set ss = (hs.get('subjects') or {}).get('English') or {} %}
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h4>English</h4><p>Grammar and literature</p>
+        <ul class="cat-stats">
+          <li><b data-stat="subjects.English.courses">{{ (ss.get('courses') or 0)|int }}</b> courses</li>
+          <li><b data-stat="subjects.English.students">{{ (ss.get('students') or 0)|int }}</b> students</li>
+          <li><b data-stat="subjects.English.teachers">{{ (ss.get('teachers') or 0)|int }}</b> teachers</li>
+        </ul>
+      </div>
+      {% set ss = (hs.get('subjects') or {}).get('Physics') or {} %}
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.5"/><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/></svg></div><h4>Physics</h4><p>Matter and energy</p>
+        <ul class="cat-stats">
+          <li><b data-stat="subjects.Physics.courses">{{ (ss.get('courses') or 0)|int }}</b> courses</li>
+          <li><b data-stat="subjects.Physics.students">{{ (ss.get('students') or 0)|int }}</b> students</li>
+          <li><b data-stat="subjects.Physics.teachers">{{ (ss.get('teachers') or 0)|int }}</b> teachers</li>
+        </ul>
+      </div>
+      {% set ss = (hs.get('subjects') or {}).get('Business') or {} %}
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg></div><h4>Business</h4><p>Management and finance</p>
+        <ul class="cat-stats">
+          <li><b data-stat="subjects.Business.courses">{{ (ss.get('courses') or 0)|int }}</b> courses</li>
+          <li><b data-stat="subjects.Business.students">{{ (ss.get('students') or 0)|int }}</b> students</li>
+          <li><b data-stat="subjects.Business.teachers">{{ (ss.get('teachers') or 0)|int }}</b> teachers</li>
+        </ul>
+      </div>
+      {% set ss = (hs.get('subjects') or {}).get('Biology') or {} %}
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13c0-5 4-9 16-9 0 12-4 16-9 16Z"/><path d="M4 20c4-4 7-6 11-9"/></svg></div><h4>Biology</h4><p>Life and living organisms</p>
+        <ul class="cat-stats">
+          <li><b data-stat="subjects.Biology.courses">{{ (ss.get('courses') or 0)|int }}</b> courses</li>
+          <li><b data-stat="subjects.Biology.students">{{ (ss.get('students') or 0)|int }}</b> students</li>
+          <li><b data-stat="subjects.Biology.teachers">{{ (ss.get('teachers') or 0)|int }}</b> teachers</li>
+        </ul>
+      </div>
+      {% set ss = (hs.get('subjects') or {}).get('Computer Studies') or {} %}
+      <div class="cat-card reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><h4>Computer Studies</h4><p>Systems and fundamentals</p>
+        <ul class="cat-stats">
+          <li><b data-stat="subjects.Computer Studies.courses">{{ (ss.get('courses') or 0)|int }}</b> courses</li>
+          <li><b data-stat="subjects.Computer Studies.students">{{ (ss.get('students') or 0)|int }}</b> students</li>
+          <li><b data-stat="subjects.Computer Studies.teachers">{{ (ss.get('teachers') or 0)|int }}</b> teachers</li>
+        </ul>
+      </div>
     </div>
   </div>
 </section>
@@ -393,14 +494,14 @@
   <div class="container">
     <div class="center reveal">
       <span class="eyebrow">How It Works</span>
-      <h2 class="sec-title">Five steps to your certificate</h2>
+      <h2 class="sec-title">Five steps to real progress</h2>
     </div>
     <div class="journey" style="margin-top:50px;">
-      <div class="j-step reveal"><div class="num">1</div><h4>Register</h4><p>Create your free account.</p></div>
-      <div class="j-step reveal"><div class="num">2</div><h4>Choose a Course</h4><p>Pick from 350+ subjects.</p></div>
-      <div class="j-step reveal"><div class="num">3</div><h4>Watch Lessons</h4><p>Learn at your own pace.</p></div>
-      <div class="j-step reveal"><div class="num">4</div><h4>Complete Assessments</h4><p>Put your knowledge to the test.</p></div>
-      <div class="j-step reveal"><div class="num">5</div><h4>Earn Your Certificate</h4><p>Show off what you've learned.</p></div>
+      <div class="j-step reveal"><div class="num">1</div><h4>Register</h4><p>Create your free account as a learner.</p></div>
+      <div class="j-step reveal"><div class="num">2</div><h4>Choose a Course</h4><p>Pick from eight subjects.</p></div>
+      <div class="j-step reveal"><div class="num">3</div><h4>Learn</h4><p>Videos, notes and live classes, at your own pace.</p></div>
+      <div class="j-step reveal"><div class="num">4</div><h4>Complete Assessments</h4><p>Pass module tests and quizzes.</p></div>
+      <div class="j-step reveal"><div class="num">5</div><h4>Level Up</h4><p>Earn points, keep your streak and watch your progress grow.</p></div>
     </div>
   </div>
 </section>
@@ -412,40 +513,13 @@
       <div class="center" style="margin-bottom:40px;">
         <span class="eyebrow" style="background:rgba(255,255,255,.1); color:#93c5fd;">By the Numbers</span>
         <h2 class="sec-title" style="color:#fff;">Eschool at a glance</h2>
+        <p style="color:#94a3b8; font-size:14px; margin:0;">Live numbers, straight from the platform</p>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><b data-count="15000" data-suffix="+">0</b><span>Active Students</span></div>
-        <div class="stat-card"><b data-count="350" data-suffix="+">0</b><span>Courses</span></div>
-        <div class="stat-card"><b data-count="120" data-suffix="+">0</b><span>Teachers</span></div>
-        <div class="stat-card"><b data-count="98" data-suffix="%">0</b><span>Satisfaction</span></div>
-        <div class="stat-card"><b data-count="5" data-suffix="M+">0</b><span>Lessons Completed</span></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ TESTIMONIALS ============ -->
-<section>
-  <div class="container">
-    <div class="center reveal">
-      <span class="eyebrow">Testimonials</span>
-      <h2 class="sec-title">What learners say about our services</h2>
-    </div>
-    <div class="grid-3" style="margin-top:44px;">
-      <div class="card reveal">
-        <div class="testi-top"><div class="avatar">D</div><div><div class="testi-name">Daniel T.</div><div class="testi-role">University Student</div></div></div>
-        <div class="stars">★★★★★</div>
-        <p class="quote">"The practice tests with instant feedback helped me catch mistakes I didn't know I was making."</p>
-      </div>
-      <div class="card reveal">
-        <div class="testi-top"><div class="avatar">M</div><div><div class="testi-name">Mei L.</div><div class="testi-role">Working Professional</div></div></div>
-        <div class="stars">★★★★★</div>
-        <p class="quote">"Career guidance plus a real certificate at the end — that combination is hard to find elsewhere."</p>
-      </div>
-      <div class="card reveal">
-        <div class="testi-top"><div class="avatar">J</div><div><div class="testi-name">Josiah N.</div><div class="testi-role">High School Student</div></div></div>
-        <div class="stars">★★★★★</div>
-        <p class="quote">"The study planner keeps me on track, and I can watch lessons again whenever a topic doesn't click."</p>
+        {% for key, label, suffix in [('students', 'Students', ''), ('parents', 'Parents', ''), ('teachers', 'Teachers', ''), ('courses', 'Courses', ''), ('avg_score', 'Average test score', '%')] %}
+        {% set n = (hs.get(key) or 0)|int %}
+        <div class="stat-card"><b data-stat="{{ key }}" data-count="{{ n }}" data-suffix="{{ suffix }}">{{ '{:,}'.format(n) }}{{ suffix }}</b><span>{{ label }}</span></div>
+        {% endfor %}
       </div>
     </div>
   </div>
@@ -460,28 +534,36 @@
     </div>
     <div class="faq-list" style="margin-top:44px;">
       <div class="faq-item reveal">
-        <button class="faq-q">How do I enroll?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="faq-a"><p>Create a free account, browse the course catalog, and enroll in any course with one click — you can start watching lessons right away.</p></div>
+        <button class="faq-q" type="button" aria-expanded="false">How do I join?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Press Register, choose learner, parent or teacher, and fill in your details. You can also sign in with Google.</p></div>
       </div>
       <div class="faq-item reveal">
-        <button class="faq-q">Are certificates provided?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="faq-a"><p>Yes — once you complete a course's lessons and assessments, a certificate is generated automatically and added to your profile.</p></div>
+        <button class="faq-q" type="button" aria-expanded="false">Is Eschool free?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Creating an account is free. Some features need a paid plan (Basic or Pro). The price and what is included are always shown before you pay. Learners should ask a parent or guardian first.</p></div>
       </div>
       <div class="faq-item reveal">
-        <button class="faq-q">Can I study on mobile?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="faq-a"><p>Eschool works fully in the browser on any device — phone, tablet, or desktop — with no app install required.</p></div>
+        <button class="faq-q" type="button" aria-expanded="false">Does Eschool give certificates?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>No. Your scores, grades, points and achievements show how you are doing on Eschool, but they are not official school results or certificates.</p></div>
       </div>
       <div class="faq-item reveal">
-        <button class="faq-q">Are courses self-paced?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="faq-a"><p>Yes. There are no fixed class times — pause, rewatch, and pick up exactly where you left off, whenever it suits you.</p></div>
+        <button class="faq-q" type="button" aria-expanded="false">Can I study on my phone?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Yes. Eschool works in the browser on any phone, tablet or computer, with nothing to install.</p></div>
       </div>
       <div class="faq-item reveal">
-        <button class="faq-q">How do teachers upload content?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="faq-a"><p>Teachers get access to an upload dashboard where they can publish video lessons, notes, and resources directly to their courses.</p></div>
+        <button class="faq-q" type="button" aria-expanded="false">Are courses self-paced?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Yes. Lessons, notes and tests are there whenever you are. Live classes happen at set times, and you can ask for a reminder.</p></div>
       </div>
       <div class="faq-item reveal">
-        <button class="faq-q">Is there lifetime access?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
-        <div class="faq-a"><p>Once you enroll in a course, it stays in your account — you can revisit lessons and notes any time in the future.</p></div>
+        <button class="faq-q" type="button" aria-expanded="false">How do parents link to their child?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>From a parent account, send a link request. Your child confirms it with a one-time code or by accepting, and chooses what you can see. Nothing is linked without their agreement.</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q" type="button" aria-expanded="false">What are Eschool Points?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Points you earn by learning: passing module tests and quizzes, finishing courses and keeping streaks. They decide your level and your place on the monthly leaderboard, and can be spent in the Points shop. They have no cash value.</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q" type="button" aria-expanded="false">How do teachers share content and earn?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button>
+        <div class="faq-a"><p>Teachers upload notes, videos and past papers from their dashboard, run live classes from their Eschool studio, and accept private lesson requests from parents. Parents pay Eschool, and Eschool pays the teacher.</p></div>
       </div>
     </div>
   </div>
@@ -492,7 +574,9 @@
   <div class="cta reveal">
     <div class="hero-blobs"><div class="blob b1"></div><div class="blob b2"></div></div>
     <h2>Start Learning Today</h2>
-    <p>Join thousands of learners already building real skills with Eschool — sign up free and explore every service in minutes.</p>
+    <p>Join <b data-stat="students">{{ '{:,}'.format((hs.get('students') or 0)|int) }}</b> learners,
+       <b data-stat="parents">{{ '{:,}'.format((hs.get('parents') or 0)|int) }}</b> parents and
+       <b data-stat="teachers">{{ '{:,}'.format((hs.get('teachers') or 0)|int) }}</b> teachers already on Eschool. Create your free account in minutes.</p>
     <div class="btn-row">
       <a href="/register" class="btn btn-primary" data-ripple>Register Free</a>
       <a href="/#categories" class="btn btn-ghost" data-ripple>Explore Courses</a>
@@ -502,50 +586,42 @@
 
 <!-- ============ FOOTER ============ -->
 <footer class="site-foot">
-  <div class="container">
-    <div class="foot-grid">
-      <div class="foot-col">
-        <div class="foot-brand">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3L1 8l11 5 9-4.09V17h2V8L12 3z" fill="url(#fg1)"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="url(#fg1)" opacity=".7"/><defs><linearGradient id="fg1" x1="1" y1="3" x2="23" y2="21"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#14B8A6"/></linearGradient></defs></svg>
-          <span>Eschool</span>
+    <div class="container foot-grid">
+        <div class="foot-col">
+            <div class="foot-brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3L1 8l11 5 9-4.09V17h2V8L12 3z" fill="url(#lfg1)"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="url(#lfg1)" opacity=".7"/><defs><linearGradient id="lfg1" x1="1" y1="3" x2="23" y2="21"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#14B8A6"/></linearGradient></defs></svg>
+                <span>Eschool</span>
+            </div>
+            <p>Premium online learning built around real skills, clear video lessons, and a path that actually gets you somewhere.</p>
         </div>
-        <p>The all-in-one platform for modern, accessible online learning.</p>
-        <div class="social-row">
-          <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg></a>
-          <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 5.9c-.7.3-1.5.6-2.3.7.8-.5 1.5-1.3 1.8-2.3-.8.5-1.7.8-2.6 1a4.1 4.1 0 0 0-7 3.7A11.6 11.6 0 0 1 3.4 4.6a4.1 4.1 0 0 0 1.3 5.5c-.7 0-1.3-.2-1.9-.5v.1c0 2 1.4 3.6 3.3 4a4.1 4.1 0 0 1-1.8.1 4.1 4.1 0 0 0 3.8 2.9A8.3 8.3 0 0 1 2 18.4a11.6 11.6 0 0 0 6.3 1.8c7.5 0 11.7-6.3 11.7-11.7v-.5c.8-.6 1.5-1.3 2-2.1z"/></svg></a>
-          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.1c.5-1 1.9-2 3.8-2 4 0 4.8 2.6 4.8 6V21h-4v-5.3c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V21H9z"/></svg></a>
-          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.7 0 3 0 4.1.06 1.1.05 1.8.22 2.4.46.7.28 1.2.6 1.7 1.1.5.5.9 1 1.1 1.7.25.6.42 1.4.46 2.4.06 1.1.06 1.5.06 4.1s0 3-.06 4.1c-.04 1.1-.2 1.8-.46 2.4-.28.7-.6 1.2-1.1 1.7-.5.5-1 .8-1.7 1.1-.6.24-1.3.4-2.4.46-1.1.06-1.4.06-4.1.06s-3 0-4.1-.06c-1.1-.06-1.8-.22-2.4-.46-.7-.3-1.2-.6-1.7-1.1-.5-.5-.8-1-1.1-1.7-.24-.6-.4-1.3-.46-2.4C2 15 2 14.7 2 12s0-3 .06-4.1c.06-1.1.22-1.8.46-2.4.3-.7.6-1.2 1.1-1.7.5-.5 1-.8 1.7-1.1.6-.24 1.3-.41 2.4-.46C9 2 9.3 2 12 2zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zm5.2-8.4a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z"/></svg></a>
+        <div class="foot-col">
+            <h5>Quick Links</h5>
+            <ul>
+                <li><a href="/#categories">Courses</a></li>
+                <li><a href="/aboutus">About us</a></li>
+                <li><a href="/services">Services</a></li>
+                <li><a href="/earn">Earn</a></li>
+            </ul>
         </div>
-      </div>
-      <div class="foot-col">
-        <h5>Quick Links</h5>
-        <ul>
-          <li><a href="/courses">Courses</a></li>
-          <li><a href="/aboutus">About</a></li>
-          <li><a href="/services">Services</a></li>
-          <li><a href="/contact">Contact</a></li>
-        </ul>
-      </div>
-      <div class="foot-col">
-        <h5>Legal</h5>
-        <ul>
-          <li><a href="/help">Help Center</a></li>
-          <li><a href="#">Privacy Policy</a></li>
-          <li><a href="#">Terms of Service</a></li>
-        </ul>
-      </div>
-      <div class="foot-col">
-        <h5>Stay Updated</h5>
-        <p style="margin-bottom:12px;">Get new courses and learning tips in your inbox.</p>
-        <form class="newsletter" id="newsForm">
-          <input type="email" placeholder="Your email" required>
-          <button type="submit">Subscribe</button>
-        </form>
-        <div class="newsletter-msg" id="newsMsg"></div>
-      </div>
+        <div class="foot-col">
+            <h5>Support</h5>
+            <ul>
+                <li><a href="/contact">Contact</a></li>
+                <li><a href="/policies#privacy">Privacy Policy</a></li>
+                <li><a href="/policies#terms">Terms of Service</a></li>
+            </ul>
+        </div>
+        <div class="foot-col">
+            <h5>Need help now?</h5>
+            <div class="help-box">
+                <p>Questions about your account, a payment or a lesson? Our team will help, usually within one working day.</p>
+                <a class="help-btn" href="/contact"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Contact support</a>
+            </div>
+        </div>
     </div>
-    <div class="copyright">&copy; 2025 Eschool. All rights reserved.</div>
-  </div>
+    <div class="container">
+        <div class="copyright">&copy; <span data-year>2026</span> Eschool. All rights reserved. &middot; <a href="/policies#privacy">Privacy</a> &middot; <a href="/policies#terms">Terms</a></div>
+    </div>
 </footer>
 
 <script>
@@ -621,27 +697,40 @@
         if (openItem !== item){
           openItem.classList.remove('open');
           openItem.querySelector('.faq-a').style.maxHeight = null;
+          openItem.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
         }
       });
       if (isOpen){
         item.classList.remove('open');
         a.style.maxHeight = null;
+        q.setAttribute('aria-expanded', 'false');
       } else {
         item.classList.add('open');
         a.style.maxHeight = a.scrollHeight + 'px';
+        q.setAttribute('aria-expanded', 'true');
       }
     });
   });
 
-  // ---- newsletter (front-end only placeholder) ----
-  var newsForm = document.getElementById('newsForm');
-  if (newsForm){
-    newsForm.addEventListener('submit', function(e){
-      e.preventDefault();
-      document.getElementById('newsMsg').textContent = "Thanks — you're on the list!";
-      newsForm.reset();
-    });
-  }
+  // ---- footer year ----
+  document.querySelectorAll('[data-year]').forEach(function(el){ el.textContent = new Date().getFullYear(); });
+
+  // ---- live numbers: refresh every 60 seconds while the page is open ----
+  var liveTimer = setInterval(function(){
+    if (document.hidden) return;
+    fetch('/api/home-stats', { headers: { 'Accept': 'application/json' } })
+      .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(data){
+        document.querySelectorAll('[data-stat]').forEach(function(el){
+          var raw = el.dataset.stat.split('.').reduce(function(o, k){ return o == null ? undefined : o[k]; }, data);
+          var v = parseInt(raw, 10);
+          if (isNaN(v)) return;
+          el.dataset.count = v;
+          el.textContent = v.toLocaleString() + (el.dataset.suffix || '');
+        });
+      })
+      .catch(function(){ clearInterval(liveTimer); });
+  }, 60000);
 
   // ---- subtle hero parallax ----
   var visual = document.querySelector('.hero-visual');

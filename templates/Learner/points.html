@@ -1,0 +1,641 @@
+{% extends "Learner/body.html" %}
+
+{% block allcontent %}
+{#
+    ESCHOOL POINTS — your EP balance, your EP history and the rewards shop.
+    Data:  GET  /api/points                 balance, totals, plan, rewards, the first page of history
+           GET  /api/points/history?type=all|earn|spend&offset=   more history (30 at a time)
+           POST /api/points/redeem {reward} + Idempotency-Key header   exchange EP for a reward
+           POST /api/points/equip  {slot, item}  wear / take off a title or frame
+    The server checks the price, the balance (in one locked step), ownership and the limit of
+    EP_PLAN_DAYS_PER_30 free plan days. After any change the page reloads /api/points.
+    Spending EP never lowers your TOTAL EP (level) or MONTHLY EP (leaderboard rank).
+#}
+<style>
+    .pt-page {
+        --s-surface: #ffffff;
+        --s-border: #e5e7eb;
+        --s-text: #1e293b;
+        --s-dim: #64748b;
+        --s-pill: #eef2f7;
+        --s-soft: #f8fafc;
+        --earn: #059669;
+        --spend: #dc2626;
+        --pt-accent: var(--primary-color, #4361ee);
+        font-family: 'Inter', 'Open Sans', sans-serif;
+        color: var(--s-text);
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    body.dark-mode .pt-page {
+        --s-surface: #1e293b;
+        --s-border: #334155;
+        --s-text: #f1f5f9;
+        --s-dim: #94a3b8;
+        --s-pill: #334155;
+        --s-soft: #172033;
+        --earn: #34d399;
+        --spend: #f87171;
+    }
+    .pt-page * { box-sizing: border-box; }
+    .pt-card { background: var(--s-surface); border: 1px solid var(--s-border); border-radius: 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05); }
+
+    /* ---------- Back ---------- */
+    .pt-back {
+        display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px;
+        padding: 9px 16px; border-radius: 999px; cursor: pointer;
+        border: 1.5px solid var(--s-border); background: var(--s-surface); color: var(--pt-accent);
+        font-family: inherit; font-size: 0.9rem; font-weight: 600; transition: all 0.2s ease;
+    }
+    .pt-back:hover { transform: translateX(-2px); }
+    body.dark-mode .pt-back { color: #c7d2fe; }
+    .pt-page [hidden] { display: none !important; }
+    .pt-sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+    /* ---------- Hero ---------- */
+    .pt-hero {
+        position: relative; overflow: hidden; color: #fff; border-radius: 20px; padding: 28px 28px 24px; margin-bottom: 18px;
+        background: radial-gradient(circle at 90% 10%, rgba(251, 191, 36, 0.3), transparent 45%),
+                    linear-gradient(135deg, #b45309, #c2410c 45%, #9f1239);
+    }
+    .pt-hero::after {
+        content: ""; position: absolute; right: -40px; bottom: -60px; width: 220px; height: 220px; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+    }
+    .pt-hero-top { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; position: relative; z-index: 1; }
+    .pt-hero h1 { font-family: 'Poppins', sans-serif; font-size: 1.15rem; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; opacity: 0.95; }
+    .pt-coin {
+        width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+        background: radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 70%); color: #92400e; font-size: 0.95rem;
+        box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.2), 0 3px 8px rgba(0, 0, 0, 0.2);
+    }
+    .pt-balance { font-family: 'Poppins', sans-serif; font-size: 3.2rem; font-weight: 700; line-height: 1; }
+    .pt-balance .pt-unit { font-size: 1.2rem; font-weight: 600; opacity: 0.9; }
+    .pt-balance-sub { margin-top: 6px; opacity: 0.92; font-size: 0.92rem; }
+    .pt-hero-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; min-width: min(100%, 420px); align-self: end; }
+    .pt-hero-stat { background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 14px; padding: 10px 12px; min-width: 0; }
+    .pt-hero-stat strong { display: block; font-family: 'Poppins', sans-serif; font-size: 1.25rem; line-height: 1.2; }
+    .pt-hero-stat span { font-size: 0.74rem; opacity: 0.9; }
+    .pt-hero-note { position: relative; z-index: 1; margin-top: 16px; font-size: 0.82rem; opacity: 0.92; display: flex; gap: 8px; align-items: center; }
+
+    /* ---------- Plan strip ---------- */
+    .pt-plan { display: flex; align-items: center; gap: 14px; padding: 14px 18px; margin-bottom: 22px; flex-wrap: wrap; }
+    .pt-plan-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #fff; flex-shrink: 0; }
+    .pt-plan-main { flex: 1; min-width: 180px; }
+    .pt-plan-main strong { font-size: 0.98rem; }
+    .pt-plan-main div { font-size: 0.82rem; color: var(--s-dim); }
+
+    /* ---------- Shop ---------- */
+    .pt-h2 { font-family: 'Poppins', sans-serif; font-size: 1.15rem; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+    .pt-h2-sub { color: var(--s-dim); font-size: 0.86rem; margin: 0 0 16px; }
+    .pt-group-title { font-size: 0.78rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--s-dim); margin: 18px 2px 10px; }
+    .pt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+    .pt-reward { position: relative; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .pt-reward:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); }
+    .pt-reward.is-equipped { border-color: color-mix(in srgb, var(--c) 60%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 25%, transparent); }
+    .pt-reward-top { display: flex; align-items: center; gap: 12px; }
+    .pt-reward.has-tag .pt-reward-top { padding-right: 64px; }
+    .pt-reward-icon {
+        width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+        color: #fff; background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 55%, #000));
+        box-shadow: 0 6px 14px color-mix(in srgb, var(--c) 35%, transparent);
+    }
+    .pt-reward-title { font-weight: 700; font-size: 0.98rem; line-height: 1.3; }
+    .pt-reward-desc { font-size: 0.82rem; color: var(--s-dim); line-height: 1.45; flex: 1; }
+    .pt-tag { position: absolute; top: 12px; right: 12px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+        padding: 3px 8px; border-radius: 999px; color: #fff; background: linear-gradient(90deg, #b45309, #b91c1c); }
+    .pt-cost { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 0.95rem; color: #b45309; }
+    body.dark-mode .pt-cost { color: #fbbf24; }
+    .pt-cost i { font-size: 0.85rem; }
+    .pt-progress { height: 6px; border-radius: 999px; background: var(--s-pill); overflow: hidden; }
+    .pt-progress div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f59e0b, #ea580c); }
+    .pt-reward-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .pt-btn {
+        border: none; border-radius: 10px; padding: 9px 16px; font-family: inherit; font-weight: 700; font-size: 0.86rem; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 7px; transition: filter 0.2s, background 0.2s;
+    }
+    .pt-btn-buy { background: linear-gradient(135deg, #f59e0b, #ea580c); color: #fff; box-shadow: 0 4px 10px rgba(234, 88, 12, 0.25); }
+    .pt-btn-buy:hover { filter: brightness(1.06); }
+    .pt-btn-ghost { background: var(--s-pill); color: #475569; cursor: not-allowed; }
+    body.dark-mode .pt-btn-ghost { color: #cbd5e1; }
+    .pt-btn-equip { background: rgba(67, 97, 238, 0.1); color: var(--pt-accent); }
+    .pt-btn-equip:hover { background: rgba(67, 97, 238, 0.18); }
+    .pt-btn:disabled { opacity: 0.7; }
+    .pt-btn:focus-visible, .pt-chip:focus-visible, .pt-back:focus-visible, .pt-more:focus-visible { outline: 3px solid var(--pt-accent); outline-offset: 2px; }
+    .pt-btn-off { background: #ecfdf5; color: #047857; }
+    .pt-btn-off:hover { background: #d1fae5; }
+    body.dark-mode .pt-btn-equip { background: rgba(99, 102, 241, 0.2); color: #c7d2fe; }
+    body.dark-mode .pt-btn-off { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; }
+    .pt-blocked { font-size: 0.76rem; color: var(--s-dim); line-height: 1.4; }
+
+    /* previews */
+    .pt-title-preview { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+        color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); align-self: flex-start; }
+    .pt-frame-preview { width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+        color: #fff; font-weight: 700; background: linear-gradient(135deg, #4361ee, #7c3aed); }
+    /* the preview uses your real badge picture, so the shop shows what you'll get */
+    .pt-frame-preview.is-badge { background: var(--s-soft); padding: 5px; }
+    .pt-frame-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .pt-frame-preview.is-photo img { object-fit: cover; border-radius: 50%; }
+
+    /* Avatar frames (same look on profile and leaderboard) */
+    .ep-frame-gold { box-shadow: 0 0 0 3px #fbbf24, 0 0 0 5px rgba(251, 191, 36, 0.35), 0 0 14px rgba(245, 158, 11, 0.55); }
+    .ep-frame-neon { box-shadow: 0 0 0 3px #ec4899, 0 0 0 5px #22d3ee, 0 0 16px rgba(236, 72, 153, 0.6); }
+    .ep-frame-diamond { box-shadow: 0 0 0 3px #a5f3fc, 0 0 0 5px #8b5cf6, 0 0 18px rgba(6, 182, 212, 0.65); }
+
+    /* ---------- History ---------- */
+    .pt-history { padding: 20px 22px; margin-top: 26px; }
+    .pt-history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+    .pt-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .pt-chip { border: 1.5px solid var(--s-border); background: var(--s-surface); color: var(--s-dim); border-radius: 999px; padding: 6px 13px;
+        font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .pt-chip[aria-pressed="true"] { background: var(--pt-accent); border-color: var(--pt-accent); color: #fff; }
+    .pt-day { font-size: 0.74rem; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--s-dim); margin: 16px 0 4px; }
+    .pt-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--s-border); }
+    .pt-row:last-child { border-bottom: none; }
+    .pt-row-icon { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+        color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); font-size: 0.9rem; }
+    .pt-row-text { flex: 1; min-width: 0; font-weight: 600; font-size: 0.9rem; }
+    .pt-row-text small { display: block; font-weight: 500; color: var(--s-dim); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pt-amt { font-weight: 800; white-space: nowrap; font-size: 0.92rem; }
+    .pt-amt.earn { color: var(--earn); }
+    .pt-amt.spend { color: var(--spend); }
+    .pt-more { display: block; width: 100%; margin-top: 12px; padding: 10px; border-radius: 12px; border: 1.5px dashed var(--s-border);
+        background: none; color: var(--pt-accent); font-weight: 700; cursor: pointer; font-family: inherit; }
+    .pt-empty, .pt-loading { padding: 30px 10px; text-align: center; color: var(--s-dim); line-height: 1.6; }
+    .pt-empty a { color: var(--pt-accent); font-weight: 700; }
+    .pt-retry { margin-top: 10px; border: 1.5px solid var(--s-border); background: var(--s-surface); color: var(--s-text); border-radius: 999px;
+        padding: 7px 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .pt-limit { font-size: 0.8rem; color: var(--s-dim); margin: -8px 2px 6px; }
+    .pt-more-err { color: var(--spend); font-size: 0.82rem; text-align: center; margin-top: 8px; }
+
+    /* Browsers without color-mix(): plain colours */
+    @supports not (color: color-mix(in srgb, red 50%, blue)) {
+        .pt-reward.is-equipped { border-color: var(--c); box-shadow: none; }
+        .pt-reward-icon { background: var(--c); box-shadow: none; }
+        .pt-title-preview { background: var(--s-pill); }
+        .pt-row-icon { background: var(--s-pill); }
+    }
+
+    /* ---------- Confirm modal + toast ---------- */
+    .pt-modal-bg { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(3px); display: none;
+        align-items: center; justify-content: center; z-index: 2000; padding: 16px; }
+    .pt-modal-bg.show { display: flex; }
+    .pt-modal { background: var(--s-surface); color: var(--s-text); border-radius: 18px; width: 100%; max-width: 420px; padding: 24px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3); }
+    .pt-modal h3 { font-family: 'Poppins', sans-serif; margin: 12px 0 6px; font-size: 1.15rem; }
+    .pt-modal p { color: var(--s-dim); font-size: 0.9rem; margin: 0 0 14px; line-height: 1.5; }
+    .pt-modal-sum { background: var(--s-soft); border: 1px solid var(--s-border); border-radius: 12px; padding: 12px 14px; font-size: 0.88rem; display: grid; gap: 6px; }
+    .pt-modal-sum div { display: flex; justify-content: space-between; }
+    .pt-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+    .pt-btn-cancel { background: var(--s-pill); color: var(--s-text); }
+    .pt-modal-err { color: var(--spend); font-size: 0.84rem; margin-top: 10px; min-height: 1em; }
+    .pt-toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 30px); opacity: 0; transition: all 0.3s ease;
+        background: #0f172a; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 0.9rem; z-index: 2100; max-width: calc(100vw - 32px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3); }
+    .pt-toast.show { transform: translate(-50%, 0); opacity: 1; }
+    body.pt-noscroll { overflow: hidden; }
+    @media (prefers-reduced-motion: reduce) { .pt-page *, .pt-toast { transition: none !important; } .pt-reward:hover, .pt-back:hover { transform: none; } }
+
+    @media (max-width: 700px) {
+        .pt-hero { padding: 22px 18px 20px; }
+        .pt-balance { font-size: 2.6rem; }
+        .pt-hero-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+        .pt-hero-stat strong { font-size: 1.05rem; }
+        .pt-grid { grid-template-columns: minmax(0, 1fr); }
+        .pt-history { padding: 16px; }
+    }
+</style>
+
+<div class="pt-page">
+    <button type="button" class="pt-back" id="ptBack"><i class="fas fa-arrow-left" aria-hidden="true"></i><span>Back</span></button>
+
+    <section class="pt-hero">
+        <div class="pt-hero-top">
+            <div>
+                <h1><span class="pt-coin" aria-hidden="true"><i class="fas fa-bolt"></i></span> Eschool Points</h1>
+                <div class="pt-balance"><span id="ptBalance">–</span> <span class="pt-unit">EP</span></div>
+                <div class="pt-balance-sub">available to spend</div>
+            </div>
+            <div class="pt-hero-stats">
+                <div class="pt-hero-stat"><strong id="ptTotal">–</strong><span>Total EP earned</span></div>
+                <div class="pt-hero-stat"><strong id="ptMonth">–</strong><span>EP this month</span></div>
+                <div class="pt-hero-stat"><strong id="ptSpent">–</strong><span>EP spent</span></div>
+            </div>
+        </div>
+        <div class="pt-hero-note"><i class="fas fa-circle-info" aria-hidden="true"></i> Spending EP never lowers your total EP, your level or your place on the leaderboard.</div>
+    </section>
+
+    <div class="pt-card pt-plan" id="ptPlan" hidden></div>
+
+    <h2 class="pt-h2"><i class="fas fa-gift" style="color:#ea580c" aria-hidden="true"></i> Exchange your EP</h2>
+    <p class="pt-h2-sub">Swap your Eschool Points for free subscription days and cool profile extras.</p>
+    <div id="ptShop"><div class="pt-card pt-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Loading rewards…</div></div>
+
+    <section class="pt-card pt-history">
+        <div class="pt-history-head">
+            <h2 class="pt-h2" style="margin:0"><i class="fas fa-clock-rotate-left" style="color:var(--pt-accent)" aria-hidden="true"></i> EP history</h2>
+            <div class="pt-chips" id="ptHistFilter" role="group" aria-label="Show">
+                <button type="button" class="pt-chip" data-f="all" aria-pressed="true">All</button>
+                <button type="button" class="pt-chip" data-f="earn" aria-pressed="false">Earned</button>
+                <button type="button" class="pt-chip" data-f="spend" aria-pressed="false">Spent</button>
+            </div>
+        </div>
+        <div id="ptHistory" aria-live="polite"><div class="pt-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Loading…</div></div>
+    </section>
+</div>
+
+<div class="pt-modal-bg" id="ptModal">
+    <div class="pt-modal" role="dialog" aria-modal="true" aria-labelledby="ptModalTitle" aria-describedby="ptModalDesc">
+        <div class="pt-reward-icon" id="ptModalIcon" aria-hidden="true"></div>
+        <h3 id="ptModalTitle"></h3>
+        <p id="ptModalDesc"></p>
+        <div class="pt-modal-sum">
+            <div><span>Your balance</span><strong id="ptModalBal"></strong></div>
+            <div><span>Cost</span><strong id="ptModalCost" style="color:var(--spend)"></strong></div>
+            <div><span>Balance after</span><strong id="ptModalAfter"></strong></div>
+        </div>
+        <div class="pt-modal-err" id="ptModalErr" role="alert"></div>
+        <div class="pt-modal-actions">
+            <button type="button" class="pt-btn pt-btn-cancel" id="ptModalCancel">Cancel</button>
+            <button type="button" class="pt-btn pt-btn-buy" id="ptModalOk"><i class="fas fa-check" aria-hidden="true"></i> Redeem</button>
+        </div>
+    </div>
+</div>
+<div class="pt-toast" id="ptToast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+    'use strict';
+
+    const MY_INITIALS = ({{ ((me.firstname if me is defined else session.get('firstname', '')) or '')[:1] | tojson }}
+                      + {{ ((me.lastname if me is defined else session.get('lastname', '')) or '')[:1] | tojson }}).toUpperCase();
+    let data = null;
+    let histFilter = 'all';
+    let histItems = [];       // history rows on screen
+    let histTotal = 0;
+    let histSeq = 0;
+    let pending = null;       // reward waiting for confirmation
+    let pendingKey = null;    // Idempotency-Key for that confirmation (a retry can't charge twice)
+    let lastFocus = null;
+    let lastLoad = 0;
+
+    const KIND_LOOK = {
+        module:        { icon: 'fa-cubes',          c: '#4361ee' },
+        review:        { icon: 'fa-rotate',         c: '#7c3aed' },
+        focus:         { icon: 'fa-stopwatch',      c: '#ea580c' },
+        course:        { icon: 'fa-graduation-cap', c: '#7c3aed' },
+        quiz:          { icon: 'fa-circle-check',   c: '#059669' },
+        daily_quiz:    { icon: 'fa-calendar-check', c: '#0284c7' },
+        module_streak: { icon: 'fa-fire',           c: '#ea580c' },
+        quiz_streak:   { icon: 'fa-bolt',           c: '#ca8a04' },
+        legendary:     { icon: 'fa-crown',          c: '#b45309' },
+        career_mission: { icon: 'fa-briefcase',     c: '#0d9488' },
+        career_story:  { icon: 'fa-book-open',      c: '#0891b2' },
+        career_badge:  { icon: 'fa-medal',          c: '#c026d3' },
+        activity:      { icon: 'fa-puzzle-piece',   c: '#0ea5e9' },
+        starter:       { icon: 'fa-rocket',         c: '#7c3aed' },
+        spend:         { icon: 'fa-gift',           c: '#dc2626' },
+    };
+
+    // ---------- small helpers ----------
+    const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    function esc(t) { return String(t ?? '').replace(/[&<>"']/g, c => ESC[c]); }   // safe in text AND attributes
+    function fmt(n) { return Number(n || 0).toLocaleString(); }
+    function hex(c) { return /^#[0-9a-f]{3,8}$/i.test(c || '') ? c : '#4361ee'; }
+    function icon(i) { return /^fa-[a-z0-9-]+$/.test(i || '') ? i : 'fa-star'; }
+    function safeUrl(u) {
+        if (typeof u !== 'string' || !u) return '';
+        if (u.startsWith('/') && !u.startsWith('//')) return u;
+        try { const x = new URL(u); return (x.protocol === 'https:' || x.protocol === 'http:') ? x.href : ''; } catch (e) { return ''; }
+    }
+    function el(id) { return document.getElementById(id); }
+    function newKey() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+    }
+    function todayKey(offset) {
+        const d = new Date(Date.now() - (offset || 0) * 864e5);
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(d);
+    }
+    function dayLabel(key) {
+        if (!key) return 'Before EP tracking started';
+        if (key === todayKey(0)) return 'Today';
+        if (key === todayKey(1)) return 'Yesterday';
+        const [y, m, d] = key.split('-').map(Number);
+        return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function toast(msg) {
+        const t = el('ptToast');
+        t.textContent = msg; t.classList.add('show');
+        clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 4200);
+    }
+
+    async function api(url, body, headers) {
+        let res;
+        try {
+            res = await fetch(url, body ? {
+                method: 'POST', credentials: 'same-origin',
+                headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, headers || {}),
+                body: JSON.stringify(body)
+            } : { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+        } catch (e) {
+            throw new Error("Couldn't reach Eschool. Check your internet connection.");
+        }
+        if (res.status === 401) { window.location.href = '/login'; throw new Error('Not signed in'); }
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok || !d.success) throw new Error(d.message || (res.status >= 500 ? 'Something went wrong on our side. Please try again.' : `Request failed (${res.status})`));
+        return d;
+    }
+
+    // ---------- render ----------
+    function renderTop() {
+        el('ptBalance').textContent = fmt(data.balance);
+        el('ptTotal').textContent = fmt(data.total_earned);
+        el('ptMonth').textContent = fmt(data.month_ep);
+        el('ptSpent').textContent = fmt(data.spent);
+
+        const p = data.plan || { key: 'free' };
+        const box = el('ptPlan');
+        const look = p.key === 'pro' ? ['fa-gem', 'linear-gradient(135deg,#7c3aed,#9333ea)']
+                   : p.key === 'basic' ? ['fa-crown', 'linear-gradient(135deg,#4361ee,#2563eb)']
+                   : ['fa-user', 'linear-gradient(135deg,#94a3b8,#64748b)'];
+        // the cheapest plan reward, from the server's own list (so the price here can't go out of date)
+        const plans = (data.rewards || []).filter(r => r.group === 'plans').sort((a, b) => a.cost - b.cost);
+        const cheapest = plans[0];
+        const freeText = cheapest
+            ? `Exchange ${fmt(cheapest.cost)} EP below for ${esc(cheapest.title)}.`
+            : 'Exchange EP below for free plan days.';
+        box.hidden = false;
+        box.innerHTML = `
+            <div class="pt-plan-icon" style="background:${look[1]}" aria-hidden="true"><i class="fas ${look[0]}"></i></div>
+            <div class="pt-plan-main">
+                <strong>Your plan: Eschool ${esc(p.name || 'Free')}</strong>
+                <div>${p.key === 'free'
+                    ? freeText
+                    : `${esc(p.time_left)} · ends ${esc(p.expires_on)}. Redeeming the same plan again adds more days.`}</div>
+            </div>`;
+    }
+
+    function framePreview() {
+        const url = safeUrl(data.avatar_url);
+        if (!url) return { cls: '', inner: esc(MY_INITIALS || '?') };
+        return { cls: data.avatar_kind === 'badge' ? 'is-badge' : 'is-photo', inner: `<img src="${esc(url)}" alt="" loading="lazy">` };
+    }
+
+    function rewardCard(r) {
+        const cost = Number(r.cost) || 0;
+        const short = Math.max(0, cost - data.balance);
+        const pct = cost ? Math.min(100, Math.round(data.balance / cost * 100)) : 100;
+        let preview = '';
+        if (r.group === 'titles') preview = `<span class="pt-title-preview"><i class="fas ${icon(r.icon)}" aria-hidden="true"></i> ${esc(r.title)}</span>`;
+
+        let action;
+        if (r.group !== 'plans' && r.owned) {
+            const slot = r.group === 'titles' ? 'title' : 'frame';
+            action = r.equipped
+                ? `<button type="button" class="pt-btn pt-btn-off" data-unequip="${slot}" aria-label="${esc(`Take off ${r.title}`)}"><i class="fas fa-check" aria-hidden="true"></i> Wearing · take off</button>`
+                : `<button type="button" class="pt-btn pt-btn-equip" data-equip="${esc(r.key)}" data-slot="${slot}" aria-label="${esc(`Wear ${r.title}`)}"><i class="fas fa-shirt" aria-hidden="true"></i> Wear it</button>`;
+        } else if (r.blocked) {
+            action = `<span class="pt-blocked"><i class="fas fa-lock" aria-hidden="true"></i> ${esc(r.blocked)}</span>`;
+        } else if (r.affordable) {
+            action = `<button type="button" class="pt-btn pt-btn-buy" data-redeem="${esc(r.key)}" aria-label="${esc(`Redeem ${r.title} for ${fmt(cost)} EP`)}"><i class="fas fa-bolt" aria-hidden="true"></i> Redeem</button>`;
+        } else {
+            action = `<button type="button" class="pt-btn pt-btn-ghost" disabled aria-label="${esc(`${r.title}: you need ${fmt(short)} more EP`)}"><i class="fas fa-lock" aria-hidden="true"></i> ${fmt(short)} more EP</button>`;
+        }
+
+        let pic;
+        if (r.group === 'frames') {
+            const fp = framePreview();
+            const frame = String(r.key || '').replace('frame_', '').replace(/[^a-z0-9-]/g, '');
+            pic = `<div class="pt-frame-preview ep-frame-${frame} ${fp.cls}" aria-hidden="true">${fp.inner}</div>`;
+        } else {
+            pic = `<div class="pt-reward-icon" aria-hidden="true"><i class="fas ${icon(r.icon)}"></i></div>`;
+        }
+
+        const showBar = (r.group === 'plans' || !r.owned) && !r.affordable && !r.blocked;
+        return `
+            <div class="pt-card pt-reward ${r.equipped ? 'is-equipped' : ''} ${r.tag ? 'has-tag' : ''}" style="--c:${hex(r.color)}" data-card="${esc(r.key)}">
+                ${r.tag ? `<span class="pt-tag">${esc(r.tag)}</span>` : ''}
+                <div class="pt-reward-top">
+                    ${pic}
+                    <div>
+                        <h3 class="pt-reward-title" style="margin:0">${esc(r.title)}</h3>
+                        <div class="pt-cost"><i class="fas fa-bolt" aria-hidden="true"></i> ${fmt(cost)} EP</div>
+                    </div>
+                </div>
+                ${preview}
+                <div class="pt-reward-desc">${esc(r.desc)}</div>
+                ${showBar ? `<div class="pt-progress" role="progressbar" aria-label="${esc(`${fmt(data.balance)} of ${fmt(cost)} EP saved for ${r.title}`)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div style="width:${pct}%"></div></div>` : ''}
+                <div class="pt-reward-foot">${action}</div>
+            </div>`;
+    }
+
+    function renderShop() {
+        const groups = Array.isArray(data.groups) ? data.groups : [];
+        const rewards = Array.isArray(data.rewards) ? data.rewards : [];
+        const pd = data.plan_days;
+        el('ptShop').innerHTML = groups.map(g => {
+            const items = rewards.filter(r => r.group === g.key);
+            if (!items.length) return '';
+            const note = g.key === 'plans' && pd
+                ? `<p class="pt-limit"><i class="fas fa-circle-info" aria-hidden="true"></i> You can get up to ${fmt(pd.per_30)} plan days with EP in any 30 days (${fmt(pd.left)} left).</p>` : '';
+            return `<h3 class="pt-group-title">${esc(g.title)}</h3>${note}<div class="pt-grid">${items.map(rewardCard).join('')}</div>`;
+        }).join('');
+    }
+
+    function historyRow(h) {
+        const look = h.type === 'spend' ? KIND_LOOK.spend : (KIND_LOOK[h.kind] || KIND_LOOK.module);
+        const amt = Number(h.amount) || 0;
+        const sign = amt > 0 ? '+' : amt < 0 ? '−' : '';
+        return `
+            <div class="pt-row">
+                <span class="pt-row-icon" style="--c:${look.c}" aria-hidden="true"><i class="fas ${look.icon}"></i></span>
+                <span class="pt-row-text">${esc(h.text)}${h.sub ? `<small>${esc(h.sub)}</small>` : ''}</span>
+                <span class="pt-amt ${h.type === 'spend' ? 'spend' : 'earn'}">${sign}${fmt(Math.abs(amt))} EP</span>
+            </div>`;
+    }
+
+    function renderHistory(errMsg) {
+        const box = el('ptHistory');
+        if (!histItems.length) {
+            box.innerHTML = `<div class="pt-empty">${histFilter === 'spend'
+                ? "You haven't spent any EP yet."
+                : 'No EP yet. <a href="/courses">Pass a module</a> to earn your first EP!'}</div>`;
+            return;
+        }
+        let html = '', lastDay;
+        histItems.forEach(h => {
+            if (h.day !== lastDay) { html += `<div class="pt-day">${esc(dayLabel(h.day))}</div>`; lastDay = h.day; }
+            html += historyRow(h);
+        });
+        const left = histTotal - histItems.length;
+        if (left > 0) html += `<button type="button" class="pt-more" id="ptMore">Show more (${fmt(left)} left)</button>`;
+        if (errMsg) html += `<div class="pt-more-err" role="alert">${esc(errMsg)}</div>`;
+        box.innerHTML = html;
+    }
+
+    function resetHistory() {
+        if (histFilter === 'all') {
+            histItems = (data.history || []).slice();
+            histTotal = data.history_total != null ? data.history_total : histItems.length;
+            renderHistory();
+        } else {
+            histItems = []; histTotal = 0;
+            moreHistory(true);
+        }
+    }
+
+    async function moreHistory(first) {
+        const seq = ++histSeq;
+        const btn = el('ptMore');
+        if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+        if (first) el('ptHistory').innerHTML = '<div class="pt-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Loading…</div>';
+        try {
+            const d = await api(`/api/points/history?type=${histFilter}&offset=${histItems.length}`);
+            if (seq !== histSeq) return;
+            histItems = histItems.concat(d.items || []);
+            histTotal = d.total || 0;
+            renderHistory();
+        } catch (err) {
+            if (seq !== histSeq) return;
+            if (first) el('ptHistory').innerHTML = `<div class="pt-empty">Couldn't load your history. ${esc(err.message)}<br><button type="button" class="pt-retry" data-retry-hist>Try again</button></div>`;
+            else renderHistory("Couldn't load more. Press the button to try again.");
+        }
+    }
+
+    // re-draws everything and puts keyboard focus back on the same reward's button
+    function renderAll(focusKey) {
+        renderTop();
+        renderShop();
+        resetHistory();
+        if (focusKey) {
+            const card = document.querySelector(`[data-card="${CSS.escape(focusKey)}"]`);
+            const target = card && (card.querySelector('button:not([disabled])') || card);
+            if (target) { if (target === card) card.setAttribute('tabindex', '-1'); target.focus(); }
+        }
+    }
+
+    async function load(focusKey) {
+        try {
+            data = await api('/api/points');
+            lastLoad = Date.now();
+            renderAll(focusKey);
+        } catch (err) {
+            if (data) { toast(err.message); return; }     // keep what's on screen
+            el('ptShop').innerHTML = `<div class="pt-card pt-empty">Couldn't load Eschool Points. ${esc(err.message)}<br><button type="button" class="pt-retry" data-retry>Try again</button></div>`;
+            el('ptHistory').innerHTML = '';
+        }
+    }
+
+    // another tab may have spent EP: reload when you come back to this one
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && data && !pending && Date.now() - lastLoad > 10000) load();
+    });
+
+    // ---------- redeem flow ----------
+    function openModal(r) {
+        pending = r;
+        pendingKey = newKey();
+        lastFocus = document.activeElement;
+        el('ptModalIcon').style.setProperty('--c', hex(r.color));
+        el('ptModalIcon').innerHTML = `<i class="fas ${icon(r.icon)}"></i>`;
+        el('ptModalTitle').textContent = `Redeem ${r.title}?`;
+        el('ptModalDesc').textContent = r.desc + (r.group === 'plans'
+            ? (data.plan && data.plan.key === r.plan ? ' The days are added to the plan you already have.' : ' It starts right away.')
+            : ' You start wearing it straight away, on your profile and on the leaderboard. You can take it off any time.');
+        el('ptModalBal').textContent = `${fmt(data.balance)} EP`;
+        el('ptModalCost').textContent = `−${fmt(r.cost)} EP`;
+        el('ptModalAfter').textContent = `${fmt(data.balance - r.cost)} EP`;
+        el('ptModalErr').textContent = '';
+        const ok = el('ptModalOk');
+        ok.disabled = false; ok.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Redeem';
+        el('ptModal').classList.add('show');
+        document.body.classList.add('pt-noscroll');
+        ok.focus();
+    }
+    function closeModal(keepFocus) {
+        if (!el('ptModal').classList.contains('show')) return;
+        pending = null; pendingKey = null;
+        el('ptModal').classList.remove('show');
+        document.body.classList.remove('pt-noscroll');
+        if (!keepFocus && lastFocus && document.contains(lastFocus)) lastFocus.focus();
+    }
+
+    el('ptModalCancel').addEventListener('click', () => closeModal());
+    el('ptModal').addEventListener('click', e => { if (e.target.id === 'ptModal' && !el('ptModalOk').disabled) closeModal(); });
+    document.addEventListener('keydown', e => {
+        if (!el('ptModal').classList.contains('show')) return;
+        if (e.key === 'Escape') { e.preventDefault(); if (!el('ptModalOk').disabled) closeModal(); return; }
+        if (e.key === 'Tab') {   // keep Tab inside the window
+            const f = [el('ptModalCancel'), el('ptModalOk')].filter(b => !b.disabled);
+            if (!f.length) { e.preventDefault(); return; }
+            const first = f[0], last = f[f.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            else if (!f.includes(document.activeElement)) { e.preventDefault(); first.focus(); }
+        }
+    });
+
+    el('ptModalOk').addEventListener('click', async function () {
+        if (!pending || this.disabled) return;
+        const r = pending;
+        this.disabled = true;
+        el('ptModalCancel').disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Redeeming…';
+        try {
+            const d = await api('/api/points/redeem', { reward: r.key, request_id: pendingKey }, { 'Idempotency-Key': pendingKey });
+            closeModal(true);
+            toast(d.message || 'Redeemed!');
+            await load(r.key);              // always draw from a full, fresh copy
+        } catch (err) {
+            el('ptModalErr').textContent = err.message;   // same key: pressing again can't charge twice
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Try again';
+            load();                          // the balance may have changed in another tab
+        } finally {
+            el('ptModalCancel').disabled = false;
+        }
+    });
+
+    el('ptShop').addEventListener('click', async e => {
+        if (e.target.closest('[data-retry]')) { load(); return; }
+        const buy = e.target.closest('[data-redeem]');
+        if (buy) { const r = (data.rewards || []).find(x => x.key === buy.dataset.redeem); if (r) openModal(r); return; }
+        const eq = e.target.closest('[data-equip]');
+        const off = e.target.closest('[data-unequip]');
+        if (!eq && !off) return;
+        const btn = eq || off;
+        const card = btn.closest('[data-card]');
+        const key = card && card.dataset.card;
+        btn.disabled = true;
+        try {
+            await api('/api/points/equip', eq ? { slot: eq.dataset.slot, item: eq.dataset.equip } : { slot: off.dataset.unequip, item: null });
+            toast(eq ? 'Now showing on your profile and the leaderboard.' : 'Taken off.');
+            await load(key);
+        } catch (err) { btn.disabled = false; toast(err.message); }
+    });
+
+    el('ptHistory').addEventListener('click', e => {
+        if (e.target.closest('#ptMore')) moreHistory(false);
+        else if (e.target.closest('[data-retry-hist]')) moreHistory(true);
+    });
+
+    el('ptHistFilter').addEventListener('click', e => {
+        const b = e.target.closest('[data-f]');
+        if (!b || !data || b.dataset.f === histFilter) return;
+        histFilter = b.dataset.f;
+        document.querySelectorAll('#ptHistFilter .pt-chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        resetHistory();
+    });
+
+    // Back: previous Eschool page, or the dashboard if opened directly (this page is for learners only)
+    el('ptBack').addEventListener('click', function () {
+        let fromThisSite = false;
+        try { fromThisSite = !!document.referrer && new URL(document.referrer).origin === location.origin && document.referrer !== location.href; } catch (e) {}
+        if (fromThisSite && history.length > 1) history.back(); else location.href = '/dashboard';
+    });
+
+    load();
+})();
+</script>
+{% endblock %}

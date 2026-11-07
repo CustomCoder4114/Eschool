@@ -1,0 +1,1347 @@
+{% extends "Parent/parent-body.html" %}
+
+{% block allcontent %}
+    {# PARENT PAGE - Messages (templates/Parent/parent-message.html)
+       Same chat as the learner Messages page (it uses the same /messages/... routes and the
+       call screen), plus quick contacts for parents: their children and their children's
+       teachers (GET /api/parent/quick-contacts). #}
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .pm {
+            --pm-accent: var(--primary-color, #4361ee);
+            --pm-accent-2: var(--secondary-color, #3a0ca3);
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --dark-color: #1e293b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --surface: #ffffff;
+            --pm-soft: color-mix(in srgb, var(--pm-accent) 12%, transparent);
+            --border-radius: 20px;
+            --border-radius-sm: 12px;
+            --card-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06);
+            --transition: all 0.2s ease;
+        }
+        body.dark-mode .pm {
+            --success-color: #34d399;
+            --danger-color: #f87171;
+            --dark-color: #e5e7eb;
+            --gray-50: #0f172a;
+            --gray-100: #1e293b;
+            --gray-200: #263244;
+            --gray-300: #334155;
+            --gray-400: #94a3b8;
+            --gray-500: #94a3b8;
+            --surface: #111827;
+            --pm-soft: color-mix(in srgb, var(--pm-accent) 22%, transparent);
+            --card-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25);
+        }
+        .pm *, .pm *::before, .pm *::after { box-sizing: border-box; }
+        .pm h1, .pm h3, .pm h4, .pm p { margin: 0; }
+        .pm input, .pm button { font-family: inherit; }
+        .pm :focus-visible { outline: 3px solid color-mix(in srgb, var(--pm-accent) 40%, transparent); outline-offset: 2px; }
+
+        /* (a broken "body" background rule here used to override the site's
+           background, including dark mode; the page now only styles itself) */
+        .pm {
+            max-width: 1400px;
+            margin: 0 auto;
+            font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            color: var(--dark-color);
+        }
+        .pm .user-name, .pm .chat-header-info h4, .pm .empty-chat h3, .pm .empty-users h3 { color: var(--dark-color); }
+        .pm .message.received .message-bubble { box-shadow: 0 1px 3px rgba(0, 0, 0, .08); border: 1px solid var(--gray-200); }
+        .pm .user-item.active .user-name, .pm .user-item.active .last-message, .pm .user-item.active .message-time, .pm .user-item.active .pm-note { color: #fff; }
+        /* quick contacts for parents */
+        .pm-group { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--gray-500); padding: 10px 6px 6px; }
+        .pm-note { font-size: .74rem; color: var(--pm-accent); font-weight: 600; }
+        body.dark-mode .pm .pm-note { color: color-mix(in srgb, var(--pm-accent) 55%, #fff); }
+        .pm-tag { display: inline-block; font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: 99px; background: var(--pm-soft); color: var(--pm-accent); margin-left: 6px; vertical-align: middle; }
+        body.dark-mode .pm .pm-tag { color: color-mix(in srgb, var(--pm-accent) 55%, #fff); }
+        .pm .user-item.active .pm-tag { background: rgba(255,255,255,.25); color: #fff; }
+
+        /* Header Styles - Very Small */
+        .page-header {
+            background: linear-gradient(135deg, var(--pm-accent), var(--pm-accent-2));
+            color: white;
+            padding: 16px 24px;
+            border-radius: var(--border-radius);
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            grid-template-areas: "icon title" "icon sub";
+            column-gap: 16px;
+            align-items: center;
+        }
+
+        .page-icon {
+            grid-area: icon;
+            width: 54px;
+            height: 54px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            font-size: 1.4rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .page-title {
+            grid-area: title;
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.6rem;
+            margin: 0;
+            line-height: 1.2;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .page-subtitle {
+            grid-area: sub;
+            font-size: .92rem;
+            opacity: 0.92;
+            margin: 2px 0 0;
+            line-height: 1.4;
+        }
+
+        /* Chat Layout - Much Bigger */
+        .chat-layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            grid-template-rows: minmax(0, 1fr);
+            background: var(--surface);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            /* fits the screen; the script below fine-tunes it to the space left */
+            height: calc(100vh - 230px);
+            height: var(--chat-h, calc(100dvh - 230px));
+            min-height: 460px;
+        }
+
+        /* Chat Sidebar */
+        .chat-sidebar {
+            background: var(--gray-50);
+            border-right: 1px solid var(--gray-200);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .sidebar-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+        .sidebar-top h3 { margin-bottom: 0 !important; }
+        /* phone-only buttons (hidden on bigger screens) */
+        .rail-search, .rail-close { display: none; }
+        .item-meta { display: flex; }
+        .rail-backdrop { display: none; }
+
+        .chat-sidebar-header {
+            padding: 18px 20px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .chat-sidebar-header h3 {
+            font-size: 1.1rem;
+            color: var(--dark-color);
+            margin-bottom: 10px;
+        }
+
+        .search-users {
+            position: relative;
+        }
+
+        .search-users i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-400);
+        }
+
+        .search-users input {
+            width: 100%; background: var(--surface); color: var(--dark-color);
+            padding: 10px 16px 10px 42px;
+            border: 2px solid var(--gray-200);
+            border-radius: 50px;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .search-users input:focus {
+            outline: none;
+            border-color: var(--pm-accent);
+            box-shadow: 0 0 0 3px var(--pm-soft);
+        }
+
+        /* User List */
+        .user-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 12px;
+        }
+
+        .user-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .user-list::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 10px;
+        }
+
+        .user-list::-webkit-scrollbar-thumb {
+            background: var(--pm-accent);
+            border-radius: 10px;
+        }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            border-radius: var(--border-radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 6px;
+            border: 1px solid transparent;
+        }
+
+        .user-item:hover {
+            background: var(--gray-100);
+            border-color: var(--gray-200);
+        }
+
+        .user-item.active {
+            background: var(--pm-accent);
+            color: white;
+            border-color: var(--pm-accent);
+        }
+
+        .user-item.active .user-name,
+        .user-item.active .last-message,
+        .user-item.active .message-time {
+            color: white;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--pm-accent), var(--pm-accent-2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Real profile picture, when the account has one */
+        .user-avatar .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
+        }
+
+        /* Initials shown when there's no profile picture, or the image fails to load */
+        .user-avatar .avatar-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .user-avatar.online {
+            position: relative;
+        }
+
+        .user-avatar.online::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 14px;
+            height: 14px;
+            background: var(--success-color);
+            border-radius: 50%;
+            border: 2px solid var(--surface);
+        }
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 4px;
+            font-size: 1rem;
+        }
+
+        .last-message {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: var(--gray-400);
+            white-space: nowrap;
+        }
+
+        .unread-badge {
+            background: var(--danger-color);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+
+        /* Chat Main */
+        .chat-main {
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+            position: relative;
+            min-width: 0;
+            min-height: 0;               /* lets the messages scroll instead of pushing the message bar off */
+        }
+        .chat-header, .chat-input, .chat-status { flex-shrink: 0; }
+
+        /* ===== Call buttons in the chat header ===== */
+        .chat-header-info { flex: 1; min-width: 0; }
+        .call-actions { display: flex; gap: 10px; }
+        .call-btn {
+            width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer;
+            background: var(--gray-100); color: var(--pm-accent); font-size: 1.05rem;
+            display: flex; align-items: center; justify-content: center; transition: var(--transition);
+        }
+        .call-btn:hover:not(:disabled) { background: var(--pm-accent); color: white; }
+        .call-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+        @media (max-width: 480px) {
+            .call-btn { width: 40px; height: 40px; }
+        }
+
+        .chat-header {
+            padding: 15px 25px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .chat-header .user-avatar {
+            width: 45px;
+            height: 45px;
+            font-size: 1rem;
+        }
+
+        .chat-header-info h4 {
+            color: var(--dark-color);
+            margin-bottom: 2px;
+            font-size: 1.05rem;
+        }
+
+        .chat-header-info span {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .chat-header-info span.online-status {
+            color: var(--success-color);
+        }
+
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding: 25px 30px;
+            background: var(--gray-50);
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--pm-accent);
+            border-radius: 10px;
+        }
+
+        .message {
+            margin-bottom: 18px;
+            display: flex;
+            animation: messageSlide 0.3s ease-out;
+        }
+
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.sent {
+            justify-content: flex-end;
+        }
+
+        .message.received {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 20px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+            font-size: 0.95rem;
+        }
+        .message.no-anim { animation: none; }
+
+        /* status line under the message box (instead of pop-up alerts) */
+        .chat-status { padding: 0 25px 12px; font-size: .85rem; background: var(--surface); display: none; }
+        .chat-status.show { display: block; }
+        .chat-status.warn { color: var(--danger-color); }
+        .chat-status.info { color: var(--gray-500); }
+        .chat-input button:disabled, .chat-input input:disabled { opacity: .6; cursor: not-allowed; }
+
+        .message.sent .message-bubble {
+            background: linear-gradient(135deg, var(--pm-accent), var(--pm-accent-2));
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.received .message-bubble {
+            background: var(--surface);
+            color: var(--dark-color);
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .message-time-small {
+            font-size: 0.6rem;
+            opacity: 0.7;
+            margin-top: 4px;
+            display: block;
+        }
+
+        /* Chat Input */
+        .chat-input {
+            padding: 14px 20px;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--surface);
+        }
+        .chat-input input { min-width: 0; }
+
+        .chat-input input {
+            flex: 1; background: var(--surface); color: var(--dark-color);
+            padding: 12px 20px;
+            border: 2px solid var(--gray-200);
+            border-radius: 50px;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .chat-input input:focus {
+            outline: none;
+            border-color: var(--pm-accent);
+            box-shadow: 0 0 0 3px var(--pm-soft);
+        }
+
+        .chat-input button {
+            padding: 12px 24px;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(135deg, var(--pm-accent), var(--pm-accent-2));
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+        }
+
+        .chat-input button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px color-mix(in srgb, var(--pm-accent) 30%, transparent);
+        }
+
+        /* Empty Chat State */
+        .empty-chat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--gray-500);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-chat i {
+            font-size: 4rem;
+            color: var(--gray-300);
+            margin-bottom: 15px;
+        }
+
+        .empty-chat h3 {
+            color: var(--dark-color);
+            margin-bottom: 8px;
+            font-size: 1.3rem;
+        }
+
+        .empty-chat p {
+            font-size: 0.95rem;
+        }
+
+        /* Empty Users State */
+        .empty-users {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--gray-500);
+            text-align: center;
+            padding: 30px;
+        }
+
+        .empty-users i {
+            font-size: 3.5rem;
+            color: var(--gray-300);
+            margin-bottom: 12px;
+        }
+
+        .empty-users h3 {
+            color: var(--dark-color);
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+
+        .empty-users p {
+            font-size: 0.9rem;
+        }
+
+        /* No Results / Loading */
+        .no-results {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--gray-500);
+        }
+
+        .no-results i {
+            font-size: 2.5rem;
+            color: var(--gray-300);
+            margin-bottom: 10px;
+        }
+
+        .no-results h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        /* ================= Responsive ================= */
+        @media (max-width: 1100px) {
+            .chat-layout { grid-template-columns: 290px 1fr; }
+        }
+
+        /* Tablets and phones: the conversation list becomes a slim column of
+           profile pictures on the LEFT, and the chat fills the rest. The
+           search button opens the full list (names + search) over the chat. */
+        @media (max-width: 768px) {
+            .pm { padding: 0; }
+            .page-header { padding: 12px 14px; margin-bottom: 10px; }
+            .header-content { column-gap: 12px; grid-template-areas: "icon title"; }
+            .page-icon { width: 40px; height: 40px; font-size: 1.05rem; }
+            .page-title { font-size: 1.25rem; }
+            .page-subtitle { display: none; }
+
+            .chat-layout {
+                grid-template-columns: 68px 1fr;
+                border-radius: var(--border-radius-sm);
+                min-height: 420px;
+            }
+
+            /* --- the slim column --- */
+            .chat-sidebar { position: relative; z-index: 5; }
+            .chat-sidebar-header { padding: 10px 0; display: flex; justify-content: center; border-bottom: 1px solid var(--gray-200); }
+            .sidebar-top { margin: 0; }
+            .sidebar-top h3, .chat-sidebar .search-users { display: none; }
+            .rail-search {
+                display: flex; width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer;
+                align-items: center; justify-content: center; font-size: 1rem;
+                background: var(--pm-accent); color: #fff;
+            }
+            .user-list { padding: 8px 0; scrollbar-width: none; }
+            .user-list::-webkit-scrollbar { display: none; }
+            .user-item {
+                justify-content: center; padding: 6px 0; margin: 0 0 4px; border-radius: 0; gap: 0;
+                position: relative; border: none; background: transparent !important;
+            }
+            .user-item .user-info, .user-item .item-meta { display: none; }
+            .user-item .user-avatar { width: 46px; height: 46px; font-size: 1.05rem; transition: box-shadow .2s; }
+            .user-item.active .user-avatar { box-shadow: 0 0 0 3px var(--gray-50), 0 0 0 5px var(--pm-accent); }
+            .user-item:not(.active):active .user-avatar { transform: scale(.95); }
+            .user-item .rail-dot {
+                position: absolute; top: 2px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px;
+                border-radius: 9px; background: var(--danger-color); color: #fff; font-size: .65rem; font-weight: 700;
+                display: flex; align-items: center; justify-content: center; border: 2px solid var(--gray-50);
+            }
+            .user-list .empty-users, .user-list .no-results { padding: 12px 4px; }
+            .user-list .empty-users h3, .user-list .empty-users p,
+            .user-list .no-results h3, .user-list .no-results p { display: none; }
+            .user-list .empty-users i, .user-list .no-results i { font-size: 1.6rem; margin: 0; }
+            .pm-group { display: none; }
+            .chat-sidebar.expanded .pm-group { display: block; }
+
+            /* --- the full list, opened with the search button --- */
+            .chat-sidebar.expanded {
+                position: absolute; top: 0; left: 0; bottom: 0; width: min(330px, 88%);
+                box-shadow: 8px 0 30px rgba(15, 23, 42, .22);
+            }
+            .chat-sidebar.expanded .chat-sidebar-header { display: block; padding: 12px 14px; }
+            .chat-sidebar.expanded .sidebar-top { margin-bottom: 10px; }
+            .chat-sidebar.expanded .sidebar-top h3,
+            .chat-sidebar.expanded .search-users { display: block; }
+            .chat-sidebar.expanded .rail-search { display: none; }
+            .chat-sidebar.expanded .rail-close {
+                display: flex; width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
+                align-items: center; justify-content: center; background: var(--gray-100); color: var(--dark-color);
+            }
+            .chat-sidebar.expanded .user-list { padding: 8px 10px; }
+            .chat-sidebar.expanded .user-item {
+                justify-content: flex-start; gap: 12px; padding: 10px 12px; margin-bottom: 4px;
+                border-radius: var(--border-radius-sm); background: none !important;
+            }
+            .chat-sidebar.expanded .user-item.active { background: var(--pm-accent) !important; }
+            .chat-sidebar.expanded .user-item .user-info,
+            .chat-sidebar.expanded .user-item .item-meta { display: flex; }
+            .chat-sidebar.expanded .user-item .user-info { display: block; }
+            .chat-sidebar.expanded .user-item .rail-dot { display: none; }
+            .chat-sidebar.expanded .user-item .user-avatar { width: 42px; height: 42px; box-shadow: none; }
+            .chat-sidebar.expanded .user-list .empty-users h3, .chat-sidebar.expanded .user-list .empty-users p,
+            .chat-sidebar.expanded .user-list .no-results h3, .chat-sidebar.expanded .user-list .no-results p { display: block; }
+            .chat-layout.list-open .rail-backdrop {
+                display: block; position: absolute; inset: 0; z-index: 4; background: rgba(15, 23, 42, .35);
+            }
+
+            /* --- chat column --- */
+            .chat-header { padding: 10px 12px; gap: 10px; }
+            .chat-header .user-avatar { width: 38px; height: 38px; font-size: .9rem; }
+            .chat-header-info h4 { font-size: .98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .chat-header-info span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .75rem; }
+            .call-actions { gap: 6px; }
+            .call-btn { width: 38px; height: 38px; font-size: .95rem; }
+            .chat-messages { padding: 12px; }
+            .message { margin-bottom: 12px; }
+            .message-bubble { max-width: 86%; font-size: .9rem; padding: 9px 14px; }
+            .chat-input { padding: 10px; gap: 8px; }
+            .chat-input input { padding: 11px 16px; font-size: 16px; }   /* 16px stops phones zooming in */
+            .chat-input button { width: 46px; height: 46px; padding: 0; border-radius: 50%; }
+            .chat-input button .send-text { display: none; }
+            .chat-status { padding: 0 12px 10px; }
+            .empty-chat { padding: 20px; }
+            .empty-chat i { font-size: 2.8rem; }
+            .empty-chat h3 { font-size: 1.05rem; }
+        }
+
+        @media (max-width: 380px) {
+            .chat-layout { grid-template-columns: 60px 1fr; }
+            .user-item .user-avatar { width: 42px; height: 42px; }
+            .chat-header .user-avatar { display: none; }
+        }
+    </style>
+    <div class="pm" data-no-theme>
+        <!-- Header - Very Small -->
+        <header class="page-header">
+            <div class="header-content">
+                <div class="page-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <h1 class="page-title">Messages</h1>
+                <p class="page-subtitle">Talk to your children and their teachers. Voice and video calls work from here too.</p>
+            </div>
+        </header>
+
+        <!-- Chat Layout - Much Bigger -->
+        <div class="chat-layout">
+            <div class="rail-backdrop" onclick="closeList()"></div>
+            <!-- Sidebar -->
+            <div class="chat-sidebar" id="chatSidebar">
+                <div class="chat-sidebar-header">
+                    <div class="sidebar-top">
+                        <h3><i class="fas fa-users"></i> Conversations</h3>
+                        <button type="button" class="rail-search" id="railSearch" aria-label="Search people and see all chats" onclick="openList()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <button type="button" class="rail-close" aria-label="Close the list" onclick="closeList()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="search-users">
+                        <i class="fas fa-search"></i>
+                        <input type="search" id="searchUsers" placeholder="Search teachers or people..." aria-label="Search people" oninput="searchUsers()">
+                    </div>
+                </div>
+                <div class="user-list" id="userList">
+                    <!-- Users will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Chat Main -->
+            <div class="chat-main">
+                <div class="chat-header" id="chatHeader">
+                    <div class="user-avatar" id="chatAvatar"><span class="avatar-fallback">?</span></div>
+                    <div class="chat-header-info">
+                        <h4 id="chatUserName">Choose someone</h4>
+                        <span id="chatUserStatus">to start chatting</span>
+                    </div>
+                    <div class="call-actions">
+                        <button type="button" class="call-btn" id="voiceCallBtn" aria-label="Voice call" disabled onclick="startCall('audio')">
+                            <i class="fas fa-phone"></i>
+                        </button>
+                        <button type="button" class="call-btn" id="videoCallBtn" aria-label="Video call" disabled onclick="startCall('video')">
+                            <i class="fas fa-video"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="empty-chat">
+                        <i class="fas fa-comment-dots"></i>
+                        <h3>No conversation selected</h3>
+                        <p>Pick one of your children or their teachers on the left, or search for a teacher to start messaging.</p>
+                    </div>
+                </div>
+
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="Type a message..." maxlength="2000">
+                    <button type="button" id="sendBtn" onclick="sendMessage()" aria-label="Send message">
+                        <i class="fas fa-paper-plane"></i><span class="send-text">Send</span>
+                    </button>
+                </div>
+                <div class="chat-status" id="chatStatus" role="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---------------------------------------------------------------
+        // BACKEND ENDPOINTS — messages are now sent, stored, and loaded
+        // through your Flask app / users.db, so they go to the right
+        // account instead of living only in this browser's localStorage.
+        // ---------------------------------------------------------------
+        const SEARCH_USERS_ENDPOINT = '/messages/search_users';
+        const SEND_MESSAGE_ENDPOINT = '/messages/send';
+        const CONVERSATIONS_ENDPOINT = '/messages/conversations';
+        const CONVERSATION_THREAD_ENDPOINT = (userId) => `/messages/conversation/${userId}`;
+
+        // The logged-in user's own id, used to tell "sent" vs "received"
+        // messages apart when rendering a thread.
+        // (the /messages route doesn't send user_id, so read it from the session;
+        // before, this was always null and every message showed as "received")
+        const currentUserId = {{ session.get('user_id') | tojson }};
+
+        // Current selected user
+        let currentUser = null;
+        let currentUserObj = null;
+
+        // Conversations are fetched fresh from the server (not cached in
+        // localStorage), so they reflect real messages tied to your account.
+        let conversations = [];
+
+        let searchDebounceTimer = null;
+        let usersById = {};          // every person shown in the list, by id
+        let lastThreadKey = '';      // what the open chat currently shows
+        let sending = false;
+        let quickContacts = [];      // parent: children + their teachers
+        async function loadQuickContacts() {
+            try {
+                const r = await fetch('/api/parent/quick-contacts', { credentials: 'same-origin' });
+                if (r.ok) quickContacts = (await r.json()).contacts || [];
+            } catch (e) { quickContacts = []; }
+        }
+        function quickNote(id) { const q = quickContacts.find(x => x.id === id); return q ? q : null; }
+
+        // Makes typed text safe to show on the page
+        function esc(v) {
+            return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        // Short line under the message box (no pop-ups)
+        let statusTimer = null;
+        // ---- phone layout: slim column of pictures <-> full list ----
+        function openList() {
+            document.getElementById('chatSidebar').classList.add('expanded');
+            document.querySelector('.chat-layout').classList.add('list-open');
+            setTimeout(() => document.getElementById('searchUsers').focus(), 50);
+        }
+        function closeList() {
+            const sb = document.getElementById('chatSidebar');
+            if (!sb.classList.contains('expanded')) return;
+            sb.classList.remove('expanded');
+            document.querySelector('.chat-layout').classList.remove('list-open');
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeList();
+            const item = e.target.closest && e.target.closest('.user-item');
+            if (item && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); item.click(); }
+        });
+
+        // Make the chat box exactly fill the screen below the page header, so
+        // the message bar is always visible at the bottom without scrolling.
+        function fitChat() {
+            const layout = document.querySelector('.chat-layout');
+            if (!layout) return;
+            const top = layout.getBoundingClientRect().top + window.scrollY;
+            const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            let h = vh - top - 16;
+            // if the page header above is tall (small screens), use nearly the
+            // whole screen; scrolling down a little then shows the full chat
+            if (h < vh * 0.6) h = vh - 24;
+            layout.style.setProperty('--chat-h', Math.max(420, Math.round(h)) + 'px');
+        }
+        window.addEventListener('resize', fitChat);
+        window.addEventListener('orientationchange', () => setTimeout(fitChat, 300));
+        document.addEventListener('DOMContentLoaded', fitChat);
+        window.addEventListener('load', fitChat);
+
+        function showStatus(text, kind) {
+            const el = document.getElementById('chatStatus');
+            el.textContent = text;
+            el.className = 'chat-status show ' + (kind || 'info');
+            clearTimeout(statusTimer);
+            statusTimer = setTimeout(() => { el.className = 'chat-status'; }, kind === 'warn' ? 12000 : 6000);
+        }
+
+        // ---------------------------------------------------------------
+        // AVATAR RESOLUTION — show each account's real profile picture
+        // when one exists, falling back to an initials badge otherwise.
+        //
+        // `avatar_url` is listed first because that's the exact field the
+        // settings page writes: the "Upload New Photo" flow there
+        // (ENDPOINTS.uploadPhoto) saves the file server-side and returns
+        // `{ avatar_url }`, and the profile template itself renders
+        // `{% if avatar_url %}<img src="{{ avatar_url }}">{% endif %}`.
+        // So whatever photo a user set for themselves in Settings is what
+        // shows up for them here automatically, for every account, not
+        // just the person currently logged in. The rest of the list is
+        // just defensive in case some endpoints use a different key name.
+        // ---------------------------------------------------------------
+        const imageFields = ['avatar_url', 'profile_picture', 'photo', 'image', 'profile_pic', 'picture'];
+
+        function looksLikeImagePath(value) {
+            if (!value) return false;
+            const v = String(value).trim();
+            if (!v) return false;
+            // A real path/URL ("/static/...", "https://...") or a filename
+            // with an image extension counts as a picture; a bare initial
+            // like "JD" does not.
+            return /^(https?:)?\//.test(v) || /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(v);
+        }
+
+        // Returns { src, fallbackText } for a given user object.
+        function resolveAvatar(user) {
+            const name = (user && user.name && user.name.trim()) ? user.name.trim() : '';
+            const fallbackText = looksLikeImagePath(user && user.avatar)
+                ? (name ? name[0].toUpperCase() : '?')
+                : ((user && user.avatar && String(user.avatar).trim()) || (name ? name[0].toUpperCase() : '?'));
+
+            for (const field of imageFields) {
+                if (user && user[field] && String(user[field]).trim()) {
+                    return { src: user[field], fallbackText };
+                }
+            }
+            // Some backends already send `avatar` itself as an image path/URL
+            // rather than initials — use it if it looks like one.
+            if (user && looksLikeImagePath(user.avatar)) {
+                return { src: user.avatar, fallbackText };
+            }
+            return { src: null, fallbackText };
+        }
+
+        // Builds the inner HTML for a .user-avatar element: a real <img>
+        // when a profile picture is available, with a graceful fallback to
+        // initials if there's no picture or the image fails to load.
+        function avatarInnerHTML(user) {
+            const { src, fallbackText } = resolveAvatar(user);
+            const safeAlt = esc((user && user.name) || 'User');
+            if (src) {
+                return `<img class="avatar-img" src="${esc(src)}" alt="${safeAlt}" loading="lazy"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <span class="avatar-fallback" style="display:none;">${esc(fallbackText)}</span>`;
+            }
+            return `<span class="avatar-fallback">${esc(fallbackText)}</span>`;
+        }
+
+        // Initialize chat
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadQuickContacts();
+            await loadConversations();
+            updateCallButtons();
+
+            // If there's a selected user in the URL, try to restore them
+            // from an existing conversation first (no extra request needed).
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user');
+            if (userId) {
+                const existing = conversations.find(u => String(u.id) === userId);
+                if (existing) {
+                    selectUser(existing);
+                } else {
+                    // e.g. the Message button on someone's profile: start a new chat
+                    try {
+                        const r = await fetch(`/messages/user/${encodeURIComponent(userId)}`);
+                        const d = await r.json();
+                        if (r.ok && d.success && d.user) selectUser(d.user);
+                        else showStatus(d.message || "Couldn't open that chat.", 'warn');
+                    } catch (e) {
+                        showStatus("Couldn't open that chat. Check your connection.", 'warn');
+                    }
+                }
+            }
+        });
+
+        async function loadConversations(fromTimer) {
+            const container = document.getElementById('userList');
+            // the 8-second refresh must not wipe search results you're looking at
+            if (fromTimer && document.getElementById('searchUsers').value.trim()) return;
+
+            try {
+                const response = await fetch(CONVERSATIONS_ENDPOINT);
+                if (!response.ok) throw new Error(`Failed to load conversations (${response.status})`);
+                conversations = await response.json();
+                if (!Array.isArray(conversations)) conversations = [];
+                if (fromTimer && document.getElementById('searchUsers').value.trim()) return;
+            } catch (err) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Couldn't load conversations</h3>
+                        <p>Please refresh the page</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // If a user is currently selected but has no messages yet (so
+            // the backend doesn't know about them as a conversation), keep
+            // them visible at the top of the list while you chat.
+            let displayList = conversations;
+            if (currentUserObj && !conversations.some(u => u.id === currentUserObj.id)) {
+                displayList = [{ ...currentUserObj, lastMessage: null, unread: 0 }, ...conversations];
+            }
+
+            // children and teachers you haven't messaged yet, so they're one tap away
+            const inList = new Set(displayList.map(u => u.id));
+            const extraKids = quickContacts.filter(q => q.group === 'child' && !inList.has(q.id));
+            const extraTeachers = quickContacts.filter(q => q.group === 'teacher' && !inList.has(q.id));
+
+            if (!displayList.length && !extraKids.length && !extraTeachers.length) {
+                container.innerHTML = `
+                    <div class="empty-users">
+                        <i class="fas fa-user-plus"></i>
+                        <h3>No conversations yet</h3>
+                        <p>Search for a teacher above, or link your child on Link a child.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            if (displayList.length) {
+                html += '<div class="pm-group">Conversations</div>' + displayList.map(user => renderUserItem(user, user.lastMessage, user.unread || 0, true)).join('');
+            }
+            if (extraKids.length) html += '<div class="pm-group">Your children</div>' + extraKids.map(u => renderUserItem(u, null, 0, false)).join('');
+            if (extraTeachers.length) html += '<div class="pm-group">Their teachers</div>' + extraTeachers.map(u => renderUserItem(u, null, 0, false)).join('');
+            container.innerHTML = html;
+        }
+
+        // Debounced search-as-you-type against the real backend
+        function searchUsers() {
+            clearTimeout(searchDebounceTimer);
+            const searchTerm = document.getElementById('searchUsers').value.trim();
+
+            if (!searchTerm) {
+                loadConversations();
+                return;
+            }
+
+            searchDebounceTimer = setTimeout(() => {
+                performSearch(searchTerm);
+            }, 300);
+        }
+
+        async function performSearch(searchTerm) {
+            const container = document.getElementById('userList');
+            container.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <h3>Searching...</h3>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`${SEARCH_USERS_ENDPOINT}?q=${encodeURIComponent(searchTerm)}`);
+                if (!response.ok) throw new Error(`Search failed with status ${response.status}`);
+                const results = await response.json();
+                renderSearchResults(results);
+            } catch (err) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Couldn't load results</h3>
+                        <p>Please try again</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderSearchResults(results) {
+            const container = document.getElementById('userList');
+
+            if (!results || results.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-search"></i>
+                        <h3>No users found</h3>
+                        <p>Try a different search term</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = results.map(user => {
+                const existingConvo = conversations.find(u => u.id === user.id);
+                const isInConversation = !!existingConvo;
+                const lastMsg = existingConvo ? existingConvo.lastMessage : null;
+                const unread = existingConvo ? (existingConvo.unread || 0) : 0;
+                return renderUserItem(user, lastMsg, unread, isInConversation);
+            }).join('');
+        }
+
+        // Shared row renderer for both the conversation list and search results.
+        // Guards every field so a user object missing data (e.g. a stale
+        // entry from localStorage) never renders literal "undefined" text.
+        function renderUserItem(user, lastMsg, unread, isInConversation) {
+            const name = user.name && user.name.trim() ? user.name : null;
+
+            // Skip rendering entirely if there's nothing usable to show —
+            // avoids a blank/undefined row in the list.
+            if (!name) return '';
+
+            usersById[user.id] = user;
+            const q = quickNote(user.id);
+            const tag = q ? `<span class="pm-tag">${q.group === 'child' ? 'Child' : 'Teacher'}</span>` : '';
+
+            return `
+                <div class="user-item ${currentUser === user.id ? 'active' : ''}" onclick="selectUserById(${Number(user.id)})" data-user-id="${Number(user.id)}" role="button" tabindex="0" aria-label="Chat with ${esc(name)}${unread > 0 ? ', ' + Number(unread) + ' unread' : ''}">
+                    <div class="user-avatar ${user.online ? 'online' : ''}">${avatarInnerHTML(user)}</div>
+                    ${unread > 0 ? `<span class="rail-dot" aria-label="${Number(unread)} unread">${Number(unread) > 9 ? '9+' : Number(unread)}</span>` : ''}
+                    <div class="user-info">
+                        <div class="user-name">${esc(name)}${tag}</div>
+                        <div class="last-message">${lastMsg ? esc(lastMsg) : (q && !isInConversation ? `<span class="pm-note">${esc(q.note)}</span>` : esc(isInConversation ? 'No messages yet' : 'Tap to start chatting'))}</div>
+                    </div>
+                    <div class="item-meta" style="flex-direction: column; align-items: flex-end; gap: 5px;">
+                        <div class="message-time">${user.online ? 'Online' : esc(user.lastSeen || '')}</div>
+                        ${unread > 0 ? `<div class="unread-badge">${Number(unread)}</div>` : ''}
+                        ${!isInConversation ? '<div style="font-size: 0.65rem; color: var(--pm-accent);"><i class="fas fa-plus-circle"></i> New</div>' : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectUserById(id) {
+            closeList();
+            const user = usersById[id];
+            if (user) selectUser(user);
+        }
+
+        async function selectUser(user) {
+            const switching = currentUser !== user.id;
+            currentUser = user.id;
+            currentUserObj = user;
+            if (switching) {
+                lastThreadKey = '';
+                document.getElementById('chatStatus').className = 'chat-status';
+            }
+
+            // Update chat header — show the real profile picture when one
+            // exists, otherwise fall back to initials.
+            const chatAvatarEl = document.getElementById('chatAvatar');
+            chatAvatarEl.innerHTML = avatarInnerHTML(user);
+            chatAvatarEl.classList.toggle('online', !!user.online);
+
+            document.getElementById('chatUserName').textContent = user.name;
+            if (window.matchMedia('(max-width: 768px)').matches) {
+                const layout = document.querySelector('.chat-layout');
+                if (layout.getBoundingClientRect().top < 0 || layout.getBoundingClientRect().bottom > window.innerHeight + 2) {
+                    layout.scrollIntoView({ block: 'end' });
+                }
+            }
+            const qn = quickNote(user.id);
+            document.getElementById('chatUserStatus').textContent = user.online ? 'Online' : (user.lastSeen ? `Last seen ${user.lastSeen}` : (qn ? qn.note : 'Messages are saved to your account'));
+            document.getElementById('chatUserStatus').className = user.online ? 'online-status' : '';
+            updateCallButtons();
+
+            // Load the real message thread with this person
+            await loadMessages(user.id);
+
+            // Update URL (replace, so Back leaves the page instead of stepping through chats)
+            const url = new URL(window.location);
+            url.searchParams.set('user', user.id);
+            window.history.replaceState({}, '', url);
+
+            // Refresh the sidebar (drops back to conversation view)
+            await loadConversations();
+
+            // Clear search
+            document.getElementById('searchUsers').value = '';
+        }
+
+        async function loadMessages(userId, fromTimer) {
+            const container = document.getElementById('chatMessages');
+
+            try {
+                const response = await fetch(CONVERSATION_THREAD_ENDPOINT(userId));
+                if (!response.ok) throw new Error(`Failed to load thread (${response.status})`);
+                const msgs = await response.json();
+                if (userId !== currentUser) return;          // switched chats meanwhile
+
+                const list = Array.isArray(msgs) ? msgs : [];
+                const key = userId + ':' + list.length + ':' + (list.length ? list[list.length - 1].id : 0);
+                const changed = key !== lastThreadKey;
+                if (fromTimer && !changed) {
+                    // nothing new: just refresh the "5m ago" labels, keep your scroll place
+                    container.querySelectorAll('[data-ts]').forEach(el => { el.textContent = formatTime(el.dataset.ts); });
+                    return;
+                }
+                const firstDraw = lastThreadKey === '' || !lastThreadKey.startsWith(userId + ':');
+                lastThreadKey = key;
+
+                if (list.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-chat">
+                            <i class="fas fa-comment-dots"></i>
+                            <h3>No messages yet</h3>
+                            <p>Say hello to ${esc(currentUserObj ? currentUserObj.name : 'them')}. Messages are saved to your account.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+                container.innerHTML = list.map(msg => `
+                    <div class="message ${msg.sender_id === currentUserId ? 'sent' : 'received'} ${firstDraw ? '' : 'no-anim'}">
+                        <div class="message-bubble">${esc(msg.text)}<span class="message-time-small" data-ts="${esc(msg.timestamp)}">${formatTime(msg.timestamp)}</span></div>
+                    </div>
+                `).join('');
+
+                // Go to the newest message, unless you scrolled up to read older ones
+                if (firstDraw || nearBottom || !fromTimer) container.scrollTop = container.scrollHeight;
+            } catch (err) {
+                if (fromTimer) return;                     // a missed refresh isn't worth an error screen
+                container.innerHTML = `
+                    <div class="empty-chat">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Couldn't load messages</h3>
+                        <p>Please try again</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+
+            if (sending) return;
+            if (!currentUser) {
+                showStatus('Pick someone from the list (or search for them) first.', 'warn');
+                return;
+            }
+            if (!text) return;
+
+            sending = true;
+            input.disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+
+            try {
+                const response = await fetch(SEND_MESSAGE_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ receiver_id: currentUser, text: text })
+                });
+
+                if (!response.ok) {
+                    // e.g. the person only accepts messages from people they follow
+                    const d = await response.json().catch(() => null);
+                    showStatus((d && d.message) || "Couldn't send that message. Please try again.", 'warn');
+                    return;
+                }
+
+                input.value = '';
+                document.getElementById('chatStatus').className = 'chat-status';
+
+                // Reload the real thread and sidebar so the message shows
+                // up tied to the recipient's account, not just locally.
+                await loadMessages(currentUser);
+                await loadConversations();
+            } catch (err) {
+                showStatus("Couldn't send that message. Check your connection and try again.", 'warn');
+            } finally {
+                sending = false;
+                input.disabled = false;
+                document.getElementById('sendBtn').disabled = false;
+                input.focus();
+            }
+        }
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            if (isNaN(date)) return '';
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMin = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMin < 1) return 'Just now';
+            if (diffMin < 60) return `${diffMin}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        // ===============================================================
+        // VOICE & VIDEO CALLS
+        // ---------------------------------------------------------------
+        // The calling itself lives in eschool-calls.js (served at /eschool-calls.js), which is
+        // on every signed-in page. That way the person you call hears it
+        // ring and can answer wherever they are (dashboard, courses, a
+        // teacher or parent page...), not only when they're on Messages.
+        // ===============================================================
+        // Why a call can't start right now, in plain words ('' = it can).
+        function callProblem() {
+            if (!window.isSecureContext) {
+                return 'Calls need a secure address. Open eSchool at https://… (or http://localhost on this computer): ' +
+                       'browsers block the camera and microphone on plain http://' + location.host + '.';
+            }
+            if (window.EschoolCallsMissing) {
+                return 'Calling is switched off: the file eschool-calls.js is missing on the server. Put it in the static/js folder and restart the app.';
+            }
+            if (!window.EschoolCalls) {
+                return 'Calling hasn\'t loaded on this page. Refresh the page; if it keeps happening, check that eschool-calls.js is in static/js and backen.py is the latest one.';
+            }
+            if (!window.EschoolCalls.supported()) {
+                return 'This browser can\'t make calls. Use the latest Chrome, Edge, Firefox or Safari.';
+            }
+            return '';
+        }
+
+        // The buttons only grey out while no chat is open or a call is
+        // already on. Otherwise they stay tappable and say what's wrong.
+        function updateCallButtons() {
+            const busy = !!(window.EschoolCalls && window.EschoolCalls.isActive());
+            const on = !!currentUser && !!currentUserObj && !busy;
+            document.getElementById('voiceCallBtn').disabled = !on;
+            document.getElementById('videoCallBtn').disabled = !on;
+        }
+
+        function startCall(kind) {
+            if (!currentUser || !currentUserObj) {
+                showStatus('Open a chat first, then tap the call button.', 'info');
+                return;
+            }
+            const problem = callProblem();
+            if (problem) { showStatus(problem, 'warn'); return; }
+            const av = resolveAvatar(currentUserObj);
+            window.EschoolCalls.start({ id: currentUserObj.id, name: currentUserObj.name, avatar_url: av.src }, kind);
+        }
+
+        document.addEventListener('eschool:call-state', updateCallButtons);
+        document.addEventListener('eschool:call-ended', (e) => {
+            const other = e.detail && e.detail.other;
+            if (currentUser && other && Number(other.id) === Number(currentUser)) {
+                setTimeout(() => loadMessages(currentUser), 600);   // shows the call in the chat
+            }
+        });
+        // The call script normally comes with every page. If this page was
+        // opened without it (an older body.html / backen.py), load it here.
+        window.addEventListener('load', () => {
+            if (!window.EschoolCalls && !window.EschoolCallsMissing) {
+                const tag = document.createElement('script');
+                tag.src = '/eschool-calls.js?v=3';
+                tag.onload = updateCallButtons;
+                document.head.appendChild(tag);
+            }
+            updateCallButtons();
+        });
+
+        // Auto-refresh so incoming messages from the other real person show
+        // up without a manual reload (no websocket here, so this polls).
+        setInterval(() => {
+            if (document.hidden) return;                  // don't poll from a background tab
+            if (currentUser) {
+                loadMessages(currentUser, true);
+            }
+            loadConversations(true);
+        }, 8000);
+
+        // Send message on Enter key
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Search on Enter key too
+        document.getElementById('searchUsers').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchDebounceTimer);
+                const searchTerm = document.getElementById('searchUsers').value.trim();
+                if (searchTerm) performSearch(searchTerm);
+            }
+        });
+    </script>
+{% endblock %}

@@ -454,8 +454,9 @@
         </span>
         <select id="country" name="country" required autocomplete="country">
           <option value="" disabled selected hidden></option>
-          <option value="KE">Kenya</option>
-          <option value="US">United States</option>
+          {% for code, name in register_countries() %}
+          <option value="{{ code }}"{% if request.form.get('country') == code %} selected{% endif %}>{{ name }}</option>
+          {% endfor %}
         </select>
         <label for="country">Country</label>
         <span class="chevron">

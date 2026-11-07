@@ -1,0 +1,569 @@
+{% extends "Admin/admin_body.html" %}
+{% block title %}Users{% endblock %}
+{% block allcontent %}
+{#
+    ADMIN - Users  (templates/Admin/admin_users.html)   Route: /admin-users
+    GET    /api/admin/people?q=&role=&status=&country=&plan=&joined=&sort=&page=
+    GET    /api/admin/people/export?(same filters)          CSV of the filtered list
+    GET    /api/admin/people/<id>/file                      the person file: everything about one person
+    POST   /api/admin/people/<id>/action   role | suspend | unsuspend | reset_password | sign_out
+    POST   /api/admin/people/<id>/plan     {plan, days}
+    DELETE /api/admin/people/<id>          {confirm: their email}
+    POST   /api/admin/reports/message/<id> {status: closed | actioned | open, note}
+#}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+.us {
+    --us-accent: var(--primary-color, #4f46e5); --us-soft: #eef0ff;
+    --us-bg: #f4f6fb; --us-card: #fff; --us-line: #e3e7f1; --us-line-2: #f0f2f7;
+    --us-text: #1c2333; --us-text-2: #4b5468; --us-text-3: #6b7385;
+    --us-ok: #137333; --us-ok-bg: #e6f4ea; --us-bad: #b3261e; --us-bad-bg: #fdecea; --us-bad-line: #f5c2bd;
+    --us-warn: #7a4a00; --us-warn-bg: #fff4e0; --us-warn-line: #f3d39b; --us-info: #3730a3;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--us-text);
+    max-width: 1340px; margin: 0 auto; padding: 4px 0 40px; font-size: 14px;
+}
+body.dark-mode .us {
+    --us-soft: #24264a; --us-bg: #0b1220; --us-card: #111a2e; --us-line: #263149; --us-line-2: #1b2539;
+    --us-text: #e8ecf5; --us-text-2: #b8c1d6; --us-text-3: #8d97ae;
+    --us-ok: #6fd391; --us-ok-bg: #12301f; --us-bad: #ff8b80; --us-bad-bg: #3a1714; --us-bad-line: #6b2a24;
+    --us-warn: #f5c46a; --us-warn-bg: #33260c; --us-warn-line: #654a17; --us-info: #b4b9ff;
+}
+.us *, .us *::before, .us *::after { box-sizing: border-box; }
+.us h1 { font-size: 1.6rem; margin: 0; font-weight: 800; }
+.us h2, .us h3, .us p { margin: 0; }
+.us button, .us input, .us select, .us textarea { font: inherit; color: inherit; }
+.us a { color: inherit; }
+.us-sub { color: var(--us-text-3); margin: 4px 0 14px; }
+.us-card { background: var(--us-card); border: 1px solid var(--us-line); border-radius: 14px; padding: 16px; min-width: 0; }
+.us-grid { display: grid; gap: 12px; margin-bottom: 12px; }
+.g7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.us-kl { font-size: .7rem; color: var(--us-text-3); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.us-kv { font-size: 1.45rem; font-weight: 800; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.us-kn { font-size: .75rem; color: var(--us-text-3); }
+.us-kpi { cursor: pointer; text-align: left; font: inherit; }
+.us-kpi:hover { border-color: var(--us-accent); }
+.us-kpi.alert { border-color: var(--us-bad-line); } .us-kpi.alert .us-kv { color: var(--us-bad); }
+.us-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.us-tab { border: 1px solid var(--us-line); background: var(--us-card); border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: .82rem; cursor: pointer; white-space: nowrap; }
+.us-tab em { font-style: normal; opacity: .7; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.us-tab[aria-pressed="true"], .us-tab[aria-selected="true"] { background: var(--us-accent); border-color: var(--us-accent); color: #fff; }
+.us-tab.red:not([aria-pressed="true"]):not([aria-selected="true"]) { border-color: var(--us-bad-line); color: var(--us-bad); }
+.us-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 10px; }
+.us-in { height: 38px; border: 1px solid var(--us-line); border-radius: 10px; padding: 0 11px; background: var(--us-card); }
+.us-search { position: relative; flex: 2 1 260px; }
+.us-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--us-text-3); }
+.us-search input { width: 100%; padding-left: 34px; }
+.us-tools select { flex: 1 1 130px; }
+.us-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 13px; border-radius: 10px; border: 1px solid var(--us-line); background: var(--us-card); font-weight: 600; font-size: .83rem; cursor: pointer; text-decoration: none; white-space: nowrap; color: var(--us-text) !important; }
+.us-btn:hover { border-color: var(--us-accent); color: var(--us-accent) !important; }
+.us-btn.primary { background: var(--us-accent); border-color: var(--us-accent); color: #fff !important; }
+.us-btn.danger { color: var(--us-bad) !important; }
+.us-btn.danger.solid { background: var(--us-bad); border-color: var(--us-bad); color: #fff !important; }
+.us-btn.okb { color: var(--us-ok) !important; }
+.us-btn.sm { height: 30px; padding: 0 10px; font-size: .78rem; }
+.us-btn:disabled { opacity: .5; cursor: default; }
+.us-btn:focus-visible, .us-tab:focus-visible, .us-in:focus-visible, .us-kpi:focus-visible, .us-tbl tr:focus-visible, .us textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--us-accent) 45%, transparent); outline-offset: 2px; }
+.us-tblw { overflow-x: auto; }
+.us-tbl { width: 100%; border-collapse: collapse; font-size: .85rem; min-width: 980px; }
+.us-tbl th { text-align: left; font-size: .68rem; color: var(--us-text-3); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; padding: 7px 6px; border-bottom: 1px solid var(--us-line); white-space: nowrap; }
+.us-tbl td { padding: 9px 6px; border-bottom: 1px solid var(--us-line-2); vertical-align: middle; }
+.us-tbl tbody tr { cursor: pointer; }
+.us-tbl tbody tr:hover td { background: color-mix(in srgb, var(--us-soft) 50%, transparent); }
+.us-tbl tr.sel td { background: var(--us-soft); }
+.us-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.us-who b { display: block; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.us-who small { display: block; color: var(--us-text-3); font-size: .75rem; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.us-av { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--us-soft); color: var(--us-info); display: grid; place-items: center; font-weight: 700; font-size: .78rem; overflow: hidden; }
+.us-av img { width: 100%; height: 100%; object-fit: cover; }
+.us-av.big { width: 68px; height: 68px; font-size: 1.4rem; }
+.us-m { color: var(--us-text-3); font-size: .76rem; }
+.us-pill { display: inline-flex; align-items: center; gap: 4px; font-size: .7rem; font-weight: 700; border-radius: 999px; padding: 2px 9px; white-space: nowrap; margin: 1px 3px 1px 0; }
+.us-pill.bad { background: var(--us-bad-bg); color: var(--us-bad); } .us-pill.warn { background: var(--us-warn-bg); color: var(--us-warn); }
+.us-pill.ok { background: var(--us-ok-bg); color: var(--us-ok); } .us-pill.info { background: var(--us-soft); color: var(--us-info); }
+.us-pill.grey { background: var(--us-line-2); color: var(--us-text-3); }
+.us-pager { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; font-size: .84rem; color: var(--us-text-3); flex-wrap: wrap; }
+.us-empty { text-align: center; padding: 30px 10px; color: var(--us-text-3); }
+.us-empty i { font-size: 1.6rem; display: block; margin-bottom: 8px; }
+.us-note { border-radius: 10px; padding: 9px 12px; font-size: .86rem; margin: 10px 0; }
+.us-note[hidden] { display: none; }
+.us-note.ok { background: var(--us-ok-bg); color: var(--us-ok); } .us-note.bad { background: var(--us-bad-bg); color: var(--us-bad); } .us-note.info { background: var(--us-soft); color: var(--us-info); }
+.us-skel { display: block; height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--us-line-2), var(--us-line), var(--us-line-2)); background-size: 200% 100%; animation: usS 1.2s infinite; margin: 8px 0; }
+@keyframes usS { to { background-position: -200% 0; } }
+.us-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* person file */
+.us-file { margin-top: 14px; scroll-margin-top: 12px; }
+.us-file[hidden] { display: none; }
+.us-fh { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.us-fh .fi { flex: 1 1 380px; min-width: 0; }
+.us-fh h2 { font-size: 1.3rem; font-weight: 800; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.us-fh .facts { color: var(--us-text-3); font-size: .82rem; margin-top: 5px; line-height: 1.55; }
+.us-acts { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 380px; justify-content: flex-end; align-content: flex-start; }
+.us-att { border-radius: 12px; padding: 10px 12px; border: 1px solid var(--us-warn-line); background: var(--us-warn-bg); color: var(--us-warn); margin: 12px 0; font-size: .88rem; }
+.us-att.clear { border-color: var(--us-line); background: var(--us-ok-bg); color: var(--us-ok); }
+.us-ftabs { margin: 10px 0 14px; }
+.us-mini { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.us-mini div { background: var(--us-bg); border-radius: 10px; padding: 10px; min-width: 0; }
+.us-mini b { display: block; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.us-mini span { font-size: .72rem; color: var(--us-text-3); }
+.us-ch { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.us-ch h3 { font-size: .95rem; }
+.us-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--us-line-2); font-size: .85rem; }
+.us-row:last-child { border-bottom: 0; }
+.us-row > b, .us-row > span:last-child { text-align: right; }
+.us-tl { list-style: none; margin: 0; padding: 0; }
+.us-tl li { display: grid; grid-template-columns: 112px 14px minmax(0, 1fr); gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--us-line-2); font-size: .84rem; }
+.us-tl li:last-child { border-bottom: 0; }
+.us-tl time { color: var(--us-text-3); font-size: .76rem; font-variant-numeric: tabular-nums; }
+.us-tl .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; background: var(--us-text-3); }
+.us-tl .c-learning .dot { background: var(--us-accent); } .us-tl .c-money .dot { background: var(--us-ok); } .us-tl .c-reports .dot { background: var(--us-bad); }
+.us-tl .c-support .dot { background: #d97706; } .us-tl .c-family .dot { background: #0ea5e9; } .us-tl .c-admin .dot { background: #8b5cf6; }
+.us-tl .lv-bad span { color: var(--us-bad); font-weight: 600; } .us-tl .lv-warn span { color: var(--us-warn); }
+.us-tbl2 { width: 100%; border-collapse: collapse; font-size: .83rem; }
+.us-tbl2 th { text-align: left; font-size: .68rem; color: var(--us-text-3); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; padding: 6px 5px; border-bottom: 1px solid var(--us-line); }
+.us-tbl2 td { padding: 7px 5px; border-bottom: 1px solid var(--us-line-2); vertical-align: top; }
+.us-tbl2 .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.us-rep { border: 1px solid var(--us-line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.us-rep.open { border-color: var(--us-bad-line); }
+.us-rep summary { cursor: pointer; display: flex; justify-content: space-between; gap: 10px; align-items: center; list-style: none; }
+.us-rep summary::-webkit-details-marker { display: none; }
+.us-chat { margin: 10px 0; max-height: 260px; overflow: auto; background: var(--us-bg); border-radius: 10px; padding: 8px 10px; font-size: .82rem; }
+.us-chat div { padding: 4px 0; }
+.us-chat .them b { color: var(--us-bad); }
+.us-prog { height: 8px; background: var(--us-line-2); border-radius: 99px; overflow: hidden; min-width: 80px; }
+.us-prog i { display: block; height: 100%; background: var(--us-accent); }
+.us-form { border: 1px solid var(--us-line); border-radius: 12px; padding: 12px; margin: 10px 0; background: var(--us-bg); }
+.us-form.danger { border-color: var(--us-bad-line); background: var(--us-bad-bg); }
+.us-form h4 { margin: 0 0 4px; font-size: .95rem; }
+.us-form p { font-size: .84rem; color: var(--us-text-2); margin-bottom: 8px; }
+.us-form label { display: block; font-size: .8rem; font-weight: 600; margin: 8px 0 4px; color: var(--us-text-2); }
+.us-form input, .us-form select, .us-form textarea { width: 100%; border: 1px solid var(--us-line); border-radius: 9px; padding: 8px 10px; background: var(--us-card); }
+.us-form textarea { min-height: 64px; resize: vertical; }
+.us-form .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.us-form .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
+.us-err { color: var(--us-bad); font-size: .8rem; margin-top: 6px; }
+.us-err:empty { display: none; }
+.us-mono { font-family: ui-monospace, Consolas, monospace; background: var(--us-card); padding: 2px 6px; border-radius: 6px; user-select: all; }
+#usPrint { display: none; }
+@media (max-width: 1200px) { .g7 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .us-mini { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .g3, .g2 { grid-template-columns: minmax(0, 1fr); } .us-acts { justify-content: flex-start; } }
+@media (max-width: 560px) { .g7 { grid-template-columns: 1fr 1fr; } .us-mini { grid-template-columns: 1fr 1fr; } .us-tl li { grid-template-columns: 84px 12px minmax(0, 1fr); } .us-form .row2 { grid-template-columns: 1fr; } }
+@media print {
+    body * { visibility: hidden !important; }
+    #usPrint, #usPrint * { visibility: visible !important; }
+    #usPrint { display: block !important; position: absolute; left: 0; top: 0; width: 100%; color: #000; background: #fff; font-family: Arial, sans-serif; font-size: 10.5pt; }
+    #usPrint h1 { font-size: 16pt; margin: 0 0 4px; } #usPrint h2 { font-size: 12pt; margin: 14px 0 6px; border-bottom: 1px solid #999; }
+    #usPrint table { width: 100%; border-collapse: collapse; } #usPrint td, #usPrint th { border: 1px solid #bbb; padding: 3px 5px; text-align: left; font-size: 9pt; vertical-align: top; }
+    #usPrint .box { border: 1px solid #000; padding: 8px; margin: 8px 0; }
+}
+</style>
+
+<div class="us" id="us">
+    <h1>Users</h1>
+    <p class="us-sub">Everyone on Eschool, with their full history: activity, learning, money, reports, support, family and sign-ins.</p>
+
+    <div class="us-grid g7" id="kpis">
+        <div class="us-card"><span class="us-skel"></span><span class="us-skel"></span></div><div class="us-card"><span class="us-skel"></span></div><div class="us-card"><span class="us-skel"></span></div>
+        <div class="us-card"><span class="us-skel"></span></div><div class="us-card"><span class="us-skel"></span></div><div class="us-card"><span class="us-skel"></span></div><div class="us-card"><span class="us-skel"></span></div>
+    </div>
+
+    <section class="us-card" aria-label="Everyone">
+        <div class="us-tabs" role="group" aria-label="Show" id="tabs"></div>
+        <div class="us-tools">
+            <label class="us-search"><span class="us-sr">Search</span><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input class="us-in" id="q" type="search" placeholder="Name, email, phone or ID" maxlength="80" autocomplete="off"></label>
+            <select class="us-in" id="fCountry" aria-label="Country"><option value="">All countries</option></select>
+            <select class="us-in" id="fPlan" aria-label="Plan"><option value="">Any plan</option><option value="paid">Paid (Basic or Pro)</option><option value="pro">Pro</option><option value="basic">Basic</option><option value="free">Free</option></select>
+            <select class="us-in" id="fJoined" aria-label="Joined"><option value="">Joined any time</option><option value="7">Joined in 7 days</option><option value="30">Joined in 30 days</option><option value="90">Joined in 90 days</option><option value="365">Joined this year</option></select>
+            <select class="us-in" id="fSort" aria-label="Sort"><option value="newest">Newest first</option><option value="active">Last active</option><option value="reports">Most flags</option><option value="name">Name A–Z</option><option value="oldest">Oldest first</option><option value="role">Account type</option></select>
+            <a class="us-btn" id="export" href="/api/admin/people/export"><i class="fas fa-file-csv" aria-hidden="true"></i> Export CSV</a>
+        </div>
+        <div class="us-note" id="listNote" role="status" hidden></div>
+        <div class="us-tblw">
+            <table class="us-tbl" id="tbl">
+                <thead><tr><th>Person</th><th>Type</th><th>Country</th><th>Plan</th><th>Joined</th><th>Last active</th><th>Flags</th><th>Status</th></tr></thead>
+                <tbody id="rows"><tr><td colspan="8"><span class="us-skel"></span><span class="us-skel"></span></td></tr></tbody>
+            </table>
+        </div>
+        <div class="us-pager" id="pager"></div>
+    </section>
+
+    <section class="us-card us-file" id="file" hidden aria-live="polite"></section>
+    <div id="usPrint" aria-hidden="true"></div>
+</div>
+
+<script>
+(function () {
+"use strict";
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+var num = function (v) { v = Number(v); return isFinite(v) ? v : 0; };
+var fmt = function (n) { return num(n).toLocaleString(); };
+var ROLES = { student: ["Learner", "info"], teacher: ["Teacher", "ok"], parent: ["Parent", "warn"], admin: ["Admin", "bad"] };
+var PLANS = { free: "Free", basic: "Basic", pro: "Pro" };
+function T(d) { if (!d) return NaN; if (typeof d === "number") return d; var s = String(d); return Date.parse(s.replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? "" : "Z")); }
+function date(d) { var t = T(d); return t ? new Date(t).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" }) : "–"; }
+function dt(d) { var t = T(d); return t ? new Date(t).toLocaleString([], { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) : "–"; }
+function ago(d) {
+    var t = T(d); if (!t) return "never";
+    var s = (Date.now() - t) / 1000;
+    if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago"; if (s < 86400) return Math.floor(s / 3600) + " h ago";
+    if (s < 86400 * 2) return "yesterday"; if (s < 86400 * 60) return Math.floor(s / 86400) + " days ago"; return date(d);
+}
+function money(n) { return "KES " + fmt(n); }
+function initials(n) { return String(n || "?").split(/\s+/).map(function (w) { return w[0] || ""; }).join("").slice(0, 2).toUpperCase(); }
+function safeUrl(u) { return typeof u === "string" && /^\/(?!\/)/.test(u) ? u : ""; }
+function avatar(p, big) { var u = safeUrl(p.avatar_url); return '<span class="us-av' + (big ? " big" : "") + '">' + (u ? '<img src="' + esc(u) + '" alt="">' : esc(initials(p.name))) + "</span>"; }
+function pill(f) { return '<span class="us-pill ' + ({ bad: "bad", warn: "warn", ok: "ok", info: "info" }[f[2]] || "grey") + '">' + esc(f[1]) + "</span>"; }
+function api(url, opts) {
+    opts = opts || {};
+    var o = { credentials: "same-origin", cache: "no-store", method: opts.method || "GET" };
+    if (opts.body) { o.body = JSON.stringify(opts.body); o.headers = { "Content-Type": "application/json" }; }
+    return fetch(url, o).then(function (r) {
+        if (r.status === 401) { location.href = "/login"; throw new Error("Please sign in again."); }
+        return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.success === false) throw new Error(d.message || "Something went wrong (" + r.status + ")."); return d; });
+    });
+}
+function note(id, msg, kind) { var n = $(id); if (!n) return; n.hidden = !msg; n.className = "us-note " + (kind || "ok"); n.textContent = msg || ""; }
+function badges() { if (window.AD && window.AD.refreshBadges) try { window.AD.refreshBadges(); } catch (e) {} }
+
+var qs = new URLSearchParams(location.search);
+var S = { q: "", role: ROLES[qs.get("role")] ? qs.get("role") : "", status: "", country: "", plan: "", joined: "", sort: "newest", page: 1, sel: qs.get("id") ? Number(qs.get("id")) : null, data: null, me: null };
+if (["reported", "suspended", "inactive", "deactivated"].indexOf(qs.get("status")) > -1) S.status = qs.get("status");
+
+/* ---------------- list ---------------- */
+function params() {
+    var p = new URLSearchParams({ sort: S.sort, page: S.page });
+    ["q", "role", "status", "country", "plan", "joined"].forEach(function (k) { if (S[k]) p.set(k, S[k]); });
+    return p;
+}
+var listReq = 0;
+function load() {
+    var my = ++listReq;
+    return api("/api/admin/people?" + params()).then(function (d) {
+        if (my !== listReq) return;
+        S.data = d; S.me = d.me; note("listNote", ""); render();
+    }).catch(function (e) { note("listNote", e.message, "bad"); });
+}
+function render() {
+    var d = S.data, c = d.counts, learners = c.student || 0;
+    var k = [
+        ["", "", "All accounts", fmt(c.all), "+" + fmt(c.new7 || 0) + " joined this week"],
+        ["student", "", "Learners", fmt(learners), fmt(c.paid || 0) + " on Basic or Pro"],
+        ["teacher", "", "Teachers", fmt(c.teacher || 0), (c.teachers_flagged ? fmt(c.teachers_flagged) + " with flagged lessons or warnings" : "none flagged")],
+        ["parent", "", "Parents", fmt(c.parent || 0), fmt(c.parents_linked || 0) + " linked to a child"],
+        ["", "", "Active 7 days", fmt(c.active7 || 0), (c.all ? Math.round((c.active7 || 0) / c.all * 100) : 0) + "% of accounts"],
+        ["", "reported", "Reported", fmt(c.reported || 0), fmt(c.reports_open || 0) + (c.reports_open === 1 ? " open report" : " open reports") + " about people", (c.reported ? "alert" : "")],
+        ["", "suspended", "Suspended", fmt(c.suspended || 0), (c.suspended_ending ? fmt(c.suspended_ending) + " end within a week" : "none ending soon")]
+    ];
+    $("kpis").innerHTML = k.map(function (x) {
+        return '<button type="button" class="us-card us-kpi ' + (x[5] || "") + '" data-krole="' + x[0] + '" data-kstatus="' + x[1] + '"><div class="us-kl">' + x[2] + '</div><div class="us-kv">' + x[3] + '</div><div class="us-kn">' + esc(x[4]) + "</div></button>";
+    }).join("");
+    var tabs = [["", "", "All", c.all], ["student", "", "Learners", learners], ["teacher", "", "Teachers", c.teacher || 0], ["parent", "", "Parents", c.parent || 0], ["admin", "", "Admins", c.admin || 0],
+        ["", "reported", "Reported", c.reported || 0, "red"], ["", "suspended", "Suspended", c.suspended || 0], ["", "inactive", "Inactive 30 days", c.inactive || 0], ["", "deactivated", "Deactivated", c.deactivated || 0]];
+    $("tabs").innerHTML = tabs.map(function (t) {
+        var on = S.role === t[0] && S.status === t[1];
+        return '<button type="button" class="us-tab ' + (t[4] && t[3] ? t[4] : "") + '" data-role="' + t[0] + '" data-status="' + t[1] + '" aria-pressed="' + on + '">' + t[2] + "<em>" + fmt(t[3]) + "</em></button>";
+    }).join("");
+    var cs = $("fCountry"), cur = S.country;
+    cs.innerHTML = '<option value="">All countries</option>' + (d.countries || []).map(function (x) { return '<option value="' + esc(x.code) + '">' + esc(x.name) + "</option>"; }).join("") + '<option value="NONE">Not set</option>';
+    cs.value = cur;
+    $("export").href = "/api/admin/people/export?" + params();
+    $("rows").innerHTML = d.people.length ? d.people.map(rowHTML).join("") : '<tr><td colspan="8"><div class="us-empty"><i class="fas fa-user-slash" aria-hidden="true"></i>No one matches. Try another search or filter.</div></td></tr>';
+    var from = (d.page - 1) * 25 + 1, to = from + d.people.length - 1;
+    $("pager").innerHTML = "<span>" + (d.total ? fmt(from) + "–" + fmt(to) + " of " + fmt(d.total) : "0 people") + "</span>" +
+        (d.pages > 1 ? '<span style="display:flex;gap:6px"><button type="button" class="us-btn sm" data-pg="-1"' + (d.page <= 1 ? " disabled" : "") + '><i class="fas fa-chevron-left" aria-hidden="true"></i> Previous</button><button type="button" class="us-btn sm" data-pg="1"' + (d.page >= d.pages ? " disabled" : "") + '>Next <i class="fas fa-chevron-right" aria-hidden="true"></i></button></span>' : "");
+    if (S.sel && !fileLoaded) openFile(S.sel, false);
+}
+function rowHTML(p) {
+    var role = ROLES[p.role] || ROLES.student;
+    var plan = p.role === "student" ? (p.plan_active ? esc(PLANS[p.plan] || p.plan) + (p.plan_days_left != null ? ' <span class="us-m">· ' + p.plan_days_left + " d left</span>" : "") : "Free")
+        : p.role === "parent" && p.pays_for ? "pays for " + fmt(p.pays_for) : '<span class="us-m">–</span>';
+    var st = p.status === "suspended" ? '<span class="us-pill bad"><i class="fas fa-ban" aria-hidden="true"></i> Suspended' + (p.suspended_until ? " · until " + esc(date(p.suspended_until)) : "") + "</span>"
+        : p.status === "deactivated" ? '<span class="us-pill grey">Deactivated</span>' : '<span class="us-pill ok">Active</span>';
+    return '<tr data-id="' + num(p.id) + '" tabindex="0" class="' + (p.id === S.sel ? "sel" : "") + '"><td><div class="us-who">' + avatar(p) + "<span><b>" + esc(p.name) + (p.id === S.me ? ' <span class="us-pill info">You</span>' : "") + "</b><small>" + esc(p.email) + " · #" + num(p.id) + "</small></span></div></td>" +
+        '<td><span class="us-pill ' + role[1] + '">' + role[0] + "</span></td><td>" + esc(p.country || "–") + "</td><td>" + plan + "</td><td>" + esc(date(p.joined)) + "</td>" +
+        "<td>" + esc(ago(p.last_active)) + (p.device ? '<div class="us-m">' + esc(p.device) + "</div>" : "") + "</td><td>" + (p.flags || []).map(pill).join("") + "</td><td>" + st + "</td></tr>";
+}
+$("tabs").addEventListener("click", function (e) { var b = e.target.closest("[data-role]"); if (!b) return; S.role = b.getAttribute("data-role"); S.status = b.getAttribute("data-status"); S.page = 1; load(); });
+$("kpis").addEventListener("click", function (e) { var b = e.target.closest("[data-krole]"); if (!b) return; S.role = b.getAttribute("data-krole"); S.status = b.getAttribute("data-kstatus"); S.page = 1; load(); });
+var qT; $("q").addEventListener("input", function () { var v = this.value.trim(); clearTimeout(qT); qT = setTimeout(function () { S.q = v; S.page = 1; load(); }, 250); });
+[["fCountry", "country"], ["fPlan", "plan"], ["fJoined", "joined"], ["fSort", "sort"]].forEach(function (x) { $(x[0]).addEventListener("change", function () { S[x[1]] = this.value; S.page = 1; load(); }); });
+$("pager").addEventListener("click", function (e) { var b = e.target.closest("[data-pg]"); if (b) { S.page += Number(b.getAttribute("data-pg")); load(); } });
+$("rows").addEventListener("click", function (e) { var tr = e.target.closest("tr[data-id]"); if (tr) openFile(Number(tr.getAttribute("data-id")), true); });
+$("rows").addEventListener("keydown", function (e) { var tr = e.target.closest("tr[data-id]"); if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openFile(Number(tr.getAttribute("data-id")), true); } });
+
+/* ---------------- person file ---------------- */
+var F = null, fileLoaded = false, ftab = "overview", tlCat = "";
+function openFile(id, scroll) {
+    S.sel = id; fileLoaded = true; ftab = "overview"; tlCat = "";
+    document.querySelectorAll("#rows tr[data-id]").forEach(function (tr) { tr.classList.toggle("sel", Number(tr.getAttribute("data-id")) === id); });
+    try { history.replaceState(null, "", "?id=" + id + (S.role ? "&role=" + S.role : "")); } catch (e) {}
+    var f = $("file"); f.hidden = false;
+    f.innerHTML = '<span class="us-skel" style="height:60px"></span><span class="us-skel"></span><span class="us-skel" style="width:70%"></span>';
+    if (scroll) f.scrollIntoView({ behavior: "smooth", block: "start" });
+    return api("/api/admin/people/" + id + "/file").then(function (d) { F = d; drawFile(); })
+        .catch(function (e) { f.innerHTML = '<div class="us-note bad">' + esc(e.message) + "</div>"; });
+}
+function drawFile(msg, kind) {
+    var d = F, p = d.person, det = p.details || {}, me = p.id === d.me, role = ROLES[p.role] || ROLES.student;
+    var s = d.safety, acc = d.account, mon = d.money;
+    var openRep = s.about.filter(function (r) { return r.status === "open"; }).length;
+    var facts = ["#" + p.id, p.email + (p.google ? " (Google sign-in)" : ""), det.phone, [p.country_name, det.city].filter(Boolean).join(", "),
+        det.grade_level ? (/^grade/i.test(det.grade_level) ? det.grade_level : "Grade " + det.grade_level) : "", det.school,
+        p.joined ? "joined " + date(p.joined) : "", "last active " + ago(p.last_active) + (p.device ? " on " + p.device : "")].filter(Boolean);
+    var planPill = p.role === "student" ? (p.plan_active ? '<span class="us-pill ok">' + esc(PLANS[p.plan] || p.plan) + " plan" + (p.plan_expires_at ? " · ends " + esc(date(p.plan_expires_at)) : "") + "</span>" : '<span class="us-pill grey">Free plan</span>') : "";
+    var status = p.suspension ? '<span class="us-pill bad"><i class="fas fa-ban" aria-hidden="true"></i> Suspended' + (p.suspension.until ? " until " + esc(date(p.suspension.until)) : " until lifted") + "</span>"
+        : p.status === "deactivated" ? '<span class="us-pill grey">Deactivated by them</span>' : '<span class="us-pill ok">Active</span>';
+    var h = '<div class="us-fh">' + avatar(p, true) + '<div class="fi"><h2>' + esc(p.name) + ' <span class="us-pill ' + role[1] + '">' + role[0] + "</span>" + planPill + status + "</h2>" +
+        '<div class="facts">' + esc(facts.join(" · ")) + "</div>" + (p.suspension && p.suspension.reason ? '<div class="us-m" style="margin-top:4px">Suspension reason: ' + esc(p.suspension.reason) + "</div>" : "") + "</div>";
+    h += '<div class="us-acts">' + '<a class="us-btn sm" href="/profile/' + num(p.id) + '"><i class="fas fa-id-badge" aria-hidden="true"></i> Profile</a>' +
+        (me ? '<a class="us-btn sm" href="/admin-settings"><i class="fas fa-gear" aria-hidden="true"></i> My settings</a>' :
+        '<a class="us-btn sm" href="/admin_messages?user=' + num(p.id) + '"><i class="fas fa-envelope" aria-hidden="true"></i> Message</a>' +
+        (p.role === "student" ? '<button type="button" class="us-btn sm" data-act="plan"><i class="fas fa-crown" aria-hidden="true"></i> Plan</button>' : "") +
+        '<button type="button" class="us-btn sm" data-act="role"><i class="fas fa-user-gear" aria-hidden="true"></i> Change type</button>' +
+        (p.role !== "admin" && !p.google ? '<button type="button" class="us-btn sm" data-act="reset"><i class="fas fa-key" aria-hidden="true"></i> Reset password</button>' : "") +
+        '<button type="button" class="us-btn sm" data-act="signout"><i class="fas fa-right-from-bracket" aria-hidden="true"></i> Sign out everywhere</button>' +
+        (p.role !== "admin" ? (p.suspension ? '<button type="button" class="us-btn sm okb" data-act="unsuspend"><i class="fas fa-unlock" aria-hidden="true"></i> Lift suspension</button>' : '<button type="button" class="us-btn sm danger" data-act="suspend"><i class="fas fa-ban" aria-hidden="true"></i> Suspend</button>') +
+            '<button type="button" class="us-btn sm danger" data-act="delete"><i class="fas fa-trash" aria-hidden="true"></i> Delete</button>' : "")) +
+        '<button type="button" class="us-btn sm" data-act="print"><i class="fas fa-file-pdf" aria-hidden="true"></i> Full report</button></div></div>';
+    h += '<div id="actBox"></div><div class="us-note" id="actNote" role="status" hidden></div>';
+    h += d.attention.length ? '<div class="us-att"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> <b>Needs attention:</b> ' + esc(d.attention.join(" · ")) + ".</div>"
+        : '<div class="us-att clear"><i class="fas fa-circle-check" aria-hidden="true"></i> Nothing needs attention: no open reports, blocks, suspensions or warnings.</div>';
+    var tabs = [["overview", "Overview"], ["timeline", "Activity timeline", d.timeline.length], ["learning", p.role === "teacher" ? "Teaching" : p.role === "parent" ? "Children" : "Learning"], ["money", "Money"],
+        ["safety", "Reports & safety", s.about.length + s.tips.length + s.blocked_by.length + s.removed.length + s.suspensions.length + s.warnings.length, openRep ? "red" : ""],
+        ["support", "Support", d.support.length], ["family", "Family", d.family.links.length], ["account", "Sign-ins & devices", acc.devices.length], ["admin", "Admin history", d.admin_history.filter(function (x) { return x.action !== "Viewed person file"; }).length]];
+    h += '<div class="us-tabs us-ftabs" role="tablist" aria-label="Person file" id="ftabs">' + tabs.map(function (t) {
+        return '<button type="button" class="us-tab ' + (t[3] || "") + '" role="tab" data-ft="' + t[0] + '" aria-selected="' + (ftab === t[0]) + '">' + esc(t[1]) + (t[2] != null ? "<em>" + fmt(t[2]) + "</em>" : "") + "</button>";
+    }).join("") + "</div>";
+    h += '<div id="fbody">' + fileTab() + "</div>";
+    $("file").innerHTML = h;
+    if (msg) note("actNote", msg, kind);
+}
+function L() { return F.learning || {}; }
+function mini(items) { return '<div class="us-mini">' + items.map(function (x) { return "<div><b title=\"" + esc(x[0]) + "\">" + esc(x[0]) + "</b><span>" + esc(x[1]) + "</span></div>"; }).join("") + "</div>"; }
+function learnMini() {
+    var p = F.person, l = L();
+    if (p.role === "student") return mini([[fmt(l.ep) + " EP", "+" + fmt(l.ep_week) + " this week"], [fmt(l.streak) + (num(l.streak) === 1 ? " day" : " days"), "streak · best " + fmt(Math.max(num(l.best_streak), num(l.streak)))], [num(l.avg_progress) + "%", "average course progress"],
+        [fmt(l.modules), "modules finished"], [fmt(l.badges), "badges"], [l.career || "Not chosen", "career" + (l.career_since ? " since " + date(l.career_since) : "")]]);
+    if (p.role === "teacher") return mini([[fmt(l.live_classes), "live classes taught"], [Math.round(num(l.live_minutes) / 60) + " h", "taught live"], [l.rating ? "★ " + l.rating : "–", fmt(l.reviews) + " reviews"],
+        [fmt(l.lessons_taught) + " / " + fmt(l.lessons), "paid lessons taught"], [fmt(l.lessons_flagged), "lessons flagged"], [fmt(l.learners), "private learners"]]);
+    if (p.role === "parent") return mini([[fmt((l.children || []).length), "linked children"], [money(F.money.plans_paid), "paid for plans"], [money(F.money.tutoring_paid), "paid for lessons"],
+        [fmt(F.support.length), "support tickets"], [fmt(F.safety.about.length), "reports about them"], [ago(F.person.last_active), "last active"]]);
+    return mini([[fmt(l.admin_actions || 0), "admin actions"], [fmt(l.resources || 0), "resources posted"], [ago(F.person.last_active), "last active"], [fmt(F.account.devices.length), "devices"], [fmt(F.account.failed_30), "failed sign-ins (30 d)"], [F.account.password_set ? date(F.account.password_set) : "–", "password set"]]);
+}
+var CAT = { "": "Everything", learning: "Learning", money: "Money", reports: "Reports", support: "Support", family: "Family", account: "Account", admin: "Admin" };
+function timelineHTML(limit, cat) {
+    var items = F.timeline.filter(function (x) { return !cat || x.cat === cat; }).slice(0, limit || 300);
+    return items.length ? '<ul class="us-tl">' + items.map(function (x) {
+        return '<li class="c-' + esc(x.cat) + " lv-" + esc(x.level || "") + '"><time title="' + esc(dt(x.at)) + '">' + esc(dt(x.at)) + '</time><i class="dot" aria-hidden="true"></i><span>' + esc(x.text) + "</span></li>";
+    }).join("") + "</ul>" : '<p class="us-m">Nothing recorded here yet.</p>';
+}
+function fileTab() {
+    var d = F, p = d.person, s = d.safety, acc = d.account, mon = d.money, l = L();
+    if (ftab === "overview") {
+        var open = s.about.filter(function (r) { return r.status === "open"; });
+        return learnMini() + '<div class="us-grid g3">' +
+            '<section class="us-card"><div class="us-ch"><h3>Latest activity</h3><button type="button" class="us-btn sm" data-goto="timeline">See all</button></div>' + timelineHTML(8) + "</section>" +
+            '<section class="us-card"><div class="us-ch"><h3>Reports &amp; safety</h3><button type="button" class="us-btn sm" data-goto="safety">Open</button></div>' +
+            row("Reports about them", s.about.length ? '<span class="us-pill ' + (open.length ? "bad" : "grey") + '">' + fmt(s.about.length) + " · " + fmt(open.length) + " open</span>" : "0") +
+            row("Reports they made", fmt(s.made.length)) + row("Tips reported", fmt(s.tips.length)) + row("Blocked by · they blocked", fmt(s.blocked_by.length) + " · " + fmt(s.blocked.length)) +
+            row("Muted by", fmt(s.muted_by)) + row("Removed from live classes", fmt(s.removed.length)) +
+            row("Past suspensions", fmt(s.suspensions.filter(function (x) { return x.action === "Suspended account"; }).length)) + (p.role === "teacher" ? row("Live class warnings", fmt(s.warnings.length)) : "") + "</section>" +
+            '<section class="us-card"><div class="us-ch"><h3>Money</h3><button type="button" class="us-btn sm" data-goto="money">Open</button></div>' + moneySummary() +
+            '<div class="us-ch" style="margin-top:12px"><h3>Sign-ins</h3><button type="button" class="us-btn sm" data-goto="account">Open</button></div>' +
+            row("Sign-ins (30 days)", fmt(acc.signins_30)) + row("Failed sign-ins (30 days)", acc.failed_30 ? '<span class="us-pill ' + (acc.failed_30 >= 5 ? "bad" : "warn") + '">' + fmt(acc.failed_30) + "</span>" : "0") +
+            row("Devices", fmt(acc.devices.filter(function (x) { return !x.ended; }).length) + " signed in · " + fmt(acc.devices.length) + " ever") +
+            row("Password last set", acc.google ? "Google sign-in" : acc.password_set ? date(acc.password_set) : "–") + "</section></div>";
+    }
+    if (ftab === "timeline") {
+        return '<div class="us-tabs" role="group" aria-label="Show in the timeline" id="tlcat" style="margin-bottom:10px">' + Object.keys(CAT).map(function (k) {
+            var n = k ? F.timeline.filter(function (x) { return x.cat === k; }).length : F.timeline.length;
+            return '<button type="button" class="us-tab" data-cat="' + k + '" aria-pressed="' + (tlCat === k) + '">' + CAT[k] + "<em>" + fmt(n) + "</em></button>";
+        }).join("") + '</div><section class="us-card">' + timelineHTML(300, tlCat) + "</section>";
+    }
+    if (ftab === "learning") {
+        if (p.role === "student") {
+            return learnMini() + '<div class="us-grid g2"><section class="us-card"><div class="us-ch"><h3>Courses</h3><span class="us-m">' + fmt(l.courses_done) + " finished · " + fmt(l.quizzes) + " quizzes passed · " + fmt(l.active_days) + " active days</span></div>" +
+                (l.courses && l.courses.length ? '<table class="us-tbl2"><thead><tr><th>Course</th><th>Progress</th><th class="n">%</th></tr></thead><tbody>' + l.courses.map(function (c) { return "<tr><td>" + esc(c.name) + '</td><td><div class="us-prog"><i style="width:' + Math.min(100, num(c.progress)) + '%"></i></div></td><td class="n">' + num(c.progress) + "</td></tr>"; }).join("") + "</tbody></table>" : '<p class="us-m">No course started yet.</p>') +
+                '</section><section class="us-card"><div class="us-ch"><h3>More</h3></div>' + row("Live classes attended", fmt(l.live_attended) + " · " + fmt(l.live_minutes) + " min") + row("Strategies used", fmt(l.strategies)) + row("Focus timer", fmt(l.focus_minutes) + " min") +
+                row("Resources opened", fmt(l.resources_viewed)) + row("Friends", fmt(l.friends)) +
+                ((l.live || []).length ? '<div class="us-ch" style="margin-top:12px"><h3>Recent live classes</h3></div>' + l.live.map(function (x) { return row(x.title + " · " + date(x.at), fmt(x.minutes) + " min"); }).join("") : "") + "</section></div>";
+        }
+        if (p.role === "teacher") {
+            return learnMini() + '<section class="us-card"><div class="us-ch"><h3>Recent live classes</h3><a class="us-btn sm" href="/admin-live">Open Live classes</a></div>' +
+                ((l.classes || []).length ? '<table class="us-tbl2"><thead><tr><th>Class</th><th>When</th><th>Status</th><th class="n">Taught</th></tr></thead><tbody>' + l.classes.map(function (c) {
+                    return "<tr><td>" + esc(c.title) + "</td><td>" + esc(dt(c.at)) + "</td><td>" + esc(c.state || "") + '</td><td class="n">' + (c.minutes != null ? fmt(c.minutes) + " / " : "– / ") + fmt(c.planned) + " min</td></tr>";
+                }).join("") + "</tbody></table>" : '<p class="us-m">No live classes yet.</p>') + "</section>";
+        }
+        if (p.role === "parent") {
+            var ch = l.children || [];
+            return learnMini() + '<section class="us-card"><div class="us-ch"><h3>Linked children</h3></div>' + (ch.length ? ch.map(function (c) {
+                return row(c.name + (c.relationship ? " (" + c.relationship + ")" : ""), '<span class="us-pill ' + (c.plan === "free" ? "grey" : "ok") + '">' + esc(PLANS[c.plan] || c.plan) + '</span> <button type="button" class="us-btn sm" data-open="' + num(c.id) + '">Open</button>');
+            }).join("") : '<p class="us-m">No children linked.</p>') + "</section>";
+        }
+        return learnMini() + (F.their_admin_actions ? '<section class="us-card"><div class="us-ch"><h3>What this admin did</h3></div><ul class="us-tl">' + F.their_admin_actions.map(function (x) { return '<li class="c-admin"><time>' + esc(dt(x.created_at)) + '</time><i class="dot"></i><span>' + esc(x.action + (x.detail ? " · " + x.detail : "")) + "</span></li>"; }).join("") + "</ul></section>" : "");
+    }
+    if (ftab === "money") {
+        var all = mon.plan_payments.map(function (x) { return { at: x.created_at, what: (x.plan || "").replace(/^./, function (c) { return c.toUpperCase(); }) + " plan · " + x.days + " days for " + x.for, by: x.payer, amount: x.amount, status: x.status, ref: x.reference || "" }; })
+            .concat(mon.tutoring_payments.map(function (x) { return { at: x.created_at, what: "Tutoring · " + x.sessions + " " + x.subject + " lessons · " + x.learner + " with " + x.teacher, by: x.payer, amount: x.amount, status: x.status, ref: "" }; }))
+            .sort(function (a, b) { return T(b.at) - T(a.at); });
+        return '<div class="us-grid g2"><section class="us-card"><div class="us-ch"><h3>Summary</h3></div>' + moneySummary() + '</section><section class="us-card"><div class="us-ch"><h3>Plan</h3></div>' +
+            row("Current plan", p.role === "student" ? (mon.plan_active ? esc(PLANS[mon.plan] || mon.plan) : "Free") : "–") + row("Ends", mon.plan_expires_at ? date(mon.plan_expires_at) : "–") + row("Payments waiting", fmt(mon.pending)) + "</section></div>" +
+            '<section class="us-card"><div class="us-ch"><h3>Every payment</h3><a class="us-btn sm" href="/admin-payments">Open Payments</a></div>' + (all.length ? '<div style="overflow-x:auto"><table class="us-tbl2"><thead><tr><th>Date</th><th>What</th><th>Paid by</th><th>Reference</th><th>Status</th><th class="n">Amount</th></tr></thead><tbody>' + all.map(function (x) {
+                return "<tr><td>" + esc(dt(x.at)) + "</td><td>" + esc(x.what) + "</td><td>" + esc(x.by) + '</td><td class="us-m">' + esc(x.ref) + '</td><td><span class="us-pill ' + ({ confirmed: "ok", pending: "warn", rejected: "bad" }[x.status] || "grey") + '">' + esc(x.status) + '</span></td><td class="n">' + esc(money(x.amount)) + "</td></tr>";
+            }).join("") + "</tbody></table></div>" : '<p class="us-m">No payments.</p>') + "</section>";
+    }
+    if (ftab === "safety") {
+        var reps = s.about.map(function (r) {
+            return '<details class="us-rep ' + (r.status === "open" ? "open" : "") + '"' + (r.status === "open" ? " open" : "") + '><summary><span><b>' + esc(r.by) + "</b> reported them" + (r.reason ? ": “" + esc(r.reason) + "”" : "") + ' <span class="us-m">· ' + esc(dt(r.at)) + "</span></span>" +
+                '<span class="us-pill ' + ({ open: "bad", actioned: "ok", closed: "grey" }[r.status] || "grey") + '">' + esc({ open: "Open", actioned: "Action taken", closed: "Closed" }[r.status] || r.status) + "</span></summary>" +
+                (r.messages.length ? '<div class="us-chat">' + r.messages.map(function (m) { return '<div class="' + (m.from === "them" ? "them" : "") + '"><b>' + esc(m.from === "them" ? F.person.name : m.from) + '</b> <span class="us-m">' + esc(dt(m.at)) + "</span> " + esc(m.text) + "</div>"; }).join("") + "</div>" : '<p class="us-m" style="margin:8px 0">No messages were attached.</p>') +
+                '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input class="us-in" style="flex:1 1 220px" data-rnote="' + num(r.id) + '" placeholder="Note (optional, admins only)" maxlength="300">' +
+                (r.status !== "actioned" ? '<button type="button" class="us-btn sm danger" data-rep="' + num(r.id) + '" data-st="actioned">Action taken</button>' : "") +
+                (r.status !== "closed" ? '<button type="button" class="us-btn sm" data-rep="' + num(r.id) + '" data-st="closed">Close, no action</button>' : "") +
+                (r.status !== "open" ? '<button type="button" class="us-btn sm" data-rep="' + num(r.id) + '" data-st="open">Reopen</button>' : "") + "</div></details>";
+        }).join("");
+        return '<div class="us-grid g2"><section class="us-card"><div class="us-ch"><h3>Reports about them</h3><span class="us-m">' + fmt(s.about.length) + " · newest first</span></div>" + (reps || '<p class="us-m">Nobody has reported them.</p>') +
+            (s.tips.length ? '<div class="us-ch" style="margin-top:12px"><h3>Their tips that were reported</h3></div>' + s.tips.map(function (t) {
+                return row("“" + t.text + "”" + (t.reasons ? " — " + t.reasons : ""), '<span class="us-pill ' + (t.hidden ? "bad" : "warn") + '">' + fmt(t.reports) + (t.hidden ? " · hidden" : "") + "</span>");
+            }).join("") : "") + "</section>" +
+            '<section class="us-card"><div class="us-ch"><h3>Other safety history</h3></div>' +
+            list("Reports they made", s.made.map(function (x) { return [x.about + (x.reason ? ": “" + x.reason + "”" : ""), date(x.at) + " · " + x.status]; })) +
+            list("Blocked by", s.blocked_by.map(function (x) { return [x.name, date(x.at)]; })) +
+            list("They blocked", s.blocked.map(function (x) { return [x.name, date(x.at)]; })) +
+            list("Removed from live classes", s.removed.map(function (x) { return [x.class + " (by " + x.teacher + ")", date(x.at)]; })) +
+            list("Suspensions", s.suspensions.map(function (x) { return [x.action + (x.detail ? ": " + x.detail : ""), x.by + " · " + date(x.created_at)]; })) +
+            (p.role === "teacher" ? list("Live class warnings", s.warnings.map(function (x) { return [x.class + (x.note ? ": " + x.note : ""), date(x.at)]; })) : "") +
+            row("Muted by", fmt(s.muted_by)) + "</section></div>";
+    }
+    if (ftab === "support") {
+        return '<section class="us-card"><div class="us-ch"><h3>Support tickets</h3><a class="us-btn sm" href="/admin_support">Open Support</a></div>' + (d.support.length ? d.support.map(function (t) {
+            return '<details class="us-rep"><summary><span><b>#' + num(t.id) + " " + esc(t.subject) + '</b> <span class="us-m">· ' + esc(t.category || "") + " · " + esc(dt(t.created_at)) + '</span></span><span><span class="us-pill ' + (t.priority === "high" || t.priority === "urgent" ? "bad" : "grey") + '">' + esc(t.priority || "") + '</span><span class="us-pill ' + (t.status === "resolved" ? "ok" : "warn") + '">' + esc(t.status) + "</span></span></summary>" +
+                '<p style="margin:8px 0;font-size:.85rem;white-space:pre-wrap">' + esc(t.description) + "</p>" + (t.response ? '<div class="us-chat"><b>Eschool replied</b> <span class="us-m">' + esc(dt(t.response_date)) + "</span><div style=\"white-space:pre-wrap\">" + esc(t.response) + "</div></div>" : '<p class="us-m">Not answered yet.</p>') + "</details>";
+        }).join("") : '<p class="us-m">No support tickets.</p>') + "</section>";
+    }
+    if (ftab === "family") {
+        var f = d.family;
+        return '<div class="us-grid g2"><section class="us-card"><div class="us-ch"><h3>' + (p.role === "parent" ? "Children" : "Parents") + "</h3></div>" + (f.links.length ? f.links.map(function (x) {
+            return '<div class="us-row"><span><b>' + esc(x.name) + "</b>" + (x.relationship ? ' <span class="us-m">(' + esc(x.relationship) + ")</span>" : "") + '<div class="us-m">' + esc(x.status) + " since " + esc(date(x.since)) + (x.sees.length ? " · can see: " + esc(x.sees.join(", ").replace(/_/g, " ")) : "") + "</div></span>" +
+                '<span><span class="us-pill ' + (x.status === "active" ? "ok" : "grey") + '">' + esc(x.status) + '</span> <button type="button" class="us-btn sm" data-open="' + num(x.id) + '">Open</button></span></div>';
+        }).join("") : '<p class="us-m">No family links.</p>') + "</section>" +
+            '<section class="us-card"><div class="us-ch"><h3>Parent access history</h3></div>' + (f.access.length ? '<ul class="us-tl">' + f.access.map(function (x) { return '<li class="c-family"><time>' + esc(dt(x.at)) + '</time><i class="dot"></i><span>' + esc(x.text) + "</span></li>"; }).join("") + "</ul>" : '<p class="us-m">Nothing yet.</p>') +
+            (f.controls.length ? '<div class="us-ch" style="margin-top:12px"><h3>Parental controls changes</h3></div><ul class="us-tl">' + f.controls.map(function (x) { return '<li class="c-family"><time>' + esc(dt(x.at)) + '</time><i class="dot"></i><span>' + esc(x.text) + "</span></li>"; }).join("") + "</ul>" : "") + "</section></div>";
+    }
+    if (ftab === "account") {
+        return '<div class="us-grid g2"><section class="us-card"><div class="us-ch"><h3>Devices</h3></div>' + (acc.devices.length ? '<table class="us-tbl2"><thead><tr><th>Device</th><th>First used</th><th>Last used</th><th>Status</th></tr></thead><tbody>' + acc.devices.map(function (x) {
+            return "<tr><td>" + esc(x.label) + (x.google ? ' <span class="us-m">(Google)</span>' : "") + "</td><td>" + esc(date(x.first)) + "</td><td>" + esc(ago(x.last)) + '</td><td><span class="us-pill ' + (x.ended ? "grey" : "ok") + '">' + (x.ended ? "Signed out" : "Signed in") + "</span></td></tr>";
+        }).join("") + "</tbody></table>" : '<p class="us-m">No devices recorded.</p>') +
+            '<div class="us-ch" style="margin-top:12px"><h3>Security</h3></div>' + row("Signs in with", acc.google ? "Google" : "Email and password") + row("Password last set", acc.password_set ? date(acc.password_set) : "–") +
+            row("Backup email", acc.backup_email ? (acc.backup_verified ? "set and confirmed" : "set, not confirmed") : "none") + row("Failed sign-ins (30 days)", fmt(acc.failed_30)) + "</section>" +
+            '<section class="us-card"><div class="us-ch"><h3>Account events</h3><span class="us-m">newest first</span></div>' + (acc.events.length ? '<ul class="us-tl">' + acc.events.map(function (x) { return '<li class="c-account ' + (x.kind === "failed" ? "lv-warn" : "") + '"><time>' + esc(dt(x.at)) + '</time><i class="dot"></i><span>' + esc(x.text) + "</span></li>"; }).join("") + "</ul>" : '<p class="us-m">No events recorded.</p>') + "</section></div>";
+    }
+    if (ftab === "admin") {
+        var views = d.admin_history.filter(function (x) { return x.action === "Viewed person file"; });
+        var acts = d.admin_history.filter(function (x) { return x.action !== "Viewed person file"; });
+        return '<section class="us-card"><div class="us-ch"><h3>What admins did to this account</h3><a class="us-btn sm" href="/admin-activity">Full activity log</a></div>' +
+            (views.length ? '<p class="us-m" style="margin-bottom:8px"><i class="fas fa-eye" aria-hidden="true"></i> This file was opened ' + fmt(views.length) + (views.length === 1 ? " time" : " times") + " by admins, last by " + esc(views[0].by) + " " + esc(ago(views[0].created_at)) + ".</p>" : "") +
+            (acts.length ? '<ul class="us-tl">' + acts.map(function (x) {
+            return '<li class="c-admin"><time>' + esc(dt(x.created_at)) + '</time><i class="dot"></i><span><b>' + esc(x.by) + "</b>: " + esc(x.action) + (x.detail ? ' <span class="us-m">(' + esc(x.detail) + ")</span>" : "") + "</span></li>";
+        }).join("") + "</ul>" : '<p class="us-m">No admin has changed this account.</p>') + "</section>";
+    }
+    return "";
+}
+function row(a, b) { return '<div class="us-row"><span>' + esc(a) + "</span><span>" + b + "</span></div>"; }
+function list(title, items) { return '<div class="us-row"><span><b>' + esc(title) + "</b></span><span>" + fmt(items.length) + "</span></div>" + items.slice(0, 15).map(function (x) { return '<div class="us-row" style="padding-left:12px"><span class="us-m">' + esc(x[0]) + '</span><span class="us-m">' + esc(x[1]) + "</span></div>"; }).join(""); }
+function moneySummary() {
+    var m = F.money, p = F.person, out = "";
+    if (p.role === "parent") out += row("Paid for plans", esc(money(m.plans_paid))) + row("Paid for lessons", esc(money(m.tutoring_paid)));
+    else if (p.role === "teacher") out += row("Earned from lessons", esc(money(m.tutoring_earned)));
+    else out += row("Plans paid for them", esc(money(m.plans_for_them))) + row("Lessons paid for them", esc(money(m.tutoring_for_them)));
+    return out + row("Payments", fmt(m.plan_payments.length + m.tutoring_payments.length) + (m.pending ? ' · <span class="us-pill warn">' + fmt(m.pending) + " waiting</span>" : ""));
+}
+
+/* file events */
+$("file").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-ft]"); if (t) { ftab = t.getAttribute("data-ft"); document.querySelectorAll("#ftabs [data-ft]").forEach(function (b) { b.setAttribute("aria-selected", b === t ? "true" : "false"); }); $("fbody").innerHTML = fileTab(); return; }
+    var g = e.target.closest("[data-goto]"); if (g) { ftab = g.getAttribute("data-goto"); drawFile(); $("ftabs").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    var c = e.target.closest("[data-cat]"); if (c) { tlCat = c.getAttribute("data-cat"); $("fbody").innerHTML = fileTab(); return; }
+    var o = e.target.closest("[data-open]"); if (o) { openFile(Number(o.getAttribute("data-open")), true); return; }
+    var r = e.target.closest("[data-rep]"); if (r) { decideReport(r); return; }
+    var a = e.target.closest("[data-act]"); if (a) action(a.getAttribute("data-act"));
+});
+function decideReport(b) {
+    var id = Number(b.getAttribute("data-rep")), st = b.getAttribute("data-st"), n = document.querySelector('[data-rnote="' + id + '"]');
+    b.disabled = true;
+    api("/api/admin/reports/message/" + id, { method: "POST", body: { status: st, note: n ? n.value.trim() : "" } })
+        .then(function () { var keep = ftab; return openFile(F.person.id, false).then(function () { ftab = keep; drawFile({ closed: "Report closed.", actioned: "Marked as action taken.", open: "Report reopened." }[st], "ok"); load(); badges(); }); })
+        .catch(function (e) { b.disabled = false; note("actNote", e.message, "bad"); });
+}
+
+/* account actions (each opens a small form in the file) */
+function form(opts) {
+    var box = $("actBox");
+    box.innerHTML = '<div class="us-form ' + (opts.danger ? "danger" : "") + '"><h4>' + esc(opts.title) + "</h4><p>" + esc(opts.text) + "</p>" + (opts.fields || "") +
+        '<div class="btns"><button type="button" class="us-btn sm" id="fNo">Cancel</button><button type="button" class="us-btn sm ' + (opts.danger ? "danger solid" : "primary") + '" id="fYes">' + esc(opts.yes) + '</button></div><div class="us-err" id="fErr"></div></div>';
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
+    var first = box.querySelector("input, select, textarea"); (first || $("fYes")).focus();
+    $("fNo").addEventListener("click", function () { box.innerHTML = ""; });
+    $("fYes").addEventListener("click", function () {
+        var v = {}; box.querySelectorAll("[data-v]").forEach(function (el) { v[el.getAttribute("data-v")] = el.value.trim(); });
+        if (opts.check) { var bad = opts.check(v); if (bad) { $("fErr").textContent = bad; return; } }
+        $("fYes").disabled = true; $("fErr").textContent = "";
+        opts.run(v).catch(function (e) { $("fErr").textContent = e.message; $("fYes").disabled = false; });
+    });
+}
+function after(msg) { var id = F.person.id, keep = ftab; load(); badges(); return openFile(id, false).then(function () { ftab = keep; drawFile(msg, "ok"); }); }
+function action(act) {
+    var p = F.person, url = "/api/admin/people/" + p.id;
+    if (act === "print") return printFile();
+    if (act === "role") form({ title: "Change account type", text: "They are signed out and see the pages for the new type next time they sign in.",
+        fields: '<label for="vRole">New type</label><select id="vRole" data-v="role">' + Object.keys(ROLES).filter(function (r) { return r !== p.role; }).map(function (r) { return '<option value="' + r + '">' + ROLES[r][0] + "</option>"; }).join("") + "</select>",
+        yes: "Change type", run: function (v) { return api(url + "/action", { method: "POST", body: { action: "role", role: v.role } }).then(function () { return after("Account type changed to " + ROLES[v.role][0] + "."); }); } });
+    if (act === "plan") form({ title: "Set their plan", text: "Use this after a payment made outside the app, or to fix a mistake. Adding days to the same plan extends it.",
+        fields: '<div class="row2"><div><label for="vPlan">Plan</label><select id="vPlan" data-v="plan"><option value="basic">Basic</option><option value="pro">Pro</option><option value="free">Free (end paid plan)</option></select></div><div><label for="vDays">Days</label><input id="vDays" data-v="days" type="number" min="1" max="730" value="30"></div></div>',
+        yes: "Save plan", run: function (v) { return api(url + "/plan", { method: "POST", body: { plan: v.plan, days: Number(v.days) || 30 } }).then(function () { return after("Plan updated."); }); } });
+    if (act === "reset") form({ title: "Reset their password?", text: "They are signed out everywhere and get a temporary password, shown once. Give it to them privately and ask them to change it.",
+        yes: "Reset password", run: function () { return api(url + "/action", { method: "POST", body: { action: "reset_password" } }).then(function (d) {
+            return after("").then(function () { var n = $("actNote"); n.hidden = false; n.className = "us-note ok"; n.innerHTML = 'Temporary password: <span class="us-mono">' + esc(d.temp_password) + '</span> <button type="button" class="us-btn sm" id="cp">Copy</button> It won’t be shown again.';
+                $("cp").addEventListener("click", function () { try { navigator.clipboard.writeText(d.temp_password); this.textContent = "Copied"; } catch (e) {} }); });
+        }); } });
+    if (act === "signout") form({ title: "Sign them out on every device?", text: "Useful if their account may have been used by someone else.", yes: "Sign out everywhere",
+        run: function () { return api(url + "/action", { method: "POST", body: { action: "sign_out" } }).then(function () { return after("Signed out on every device."); }); } });
+    if (act === "unsuspend") form({ title: "Lift the suspension?", text: "They can sign in again straight away and get a notification.", yes: "Lift suspension",
+        run: function () { return api(url + "/action", { method: "POST", body: { action: "unsuspend" } }).then(function () { return after("Suspension lifted."); }); } });
+    if (act === "suspend") form({ title: "Suspend " + p.name + "?", danger: true, text: "They are signed out and can’t sign in until the suspension ends. Their content stays.",
+        fields: '<div class="row2"><div><label for="vDays2">For how long</label><select id="vDays2" data-v="days"><option value="1">1 day</option><option value="7" selected>7 days</option><option value="30">30 days</option><option value="0">Until I lift it</option></select></div></div><label for="vReason">Reason (shown to them when they try to sign in)</label><textarea id="vReason" data-v="reason" maxlength="300"></textarea>',
+        check: function (v) { return v.reason.length < 5 ? "Write a short reason. They will see it." : ""; },
+        yes: "Suspend", run: function (v) { return api(url + "/action", { method: "POST", body: { action: "suspend", reason: v.reason, days: Number(v.days) } }).then(function () { return after(p.name + " is suspended."); }); } });
+    if (act === "delete") form({ title: "Delete " + p.name + " for good?", danger: true, text: "This removes their account and everything they own: resources, messages, family links, payment records and settings. It can’t be undone.",
+        fields: '<label for="vConfirm">Type their email to confirm: ' + esc(p.email) + '</label><input id="vConfirm" data-v="confirm" autocomplete="off">',
+        check: function (v) { return v.confirm.toLowerCase() !== String(p.email).toLowerCase() ? "Type their email exactly to confirm." : ""; },
+        yes: "Delete account", run: function (v) { return api(url, { method: "DELETE", body: { confirm: v.confirm } }).then(function () {
+            S.sel = null; F = null; $("file").innerHTML = '<div class="us-note ok">' + esc(p.name) + "’s account was deleted.</div>"; try { history.replaceState(null, "", location.pathname); } catch (e) {} load(); badges();
+        }); } });
+}
+
+/* full report (print / save as PDF) */
+function printFile() {
+    var d = F, p = d.person, s = d.safety, l = L(), m = d.money;
+    var tr = function (cells) { return "<tr>" + cells.map(function (c) { return "<td>" + esc(c) + "</td>"; }).join("") + "</tr>"; };
+    var h = "<h1>Eschool person report</h1><div>" + esc(p.name) + " · #" + p.id + " · " + esc((ROLES[p.role] || ROLES.student)[0]) + " · printed " + esc(dt(new Date().toISOString())) + "</div>" +
+        "<table>" + [["Email", p.email], ["Phone", (p.details || {}).phone || ""], ["Country", p.country_name || ""], ["Joined", date(p.joined)], ["Last active", dt(p.last_active) + (p.device ? " · " + p.device : "")], ["Status", p.suspension ? "Suspended" : p.status], ["Plan", p.role === "student" ? (p.plan_active ? p.plan : "free") : "–"]].map(tr).join("") + "</table>" +
+        '<div class="box"><b>Needs attention:</b> ' + esc(d.attention.join("; ") || "nothing") + "</div>" +
+        "<h2>Reports about them</h2><table>" + (s.about.map(function (r) { return tr([dt(r.at), r.by, r.reason, r.status]); }).join("") || "<tr><td>None</td></tr>") + "</table>" +
+        "<h2>Other safety history</h2><table>" + [["Reports they made", s.made.length], ["Tips reported", s.tips.length], ["Blocked by", s.blocked_by.map(function (x) { return x.name; }).join(", ") || "nobody"], ["Removed from live classes", s.removed.length], ["Suspensions", s.suspensions.map(function (x) { return x.action + " " + date(x.created_at) + (x.detail ? " (" + x.detail + ")" : ""); }).join("; ") || "none"]].map(tr).join("") + "</table>" +
+        "<h2>Money</h2><table>" + m.plan_payments.map(function (x) { return tr([dt(x.created_at), x.plan + " plan, " + x.days + " days for " + x.for, "by " + x.payer, money(x.amount), x.status]); }).join("") + m.tutoring_payments.map(function (x) { return tr([dt(x.created_at), "Tutoring " + x.sessions + " " + x.subject + " lessons", "by " + x.payer, money(x.amount), x.status]); }).join("") + "</table>" +
+        "<h2>Support tickets</h2><table>" + (d.support.map(function (t) { return tr([dt(t.created_at), "#" + t.id + " " + t.subject, t.status]); }).join("") || "<tr><td>None</td></tr>") + "</table>" +
+        "<h2>Devices</h2><table>" + d.account.devices.map(function (x) { return tr([x.label, "first " + date(x.first), "last " + dt(x.last), x.ended ? "signed out" : "signed in"]); }).join("") + "</table>" +
+        "<h2>Admin history</h2><table>" + (d.admin_history.map(function (x) { return tr([dt(x.created_at), x.by, x.action, x.detail || ""]); }).join("") || "<tr><td>None</td></tr>") + "</table>" +
+        "<h2>Activity timeline (latest 120)</h2><table>" + d.timeline.slice(0, 120).map(function (x) { return tr([dt(x.at), x.cat, x.text]); }).join("") + "</table>";
+    $("usPrint").innerHTML = h;
+    setTimeout(function () { window.print(); $("usPrint").innerHTML = ""; }, 50);
+}
+
+load();
+})();
+</script>
+{% endblock %}

@@ -1,21 +1,21 @@
+{#- `me` = the LOGGED-IN user (sent by the server). Pages like /profile/<id> send their own
+    firstname/lastname/avatar_url for the person being viewed, so the header and menus
+    below use `me`, never those. Fallback from the session if `me` isn't sent. -#}
+{%- if me is not defined -%}
+{%- set me = {'id': session.get('user_id'), 'firstname': session.get('firstname') or '', 'lastname': session.get('lastname') or '', 'country': session.get('country'), 'avatar_url': none} -%}
+{%- endif -%}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2360A5FA'/%3E%3Cstop offset='100%25' stop-color='%232DD4BF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='12' fill='%230F172A'/%3E%3Cpath d='M32 6 60 21 32 36 4 21Z' fill='url(%23g)'/%3E%3Ccircle cx='32' cy='21' r='3.4' fill='%230F172A'/%3E%3Cpath d='M32 21C40 27 44 34 44 44' fill='none' stroke='url(%23g)' stroke-width='3.4' stroke-linecap='round'/%3E%3Cpath d='M38 44h12' fill='none' stroke='url(%23g)' stroke-width='3.4' stroke-linecap='round'/%3E%3Ccircle cx='44' cy='49' r='4' fill='url(%23g)'/%3E%3C/svg%3E">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eschool</title>
+    <title>{% block title %}Eschool{% endblock %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-    <!--
-        This base template expects a `country` variable from your Flask
-        route (e.g. render_template('dashboard.html', ..., country=user.country)),
-        same "KE" / "US" / None value the profile page's country dropdown
-        reads and writes via /api/users/<id>/country. Wherever this template
-        previously showed the static text "Learner" (top-right user menu and
-        the mobile sidebar header), it now shows the user's country instead,
-        falling back to "Learner" if country hasn't been set yet.
-    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    {# The country under the name comes from the server (country_name), for every country. #}
     <style>
         :root {
             --primary-color: #4361ee;
@@ -38,6 +38,19 @@
             --gray-800: #1f2937;
             --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --transition: all 0.3s ease;
+            /* defaults (Settings > Appearance changes them for other accent colours) */
+            --primary-light: #e0e7ff;
+            --primary-dark: #3a0ca3;
+            --header-h: 72px;
+        }
+
+        /* keyboard focus is always visible */
+        :focus-visible { outline: 3px solid color-mix(in srgb, var(--primary-color) 55%, transparent); outline-offset: 2px; }
+        .skip-link { position: absolute; left: 12px; top: -60px; z-index: 3000; padding: 10px 16px; border-radius: 10px;
+            background: var(--primary-color); color: #fff; font-weight: 600; text-decoration: none; transition: top .2s; }
+        .skip-link:focus { top: 12px; }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
         }
 
         * {
@@ -54,23 +67,13 @@
             min-height: 100vh;
         }
 
-        /* ===== HIDE SCROLLBAR ===== */
-        body::-webkit-scrollbar,
-        .mobile-sidebar::-webkit-scrollbar,
-        .notifications-list::-webkit-scrollbar,
-        .search-results-dropdown::-webkit-scrollbar {
-            display: none;
-            width: 0;
-            height: 0;
-        }
-
-        body,
-        .mobile-sidebar,
-        .notifications-list,
-        .search-results-dropdown {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
+        /* ===== THIN SCROLLBARS (still show that a list can scroll) ===== */
+        * { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+        *::-webkit-scrollbar { width: 8px; height: 8px; }
+        *::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+        *::-webkit-scrollbar-track { background: transparent; }
+        body.dark-mode * { scrollbar-color: #475569 transparent; }
+        body.dark-mode *::-webkit-scrollbar-thumb { background: #475569; }
 
         /* ========== HAMBURGER BUTTON ========== */
         .hamburger {
@@ -163,7 +166,7 @@
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: var(--gray-400);
+            color: var(--gray-500);
             font-weight: 600;
         }
 
@@ -182,7 +185,8 @@
             color: var(--dark-color);
         }
 
-        .search-result-item:hover {
+        .search-result-item:hover,
+        .search-result-item.kb {
             background-color: var(--gray-50);
         }
 
@@ -247,7 +251,8 @@
             color: #f1f5f9;
         }
 
-        body.dark-mode .search-result-item:hover {
+        body.dark-mode .search-result-item:hover,
+        body.dark-mode .search-result-item.kb {
             background-color: #263449;
         }
 
@@ -272,10 +277,12 @@
             height: 100vh;
             background: white;
             padding: 12px 0 10px 0;
+            height: 100dvh;
             transform: translateX(-100%);
-            transition: transform 0.3s ease;
+            visibility: hidden;
+            transition: transform 0.3s ease, visibility 0s linear 0.3s;
             z-index: 1000;
-            overflow-y: hidden;
+            overflow-y: auto;
             box-shadow: 2px 0 15px rgba(0, 0, 0, 0.15);
             display: flex;
             flex-direction: column;
@@ -283,6 +290,8 @@
 
         .mobile-sidebar.open {
             transform: translateX(0);
+            visibility: visible;
+            transition: transform 0.3s ease, visibility 0s;
         }
 
         .mobile-sidebar-close {
@@ -427,7 +436,8 @@
 
         .mobile-sidebar-nav-list {
             flex: 1;
-            overflow-y: hidden;
+            overflow-y: auto;
+            min-height: 0;
             padding: 0;
         }
 
@@ -488,11 +498,45 @@
             padding: 8px 12px;
             border-radius: 8px;
             transition: background-color 0.3s;
+            border: 0;
+            background: none;
+            font: inherit;
+            color: inherit;
+            cursor: pointer;
+            text-align: left;
         }
 
         .user-profile-trigger:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: rgba(0, 0, 0, 0.05);
         }
+
+        body.dark-mode .user-profile-trigger:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        /* learners' pictures are badges: show the whole badge, no circle or colour behind it */
+        .user-avatar:has(> img[src*="/badge-dp/"]), .dropdown-avatar:has(> img[src*="/badge-dp/"]),
+        .user-avatar-sm:has(> img[src*="/badge-dp/"]), .acc-avatar:has(> img[src*="/badge-dp/"]) {
+            background: none !important; border-radius: 0 !important; overflow: visible !important;
+        }
+        .user-avatar > img[src*="/badge-dp/"], .dropdown-avatar > img[src*="/badge-dp/"],
+        .user-avatar-sm > img[src*="/badge-dp/"], .acc-avatar > img[src*="/badge-dp/"] {
+            object-fit: contain !important; border-radius: 0 !important;
+        }
+
+        /* small messages at the bottom of the screen (instead of pop-up alerts) */
+        .es-toasts { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 3000;
+            display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+        .es-toast { pointer-events: auto; padding: 11px 18px; border-radius: 12px; background: #1e293b; color: #fff;
+            font-size: .9rem; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); max-width: min(92vw, 420px); }
+        .es-toast.bad { background: #b91c1c; }
+        /* no internet */
+        .offline-bar { display: none; position: sticky; top: var(--header-h); z-index: 950; padding: 10px 20px; text-align: center;
+            background: #fef3c7; color: #92400e; font-size: .9rem; font-weight: 600; border-bottom: 1px solid #fcd34d; }
+        .offline-bar.show { display: block; }
+        body.dark-mode .offline-bar { background: #3b2a0b; color: #fde68a; border-color: #92400e; }
+        .logout-form { margin: 0; }
+        .logout-form button { width: 100%; border: 0; background: none; font: inherit; cursor: pointer; text-align: left; }
 
         .user-avatar {
             width: 36px;
@@ -643,19 +687,249 @@
             background-color: #fee;
         }
 
-        .dropdown-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 999;
-            display: none;
+
+        /* ===== SWITCH ACCOUNT / ADD ACCOUNT (students only) ===== */
+        .menu-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #333;
+            cursor: pointer;
+            transition: background-color 0.2s;
         }
 
-        .user-profile-dropdown.active ~ .dropdown-backdrop {
+        .menu-row:hover {
+            background-color: #f8f9fa;
+        }
+
+        .menu-row i:first-child {
+            width: 20px;
+            text-align: center;
+            color: var(--primary-color);
+            font-size: 14px;
+        }
+
+        .switch-caret {
+            margin-left: auto;
+            font-size: 11px;
+            transition: transform 0.3s;
+        }
+
+        .switch-caret.open {
+            transform: rotate(180deg);
+        }
+
+        .account-list {
+            display: none;
+            background: #f8fafc;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .account-list.open {
             display: block;
         }
+
+        .account-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px 10px 28px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .account-row:hover {
+            background: #eef2ff;
+        }
+
+        .account-row .acc-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .account-row .acc-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .account-row .acc-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .account-row .acc-email {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .account-row .acc-current {
+            margin-left: auto;
+            color: var(--success-color);
+            font-size: 12px;
+        }
+
+        .acc-empty {
+            padding: 10px 16px 10px 28px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+         .acc-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(3px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 16px;
+            animation: accFade 0.2s ease;
+        }
+
+        @keyframes accFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes accRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+        .acc-modal {
+            background: #fff;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 420px;
+            padding: 28px 28px 22px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+            animation: accRise 0.25s ease;
+        }
+
+        .acc-modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e0e7ff;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+
+        .acc-modal h3 {
+            font-size: 1.2rem;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .acc-modal .acc-sub {
+            font-size: 0.875rem;
+            color: var(--gray-color);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .acc-field { margin-bottom: 14px; }
+
+        .acc-field label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+
+        .acc-input-wrap { position: relative; }
+
+        .acc-input-wrap > i.lead {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-400);
+            font-size: 0.85rem;
+            pointer-events: none;
+        }
+
+        .acc-input-wrap input {
+            width: 100%;
+            padding: 11px 40px 11px 38px;
+            font-size: 0.92rem;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            background: #fff;
+            color: #0f172a;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .acc-input-wrap input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
+        }
+
+        .acc-eye {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 8px;
+            color: var(--gray-400);
+        }
+
+        .acc-eye:hover { color: var(--gray-700); }
+
+        .acc-error {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: 0.82rem;
+            margin-bottom: 14px;
+        }
+
+        .acc-error.show { display: flex; }
+
+        .acc-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .acc-actions button {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .acc-btn-primary { background: var(--primary-color); color: #fff; }
+        .acc-btn-primary:hover { filter: brightness(0.92); }
+        .acc-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .acc-btn-secondary { background: #f1f5f9; color: #475569; }
+        .acc-btn-secondary:hover { background: #e2e8f0; }
 
         h1, h2, h3, h4, h5, h6 {
             font-family: 'Poppins', sans-serif;
@@ -755,6 +1029,8 @@
             height: fit-content;
             position: sticky;
             top: 100px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
         }
 
         .sidebar .nav-item {
@@ -871,6 +1147,22 @@
             background-color: #f9fafb;
         }
         
+        .nf-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
+        .nf-btn { padding: 5px 12px; border-radius: 999px; border: 1px solid #cbd5e1; background: transparent; color: #334155; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .nf-btn:hover { background: #f1f5f9; }
+        .nf-btn.nf-accept { background: var(--primary-color, #4361ee); border-color: var(--primary-color, #4361ee); color: #fff; }
+        .nf-btn.nf-accept:hover { filter: brightness(.92); background: var(--primary-color, #4361ee); }
+        .nf-btn:disabled { opacity: .6; cursor: default; }
+        .nf-link { font-size: 12px; font-weight: 600; color: var(--primary-color, #4361ee); text-decoration: none; margin-left: 2px; }
+        .nf-link:hover { text-decoration: underline; }
+        .nf-status { margin: 6px 0 2px; font-size: 12px; font-weight: 600; color: #64748b; }
+        .nf-status.accepted { color: #059669; }
+        .nf-status.bad { color: #dc2626; font-weight: 500; }
+        body.dark-mode .nf-btn { border-color: #475569; color: #e2e8f0; }
+        body.dark-mode .nf-btn:hover { background: #334155; }
+        body.dark-mode .nf-btn.nf-accept { color: #fff; }
+        body.dark-mode .nf-status { color: #94a3b8; }
+        body.dark-mode .nf-status.accepted { color: #34d399; }
         .notification-item.unread {
             background-color: #eef2ff;
         }
@@ -910,7 +1202,7 @@
         
         .notification-time {
             font-size: 11px;
-            color: #9ca3af;
+            color: #6b7280;
         }
 
         .notification-empty,
@@ -918,7 +1210,7 @@
         .notification-error {
             padding: 32px 20px;
             text-align: center;
-            color: var(--gray-400);
+            color: var(--gray-500);
             font-size: 0.9rem;
         }
 
@@ -1152,64 +1444,171 @@
             background-color: #334155;
         }
 
-        /* Hide all scrollbars */
-        *::-webkit-scrollbar {
-            display: none;
+        /* Switch / Add account dark mode */
+        body.dark-mode .menu-row {
+            color: #e2e8f0;
         }
 
-        * {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+        body.dark-mode .menu-row:hover {
+            background: #263449;
         }
+
+        body.dark-mode .account-list {
+            background: #0f172a;
+        }
+
+        body.dark-mode .account-row:hover {
+            background: #263449;
+        }
+
+        body.dark-mode .account-row .acc-name {
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .account-row .acc-email,
+        body.dark-mode .acc-empty {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .acc-modal { background: #1e293b; }
+        body.dark-mode .acc-modal h3 { color: #f1f5f9; }
+        body.dark-mode .acc-modal-icon { background: #1c2b47; }
+        body.dark-mode .acc-field label { color: #cbd5e1; }
+        body.dark-mode .acc-input-wrap input { background: #0f172a; color: #f1f5f9; border-color: #334155; }
+        body.dark-mode .acc-error { background: #3b1219; color: #fca5a5; border-color: #7f1d1d; }
+        body.dark-mode .acc-btn-secondary { background: #334155; color: #e2e8f0; }
+
+
     </style>
+<script>
+    // The courses for this learner's country (null = show every course).
+    window.ES_COURSE_IDS = {{ my_course_ids | tojson }};
+    window.esMyCourses = function (list) {
+        return Array.isArray(window.ES_COURSE_IDS)
+            ? list.filter(function (c) { return window.ES_COURSE_IDS.indexOf(c.id) !== -1; })
+            : list;
+    };
+</script>
+{% block head %}{% endblock %}
 </head>
 <body>
     <!-- SITE-WIDE APPEARANCE INIT -->
     <script>
     (function () {
         try {
-            var userKey = "{{ session.get('email', 'anonymous') }}";
+            var userKey = {{ session.get('email', 'anonymous') | tojson }};
 
             function storageKey(name) {
                 return 'settings.' + name + '.' + userKey;
             }
 
+            // #4a6cf7 -> rgba(74,108,247,.1)
+            var softTint = function (hex) {
+                var n = parseInt(String(hex).replace('#', ''), 16);
+                return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', .1)';
+            };
             var accentMap = {
                 blue:   { color: '#4a6cf7', hover: '#3a5ce5' },
                 green:  { color: '#10b981', hover: '#059669' },
                 purple: { color: '#8b5cf6', hover: '#7c3aed' },
-                dark:   { color: '#1e293b', hover: '#0f172a' }
+                dark:   { color: '#475569', hover: '#334155' }     // Slate (lighter, so buttons and links stay readable)
             };
 
             var savedColor = localStorage.getItem(storageKey('themeColor'));
-            if (savedColor && accentMap[savedColor]) {
+            if (savedColor && savedColor !== 'blue' && accentMap[savedColor]) {   // blue = the original look, nothing to change
                 document.documentElement.style.setProperty('--accent-color', accentMap[savedColor].color);
                 document.documentElement.style.setProperty('--accent-hover', accentMap[savedColor].hover);
-                document.documentElement.style.setProperty('--accent-soft', accentMap[savedColor].color + '1a');
+                document.documentElement.style.setProperty('--accent-soft', softTint(accentMap[savedColor].color));   // plain rgba: works on older phones
                 document.documentElement.style.setProperty('--primary-color', accentMap[savedColor].color);
                 document.documentElement.style.setProperty('--secondary-color', accentMap[savedColor].hover);
             }
 
             var savedMode = localStorage.getItem(storageKey('themeMode'));
-            var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (savedMode === 'dark' || (savedMode === 'auto' && prefersDark)) {
+            var darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            if (savedMode === 'dark' || (savedMode === 'auto' && darkQuery.matches)) {
                 document.body.classList.add('dark-mode');
             }
+            // the "dark" accent is almost invisible on a dark page, so it uses a lighter slate there
+            var fixDarkAccent = function () {
+                if (savedColor !== 'dark') return;
+                var on = document.body.classList.contains('dark-mode');
+                document.documentElement.style.setProperty('--primary-color', on ? '#64748b' : accentMap.dark.color);
+                document.documentElement.style.setProperty('--accent-color', on ? '#64748b' : accentMap.dark.color);
+            };
+            fixDarkAccent();
+            new MutationObserver(fixDarkAccent).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
-            var savedFontSize = localStorage.getItem(storageKey('fontSize'));
-            if (savedFontSize) {
-                document.documentElement.style.setProperty('--base-font-size', savedFontSize + 'px');
+            // System mode: follow the device live when it switches light/dark
+            // (e.g. phones that go dark at sunset), on every page.
+            var onDeviceChange = function () {
+                var mode = null;
+                try { mode = localStorage.getItem(storageKey('themeMode')); } catch (e) {}
+                if (mode === 'auto') document.body.classList.toggle('dark-mode', darkQuery.matches);
+            };
+            if (darkQuery.addEventListener) darkQuery.addEventListener('change', onDeviceChange);
+            else if (darkQuery.addListener) darkQuery.addListener(onDeviceChange);
+
+            // a choice made in Settings in another tab applies here too
+            window.addEventListener('storage', function (e) {
+                if (!e.key || e.key !== storageKey('themeMode')) return;
+                var m = e.newValue;
+                document.body.classList.toggle('dark-mode', m === 'dark' || (m === 'auto' && darkQuery.matches));
+            });
+
+            // Text size (Settings > Appearance): pages are sized in px, so the
+            // whole content area is scaled; 16px is the normal size.
+            var applyTextSize = function (v) {
+                var px = Math.max(12, Math.min(20, parseInt(v, 10) || 16));
+                document.documentElement.style.setProperty('--base-font-size', px + 'px');
+                var tag = document.getElementById('esTextSize');
+                if (!tag) { tag = document.createElement('style'); tag.id = 'esTextSize'; document.head.appendChild(tag); }
+                var z = px / 16;
+                // pop-up windows are sized with vh, which zoom would stretch past the
+                // screen, so their height limit is divided back by the same amount
+                tag.textContent = px === 16 ? '' :
+                    '.dashboard-content-area { zoom: ' + z + '; }' +
+                    '.dashboard-content-area :is(.cg-dialog, .quiz-modal-content, .lv-dialog, .modal-content, .rp-modal-box, .ach-dialog, .pt-dialog)' +
+                    ' { max-height: calc((100dvh - 24px) / ' + z + ') !important; }' +
+                    '.dashboard-content-area #previewModal .pv-media :is(video, img) { max-height: calc((100dvh - 200px) / ' + z + ') !important; }';
+            };
+            window.esApplyTextSize = applyTextSize;
+
+            // A new device (nothing saved here yet): use the look saved with the account in Settings
+            if (localStorage.getItem(storageKey('themeMode')) === null && !sessionStorage.getItem('esAppearanceAsked')) {
+                sessionStorage.setItem('esAppearanceAsked', '1');
+                fetch('/api/settings', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+                    var ap = d && d.account && d.account.appearance;
+                    if (!ap) return;
+                    ['themeColor', 'themeMode', 'fontSize'].forEach(function (k) {
+                        if (ap[k] == null) return;
+                        localStorage.setItem(storageKey(k), String(ap[k]));
+                        // the same events a change in another tab sends, so this page updates too
+                        try { window.dispatchEvent(new StorageEvent('storage', { key: storageKey(k), newValue: String(ap[k]) })); } catch (e) {}
+                    });
+                    var c = accentMap[ap.themeColor];
+                    if (c && ap.themeColor !== 'blue') {
+                        document.documentElement.style.setProperty('--accent-color', c.color);
+                        document.documentElement.style.setProperty('--accent-hover', c.hover);
+                        document.documentElement.style.setProperty('--accent-soft', softTint(c.color));
+                        document.documentElement.style.setProperty('--primary-color', c.color);
+                        document.documentElement.style.setProperty('--secondary-color', c.hover);
+                    }
+                }).catch(function () {});
             }
+            applyTextSize(localStorage.getItem(storageKey('fontSize')));
+            window.addEventListener('storage', function (e) {
+                if (e.key === storageKey('fontSize')) applyTextSize(e.newValue);
+            });
         } catch (e) {
             // localStorage unavailable
         }
     })();
     </script>
 
-    <!-- Header -->
+    <a class="skip-link" href="#main">Skip to content</a>
     <header class="dashboard-header">
         <div class="header-container">
-            <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+            <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="mobileSidebar">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -1223,14 +1622,15 @@
             <div class="search-wrapper">
                 <div class="search-bar">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="globalSearchInput" placeholder="Search courses..." autocomplete="off">
+                    <input type="text" id="globalSearchInput" name="course_search" placeholder="Search courses..." autocomplete="off" data-lpignore="true" data-form-type="other"
+                           role="combobox" aria-label="Search courses" aria-autocomplete="list" aria-expanded="false" aria-controls="searchResults">
                 </div>
-                <div class="search-results-dropdown" id="searchResults"></div>
+                <div class="search-results-dropdown" id="searchResults" role="listbox" aria-label="Search results"></div>
             </div>
             
             <div class="header-actions">
                 <div class="notification-dropdown" id="notificationDropdown">
-                    <button class="notification-btn" id="notificationBtn">
+                    <button class="notification-btn" id="notificationBtn" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="notificationMenu">
                         <i class="far fa-bell"></i>
                         <span class="notification-badge" id="notificationBadge"></span>
                     </button>
@@ -1247,78 +1647,78 @@
                             </div>
                         </div>
                         <div class="notification-footer">
-                            <a href="/notifications" class="view-all-link">View all notifications →</a>
+                            <a href="/settings#notifications" class="view-all-link">View all notifications →</a>
                         </div>
                     </div>
                 </div>
                 
                 <div class="user-profile-dropdown" id="userProfileDropdown">
-                    <div class="user-profile-trigger" id="userProfileTrigger">
+                    <button type="button" class="user-profile-trigger" id="userProfileTrigger" aria-haspopup="true" aria-expanded="false" aria-controls="userDropdownMenu">
                         <div class="user-avatar" data-profile-avatar>
-                            {% if avatar_url %}
-                                <img src="{{ avatar_url }}" alt="Profile photo">
+                            {% if me.avatar_url %}
+                                <img src="{{ me.avatar_url }}" alt="Profile photo">
                             {% else %}
-                                {{ firstname[0] }}{{ lastname[0] }}
+                                {{ ((me.firstname or '')[:1] ~ (me.lastname or '')[:1]) | upper }}
                             {% endif %}
                         </div>
                         <div class="user-info">
-                            <div class="user-name">{{ firstname }} {{ lastname }}</div>
-                            <div class="user-role">{% if country == 'KE' %}🇰🇪 Kenya{% elif country == 'US' %}🇺🇸 United States{% else %}Learner{% endif %}</div>
+                            <div class="user-name">{{ me.firstname }} {{ me.lastname }}</div>
+                            <div class="user-role">{{ country_name or 'Learner' }}</div>
                         </div>
-                        <i class="fas fa-chevron-down dropdown-arrow"></i>
-                    </div>
+                        <i class="fas fa-chevron-down dropdown-arrow" aria-hidden="true"></i>
+                    </button>
                     
                     <div class="user-dropdown-menu" id="userDropdownMenu">
                         <div class="dropdown-header">
                             <div class="dropdown-avatar" data-profile-avatar>
-                                {% if avatar_url %}
-                                    <img src="{{ avatar_url }}" alt="Profile photo">
+                                {% if me.avatar_url %}
+                                    <img src="{{ me.avatar_url }}" alt="Profile photo">
                                 {% else %}
-                                    {{ firstname[0] }}{{ lastname[0] }}
+                                    {{ ((me.firstname or '')[:1] ~ (me.lastname or '')[:1]) | upper }}
                                 {% endif %}
                             </div>
                             <div>
-                                <div class="dropdown-name">{{ firstname }} {{ lastname }}</div>
+                                <div class="dropdown-name">{{ me.firstname }} {{ me.lastname }}</div>
                                 <div class="dropdown-email">{{ session.get('email', '') }}</div>
                             </div>
                         </div>
                         
                         <div class="dropdown-divider"></div>
-                        
-                        <a href="/dashboard" class="dropdown-item">
-                            <i class="fas fa-tachometer-alt"></i>
-                            <span>Dashboard</span>
+
+                        {% if role == 'student' %}
+                        <!-- SWITCH ACCOUNT / ADD ACCOUNT (students only) -->
+                        <div class="menu-row" id="switchAccountToggle" role="button" tabindex="0">
+                            <i class="fas fa-right-left"></i>
+                            <span>Switch Account</span>
+                            <i class="fas fa-chevron-down switch-caret" id="switchCaret"></i>
+                        </div>
+                        <div class="account-list" id="accountList"></div>
+
+                        <a href="#" class="dropdown-item" id="addAccountBtn">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Add Account</span>
                         </a>
-                        <a href="/profile" class="dropdown-item">
-                            <i class="fas fa-user"></i>
-                            <span>My Profile</span>
+
+                        <div class="dropdown-divider"></div>
+                        {% endif %}
+                        
+                        <a href="/support" class="dropdown-item">
+                            <i class="fas fa-question-circle"></i>
+                            <span>Help &amp; Support</span>
                         </a>
                         <a href="/settings" class="dropdown-item">
                             <i class="fas fa-cog"></i>
                             <span>Settings</span>
                         </a>
-                        <a href="/progres" class="dropdown-item">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <span>Progress</span>
-                        </a>
                         
                         <div class="dropdown-divider"></div>
                         
-                        <a href="/help" class="dropdown-item">
-                            <i class="fas fa-question-circle"></i>
-                            <span>Help & Support</span>
-                        </a>
-                        <a href="/aboutus" class="dropdown-item">
-                            <i class="fas fa-info-circle"></i>
-                            <span>About Us</span>
-                        </a>
-                        
-                        <div class="dropdown-divider"></div>
-                        
-                        <a href="/Login" class="dropdown-item logout-item">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Log Out</span>
-                        </a>
+                        <form method="post" action="/logout" class="logout-form" data-logout>
+                            <button type="submit" class="dropdown-item logout-item">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Log Out</span>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -1326,7 +1726,7 @@
     </header>
 
     <!-- ===== MOBILE SIDEBAR ===== -->
-    <nav class="mobile-sidebar" id="mobileSidebar">
+    <nav class="mobile-sidebar" id="mobileSidebar" aria-label="Menu" inert>
         <button class="mobile-sidebar-close" id="mobileSidebarClose" aria-label="Close menu">
             <i class="fas fa-times"></i>
         </button>
@@ -1334,21 +1734,21 @@
         <div class="mobile-sidebar-header">
             <div class="user-info-display">
                 <div class="user-avatar-sm" data-profile-avatar>
-                    {% if avatar_url %}
-                        <img src="{{ avatar_url }}" alt="Profile photo">
+                    {% if me.avatar_url %}
+                        <img src="{{ me.avatar_url }}" alt="Profile photo">
                     {% else %}
-                        {{ firstname[0] }}{{ lastname[0] }}
+                        {{ ((me.firstname or '')[:1] ~ (me.lastname or '')[:1]) | upper }}
                     {% endif %}
                 </div>
                 <div>
-                    <div class="user-name-sm">{{ firstname }} {{ lastname }}</div>
-                    <div class="user-role-sm">{% if country == 'KE' %}🇰🇪 Kenya{% elif country == 'US' %}🇺🇸 United States{% else %}Learner{% endif %}</div>
+                    <div class="user-name-sm">{{ me.firstname }} {{ me.lastname }}</div>
+                    <div class="user-role-sm">{{ country_name or 'Learner' }}</div>
                 </div>
             </div>
         </div>
 
         <div class="mobile-sidebar-nav-list">
-            <a href="/dashboard" class="nav-item active">
+            <a href="/dashboard" class="nav-item">
                 <i class="fas fa-tachometer-alt"></i>
                 <span>Dashboard</span>
             </a>
@@ -1384,73 +1784,7 @@
                 <span>Strategies</span>
             </a>
             <a href="/messages" class="nav-item">
-                <i class="fas fa-question-circle"></i>
-                <span>Messages</span>
-            </a>
-
-            <div class="nav-divider"></div>
-            
-            <a href="/settings" class="nav-item">
-                <i class="fas fa-cog"></i>
-                <span>Settings</span>
-            </a>
-            <a href="/help" class="nav-item">
-                <i class="fas fa-question-circle"></i>
-                <span>Help & Support</span>
-            </a>
-        </div>
-
-        <div class="nav-divider"></div>
-        
-        <a href="/Login" class="nav-item logout-item">
-            <i class="fas fa-sign-out-alt"></i>
-            <span>Log Out</span>
-        </a>
-    </nav>
-
-    <!-- Mobile sidebar overlay -->
-    <div class="mobile-sidebar-overlay" id="mobileOverlay"></div>
-
-    <!-- Main Layout -->
-    <div class="dashboard-layout">
-        <nav class="sidebar" id="sidebar">
-            <a href="/dashboard" class="nav-item active">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="/courses" class="nav-item">
-                <i class="fas fa-book-open"></i>
-                <span>Explore Courses</span>
-            </a>
-            <a href="/schedule" class="nav-item">
-                <i class="fas fa-calendar-alt"></i>
-                <span>Schedule</span>
-            </a>
-            <a href="/careerD" class="nav-item">
-                <i class="fa-solid fa-briefcase"></i>
-                <span>Career growth</span>
-            </a>
-            <a href="/progres" class="nav-item">
-                <i class="fas fa-chart-line"></i>
-                <span>Progress</span>
-            </a>
-            
-            <div class="nav-divider"></div>
-            
-            <a href="/resourses" class="nav-item">
-                <i class="fas fa-book"></i>
-                <span>Resources</span>
-            </a>
-            <a href="/live" class="nav-item">
-                <i class="fas fa-video"></i>
-                <span>Live classes</span>
-            </a>
-            <a href="/strategies" class="nav-item">
-                <i class="fa-solid fa-lightbulb"></i>
-                <span>Strategies</span>
-            </a>
-            <a href="/messages" class="nav-item">
-                <i class="fas fa-question-circle"></i>
+                <i class="fas fa-envelope"></i>
                 <span>Messages</span>
             </a>
 
@@ -1462,24 +1796,180 @@
             </a>
             <a href="/support" class="nav-item">
                 <i class="fas fa-question-circle"></i>
-                <span>Help & Support</span>
+                <span>Help &amp; Support</span>
+            </a>
+        </div>
+
+        <div class="nav-divider"></div>
+        
+        <form method="post" action="/logout" class="logout-form" data-logout>
+            <button type="submit" class="nav-item logout-item">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Log Out</span>
+            </button>
+        </form>
+    </nav>
+
+    <!-- Mobile sidebar overlay -->
+    <div class="mobile-sidebar-overlay" id="mobileOverlay"></div>
+
+    <!-- Main Layout -->
+    <div class="dashboard-layout">
+        <nav class="sidebar" id="sidebar" aria-label="Main menu">
+            <a href="/dashboard" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/courses" class="nav-item">
+                <i class="fas fa-book-open"></i>
+                <span>Explore Courses</span>
+            </a>
+            <a href="/schedule" class="nav-item">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Schedule</span>
+            </a>
+            <a href="/careerD" class="nav-item">
+                <i class="fa-solid fa-briefcase"></i>
+                <span>Career growth</span>
+            </a>
+            <a href="/progres" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Progress</span>
+            </a>
+            
+            <div class="nav-divider"></div>
+            
+            <a href="/resourses" class="nav-item">
+                <i class="fas fa-book"></i>
+                <span>Resources</span>
+            </a>
+            <a href="/live" class="nav-item">
+                <i class="fas fa-video"></i>
+                <span>Live classes</span>
+            </a>
+            <a href="/strategies" class="nav-item">
+                <i class="fa-solid fa-lightbulb"></i>
+                <span>Strategies</span>
+            </a>
+            <a href="/messages" class="nav-item">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+            </a>
+
+            <div class="nav-divider"></div>
+            
+            <a href="/settings" class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+            <a href="/support" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                <span>Help &amp; Support</span>
             </a>
         </nav>
 
-        <div class="dashboard-content-area">
+        <main class="dashboard-content-area" id="main" tabindex="-1">
+            <div class="offline-bar" id="offlineBar" role="status"><i class="fas fa-wifi"></i> You're offline. Changes will be saved when you're back online.</div>
             {% block allcontent %}
             {% endblock %}
-        </div>
+        </main>
     </div>
+    <div class="es-toasts" id="esToasts" aria-live="polite"></div>
 
     <script>
+(function () {
+  const PAGE_USER_ID = {{ me.id|tojson }};
+  let leaving = false;
+
+  function goToLogin() {
+    if (leaving) return;
+    leaving = true;
+    window.location.replace('/Login');
+  }
+
+  async function check() {
+    if (leaving) return;
+    try {
+      const r = await fetch('/api/whoami', { cache: 'no-store', credentials: 'same-origin' });
+      if (r.status === 401) { goToLogin(); return; }
+      const d = await r.json().catch(() => ({}));
+      if (!d.logged_in) { goToLogin(); return; }
+      if (d.user_id !== PAGE_USER_ID) { window.location.replace('/'); }
+    } catch (e) { /* offline: ignore */ }
+  }
+
+  // Log Out clicked: tell every other tab at once
+  function tellOtherTabs() { try { localStorage.setItem('eschool_logout', String(Date.now())); } catch (err) {} }
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('a[href$="/logout"]')) tellOtherTabs();
+  }, true);
+  document.addEventListener('submit', function (e) {
+    if (e.target.matches('[data-logout]')) tellOtherTabs();
+  }, true);
+
+  window.addEventListener('storage', function (e) {
+    if (e.key === 'eschool_logout') goToLogin();
+  });
+
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+  window.addEventListener('focus', check);
+  window.addEventListener('pageshow', function (e) { if (e.persisted) check(); });
+  setInterval(function () { if (!document.hidden) check(); }, 15000);   // no checks while the tab is hidden
+})();
+
+// ---------- shared helpers for every page ----------
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text == null ? '' : String(text);
+    return div.innerHTML;
+}
+// esToast('Saved') or esToast('Could not save', true): a short message at the bottom instead of alert()
+function esToast(msg, bad) {
+    const box = document.getElementById('esToasts');
+    if (!box) return;
+    const t = document.createElement('div');
+    t.className = 'es-toast' + (bad ? ' bad' : '');
+    t.setAttribute('role', bad ? 'alert' : 'status');
+    t.textContent = msg;
+    box.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
+window.esToast = esToast;
+
+// header height (the inactivity and offline bars sit just under it)
+(function () {
+    const set = () => {
+        const h = document.querySelector('.dashboard-header');
+        if (h) document.documentElement.style.setProperty('--header-h', h.offsetHeight + 'px');
+    };
+    window.addEventListener('load', set);
+    window.addEventListener('resize', set);
+    document.addEventListener('DOMContentLoaded', set);
+})();
+
+// offline bar
+(function () {
+    const show = () => { const b = document.getElementById('offlineBar'); if (b) b.classList.toggle('show', !navigator.onLine); };
+    window.addEventListener('online', show);
+    window.addEventListener('offline', show);
+    document.addEventListener('DOMContentLoaded', show);
+})();
+
+// Light / dark mode is chosen in Settings > Appearance (the header no longer has its own switch).
+
+
+
+    
+
+
+
     // ========== COURSE DATA FOR SEARCH (must match courses page) ==========
-        const searchCourses = [
+        const searchCourses = window.esMyCourses([
         { id: 'math', name: 'Grade 10 Mathematics', code: 'MAT 101', icon: 'fa-calculator', iconStyle: 'fas', color: '#7c3aed', level: 'grade-10', levelLabel: 'Grade 10' },
         { id: 'csl', name: 'Grade 10 Community Service Learning (CSL)', code: 'CSL 101', icon: 'fa-hands-helping', iconStyle: 'fas', color: '#2e7d32', level: 'grade-10', levelLabel: 'Grade 10' },
         { id: 'english', name: 'Grade 10 English', code: 'ENG 101', icon: 'fa-book-open', iconStyle: 'fas', color: '#0a2e5c', level: 'grade-10', levelLabel: 'Grade 10' },
         { id: 'kiswahili', name: 'Grade 10 Kiswahili', code: 'KSL Grade 10', icon: 'fa-language', iconStyle: 'fas', color: '#16a34a', level: 'grade-10', levelLabel: 'Grade 10' }
-    ];
+    ]);
     // ========== RECENTLY VIEWED COURSES (localStorage) ==========
     const RECENT_COURSES_KEY = 'recentSearchedCourses';
 
@@ -1528,7 +2018,7 @@
                 searchResults.innerHTML = `
                     <div class="search-no-results">
                         <i class="fas fa-search"></i>
-                        No courses found for "${searchTerm}"
+                        No courses found for "${escapeHtml(searchTerm)}"
                         <div style="margin-top: 8px; font-size: 0.85rem; color: var(--gray-400);">
                         Try searching for "Mathematics", "English", "Kiswahili", etc.
                         </div>
@@ -1544,7 +2034,7 @@
                 const codeHighlight = highlightMatch(course.code, searchTerm);
                 
                 html += `
-                    <a href="/courses" class="search-result-item" data-course-id="${course.id}" data-search-term="${searchTerm}">
+                    <a href="/courses" class="search-result-item" data-course-id="${course.id}" data-search-term="${escapeHtml(searchTerm)}">
                         <div class="result-icon" style="background: ${course.color}20; color: ${course.color};">
                             <i class="${course.iconStyle || 'fas'} ${course.icon}"></i>
                         </div>
@@ -1559,7 +2049,7 @@
 
             if (results.length > 8) {
                 html += `
-                    <a href="/courses" class="search-result-item" style="justify-content: center; color: var(--primary-color); font-weight: 500;" data-search-term="${searchTerm}">
+                    <a href="/courses" class="search-result-item" style="justify-content: center; color: var(--primary-color); font-weight: 500;" data-search-term="${escapeHtml(searchTerm)}">
                         <i class="fas fa-arrow-right"></i> View all ${results.length} results
                     </a>
                 `;
@@ -1622,23 +2112,39 @@
         }
 
         function highlightMatch(text, searchTerm) {
-            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            return text.replace(regex, '<strong style="color: var(--primary-color);">$1</strong>');
+            const safe = escapeHtml(text), term = escapeHtml(searchTerm);
+            if (!term) return safe;
+            const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return safe.replace(regex, '<strong style="color: var(--primary-color);">$1</strong>');
         }
 
-        // Input event with debounce
+        // the course list is tiny, so results show straight away (no waiting)
         searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
             const query = this.value;
-
             if (query.trim().length === 0) {
                 renderRecentCourses();
                 return;
             }
+            performSearch(query);
+        });
 
-            searchTimeout = setTimeout(() => {
-                performSearch(query);
-            }, 300);
+        // keyboard: arrow keys move through the results, Enter opens one
+        let kbIndex = -1;
+        function kbItems() { return Array.from(searchResults.querySelectorAll('.search-result-item')); }
+        function kbMark() {
+            kbItems().forEach((el, i) => { el.classList.toggle('kb', i === kbIndex); el.setAttribute('aria-selected', String(i === kbIndex)); el.setAttribute('role', 'option'); el.id = 'sr-' + i; });
+            if (kbIndex >= 0) searchInput.setAttribute('aria-activedescendant', 'sr-' + kbIndex); else searchInput.removeAttribute('aria-activedescendant');
+        }
+        new MutationObserver(() => {
+            kbIndex = -1; kbMark();
+            searchInput.setAttribute('aria-expanded', String(searchResults.classList.contains('active')));
+        }).observe(searchResults, { childList: true, attributes: true, attributeFilter: ['class'] });
+        searchInput.addEventListener('keydown', function (e) {
+            const items = kbItems();
+            if (!items.length || !searchResults.classList.contains('active')) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); kbIndex = (kbIndex + 1) % items.length; kbMark(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); kbIndex = (kbIndex - 1 + items.length) % items.length; kbMark(); }
+            else if (e.key === 'Enter' && kbIndex >= 0) { e.preventDefault(); e.stopImmediatePropagation(); items[kbIndex].click(); }
         });
 
         searchInput.addEventListener('focus', function() {
@@ -1660,7 +2166,7 @@
             }
         });
 
-        searchInput.addEventListener('keypress', function(e) {
+        searchInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && this.value.trim().length > 0) {
                 sessionStorage.setItem('searchTerm', this.value.trim());
                 sessionStorage.removeItem('openCourseId');
@@ -1675,16 +2181,32 @@
         const mobileSidebarClose = document.getElementById('mobileSidebarClose');
 
         function openMobileSidebar() {
+            mobileSidebar.removeAttribute('inert');
             mobileSidebar.classList.add('open');
             mobileOverlay.classList.add('active');
+            hamburger.setAttribute('aria-expanded', 'true');
             document.body.style.overflow = 'hidden';
+            setTimeout(() => mobileSidebarClose.focus({ preventScroll: true }), 320);
         }
 
         function closeMobileSidebar() {
+            if (!mobileSidebar.classList.contains('open')) return;
             mobileSidebar.classList.remove('open');
+            mobileSidebar.setAttribute('inert', '');
             mobileOverlay.classList.remove('active');
-            document.body.style.overflow = 'auto';
+            hamburger.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+            hamburger.focus();
         }
+
+        // Tab stays inside the open menu
+        mobileSidebar.addEventListener('keydown', function (e) {
+            if (e.key !== 'Tab') return;
+            const f = Array.from(mobileSidebar.querySelectorAll('a, button')).filter(el => el.offsetParent !== null);
+            if (!f.length) return;
+            if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+            else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+        });
 
         hamburger.addEventListener('click', openMobileSidebar);
         mobileSidebarClose.addEventListener('click', function(e) {
@@ -1700,32 +2222,18 @@
             });
         });
 
-        // Navigation active state
-        const links = document.querySelectorAll('.nav-item');
-        let activeLink = localStorage.getItem("activeNavLink");
-        
-        if (activeLink) {
-            links.forEach(l => l.classList.remove("active"));
-            const linkToActivate = document.querySelector(`.sidebar [href="${activeLink}"]`);
-            if (linkToActivate) {
-                linkToActivate.classList.add("active");
-            }
-            const mobileLinkToActivate = document.querySelector(`.mobile-sidebar [href="${activeLink}"]`);
-            if (mobileLinkToActivate) {
-                mobileLinkToActivate.classList.add("active");
-            }
-        }
-
-        links.forEach(link => {
-            link.addEventListener('click', function () {
-                localStorage.setItem("activeNavLink", this.getAttribute("href"));
-            });
-        });
+        // (The highlighted menu item comes from the page address only; see
+        // "Highlight the menu item" near the end. It used to also remember the
+        // last menu button clicked, which left the highlight on the wrong item
+        // after opening a page some other way.)
+        try { localStorage.removeItem("activeNavLink"); } catch (e) {}
 
         // User Profile Dropdown
         const userProfileDropdown = document.getElementById('userProfileDropdown');
         const userProfileTrigger = document.getElementById('userProfileTrigger');
         
+        const syncProfileAria = () => userProfileTrigger.setAttribute('aria-expanded', String(userProfileDropdown.classList.contains('active')));
+        new MutationObserver(syncProfileAria).observe(userProfileDropdown, { attributes: true, attributeFilter: ['class'] });
         userProfileTrigger.addEventListener('click', function(e) {
             e.stopPropagation();
             userProfileDropdown.classList.toggle('active');
@@ -1750,14 +2258,7 @@
             }
         });
 
-        // ===================================================================
-        // NOTIFICATIONS — fetched live from the backend, nothing hardcoded.
-        //
-        // Expected API contract (adjust the URLs below if yours differ):
-        //   GET  /notifications            -> [{id, title, message, time, icon, color, read}, ...]
-        //   POST /notifications/<id>/read  -> marks a single notification read
-        //   POST /notifications/read-all   -> marks every notification read
-        // ===================================================================
+        // ---------- Notifications ----------
         const notificationDropdown = document.getElementById('notificationDropdown');
         const notificationBtn = document.getElementById('notificationBtn');
         const notificationBadge = document.getElementById('notificationBadge');
@@ -1765,12 +2266,8 @@
         const markAllReadBtn = document.getElementById('markAllRead');
 
         let notifications = [];
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text == null ? '' : String(text);
-            return div.innerHTML;
-        }
+        let lastNotifJson = '';
+        const baseTitle = document.title;
 
         function formatNotifTime(value) {
             if (!value) return '';
@@ -1792,6 +2289,8 @@
             } else {
                 notificationBadge.style.display = 'none';
             }
+            // unread count in the browser tab, e.g. "(3) Eschool"
+            document.title = unreadCount > 0 ? `(${unreadCount > 99 ? '99+' : unreadCount}) ${baseTitle}` : baseTitle;
         }
         
                 // Picks an icon + colour that matches what the notification is about.
@@ -1808,6 +2307,7 @@
             { words: ['deleted', 'cancelled', 'canceled'],                    icon: 'fas fa-calendar-xmark',       color: '#ef4444' },
             { words: ['scheduled', 'schedule', 'event', 'meeting', 'class'],  icon: 'fas fa-calendar-check',       color: '#06b6d4' },
             { words: ['reminder', 'due', 'deadline', 'starts in'],            icon: 'fas fa-clock',                color: '#f59e0b' },
+            { words: ['friend request', 'accepted your friend'],              icon: 'fas fa-user-group',           color: '#8b5cf6' },
             { words: ['follow'],                                              icon: 'fas fa-user-plus',            color: '#f72585' },
             { words: ['like', 'liked'],                                       icon: 'fas fa-heart',                color: '#ef4444' },
             { words: ['comment', 'replied', 'reply'],                         icon: 'fas fa-comment',              color: '#4cc9f0' },
@@ -1817,11 +2317,36 @@
             { words: ['welcome', 'joined', 'account'],                        icon: 'fas fa-graduation-cap',       color: '#4361ee' }
         ];
 
+        // The icon the server chose comes first; words are only a fallback, matched as whole words
+        // (so "test" doesn't match "latest", "grade" doesn't match "upgrade").
+        const NAMED_COLORS = { blue: '#4361ee', green: '#10b981', orange: '#f59e0b', red: '#ef4444', purple: '#8b5cf6', teal: '#14b8a6', gray: '#64748b' };
         function getNotificationStyle(n) {
+            const color = NAMED_COLORS[n.color] || (/^#[0-9a-f]{3,8}$/i.test(n.color || '') ? n.color : null);
+            if (n.icon && n.icon !== 'fa-bell' && n.icon !== 'fas fa-bell') {
+                const icon = /\b(fas|far|fab|fa-solid|fa-regular)\b/.test(n.icon) ? n.icon : 'fas ' + n.icon;
+                return { icon, color: color || '#4361ee' };
+            }
             const text = `${n.type || ''} ${n.title || ''} ${n.message || ''}`.toLowerCase();
-            const match = NOTIFICATION_STYLES.find(rule => rule.words.some(w => text.includes(w)));
+            const has = w => new RegExp('(^|[^a-z])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z]|$)').test(text);
+            const match = NOTIFICATION_STYLES.find(rule => rule.words.some(has));
             if (match) return { icon: match.icon, color: match.color };
-            return { icon: n.icon || 'fas fa-bell', color: n.color || '#4361ee' };
+            return { icon: 'fas fa-bell', color: color || '#4361ee' };
+        }
+
+        // Friend requests: Accept / Decline right in the bell
+        function friendRequestActions(n) {
+            if (n.action !== 'friend_request') return '';
+            const st = n.request_status;
+            if (st === 'pending') {
+                return `<div class="nf-actions">
+                    <button type="button" class="nf-btn nf-accept" data-fr-respond="accept" data-req="${escapeHtml(n.ref_id)}">Accept</button>
+                    <button type="button" class="nf-btn" data-fr-respond="decline" data-req="${escapeHtml(n.ref_id)}">Decline</button>
+                    ${n.from_user_id ? `<a class="nf-link" href="/profile/${encodeURIComponent(n.from_user_id)}">View profile</a>` : ''}
+                </div>`;
+            }
+            const txt = { accepted: '<i class="fas fa-user-check"></i> You are now friends', declined: 'You declined this request',
+                          cancelled: 'They cancelled this request' }[st];
+            return txt ? `<div class="nf-status ${st}">${txt}</div>` : '';
         }
 
         function renderNotifications() {
@@ -1850,6 +2375,7 @@
                         <div class="notification-content">
                             <div class="notification-title">${escapeHtml(n.title)}</div>
                             <div class="notification-message">${escapeHtml(n.message)}</div>
+                            ${friendRequestActions(n)}
                             <div class="notification-time">${formatNotifTime(n.time)}</div>
                         </div>
                     </div>
@@ -1858,6 +2384,34 @@
 
             notificationsList.innerHTML = html;
             updateNotificationBadge();
+
+            notificationsList.querySelectorAll('[data-fr-respond]').forEach(b => {
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const accept = this.dataset.frRespond === 'accept';
+                    const box = this.closest('.nf-actions');
+                    box.querySelectorAll('button').forEach(x => { x.disabled = true; });
+                    fetch(`/api/friend-requests/${encodeURIComponent(this.dataset.req)}/respond`, {
+                        method: 'POST', credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: accept ? 'accept' : 'decline' })
+                    })
+                        .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, d })))
+                        .then(({ ok, d }) => {
+                            const item = box.closest('.notification-item');
+                            const n = notifications.find(x => String(x.id) === String(item.dataset.id));
+                            if (ok && d.success) {
+                                if (n) { n.request_status = accept ? 'accepted' : 'declined'; n.read = true; }
+                                renderNotifications();
+                            } else {
+                                if (n && d.state === 'friends') n.request_status = 'accepted';
+                                box.outerHTML = `<div class="nf-status bad">${escapeHtml(d.message || 'Something went wrong. Please try again.')}</div>`;
+                            }
+                        })
+                        .catch(() => { box.querySelectorAll('button').forEach(x => { x.disabled = false; }); });
+                });
+            });
+            notificationsList.querySelectorAll('.nf-link').forEach(a => a.addEventListener('click', e => e.stopPropagation()));
 
             notificationsList.querySelectorAll('.notification-item').forEach(item => {
                 item.addEventListener('click', function() {
@@ -1870,13 +2424,18 @@
         }
 
         function loadNotifications() {
-            fetch('/notifications')
+            if (document.hidden && lastNotifJson) return;          // no polling while the tab is hidden
+            fetch('/api/notifications', { credentials: 'same-origin' })
                 .then(res => {
                     if (!res.ok) throw new Error('Request failed');
                     return res.json();
                 })
                 .then(data => {
-                    notifications = Array.isArray(data) ? data : (data.notifications || []);
+                    const list = Array.isArray(data) ? data : (data.notifications || []);
+                    const json = JSON.stringify(list);
+                    if (json === lastNotifJson) return;            // nothing new: keep scroll position and focus
+                    lastNotifJson = json;
+                    notifications = list;
                     renderNotifications();
                 })
                 .catch(err => {
@@ -1895,14 +2454,19 @@
             if (n) n.read = true;
             renderNotifications();
 
-            fetch(`/notifications/${id}/read`, { method: 'POST' })
+            fetch(`/notifications/${encodeURIComponent(id)}/read`, { method: 'POST', credentials: 'same-origin' })
                 .catch(err => console.error('Error marking notification read:', err));
         }
 
+        new MutationObserver(() => notificationBtn.setAttribute('aria-expanded', String(notificationDropdown.classList.contains('active'))))
+            .observe(notificationDropdown, { attributes: true, attributeFilter: ['class'] });
         notificationBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             notificationDropdown.classList.toggle('active');
         });
+        // "View all notifications" opens the bell
+        if (new URLSearchParams(location.search).get('notifications') === '1') notificationDropdown.classList.add('active');
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) loadNotifications(); });
 
         document.addEventListener('click', function(e) {
             if (!notificationDropdown.contains(e.target)) {
@@ -1922,7 +2486,7 @@
                 notifications.forEach(n => n.read = true);
                 renderNotifications();
 
-                fetch('/notifications/read-all', { method: 'POST' })
+                fetch('/notifications/read-all', { method: 'POST', credentials: 'same-origin' })
                     .catch(err => console.error('Error marking all notifications read:', err));
             });
         }
@@ -1948,32 +2512,192 @@
     });
     </script>
 
-    <!-- SITE-WIDE STUDY TIME TRACKING -->
+    {% if role == 'student' %}
+    <!-- SWITCH ACCOUNT / ADD ACCOUNT (students only) -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggle = document.getElementById('switchAccountToggle');
+        if (!toggle) return;
+
+        const list = document.getElementById('accountList');
+        const caret = document.getElementById('switchCaret');
+        const addBtn = document.getElementById('addAccountBtn');
+        let overlay = null;
+
+        function esc(t) {
+            const d = document.createElement('div');
+            d.textContent = t == null ? '' : String(t);
+            return d.innerHTML;
+        }
+
+        async function loadAccounts() {
+            try {
+                const r = await fetch('/api/accounts', { credentials: 'same-origin' });
+                const d = await r.json();
+                if (!d.success) throw new Error();
+                list.innerHTML = d.accounts.length ? d.accounts.map(a => `
+                    <div class="account-row" data-id="${a.id}" data-current="${a.current}">
+                        <div class="acc-avatar">${a.avatar_url
+                            ? `<img src="${esc(a.avatar_url)}" alt="">`
+                            : esc(a.initials)}</div>
+                        <div>
+                            <div class="acc-name">${esc(a.name)}</div>
+                            <div class="acc-email">${esc(a.email_masked)}</div>
+                        </div>
+                        ${a.current ? '<i class="fas fa-circle-check acc-current"></i>' : ''}
+                    </div>`).join('') : '<div class="acc-empty">No accounts yet</div>';
+            } catch (e) {
+                list.innerHTML = '<div class="acc-empty">Couldn\'t load accounts</div>';
+            }
+        }
+
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const open = list.classList.toggle('open');
+            caret.classList.toggle('open', open);
+            if (open) loadAccounts();
+        });
+
+        list.addEventListener('click', async function (e) {
+            e.stopPropagation();
+            const row = e.target.closest('.account-row');
+            if (!row || row.dataset.current === 'true') return;
+            try {
+                const r = await fetch('/api/accounts/switch/' + row.dataset.id, {
+                    method: 'POST', credentials: 'same-origin'
+                });
+                const d = await r.json().catch(() => ({}));
+                if (d.success) window.location.href = '/dashboard';
+                else esToast(d.message || 'Could not switch account', true);
+            } catch (err) {
+                esToast('Could not switch account', true);
+            }
+        });
+
+        // The modal is built only when opened and removed when closed, so the
+        // browser never sees a password field at page load and can't autofill
+        // your saved email into the search bar.
+        function closeModal() {
+            if (overlay) { overlay.remove(); overlay = null; }
+        }
+
+        function openModal() {
+            closeModal();
+            overlay = document.createElement('div');
+            overlay.className = 'acc-modal-overlay';
+            overlay.innerHTML = `
+                <div class="acc-modal" role="dialog" aria-modal="true" aria-labelledby="accTitle">
+                    <div class="acc-modal-icon"><i class="fas fa-user-plus"></i></div>
+                    <h3 id="accTitle">Add account</h3>
+                    <p class="acc-sub">Sign in with another student account to switch between accounts without logging out.</p>
+
+                    <div class="acc-error" id="accError"><i class="fas fa-circle-exclamation"></i><span></span></div>
+
+                    <div class="acc-field">
+                        <label for="accEmail">Email address</label>
+                        <div class="acc-input-wrap">
+                            <i class="fas fa-envelope lead"></i>
+                            <input type="text" id="accEmail" name="eschool-add-email" inputmode="email"
+                                   placeholder="name@example.com" autocomplete="off" readonly>
+                        </div>
+                    </div>
+
+                    <div class="acc-field">
+                        <label for="accPassword">Password</label>
+                        <div class="acc-input-wrap">
+                            <i class="fas fa-lock lead"></i>
+                            <input type="password" id="accPassword" name="eschool-add-pass"
+                                   placeholder="Enter password" autocomplete="new-password" readonly>
+                            <button type="button" class="acc-eye" id="accEye" aria-label="Show password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="acc-actions">
+                        <button type="button" id="accCancel" class="acc-btn-secondary">Cancel</button>
+                        <button type="button" id="accSubmit" class="acc-btn-primary">Add account</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+
+            const emailEl = overlay.querySelector('#accEmail');
+            const passEl = overlay.querySelector('#accPassword');
+            const errBox = overlay.querySelector('#accError');
+            const submit = overlay.querySelector('#accSubmit');
+
+            // readonly until focused blocks browser autofill
+            [emailEl, passEl].forEach(el =>
+                el.addEventListener('focus', () => el.removeAttribute('readonly'), { once: true }));
+            setTimeout(() => emailEl.focus(), 50);
+
+            function showError(msg) {
+                errBox.querySelector('span').textContent = msg;
+                errBox.classList.add('show');
+            }
+
+            overlay.querySelector('#accCancel').addEventListener('click', closeModal);
+            overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+            overlay.querySelector('#accEye').addEventListener('click', function () {
+                const show = passEl.type === 'password';
+                passEl.type = show ? 'text' : 'password';
+                this.innerHTML = show ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+            });
+            overlay.addEventListener('keydown', e => { if (e.key === 'Enter') submit.click(); });
+
+            submit.addEventListener('click', async function () {
+                errBox.classList.remove('show');
+                if (!emailEl.value.trim() || !passEl.value) {
+                    showError('Please enter both email and password.');
+                    return;
+                }
+                submit.disabled = true;
+                submit.textContent = 'Adding…';
+                try {
+                    const r = await fetch('/api/accounts/add', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: emailEl.value.trim(), password: passEl.value })
+                    });
+                    const d = await r.json().catch(() => null);
+                    if (d && d.success) {
+                        closeModal();
+                        list.classList.add('open');
+                        caret.classList.add('open');
+                        loadAccounts();
+                        return;
+                    }
+                    showError(d && d.message ? d.message : 'Something went wrong. Please try again in a moment.');
+                } catch (err) {
+                    showError('Network error. Please try again.');
+                }
+                submit.disabled = false;
+                submit.textContent = 'Add account';
+            });
+        }
+
+        addBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            openModal();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+        });
+    });
+    </script>
+    {% endif %}
+
     <!-- SITE-WIDE STUDY TIME TRACKING -->
     <script>
     (function () {
-        // Uses the tojson filter so this is a safely-encoded JS string
-        // literal - a plain quoted Jinja interpolation here would
-        // silently break (or allow injection) if the email ever
-        // contained a quote character, same class of bug already fixed
-        // elsewhere on this site (e.g. the messages.html / settings.html
-        // storage keys). Note: this comment intentionally avoids writing
-        // double-curly-brace syntax as plain text, because Jinja parses
-        // it even inside JS comments - that is exactly what caused the
-        // previous TemplateSyntaxError.
         function getStudyTimeKey() {
             const email = {{ session.get('email', 'default_user') | tojson }};
             return `studyTimeData_${email}`;
         }
 
-        // FIX: day boundaries must match progress.html's Africa/Nairobi
-        // day-key logic exactly, or time logged on this page (dashboard,
-        // courses, etc.) can land on a different calendar day than time
-        // logged on the Progress page itself. The previous version used
-        // `new Date().toISOString().split('T')[0]`, which is always UTC —
-        // for the first 3 hours of each Nairobi day (Nairobi is UTC+3),
-        // that silently misfiled activity under "yesterday" relative to
-        // what progress.html would have recorded for the same moment.
+        // Day boundaries must match progress.html (which also uses Africa/Nairobi).
         const APP_TIMEZONE = 'Africa/Nairobi';
 
         const _dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -2027,11 +2751,16 @@
             }
         }
 
+        // Time only counts while the person is really there: after 2 minutes with no
+        // click, key, scroll or touch, the session stops at their last activity.
+        const AWAY_MS = 2 * 60 * 1000;
+        let lastInput = Date.now();
+
         function trackActivity() {
             const data = loadStudyTime();
             if (data.isTracking && data.sessionStart) {
-                const now = Date.now();
-                const elapsedSeconds = (now - data.sessionStart) / 1000;
+                const now = Math.min(Date.now(), lastInput + AWAY_MS);
+                const elapsedSeconds = Math.max(0, (now - data.sessionStart) / 1000);
 
                 if (elapsedSeconds > 5) {
                     data.totalSeconds += elapsedSeconds;
@@ -2045,7 +2774,6 @@
 
                     data.sessionStart = now;
                     data.lastActivity = now;
-                    data.totalSessions += 1;
 
                     saveStudyTime(data);
                 }
@@ -2056,7 +2784,8 @@
             const data = loadStudyTime();
             if (data.isTracking) {
                 if (data.sessionStart) {
-                    const elapsedSeconds = (Date.now() - data.sessionStart) / 1000;
+                    const end = Math.min(Date.now(), lastInput + AWAY_MS);
+                    const elapsedSeconds = Math.max(0, (end - data.sessionStart) / 1000);
                     if (elapsedSeconds > 5) {
                         data.totalSeconds += elapsedSeconds;
                         // FIX: was new Date().toISOString().split('T')[0] (UTC).
@@ -2065,8 +2794,8 @@
                             data.dailySessions[today] = 0;
                         }
                         data.dailySessions[today] += elapsedSeconds;
-                        data.totalSessions += 1;
                     }
+                    data.totalSessions = (data.totalSessions || 0) + 1;    // one per session, not per tick
                 }
                 data.isTracking = false;
                 data.sessionStart = null;
@@ -2081,6 +2810,7 @@
 
             events.forEach(evt => {
                 document.addEventListener(evt, function () {
+                    lastInput = Date.now();
                     clearTimeout(activityTimeout);
                     activityTimeout = setTimeout(() => {
                         const data = loadStudyTime();
@@ -2109,22 +2839,1001 @@
 
         function initSiteWideTracking() {
             const data = loadStudyTime();
-            if (!data.dailySessions) {
-                saveStudyTime(createFreshStudyData());
+            if (!data.dailySessions || typeof data.dailySessions !== 'object') {   // repair, never wipe saved time
+                data.dailySessions = {};
+                data.totalSeconds = data.totalSeconds || 0;
+                data.totalSessions = data.totalSessions || 0;
+                saveStudyTime(data);
             }
             startStudySession();
             setupActivityTracking();
 
             setInterval(function () {
                 const d = loadStudyTime();
-                if (d.isTracking) {
-                    trackActivity();
-                }
+                if (!d.isTracking) return;
+                if (Date.now() - lastInput > AWAY_MS) stopStudySession();   // walked away: stop counting
+                else trackActivity();
             }, 30000);
         }
 
         document.addEventListener('DOMContentLoaded', initSiteWideTracking);
     })();
     </script>
+    <!-- Voice / video calls: incoming-call bar, ringing and the call screen
+         on every page. (backen.py also adds this to teacher and parent pages.) -->
+    {% if session.get('user_id') %}
+    <script src="/eschool-calls.js?v=3" defer></script>
+    {% endif %}
+
+    <!-- ============================================================
+         SIGN OUT WHEN INACTIVE (Settings > Account & Security)
+         OFF unless the learner turns it on. Then, after the chosen number of minutes with no activity in ANY
+         Eschool tab, a bar appears under the header with a 1-minute
+         countdown; then you're signed out. Watching a video counts as
+         activity. Nothing pops up over the page.
+    ============================================================= -->
+    <style>
+        .idle-bar { position: sticky; top: var(--header-h, 72px); z-index: 950; display: none; align-items: center; gap: 12px; flex-wrap: wrap;
+                    margin: 0 auto; max-width: 1400px; padding: 12px 20px; background: #fff7ed; color: #9a3412;
+                    border-bottom: 2px solid #fdba74; font-size: .92rem; }
+        .idle-bar.show { display: flex; }
+        .idle-bar button { margin-left: auto; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 600;
+                           background: #ea580c; color: #fff; cursor: pointer; }
+        body.dark-mode .idle-bar { background: #3b2412; color: #fed7aa; border-bottom-color: #9a3412; }
+    </style>
+    <script>
+    (function () {
+        var KEY = {{ session.get('email', 'anonymous') | tojson }};
+        if (!{{ (session.get('user_id') is not none) | tojson }}) return;
+        var TIMEOUT_KEY = 'settings.autoSignOut.' + KEY;   // 0 / not set = never (the default)
+        var ACTIVE_KEY = 'lastActivity.' + KEY;
+        var WARN_MS = 60 * 1000;
+        var bar = null, countdown = null, lastWrite = 0;
+
+        function timeoutMs() {
+            var m = 0;
+            try { m = parseInt(localStorage.getItem(TIMEOUT_KEY), 10) || 0; } catch (e) {}
+            return m > 0 ? Math.max(5, Math.min(120, m)) * 60 * 1000 : 0;
+        }
+        function lastActive() {
+            var t = 0;
+            try { t = parseInt(localStorage.getItem(ACTIVE_KEY), 10) || 0; } catch (e) {}
+            return t;
+        }
+        function markActive() {
+            var now = Date.now();
+            if (now - lastWrite < 5000) return;          // a few writes a minute is plenty
+            lastWrite = now;
+            try { localStorage.setItem(ACTIVE_KEY, String(now)); } catch (e) {}
+            hideBar();
+        }
+        function mediaPlaying() {
+            return Array.prototype.some.call(document.querySelectorAll('video, audio'), function (m) {
+                return !m.paused && !m.ended;
+            });
+        }
+        function ensureBar() {
+            if (bar) return bar;
+            bar = document.createElement('div');
+            bar.className = 'idle-bar';
+            bar.setAttribute('role', 'status');
+            bar.innerHTML = '<i class="fas fa-hourglass-half"></i><span class="idle-text"></span>' +
+                            '<button type="button">Stay signed in</button>';
+            bar.querySelector('button').addEventListener('click', function () { lastWrite = 0; markActive(); });
+            var header = document.querySelector('.dashboard-header');
+            if (header && header.parentNode) header.parentNode.insertBefore(bar, header.nextSibling);
+            else document.body.insertBefore(bar, document.body.firstChild);
+            return bar;
+        }
+        function hideBar() { if (bar) bar.classList.remove('show'); }
+
+        function tick() {
+            if (mediaPlaying()) { markActive(); return; }
+            var limit = timeoutMs();
+            if (!limit) { hideBar(); return; }          // automatic sign-out is off
+            var idleFor = Date.now() - (lastActive() || Date.now());
+            if (idleFor >= limit + WARN_MS) {
+                try { localStorage.setItem('eschool_logout', String(Date.now())); } catch (e) {}
+                var f = document.createElement('form');
+                f.method = 'post'; f.action = '/logout';
+                document.body.appendChild(f); f.submit();
+                return;
+            }
+            if (idleFor >= limit) {
+                var left = Math.ceil((limit + WARN_MS - idleFor) / 1000);
+                var b = ensureBar();
+                b.querySelector('.idle-text').textContent =
+                    'You\'ve been inactive for a while. You\'ll be signed out in ' + left + ' second' + (left === 1 ? '' : 's') + '.';
+                b.classList.add('show');
+            } else {
+                hideBar();
+            }
+        }
+
+        ['click', 'keydown', 'scroll', 'mousemove', 'touchstart'].forEach(function (evt) {
+            document.addEventListener(evt, markActive, { passive: true, capture: true });
+        });
+        window.addEventListener('storage', function (e) { if (e.key === ACTIVE_KEY) hideBar(); });
+        lastWrite = 0; markActive();
+        countdown = setInterval(tick, 1000);
+    })();
+    </script>
+
+    {% if session.get('user_id') and session.get('role', 'student') == 'student' %}
+    <!-- ============================================================
+         NOTES (corner button on every learner page)
+         Short notes while learning, saved to the account (/api/notes).
+         Each note remembers where it was written: a page sets
+         window.esSetNoteContext({key, label, url}) (the course viewer
+         and live classes do), otherwise the page title is used.
+         The panel can be dragged by its top bar (spot remembered);
+         the corner button sends it home. On phones it slides up.
+    ============================================================= -->
+    <style>
+        #esNotes { --nt-a: var(--primary-color, #4361ee); --nt-a2: #7209b7; --nt-bg: #fff; --nt-text: #0f172a; --nt-text2: #475569; --nt-text3: #64748b;
+                   --nt-border: #e5e7eb; --nt-soft: #f8fafc; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+        body.dark-mode #esNotes { --nt-bg: #111827; --nt-text: #e5e7eb; --nt-text2: #cbd5e1; --nt-text3: #94a3b8; --nt-border: #263244; --nt-soft: #0f172a; }
+        #esNotes * { box-sizing: border-box; }
+        .nt-fab { position: fixed; right: 20px; bottom: 20px; z-index: 100002; height: 50px; padding: 0 18px 0 15px; border: 0; border-radius: 999px; cursor: pointer;
+                  background: linear-gradient(135deg, var(--nt-a), var(--nt-a2)); color: #fff; font: 700 14px/1 Inter, system-ui, sans-serif;
+                  display: inline-flex; align-items: center; gap: 9px; box-shadow: 0 12px 26px rgba(67,97,238,.42); transition: transform .15s; }
+        .nt-fab:hover { transform: translateY(-2px); }
+        .nt-fab .n { background: #fff; color: var(--nt-a); font-size: 11px; font-weight: 800; border-radius: 999px; padding: 2px 7px; }
+        .nt-fab[hidden] { display: none; }
+        .nt-panel { position: fixed; right: 20px; bottom: 20px; z-index: 100003; width: 340px; max-width: calc(100vw - 24px); height: min(520px, calc(100vh - 110px));
+                    min-height: 260px; background: var(--nt-bg); color: var(--nt-text); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column;
+                    box-shadow: 0 24px 60px rgba(15,23,42,.3), 0 0 0 1px rgba(15,23,42,.06); }
+        .nt-panel[hidden] { display: none; }
+        .nt-panel.min { height: auto; min-height: 0; }
+        .nt-panel.min .nt-tabs, .nt-panel.min .nt-ctx, .nt-panel.min .nt-body, .nt-panel.min .nt-foot { display: none; }
+        .nt-head { display: flex; align-items: center; gap: 8px; padding: 9px 9px 9px 12px; color: #fff; background: linear-gradient(135deg, var(--nt-a), var(--nt-a2));
+                   cursor: move; user-select: none; touch-action: none; flex: none; }
+        .nt-grip { display: grid; grid-template-columns: repeat(2, 4px); gap: 3px; opacity: .75; }
+        .nt-grip i { width: 4px; height: 4px; border-radius: 50%; background: #fff; }
+        .nt-head b { flex: 1; font-size: 14px; }
+        .nt-ib { width: 30px; height: 30px; border: 0; border-radius: 9px; background: rgba(255,255,255,.16); color: #fff; cursor: pointer; display: grid; place-items: center; font-size: 13px; }
+        .nt-ib:hover { background: rgba(255,255,255,.28); }
+        .nt-tabs { display: flex; gap: 4px; padding: 8px 10px 0; flex: none; }
+        .nt-tab { border: 0; background: none; color: var(--nt-text3); font: 700 12px/1 Inter, system-ui, sans-serif; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+        .nt-tab[aria-selected="true"] { background: color-mix(in srgb, var(--nt-a) 14%, transparent); color: var(--nt-a); }
+        .nt-ctx { display: flex; align-items: center; gap: 7px; margin: 8px 10px 0; padding: 7px 10px; border-radius: 9px; font-size: 11.5px; font-weight: 600;
+                  background: color-mix(in srgb, var(--nt-a2) 9%, transparent); color: var(--nt-a2); flex: none; }
+        body.dark-mode .nt-ctx { color: #c4b5fd; }
+        .nt-ctx .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+        .nt-ctx span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .nt-body { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 10px 10px; overscroll-behavior: contain; }
+        .nt-tools { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+        .nt-tool { min-width: 30px; height: 28px; border: 1px solid var(--nt-border); border-radius: 7px; background: var(--nt-soft); color: var(--nt-text2);
+                   font: 700 12px/1 Inter, system-ui, sans-serif; cursor: pointer; padding: 0 7px; }
+        .nt-tool:hover { border-color: var(--nt-a); color: var(--nt-a); }
+        .nt-edit { min-height: 150px; max-height: 260px; overflow-y: auto; border: 1.5px solid color-mix(in srgb, var(--nt-a) 30%, var(--nt-border)); border-radius: 11px;
+                   padding: 10px 11px; font-size: 13.5px; line-height: 1.55; color: var(--nt-text); background: var(--nt-bg); outline: none; word-wrap: break-word; }
+        .nt-edit:focus { border-color: var(--nt-a); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nt-a) 15%, transparent); }
+        .nt-edit:empty::before { content: attr(data-placeholder); color: var(--nt-text3); }
+        .nt-edit ul, .nt-edit ol { margin: 4px 0; padding-left: 20px; }
+        .nt-sub { font-size: 11px; font-weight: 700; color: var(--nt-text3); letter-spacing: .05em; text-transform: uppercase; margin: 14px 2px 6px; }
+        .nt-list { display: grid; gap: 6px; }
+        .nt-item { text-align: left; border: 1px solid var(--nt-border); background: var(--nt-soft); color: var(--nt-text); border-radius: 11px; padding: 9px 10px; cursor: pointer;
+                   font: inherit; width: 100%; display: block; }
+        .nt-item:hover, .nt-item.on { border-color: var(--nt-a); }
+        .nt-item b { display: block; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .nt-item small { display: block; font-size: 10.5px; color: var(--nt-text3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .nt-item p { margin: 3px 0 0; font-size: 11.5px; color: var(--nt-text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .nt-search { width: 100%; border: 1.5px solid var(--nt-border); border-radius: 9px; padding: 8px 10px; font: 13px Inter, system-ui, sans-serif; background: var(--nt-bg); color: var(--nt-text); margin-bottom: 8px; }
+        .nt-empty { font-size: 12.5px; color: var(--nt-text3); text-align: center; padding: 18px 8px; line-height: 1.5; }
+        .nt-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 10px; border-top: 1px solid var(--nt-border); flex: none; font-size: 11.5px; color: var(--nt-text3); }
+        .nt-foot .ok { color: #059669; font-weight: 600; }
+        .nt-btn { border: 0; border-radius: 9px; padding: 7px 11px; font: 700 12px/1 Inter, system-ui, sans-serif; cursor: pointer; background: var(--nt-a); color: #fff; display: inline-flex; gap: 6px; align-items: center; }
+        .nt-btn.ghost { background: transparent; color: var(--nt-text2); border: 1px solid var(--nt-border); }
+        .nt-btn.ghost:hover { color: #dc2626; border-color: #fca5a5; }
+        .nt-acts { display: flex; gap: 6px; }
+        .nt-panel :focus-visible, .nt-fab:focus-visible { outline: 3px solid color-mix(in srgb, var(--nt-a) 45%, transparent); outline-offset: 2px; }
+        @media (max-width: 640px) {
+            .nt-fab { right: 14px; bottom: 14px; height: 46px; }
+            .nt-panel { left: 0 !important; right: 0 !important; top: auto !important; bottom: 0 !important; width: 100%; max-width: 100%; height: 72vh; height: 72dvh;
+                        border-radius: 20px 20px 0 0; }
+            .nt-head { cursor: default; }
+            .nt-head .nt-home { display: none; }
+            .nt-edit { max-height: 34vh; }
+        }
+        @media print { #esNotes { display: none; } }
+        /* a lesson, quiz or activity is open full screen: sit above its Exit button */
+        body:has(.fullscreen-modal.active) .nt-fab, body:has(.quiz-modal.active) .nt-fab, body:has(#actModal:not([hidden])) .nt-fab { bottom: 84px; }
+        @media (max-width: 640px) { body:has(.fullscreen-modal.active) .nt-fab, body:has(.quiz-modal.active) .nt-fab, body:has(#actModal:not([hidden])) .nt-fab { bottom: 72px; } }
+    </style>
+    <div id="esNotes" data-keep-active>
+        <button type="button" class="nt-fab" id="ntFab" aria-haspopup="dialog" aria-controls="ntPanel"><i class="fas fa-pen" aria-hidden="true"></i> Notes <span class="n" id="ntCount" hidden></span></button>
+        <section class="nt-panel" id="ntPanel" role="dialog" aria-label="My notes" hidden>
+            <div class="nt-head" id="ntHead">
+                <span class="nt-grip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                <b>My notes</b>
+                <button type="button" class="nt-ib nt-home" id="ntHome" title="Back to the corner" aria-label="Move back to the corner"><i class="fas fa-down-left-and-up-right-to-center" aria-hidden="true"></i></button>
+                <button type="button" class="nt-ib" id="ntMin" title="Make smaller" aria-label="Make smaller" aria-expanded="true"><i class="fas fa-minus" aria-hidden="true"></i></button>
+                <button type="button" class="nt-ib" id="ntClose" title="Close" aria-label="Close notes"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+            </div>
+            <div class="nt-tabs" role="tablist">
+                <button type="button" class="nt-tab" role="tab" data-nt-tab="page" aria-selected="true">This page</button>
+                <button type="button" class="nt-tab" role="tab" data-nt-tab="all" aria-selected="false">All notes <span id="ntAllN"></span></button>
+                <button type="button" class="nt-tab" role="tab" data-nt-tab="pinned" aria-selected="false"><i class="fas fa-star" aria-hidden="true"></i> Pinned</button>
+            </div>
+            <div class="nt-ctx" id="ntCtx"><span class="dot" aria-hidden="true"></span><span id="ntCtxText"></span></div>
+            <div class="nt-body" id="ntBody"></div>
+            <div class="nt-foot" id="ntFoot"></div>
+        </section>
+    </div>
+    <script>
+    (function () {
+        'use strict';
+        const ME = {{ session.get('email', 'me') | tojson }};
+        const POS_KEY = 'notes.pos.' + ME, OPEN_KEY = 'notes.open.' + ME;
+        const $ = id => document.getElementById(id);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        let notes = [], loaded = false, tab = 'page', currentId = null, saveTimer = null, saving = false, query = '';
+        let ctx = null;
+
+        // ---- where am I? ----
+        const PAGE_NAMES = { '/dashboard': 'Dashboard', '/courses': 'Courses', '/schedule': 'Schedule', '/careerD': 'Career', '/progres': 'Progress',
+            '/progress': 'Progress', '/resources': 'Resources', '/resourses': 'Resources', '/live': 'Live classes', '/strategies': 'Learning strategies',
+            '/messages': 'Messages', '/settings': 'Settings', '/support': 'Help & Support', '/profile': 'Profile', '/leaderboard': 'Leaderboard',
+            '/points': 'Eschool Points', '/achievements': 'Achievements', '/plans': 'Plans', '/teachers': 'Teachers' };
+        function pageContext() {
+            const h = document.querySelector('.dashboard-content-area h1, main h1, h1');
+            const label = PAGE_NAMES[location.pathname.replace(/\/+$/, '')] || (h && h.textContent.trim()) || document.title.replace(/\s*[-|·].*$/, '') || 'This page';
+            return { key: 'page:' + location.pathname, label: label.slice(0, 120), url: location.pathname };
+        }
+        window.esSetNoteContext = function (c) {
+            ctx = c && c.key ? { key: String(c.key), label: String(c.label || '').slice(0, 190), url: String(c.url || location.pathname) } : pageContext();
+            currentId = null;
+            render();
+        };
+        ctx = pageContext();
+
+        // ---- server ----
+        async function api(url, method, body) {
+            const r = await fetch(url, { method: method || 'GET', credentials: 'same-origin',
+                headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+            let d = null; try { d = await r.json(); } catch (e) {}
+            if (!r.ok || !d || d.success === false) throw new Error((d && d.message) || 'Could not save. Check your connection.');
+            return d;
+        }
+        async function load() {
+            try { notes = (await api('/api/notes')).notes || []; loaded = true; } catch (e) { loaded = true; }
+            render();
+        }
+        const pageNotes = () => notes.filter(n => n.context_key === ctx.key);
+
+        // ---- counts on the button ----
+        function updateCount() {
+            const n = pageNotes().length;
+            $('ntCount').hidden = !n; $('ntCount').textContent = n;
+            $('ntAllN').textContent = notes.length ? '· ' + notes.length : '';
+        }
+
+        // ---- drawing ----
+        function when(iso) {
+            const d = new Date(iso); if (isNaN(d)) return '';
+            const days = Math.floor((Date.now() - d) / 86400000);
+            if (days < 1) return 'today ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (days < 7) return d.toLocaleDateString([], { weekday: 'short' });
+            return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+        }
+        function itemHTML(n) {
+            return '<button type="button" class="nt-item' + (n.id === currentId ? ' on' : '') + '" data-nt-open="' + n.id + '">' +
+                '<b>' + (n.pinned ? '<i class="fas fa-star" style="color:#f59e0b" aria-hidden="true"></i> ' : '') + esc(n.title) + '</b>' +
+                '<small>' + esc(n.context_label || 'Note') + ' · ' + esc(when(n.updated_at)) + '</small>' +
+                (n.preview && n.preview !== n.title ? '<p>' + esc(n.preview.replace(/\n+/g, ' · ')) + '</p>' : '') + '</button>';
+        }
+        function render() {
+            if (!$('ntPanel')) return;
+            updateCount();
+            document.querySelectorAll('[data-nt-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.ntTab === tab)));
+            $('ntCtx').hidden = tab !== 'page';
+            $('ntCtxText').textContent = ctx.label;
+            const body = $('ntBody'), foot = $('ntFoot');
+            if (!loaded) { body.innerHTML = '<div class="nt-empty">Loading your notes…</div>'; foot.innerHTML = ''; return; }
+            if (tab === 'page') {
+                const mine = pageNotes();
+                const cur = notes.find(n => n.id === currentId) || null;
+                body.innerHTML =
+                    '<div class="nt-tools" role="toolbar" aria-label="Formatting">' +
+                    '<button type="button" class="nt-tool" data-cmd="bold" title="Bold"><b>B</b></button>' +
+                    '<button type="button" class="nt-tool" data-cmd="italic" title="Italic"><i>I</i></button>' +
+                    '<button type="button" class="nt-tool" data-cmd="underline" title="Underline"><u>U</u></button>' +
+                    '<button type="button" class="nt-tool" data-cmd="insertUnorderedList" title="Bullet list"><i class="fas fa-list-ul" aria-hidden="true"></i></button>' +
+                    '<button type="button" class="nt-tool" data-cmd="tick" title="Add a tick">✓</button>' +
+                    '<button type="button" class="nt-tool" data-cmd="time" title="Add the time (useful in live classes)"><i class="far fa-clock" aria-hidden="true"></i></button></div>' +
+                    '<div class="nt-edit" id="ntEdit" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note" data-placeholder="Write a short note…">' + (cur ? cur.body : '') + '</div>' +
+                    (mine.length ? '<div class="nt-sub">Notes here (' + mine.length + ')</div><div class="nt-list">' + mine.map(itemHTML).join('') + '</div>' : '');
+                foot.innerHTML = '<span id="ntStatus">' + (cur ? '<span class="ok"><i class="fas fa-check" aria-hidden="true"></i> Saved</span>' : 'Saves as you type') + '</span>' +
+                    '<span class="nt-acts">' + (cur ? '<button type="button" class="nt-btn ghost" data-nt="pin" title="Pin">' + (cur.pinned ? '<i class="fas fa-star" style="color:#f59e0b"></i>' : '<i class="far fa-star"></i>') + '</button>' +
+                    '<button type="button" class="nt-btn ghost" data-nt="delete" title="Delete note"><i class="far fa-trash-can"></i></button>' : '') +
+                    '<button type="button" class="nt-btn" data-nt="new"><i class="fas fa-plus" aria-hidden="true"></i> New note</button></span>';
+            } else {
+                const list = notes.filter(n => tab === 'all' || n.pinned)
+                    .filter(n => !query || (n.title + ' ' + n.preview + ' ' + n.context_label).toLowerCase().includes(query.toLowerCase()));
+                body.innerHTML = '<input type="search" class="nt-search" id="ntSearch" placeholder="Search notes…" aria-label="Search notes" value="' + esc(query) + '">' +
+                    (list.length ? '<div class="nt-list">' + list.map(itemHTML).join('') + '</div>'
+                        : '<div class="nt-empty">' + (query ? 'No notes match "' + esc(query) + '".' : tab === 'pinned' ? 'Pin a note with ☆ to keep it here.' : 'No notes yet. Write your first one on any lesson.') + '</div>');
+                foot.innerHTML = '<span>Tap a note to open it where you wrote it</span>' +
+                    (notes.length ? '<button type="button" class="nt-btn" data-nt="download"><i class="fas fa-download" aria-hidden="true"></i> Download</button>' : '');
+                const s = $('ntSearch');
+                if (s) s.addEventListener('input', () => { query = s.value; const pos = s.selectionStart; render(); const s2 = $('ntSearch'); if (s2) { s2.focus(); s2.setSelectionRange(pos, pos); } });
+            }
+        }
+
+        // ---- saving (as you type) ----
+        function setStatus(html) { const s = $('ntStatus'); if (s) s.innerHTML = html; }
+        function queueSave() {
+            clearTimeout(saveTimer);
+            setStatus('Saving…');
+            saveTimer = setTimeout(saveNow, 700);
+        }
+        async function saveNow() {
+            const ed = $('ntEdit'); if (!ed || saving) return;
+            const body = ed.innerHTML.trim();
+            const empty = !ed.textContent.trim();
+            saving = true;
+            try {
+                if (currentId) {
+                    const d = await api('/api/notes/' + currentId, 'PATCH', { body });
+                    const i = notes.findIndex(n => n.id === currentId); if (i >= 0) notes[i] = d.note;
+                } else if (!empty) {
+                    const d = await api('/api/notes', 'POST', { body, context_key: ctx.key, context_label: ctx.label, context_url: ctx.url });
+                    notes.unshift(d.note); currentId = d.note.id;
+                }
+                setStatus('<span class="ok"><i class="fas fa-check" aria-hidden="true"></i> Saved</span>');
+                updateCount();
+                refreshListOnly();
+            } catch (e) { setStatus('<span style="color:#dc2626">' + esc(e.message) + '</span>'); }
+            saving = false;
+        }
+        function refreshListOnly() {      // redraw the list under the editor without touching what's being typed
+            if (tab !== 'page') return;
+            const mine = pageNotes(), body = $('ntBody');
+            let sub = body.querySelector('.nt-sub'), list = body.querySelector('.nt-list');
+            if (!mine.length) return;
+            if (!sub) { sub = document.createElement('div'); sub.className = 'nt-sub'; body.appendChild(sub); list = document.createElement('div'); list.className = 'nt-list'; body.appendChild(list); }
+            sub.textContent = 'Notes here (' + mine.length + ')';
+            list.innerHTML = mine.map(itemHTML).join('');
+            const acts = $('ntFoot').querySelector('.nt-acts');
+            if (acts && currentId && !acts.querySelector('[data-nt="delete"]')) render();
+        }
+
+        // ---- open / close / move ----
+        const panel = () => $('ntPanel');
+        function openPanel(focus) {
+            panel().hidden = false; $('ntFab').hidden = true;
+            try { localStorage.setItem(OPEN_KEY, '1'); } catch (e) {}
+            applyPos();
+            if (!loaded) load(); else render();
+            if (focus) setTimeout(() => { const ed = $('ntEdit'); (ed || $('ntClose')).focus(); }, 30);
+        }
+        function closePanel() {
+            if (currentId || ($('ntEdit') && $('ntEdit').textContent.trim())) saveNow();
+            panel().hidden = true; $('ntFab').hidden = false;
+            try { localStorage.removeItem(OPEN_KEY); } catch (e) {}
+            $('ntFab').focus();
+        }
+        function getPos() { try { return JSON.parse(localStorage.getItem(POS_KEY) || 'null'); } catch (e) { return null; } }
+        function applyPos() {
+            const p = panel(), pos = getPos();
+            if (window.innerWidth <= 640 || !pos) { p.style.left = ''; p.style.top = ''; p.style.right = ''; p.style.bottom = ''; return; }
+            const w = p.offsetWidth || 340, h = p.offsetHeight || 400;
+            const x = Math.max(8, Math.min(window.innerWidth - w - 8, pos.x)), y = Math.max(8, Math.min(window.innerHeight - h - 8, pos.y));
+            p.style.left = x + 'px'; p.style.top = y + 'px'; p.style.right = 'auto'; p.style.bottom = 'auto';
+        }
+        (function drag() {
+            let sx = 0, sy = 0, ox = 0, oy = 0, on = false;
+            $('ntHead').addEventListener('pointerdown', e => {
+                if (e.target.closest('button') || window.innerWidth <= 640) return;
+                const r = panel().getBoundingClientRect();
+                on = true; sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top;
+                $('ntHead').setPointerCapture(e.pointerId);
+            });
+            $('ntHead').addEventListener('pointermove', e => {
+                if (!on) return;
+                const p = panel(), w = p.offsetWidth, h = p.offsetHeight;
+                const x = Math.max(8, Math.min(window.innerWidth - w - 8, ox + e.clientX - sx));
+                const y = Math.max(8, Math.min(window.innerHeight - h - 8, oy + e.clientY - sy));
+                p.style.left = x + 'px'; p.style.top = y + 'px'; p.style.right = 'auto'; p.style.bottom = 'auto';
+            });
+            const end = () => {
+                if (!on) return; on = false;
+                const r = panel().getBoundingClientRect();
+                try { localStorage.setItem(POS_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) })); } catch (e) {}
+            };
+            $('ntHead').addEventListener('pointerup', end);
+            $('ntHead').addEventListener('pointercancel', end);
+        })();
+        window.addEventListener('resize', () => { if (!panel().hidden) applyPos(); });
+
+        // ---- clicks ----
+        document.getElementById('esNotes').addEventListener('click', async e => {
+            const t = e.target.closest('button'); if (!t) return;
+            if (t.id === 'ntFab') return openPanel(true);
+            if (t.id === 'ntClose') return closePanel();
+            if (t.id === 'ntHome') { try { localStorage.removeItem(POS_KEY); } catch (x) {} return applyPos(); }
+            if (t.id === 'ntMin') { const m = panel().classList.toggle('min'); t.setAttribute('aria-expanded', String(!m)); t.innerHTML = '<i class="fas fa-' + (m ? 'plus' : 'minus') + '" aria-hidden="true"></i>'; return; }
+            if (t.dataset.ntTab) { if (tab === 'page') await flush(); tab = t.dataset.ntTab; return render(); }
+            if (t.dataset.cmd) {
+                const ed = $('ntEdit'); if (!ed) return;
+                if (document.activeElement !== ed) { ed.focus(); restoreSel(); }
+                if (t.dataset.cmd === 'tick') document.execCommand('insertText', false, '✓ ');
+                else if (t.dataset.cmd === 'time') document.execCommand('insertText', false, '[' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '] ');
+                else document.execCommand(t.dataset.cmd, false, null);
+                return queueSave();
+            }
+            if (t.dataset.ntOpen) {
+                await flush();
+                const n = notes.find(x => x.id === Number(t.dataset.ntOpen)); if (!n) return;
+                if (n.context_key !== ctx.key && n.context_url && n.context_url.replace(/[#?].*$/, '') !== location.pathname) {
+                    location.href = n.context_url; return;          // jump back to where it was written
+                }
+                if (n.context_key !== ctx.key) ctx = { key: n.context_key, label: n.context_label, url: n.context_url };
+                currentId = n.id; tab = 'page'; render();
+                const ed = $('ntEdit'); if (ed) ed.focus();
+                return;
+            }
+            const a = t.dataset.nt;
+            if (a === 'new') { await flush(); currentId = null; render(); const ed = $('ntEdit'); if (ed) ed.focus(); }
+            else if (a === 'pin' && currentId) {
+                const n = notes.find(x => x.id === currentId);
+                try { const d = await api('/api/notes/' + currentId, 'PATCH', { pinned: !n.pinned }); Object.assign(n, d.note); render(); } catch (x) { setStatus(esc(x.message)); }
+            } else if (a === 'delete' && currentId) {
+                if (!t.dataset.sure) { t.dataset.sure = '1'; t.innerHTML = 'Delete?'; setTimeout(() => { if (t.isConnected) { delete t.dataset.sure; t.innerHTML = '<i class="far fa-trash-can"></i>'; } }, 3000); return; }
+                try { await api('/api/notes/' + currentId, 'DELETE'); notes = notes.filter(x => x.id !== currentId); currentId = null; render(); } catch (x) { setStatus(esc(x.message)); }
+            } else if (a === 'download') download();
+        });
+        async function flush() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; await saveNow(); } }
+        document.getElementById('esNotes').addEventListener('input', e => { if (e.target.id === 'ntEdit') queueSave(); });
+        // the format buttons must not take the cursor out of the note (it would jump to the start)
+        document.getElementById('esNotes').addEventListener('mousedown', e => { if (e.target.closest('.nt-tool')) e.preventDefault(); });
+        let savedRange = null;
+        document.addEventListener('selectionchange', () => {
+            const ed = $('ntEdit'), sel = window.getSelection();
+            if (ed && sel.rangeCount && ed.contains(sel.anchorNode)) savedRange = sel.getRangeAt(0).cloneRange();
+        });
+        function restoreSel() {
+            const ed = $('ntEdit'); if (!ed) return;
+            const sel = window.getSelection(); sel.removeAllRanges();
+            if (savedRange && ed.contains(savedRange.startContainer)) sel.addRange(savedRange);
+            else { const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); sel.addRange(r); }   // end of the note
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && !panel().hidden && panel().contains(document.activeElement)) closePanel(); });
+
+        function download() {
+            const lines = ['My Eschool notes', ''];
+            notes.forEach(n => {
+                const tmp = document.createElement('div'); tmp.innerHTML = n.body.replace(/<br\s*\/?>/g, '\n').replace(/<\/(div|p|li)>/g, '\n');
+                lines.push('== ' + n.title + ' ==', (n.context_label || '') + ' · ' + new Date(n.updated_at).toLocaleString(), tmp.textContent.trim(), '');
+            });
+            const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'eschool-notes.txt';
+            document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+        }
+
+        // count on the button straight away; reopen if it was open on the last page
+        load();
+        try { if (localStorage.getItem(OPEN_KEY) === '1' && window.innerWidth > 640) openPanel(false); } catch (e) {}
+    })();
+    </script>
+    {% endif %}
+
+
+    <!-- Highlight the menu item for the page you're on (both sidebars) -->
+    <script>
+    (function () {
+        var aliases = { '/career': '/careerD', '/progress': '/progres', '/help': '/support' };
+        var path = window.location.pathname.replace(/\/+$/, '') || '/dashboard';
+        path = aliases[path] || path;
+        document.querySelectorAll('.sidebar .nav-item, .mobile-sidebar .nav-item').forEach(function (a) {
+            var href = (a.getAttribute('href') || '').replace(/\/+$/, '');
+            href = aliases[href] || href;
+            var on = !!href && href !== '/logout' && (path === href || path.indexOf(href + '/') === 0);
+            a.classList.toggle('active', on);
+            if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+        });
+    })();
+    </script>
+    <!-- ============================================================
+         SITE-WIDE THEME ADAPTER
+         Makes every page's cards follow Settings > Appearance:
+         - Dark mode: light cards, panels, borders and dark text inside
+           the page content are switched to dark versions.
+         - Accent colour: the built-in Eschool blues used by pages are
+           swapped for the chosen accent colour.
+         Pages that already have their own dark-mode CSS are left alone
+         (their colours are already dark, so nothing matches).
+         Add data-no-theme to any element to skip it and its children.
+    ============================================================= -->
+    <script>
+    (function () {
+        var ROOT_SELECTOR = '.dashboard-content-area';
+        var SKIP_TAGS = { IMG: 1, SVG: 1, CANVAS: 1, VIDEO: 1, IFRAME: 1, SCRIPT: 1, STYLE: 1, PICTURE: 1, path: 1, svg: 1 };
+        var DARK = { card: '#1e293b', panel: '#0f172a', border: '#334155', text: '#f1f5f9', text2: '#cbd5e1', text3: '#94a3b8' };
+
+        /* the blues pages use for "brand" colour -> replaced by the accent */
+        var BRAND_MAIN = ['rgb(67, 97, 238)', 'rgb(74, 108, 247)'];           // #4361ee #4a6cf7
+        var BRAND_DARK = ['rgb(58, 92, 229)', 'rgb(63, 55, 201)', 'rgb(42, 68, 199)'];  // #3a5ce5 #3f37c9 #2a44c7
+        var ACCENTS = {
+            blue:   null,
+            green:  { color: '#10b981', hover: '#059669' },
+            purple: { color: '#8b5cf6', hover: '#7c3aed' },
+            dark:   { color: '#475569', hover: '#334155' }
+        };
+
+        var touched = new Set();                // elements we changed
+        var saved = new WeakMap();              // el -> {prop: [value, priority]}
+
+        var USER_KEY = {{ session.get('email', 'anonymous') | tojson }};   // same key the appearance init above uses
+        function readSetting(name) {
+            try { return localStorage.getItem('settings.' + name + '.' + USER_KEY); } catch (e) { return null; }
+        }
+
+        function parse(c) {
+            var m = c && c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
+            if (!m) return null;
+            return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+        }
+        function hsl(c) {
+            var r = c.r / 255, g = c.g / 255, b = c.b / 255;
+            var max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, h = 0, s = 0;
+            if (max !== min) {
+                var d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+                h *= 60;
+            }
+            return { h: h, s: s, l: l };
+        }
+
+        function setProp(el, prop, value) {
+            var store = saved.get(el);
+            if (!store) { store = {}; saved.set(el, store); }
+            if (!(prop in store)) store[prop] = [el.style.getPropertyValue(prop), el.style.getPropertyPriority(prop)];
+            el.style.setProperty(prop, value, 'important');
+            touched.add(el);
+        }
+        function restore(el) {
+            var store = saved.get(el);
+            if (!store) return;
+            Object.keys(store).forEach(function (prop) {
+                var v = store[prop];
+                if (v[0]) el.style.setProperty(prop, v[0], v[1]); else el.style.removeProperty(prop);
+            });
+            saved.delete(el);
+            touched.delete(el);
+        }
+
+        /* is the background behind this element dark (after our changes)? */
+        function bgIsDark(el) {
+            var node = el;
+            while (node && node.nodeType === 1) {
+                // we only ever set dark backgrounds; read our own value because a
+                // CSS transition can still be reporting the old light colour
+                var mine = saved.get(node);
+                if (mine && ('background-color' in mine) && document.body.classList.contains('dark-mode')) return true;
+                var c = parse(getComputedStyle(node).backgroundColor);
+                if (c && c.a > 0.5) return hsl(c).l < 0.45;
+                var img = getComputedStyle(node).backgroundImage;
+                if (img && img !== 'none') {
+                    // gradient: judge by its colours; photo: unknown
+                    var cols = img.match(/rgba?\([^)]+\)/g);
+                    if (!cols) return null;
+                    var sum = 0; cols.forEach(function (c) { sum += hsl(parse(c)).l; });
+                    return sum / cols.length < 0.45;
+                }
+                node = node.parentElement;
+            }
+            return document.body.classList.contains('dark-mode');
+        }
+
+        function darkenElement(el, cs) {
+            // background
+            var bg = parse(cs.backgroundColor);
+            if (bg && bg.a > 0.3) {
+                var b = hsl(bg);
+                if (b.l >= 0.84 || (b.l >= 0.78 && b.s < 0.3)) {
+                    if (b.s < 0.3 || b.l > 0.985) {
+                        setProp(el, 'background-color', b.l > 0.985 ? DARK.card : DARK.panel);
+                    } else {
+                        // pastel tint (badge, chip, soft card) -> dark tint of the same hue
+                        setProp(el, 'background-color', 'hsla(' + Math.round(b.h) + ', ' + Math.round(Math.min(b.s, 0.75) * 100) + '%, 55%, 0.16)');
+                    }
+                }
+            }
+            // borders
+            ['top', 'right', 'bottom', 'left'].forEach(function (side) {
+                if (parseFloat(cs['border-' + side + '-width']) > 0) {
+                    var bc = parse(cs['border-' + side + '-color']);
+                    if (bc && bc.a > 0.2) {
+                        var h = hsl(bc);
+                        if (h.l >= 0.78) setProp(el, 'border-' + side + '-color', h.s < 0.3 ? DARK.border : 'hsla(' + Math.round(h.h) + ', 60%, 55%, 0.35)');
+                    }
+                }
+            });
+            // text
+            var tc = parse(cs.color);
+            if (tc) {
+                var t = hsl(tc);
+                if (t.l < 0.62 && bgIsDark(el) === true) {
+                    if (t.s < 0.22) setProp(el, 'color', t.l < 0.25 ? DARK.text : t.l < 0.42 ? DARK.text2 : DARK.text3);
+                    else if (t.l < 0.5) setProp(el, 'color', 'hsl(' + Math.round(t.h) + ', ' + Math.round(Math.min(t.s, 0.85) * 100) + '%, 72%)');
+                }
+            }
+        }
+
+        function accentElement(el, cs, accent) {
+            ['color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'].forEach(function (prop) {
+                var v = cs.getPropertyValue(prop);
+                if (BRAND_MAIN.indexOf(v) > -1) setProp(el, prop, accent.color);
+                else if (BRAND_DARK.indexOf(v) > -1) setProp(el, prop, accent.hover);
+            });
+            var img = cs.backgroundImage;
+            if (img && img.indexOf('gradient') > -1) {
+                var out = img;
+                BRAND_MAIN.forEach(function (c) { out = out.split(c).join(accent.color); });
+                BRAND_DARK.forEach(function (c) { out = out.split(c).join(accent.hover); });
+                if (out !== img) setProp(el, 'background-image', out);
+            }
+        }
+
+        function processTree(root) {
+            if (!root || root.nodeType !== 1) return;
+            var dark = document.body.classList.contains('dark-mode');
+            var accent = ACCENTS[readSetting('themeColor')] || null;
+            if (!dark && !accent) return;
+            var walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                acceptNode: function (n) {
+                    if (SKIP_TAGS[n.tagName] || n.hasAttribute('data-no-theme')) return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            var el = root;
+            while (el) {
+                if (!SKIP_TAGS[el.tagName] && !el.hasAttribute('data-no-theme')) {
+                    var cs = getComputedStyle(el);
+                    if (accent) accentElement(el, cs, accent);
+                    if (dark) darkenElement(el, getComputedStyle(el));
+                }
+                el = walker.nextNode();
+            }
+        }
+
+        function resetAll() { Array.from(touched).forEach(restore); }
+
+        /* page stylesheets also use --primary-dark / --primary-light (hover, soft tints) */
+        function setAccentVars() {
+            var accent = ACCENTS[readSetting('themeColor')];
+            var root = document.documentElement.style;
+            if (accent) {
+                root.setProperty('--primary-dark', accent.hover);
+                root.setProperty('--primary-light', 'color-mix(in srgb, ' + accent.color + ' 15%, white)');
+            } else {
+                root.setProperty('--primary-dark', '#3a0ca3');
+                root.setProperty('--primary-light', '#e0e7ff');
+            }
+        }
+
+        function runAll() {
+            setAccentVars();
+            resetAll();
+            document.querySelectorAll(ROOT_SELECTOR).forEach(processTree);
+        }
+
+        /* re-process only what changed (new cards from JS, class toggles) */
+        var pending = new Set(), scheduled = false;
+        function queue(el) {
+            pending.add(el);
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(function () {
+                scheduled = false;
+                var list = Array.from(pending); pending.clear();
+                list.forEach(function (n) {
+                    if (!n.isConnected) return;
+                    for (var p = n.parentElement; p; p = p.parentElement) if (pending.has(p) || list.indexOf(p) > -1) return;
+                    n.querySelectorAll('*').forEach(function (c) { if (saved.has(c)) restore(c); });
+                    restore(n);
+                    processTree(n);
+                });
+                settle();
+            });
+        }
+
+        /* second, gentle pass (no reset) once transitions/animations have settled,
+           so anything that was mid-transition on the first pass is caught */
+        var settleTimer = null;
+        function settle() {
+            clearTimeout(settleTimer);
+            settleTimer = setTimeout(function () {
+                document.querySelectorAll(ROOT_SELECTOR).forEach(processTree);
+            }, 450);
+        }
+
+        function start() {
+            runAll();
+            settle();
+            window.addEventListener('load', settle);
+            var obs = new MutationObserver(function (muts) {
+                muts.forEach(function (m) {
+                    if (m.type === 'childList') {
+                        m.addedNodes.forEach(function (n) { if (n.nodeType === 1) queue(n); });
+                    } else if (m.type === 'attributes' && m.target.nodeType === 1) {
+                        queue(m.target);
+                    }
+                });
+            });
+            document.querySelectorAll(ROOT_SELECTOR).forEach(function (root) {
+                obs.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+            });
+            // ticking a checkbox/radio changes its look through CSS (:checked), not a class,
+            // so re-check that control's area after it changes
+            document.addEventListener('change', function (e) {
+                var t = e.target;
+                if (!t || !t.closest || !t.closest(ROOT_SELECTOR) || t.closest('[data-no-theme]')) return;
+                var group = (t.type === 'radio' && t.name)
+                    ? document.querySelectorAll('input[type="radio"][name="' + t.name + '"]') : [t];
+                Array.prototype.forEach.call(group, function (r) { queue(r.closest('label') || r.parentElement || r); });
+            }, true);
+            // dark mode switched on/off (Settings page, or "auto" following the device)
+            var lastDark = document.body.classList.contains('dark-mode');
+            new MutationObserver(function () {
+                var now = document.body.classList.contains('dark-mode');
+                if (now !== lastDark) { lastDark = now; runAll(); }
+            }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+            window.addEventListener('storage', function (e) { if (e.key && e.key.indexOf('settings.') === 0) runAll(); });
+        }
+
+        window.eschoolTheme = { refresh: runAll };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+        else start();
+    })();
+    </script>
+    {% if session.get('user_id') and session.get('role', 'student') == 'student' %}
+    <!-- ============================================================
+         REWARD POP-UPS: "+10 EP" and "New badge" toasts, bottom-left.
+         Asks /api/rewards/check on load, every 90 s while the tab is
+         open, and shortly after the page saves something. Cursors are
+         kept per learner so nothing pops up twice.
+         Pages can call window.esCheckRewards() to check right away.
+    ============================================================= -->
+    <style>
+        #esRewards { position: fixed; left: 18px; bottom: 18px; z-index: 100004; display: flex; flex-direction: column-reverse; gap: 10px; pointer-events: none; max-width: calc(100vw - 36px); }
+        .es-rw { pointer-events: auto; display: flex; align-items: center; gap: 12px; min-width: 250px; max-width: 340px; padding: 12px 14px; border-radius: 14px;
+                 background: #fff; color: #0f172a; border: 1px solid #e2e8f0; box-shadow: 0 12px 30px rgba(15,23,42,.18); font-size: 14px;
+                 transform: translateY(14px); opacity: 0; transition: transform .35s cubic-bezier(.2,.9,.3,1.2), opacity .3s; }
+        .es-rw.show { transform: none; opacity: 1; }
+        .es-rw .rw-ic { flex: 0 0 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; font-size: 17px; font-weight: 800; }
+        .es-rw .rw-t { font-weight: 700; line-height: 1.25; }
+        .es-rw .rw-s { color: #64748b; font-size: 12.5px; margin-top: 2px; }
+        .es-rw a { color: var(--primary-color, #4361ee); font-weight: 600; text-decoration: none; font-size: 12.5px; }
+        .es-rw .rw-x { margin-left: auto; background: none; border: 0; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 0 2px; align-self: flex-start; }
+        .es-rw.badge { border-color: #c7d2fe; }
+        body.dark-mode .es-rw { background: #111827; color: #e5e7eb; border-color: #263244; }
+        body.dark-mode .es-rw .rw-s { color: #94a3b8; }
+        @media (max-width: 600px) { #esRewards { left: 12px; right: 12px; bottom: 12px; } .es-rw { max-width: none; } }
+        @media (prefers-reduced-motion: reduce) { .es-rw { transition: none; } }
+        @media print { #esRewards { display: none; } }
+        /* Legendary badge unlocked: full-screen moment, in that badge's colours */
+        .es-lgx { --a: #f97316; --b: #b91c1c; position: fixed; inset: 0; z-index: 100010; display: grid; place-items: center; overflow: hidden; padding: 16px;
+                  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--b) 55%, #0b0616) 0%, #07040f 62%); animation: esLgIn .5s ease both;
+                  font-family: inherit; }
+        .es-lgx.out { animation: esLgOut .35s ease forwards; }
+        @keyframes esLgIn { from { opacity: 0; } } @keyframes esLgOut { to { opacity: 0; } }
+        .es-lgx .x-rays { position: absolute; left: 50%; top: 40%; width: 1400px; height: 1400px; margin: -700px 0 0 -700px; opacity: 0; pointer-events: none;
+                  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--a) 40%, transparent) 0 6deg, transparent 6deg 18deg);
+                  -webkit-mask: radial-gradient(circle, #000 0, transparent 60%); mask: radial-gradient(circle, #000 0, transparent 60%);
+                  animation: esLgRays 1s .9s ease forwards, esLgSpin 30s linear infinite; }
+        @keyframes esLgRays { to { opacity: .55; } } @keyframes esLgSpin { to { transform: rotate(360deg); } }
+        .es-lgx .x-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; animation: esLgFlash .7s .8s ease-out; }
+        @keyframes esLgFlash { 15% { opacity: .85; } 100% { opacity: 0; } }
+        .es-lgx .x-stage { position: relative; z-index: 2; text-align: center; color: #fff; max-width: 560px; }
+        .es-lgx .x-orb { position: relative; width: 240px; height: 240px; margin: 0 auto; }
+        .es-lgx .x-charge { position: absolute; inset: 85px; border-radius: 50%; background: radial-gradient(circle, #fff, var(--a) 45%, transparent 70%); opacity: 0; animation: esLgCharge .9s ease-in forwards; }
+        @keyframes esLgCharge { 0% { transform: scale(.2); opacity: 0; } 70% { transform: scale(1); opacity: 1; } 100% { transform: scale(3.2); opacity: 0; } }
+        .es-lgx .x-wave { position: absolute; left: 50%; top: 50%; width: 200px; height: 200px; margin: -100px; border-radius: 50%; border: 3px solid var(--a); opacity: 0; animation: esLgWave 1.4s .85s ease-out; }
+        .es-lgx .x-wave.w2 { animation-delay: 1.05s; border-color: #fde68a; }
+        @keyframes esLgWave { 0% { transform: scale(.6); opacity: 1; } 100% { transform: scale(3.4); opacity: 0; } }
+        .es-lgx .x-halo { position: absolute; inset: -10px; border-radius: 50%; opacity: 0;
+                  background: conic-gradient(from 0deg, transparent, var(--a), #fde68a, transparent 60%, var(--a), transparent);
+                  -webkit-mask: radial-gradient(circle, transparent 58%, #000 60%, #000 66%, transparent 68%); mask: radial-gradient(circle, transparent 58%, #000 60%, #000 66%, transparent 68%);
+                  animation: esLgShow .6s 1.1s forwards, esLgSpin 6s linear infinite; }
+        @keyframes esLgShow { to { opacity: 1; } }
+        .es-lgx .x-badge { position: absolute; inset: 20px; opacity: 0; transform: scale(.1) rotate(-200deg); filter: drop-shadow(0 0 30px color-mix(in srgb, var(--a) 80%, transparent));
+                  animation: esLgPop 1.1s .85s cubic-bezier(.2, 1.4, .35, 1) forwards, esLgFloat 4s 2.2s ease-in-out infinite; }
+        .es-lgx .x-badge img { width: 100%; height: 100%; object-fit: contain; }
+        @keyframes esLgPop { 60% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+        @keyframes esLgFloat { 0%, 100% { opacity: 1; transform: none; } 50% { opacity: 1; transform: translateY(-8px); } }
+        .es-lgx .x-sheen { position: absolute; inset: 20px; overflow: hidden; border-radius: 24px; pointer-events: none; }
+        .es-lgx .x-sheen::after { content: ''; position: absolute; top: -20%; left: -60%; width: 40%; height: 140%; transform: rotate(20deg);
+                  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .6), transparent); animation: esLgSweep 1.2s 2s ease-in-out both; }
+        @keyframes esLgSweep { from { left: -60%; } to { left: 130%; } }
+        .es-lgx .x-eyebrow { margin-top: 16px; font-size: 13px; letter-spacing: .3em; font-weight: 800; color: #fde68a; opacity: 0; animation: esLgUp .6s 1.5s forwards; }
+        .es-lgx h2 { margin: 8px 0 4px; font-size: clamp(30px, 7vw, 44px); font-weight: 900; line-height: 1.1; opacity: 0;
+                  background: linear-gradient(90deg, #fff 0%, #fde68a 30%, #fff 50%, var(--a) 70%, #fff 100%); background-size: 200% 100%;
+                  -webkit-background-clip: text; background-clip: text; color: transparent; animation: esLgUp .6s 1.7s forwards, esLgShimmer 3s 2.3s linear infinite; }
+        @keyframes esLgShimmer { to { background-position: -200% 0; } }
+        .es-lgx .x-motto { font-style: italic; color: #e9d5c7; opacity: 0; animation: esLgUp .6s 1.9s forwards; }
+        @keyframes esLgUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+        .es-lgx .x-ep { display: inline-flex; margin-top: 18px; padding: 9px 18px; border-radius: 999px; background: linear-gradient(135deg, #f59e0b, #f97316);
+                  font-weight: 800; font-size: 18px; box-shadow: 0 0 30px rgba(249, 115, 22, .6); opacity: 0; transform: scale(.5);
+                  animation: esLgEp .5s 2.2s cubic-bezier(.2, 1.6, .4, 1) forwards; }
+        @keyframes esLgEp { to { opacity: 1; transform: none; } }
+        .es-lgx .x-pfp { margin-top: 12px; font-size: 13.5px; color: #cbd5e1; opacity: 0; animation: esLgUp .5s 2.6s forwards; }
+        .es-lgx .x-btns { margin-top: 22px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; opacity: 0; animation: esLgUp .5s 2.8s forwards; }
+        .es-lgx .x-btns a, .es-lgx .x-btns button { padding: 11px 22px; border-radius: 12px; font-weight: 700; font-size: 14.5px; cursor: pointer; text-decoration: none; font-family: inherit; }
+        .es-lgx .x-go { background: #fff; color: #7c2d12; border: 0; }
+        .es-lgx .x-close { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, .45); }
+        .es-lgx .x-spark { position: absolute; left: 50%; top: 40%; width: 8px; height: 8px; border-radius: 50%; background: #fde68a; box-shadow: 0 0 10px #fbbf24; opacity: 0;
+                  pointer-events: none; animation: esLgBurst 1.6s .9s cubic-bezier(.1, .7, .3, 1) forwards; }
+        @keyframes esLgBurst { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(.3); } }
+        .es-lgx .x-ember { position: absolute; bottom: -20px; width: 5px; height: 5px; border-radius: 50%; background: var(--a); box-shadow: 0 0 8px var(--a); opacity: 0;
+                  pointer-events: none; animation: esLgRise var(--d) var(--t) linear infinite; }
+        @keyframes esLgRise { 0% { opacity: 0; transform: translateY(0); } 10% { opacity: .9; } 100% { opacity: 0; transform: translateY(-105vh) translateX(var(--sx)); } }
+        @media (max-height: 640px) { .es-lgx .x-orb { width: 170px; height: 170px; } }
+        @media (prefers-reduced-motion: reduce) {
+            .es-lgx *, .es-lgx { animation: none !important; }
+            .es-lgx .x-rays, .es-lgx .x-halo { opacity: .5; } .es-lgx .x-charge, .es-lgx .x-wave, .es-lgx .x-flash, .es-lgx .x-spark, .es-lgx .x-ember { display: none; }
+            .es-lgx .x-badge, .es-lgx .x-eyebrow, .es-lgx h2, .es-lgx .x-motto, .es-lgx .x-ep, .es-lgx .x-pfp, .es-lgx .x-btns { opacity: 1; transform: none; }
+        }
+    </style>
+    <div id="esRewards" aria-live="polite"></div>
+    <script>
+    (function () {
+        var box = document.getElementById('esRewards');
+        var KEY = 'esRewards.' + {{ session.get('user_id')|tojson }};
+        var busy = false, timer = null;
+        function load() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+        function save(c) { try { localStorage.setItem(KEY, JSON.stringify(c)); } catch (e) {} }
+        function esc(t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+
+        function toast(html, cls, ms) {
+            var el = document.createElement('div');
+            el.className = 'es-rw ' + (cls || '');
+            el.innerHTML = html + '<button class="rw-x" aria-label="Close">&times;</button>';
+            box.appendChild(el);
+            while (box.children.length > 4) box.removeChild(box.firstChild);
+            requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.add('show'); }); });
+            var gone = function () { el.classList.remove('show'); setTimeout(function () { el.remove(); }, 350); };
+            el.querySelector('.rw-x').onclick = gone;
+            setTimeout(gone, ms || 6000);
+        }
+        function showEp(list) {
+            if (!list.length) return;
+            if (list.length > 3) {
+                var total = list.reduce(function (a, x) { return a + (x.ep || 0); }, 0);
+                toast('<div class="rw-ic" style="background:linear-gradient(135deg,#f59e0b,#f97316)">EP</div>' +
+                      '<div><div class="rw-t">+' + total + ' EP earned</div><div class="rw-s">' + list.length + ' rewards · <a href="/points">See them</a></div></div>', 'ep');
+                return;
+            }
+            list.forEach(function (x, i) {
+                setTimeout(function () {
+                    toast('<div class="rw-ic" style="background:linear-gradient(135deg,#f59e0b,#f97316)">+' + esc(x.ep) + '</div>' +
+                          '<div><div class="rw-t">+' + esc(x.ep) + ' EP · ' + esc(x.label) + '</div>' +
+                          (x.sub ? '<div class="rw-s">' + esc(x.sub) + '</div>' : '') + '</div>', 'ep');
+                }, i * 450);
+            });
+        }
+        function showBadges(list) {
+            list.forEach(function (b, i) {
+                setTimeout(function () {
+                    toast('<div class="rw-ic" style="background:' + esc(b.color || '#4361ee') + '"><i class="fas ' + esc(b.icon || 'fa-award') + '"></i></div>' +
+                          '<div><div class="rw-t">New badge: ' + esc(b.title) + '</div><div class="rw-s">' + esc(b.desc) +
+                          ' · <a href="/achievements">View</a></div></div>', 'badge', 9000);
+                }, 300 + i * 600);
+            });
+        }
+
+        // Legendary badge unlocked: one full-screen moment per badge (several wait their turn)
+        var LG_COLORS = { genesis: ['#c2185b', '#22e4f5'], phoenix: ['#b91c1c', '#f97316'], arcane: ['#5b21b6', '#a855f7'],
+            celestial: ['#1e3a8a', '#fbbf24'], chronos: ['#0f766e', '#2dd4bf'], titan: ['#44403c', '#10b981'],
+            midas: ['#a16207', '#facc15'], prism: ['#7c3aed', '#06b6d4'], storm: ['#1d4ed8', '#facc15'], summit: ['#0369a1', '#38bdf8'],
+            guardian: ['#b91c1c', '#ef4444'], atlas: ['#047857', '#3b82f6'], moonshot: ['#4338ca', '#f97316'], ironwill: ['#475569', '#f97316'],
+            quill: ['#0369a1', '#e11d48'] };
+        var lgQueue = [], lgOpen = false;
+        function showLegendary(list) {
+            list.forEach(function (l) { lgQueue.push(l); });
+            if (!lgOpen) nextLegendary();
+        }
+        function nextLegendary() {
+            var l = lgQueue.shift();
+            if (!l) { lgOpen = false; return; }
+            lgOpen = true;
+            var c = LG_COLORS[l.theme] || LG_COLORS.prism;
+            var o = document.createElement('div');
+            o.className = 'es-lgx';
+            o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-label', 'Legendary badge unlocked: ' + (l.title || ''));
+            o.style.setProperty('--b', c[0]); o.style.setProperty('--a', c[1]);
+            o.innerHTML = '<div class="x-rays"></div><div class="x-flash"></div><div class="x-stage"><div class="x-orb"><div class="x-charge"></div>' +
+                '<div class="x-wave"></div><div class="x-wave w2"></div><div class="x-halo"></div>' +
+                '<div class="x-badge"><img src="/badge-art/' + encodeURIComponent(l.theme || 'prism') + '.svg?d=16" alt=""></div><div class="x-sheen"></div></div>' +
+                '<div class="x-eyebrow">★ LEGENDARY BADGE UNLOCKED ★</div><h2>' + esc(l.title) + '</h2>' +
+                (l.motto ? '<div class="x-motto">“' + esc(l.motto) + '”</div>' : '') +
+                '<div class="x-ep">+' + esc(l.ep || 500) + ' EP</div>' +
+                '<div class="x-pfp">It’s now your profile picture' + (l.serial ? ' · Learner No. ' + Number(l.serial).toLocaleString() + ' to hold it' : '') + '</div>' +
+                '<div class="x-btns"><a class="x-go" href="/achievements">See it in the vault</a><button type="button" class="x-close">Continue</button></div></div>';
+            for (var i = 0; i < 46; i++) {
+                var s = document.createElement('i'); s.className = 'x-spark';
+                var a = Math.random() * Math.PI * 2, r = 160 + Math.random() * 300;
+                s.style.setProperty('--x', Math.cos(a) * r + 'px'); s.style.setProperty('--y', Math.sin(a) * r + 'px');
+                s.style.animationDelay = (0.85 + Math.random() * 0.2) + 's';
+                if (i % 3 === 0) s.style.background = c[1];
+                o.appendChild(s);
+            }
+            for (var j = 0; j < 24; j++) {
+                var e = document.createElement('i'); e.className = 'x-ember';
+                e.style.left = Math.random() * 100 + '%';
+                e.style.setProperty('--d', (4 + Math.random() * 4) + 's'); e.style.setProperty('--t', (1 + Math.random() * 4) + 's');
+                e.style.setProperty('--sx', (Math.random() * 80 - 40) + 'px');
+                o.appendChild(e);
+            }
+            var before = document.activeElement;
+            function close() {
+                document.removeEventListener('keydown', onKey);
+                o.classList.add('out');
+                setTimeout(function () { o.remove(); document.documentElement.style.overflow = ''; if (before && before.focus) before.focus(); nextLegendary(); }, 340);
+            }
+            function onKey(ev) {
+                if (ev.key === 'Escape') close();
+                if (ev.key === 'Tab') {          // keep keyboard focus on the two buttons
+                    var f = o.querySelectorAll('a, button'); ev.preventDefault();
+                    (document.activeElement === f[0] ? f[1] : f[0]).focus();
+                }
+            }
+            o.querySelector('.x-close').addEventListener('click', close);
+            document.addEventListener('keydown', onKey);
+            document.documentElement.style.overflow = 'hidden';
+            document.body.appendChild(o);
+            setTimeout(function () { var b = o.querySelector('.x-close'); if (b && document.contains(b)) b.focus({ preventScroll: true }); }, 2900);
+            // refresh the header picture: the new Legendary badge is the profile picture now
+            document.querySelectorAll('img[src*="/badge-dp/"]').forEach(function (img) {
+                if (o.contains(img)) return;
+                try { var u = new URL(img.src, location.href); u.searchParams.set('t', Date.now()); img.src = u.toString(); } catch (er) {}
+            });
+        }
+
+        function check() {
+            if (busy) return; busy = true;
+            var c = load(), q = '';
+            if (c) q = '?ep_after=' + encodeURIComponent(c.ep) + '&ach_after=' + encodeURIComponent(c.ach);
+            fetch('/api/rewards/check' + q, { credentials: 'same-origin', cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) {
+                    if (!d || !d.success || d.ep_cursor == null) return;
+                    save({ ep: d.ep_cursor, ach: d.ach_cursor });
+                    if ((d.legendary || []).length) showLegendary(d.legendary);
+                    showEp(d.ep || []);
+                    showBadges(d.badges || []);
+                })
+                .catch(function () {})
+                .then(function () { busy = false; });
+        }
+        function soon() { clearTimeout(timer); timer = setTimeout(check, 1500); }
+        window.esCheckRewards = soon;
+
+        // Check shortly after the page saves something (finished module, quiz, mission...)
+        if (window.fetch && !window.fetch.__esRw) {
+            var orig = window.fetch;
+            var wrapped = function (input, init) {
+                var p = orig.apply(this, arguments);
+                try {
+                    var m = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+                    var u = typeof input === 'string' ? input : (input && input.url) || '';
+                    if (m !== 'GET' && u.indexOf('/api/rewards') === -1 && u.indexOf('/api/notes') === -1) p.then(soon, function () {});
+                } catch (e) {}
+                return p;
+            };
+            wrapped.__esRw = true;
+            window.fetch = wrapped;
+        }
+
+        check();
+        setInterval(function () { if (!document.hidden) check(); }, 90000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) soon(); });
+    })();
+    </script>
+    {% endif %}
+{% block scripts %}{% endblock %}
 </body>
 </html>

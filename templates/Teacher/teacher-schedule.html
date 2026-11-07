@@ -1,2389 +1,908 @@
 {% extends "Teacher/teacher-body.html" %}
 
 {% block allcontent %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schedule - eSchool</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --primary-light: #e0e7ff;
-            --secondary-color: #3a0ca3;
-            --accent-color: #4cc9f0;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --danger-color: #ef4444;
-            --light-color: #f8fafc;
-            --dark-color: #1e293b;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --border-radius: 12px;
-            --border-radius-sm: 8px;
-            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            
-        }
-
-        /* Header Styles */
-        .page-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 40px;
-            border-radius: var(--border-radius);
-            margin-bottom: 30px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header-content {
-            position: relative;
-            z-index: 2;
-        }
-
-        .page-icon {
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 25px;
-            font-size: 2.5rem;
-            backdrop-filter: blur(5px);
-        }
-
-        .page-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-            font-weight: 700;
-            text-align: center;
-        }
-
-        .page-subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            max-width: 600px;
-            margin: 0 auto;
-            text-align: center;
-        }
-
-        /* Schedule Layout */
-        .schedule-container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 30px;
-            margin-bottom: 40px;
-        }
-
-        @media (min-width: 1024px) {
-            .schedule-container {
-                grid-template-columns: 300px 1fr;
-            }
-        }
-
-        /* Calendar Sidebar */
-        .calendar-sidebar {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 25px;
-            box-shadow: var(--card-shadow);
-            height: fit-content;
-        }
-
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-        }
-
-        .current-month {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-
-        .calendar-nav {
-            display: flex;
-            gap: 10px;
-        }
-
-        .calendar-nav-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 2px solid var(--gray-200);
-            background: white;
-            color: var(--gray-600);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: var(--transition);
-        }
-
-        .calendar-nav-btn:hover {
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-        }
-
-        .calendar-weekdays {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .weekday {
-            font-size: 0.9rem;
-            color: var(--gray-500);
-            font-weight: 500;
-            padding: 8px 0;
-        }
-
-        .calendar-days {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-        }
-
-        .calendar-day {
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: var(--transition);
-            border: 2px solid transparent;
-        }
-
-        .calendar-day:hover {
-            background: var(--primary-light);
-            color: var(--primary-color);
-        }
-
-        .calendar-day.other-month {
-            color: var(--gray-400);
-        }
-
-        .calendar-day.today {
-            background: var(--primary-color);
-            color: white;
-            font-weight: 600;
-        }
-
-        .calendar-day.selected {
-            border-color: var(--primary-color);
-            background: var(--primary-light);
-            color: var(--primary-color);
-        }
-
-        .calendar-day.event {
-            position: relative;
-        }
-
-        .calendar-day.event::after {
-            content: '';
-            position: absolute;
-            bottom: 4px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: var(--accent-color);
-        }
-
-        .calendar-day.event.today::after {
-            background: white;
-        }
-
-        /* Events List */
-        .events-summary {
-            margin-top: 25px;
-            padding-top: 25px;
-            border-top: 1px solid var(--gray-200);
-        }
-
-        .events-summary h4 {
-            font-family: 'Inter', sans-serif;
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-            color: var(--dark-color);
-        }
-
-        .events-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .event-item {
-            padding: 12px;
-            background: var(--gray-50);
-            border-radius: var(--border-radius-sm);
-            border-left: 4px solid var(--primary-color);
-            transition: var(--transition);
-            cursor: pointer;
-        }
-
-        .event-item:hover {
-            transform: translateX(5px);
-            background: white;
-            box-shadow: var(--card-shadow);
-        }
-
-        .event-title {
-            font-weight: 500;
-            color: var(--dark-color);
-            margin-bottom: 4px;
-            font-size: 0.9rem;
-        }
-
-        .event-time {
-            font-size: 0.85rem;
-            color: var(--gray-500);
-        }
-
-        /* Main Schedule */
-        .schedule-main {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 30px;
-            box-shadow: var(--card-shadow);
-        }
-
-        .schedule-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .schedule-actions {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border-radius: var(--border-radius-sm);
-            border: none;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.95rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            text-decoration: none;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--primary-color);
-            border: 2px solid var(--primary-color);
-        }
-
-        .btn-outline:hover {
-            background-color: var(--primary-light);
-        }
-
-        .btn-success {
-            background: var(--success-color);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #059862;
-            transform: translateY(-2px);
-        }
-
-        .btn-danger {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-            transform: translateY(-2px);
-        }
-
-        /* Daily Schedule */
-        .daily-schedule {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .time-slot {
-            display: flex;
-            gap: 20px;
-            padding: 20px;
-            background: var(--gray-50);
-            border-radius: var(--border-radius);
-            border-left: 4px solid transparent;
-            transition: var(--transition);
-            position: relative;
-        }
-
-        .time-slot:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--card-shadow);
-        }
-
-        .time-slot.lecture {
-            border-left-color: var(--primary-color);
-            background: linear-gradient(135deg, rgba(67, 97, 238, 0.05), rgba(58, 12, 163, 0.05));
-        }
-
-        .time-slot.lab {
-            border-left-color: var(--accent-color);
-            background: linear-gradient(135deg, rgba(76, 201, 240, 0.05), rgba(67, 97, 238, 0.05));
-        }
-
-        .time-slot.assignment {
-            border-left-color: var(--warning-color);
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), rgba(76, 201, 240, 0.05));
-        }
-
-        .time-slot.break {
-            border-left-color: var(--success-color);
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(76, 201, 240, 0.05));
-        }
-
-        .time-label {
-            min-width: 120px;
-            font-weight: 600;
-            color: var(--dark-color);
-            font-size: 1.1rem;
-        }
-
-        .slot-content {
-            flex: 1;
-        }
-
-        .slot-title {
-            font-family: 'Inter', sans-serif;
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--dark-color);
-        }
-
-        .slot-meta {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 12px;
-            flex-wrap: wrap;
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.9rem;
-            color: var(--gray-600);
-        }
-
-        .slot-description {
-            color: var(--gray-600);
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-
-        .slot-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .action-btn {
-            padding: 8px 16px;
-            border-radius: 6px;
-            border: none;
-            background: white;
-            color: var(--gray-600);
-            cursor: pointer;
-            transition: var(--transition);
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            border: 1px solid var(--gray-200);
-        }
-
-        .action-btn:hover {
-            background: var(--primary-light);
-            color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .action-btn.success:hover {
-            background: var(--success-color);
-            color: white;
-            border-color: var(--success-color);
-        }
-
-        .action-btn.danger:hover {
-            background: var(--danger-color);
-            color: white;
-            border-color: var(--danger-color);
-        }
-
-        .action-btn:disabled,
-        .action-btn:disabled:hover {
-            background: var(--gray-100) !important;
-            color: var(--gray-400) !important;
-            border-color: var(--gray-200) !important;
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-
-        .slot-status {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .status-upcoming {
-            background: var(--warning-color);
-            color: white;
-        }
-
-        .status-ongoing {
-            background: var(--success-color);
-            color: white;
-        }
-
-        .status-completed {
-            background: var(--gray-400);
-            color: white;
-        }
-
-        .status-incomplete {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        /* Past days: dimmed in the calendar, Add Event disabled while viewing them */
-        .calendar-day.past {
-            opacity: 0.55;
-        }
-
-        .btn:disabled,
-        .btn:disabled:hover {
-            background: var(--gray-200);
-            color: var(--gray-400);
-            border-color: var(--gray-200);
-            box-shadow: none;
-            transform: none;
-            cursor: not-allowed;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            background: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--card-shadow);
-        }
-
-        .empty-icon {
-            width: 100px;
-            height: 100px;
-            background: var(--gray-100);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 25px;
-            font-size: 2.5rem;
-            color: var(--gray-400);
-        }
-
-        .empty-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.8rem;
-            color: var(--gray-600);
-            margin-bottom: 15px;
-        }
-
-        .empty-text {
-            color: var(--gray-500);
-            max-width: 500px;
-            margin: 0 auto 30px;
-            font-size: 1.1rem;
-            line-height: 1.6;
-        }
-
-        /* ===== ADD EVENT MODAL ===== */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 10000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: var(--border-radius);
-            max-width: 600px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-
-        .modal-content h2 {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.8rem;
-            color: var(--dark-color);
-            margin-bottom: 8px;
-        }
-
-        .modal-content .modal-subtitle {
-            color: var(--gray-500);
-            margin-bottom: 25px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            font-weight: 500;
-            color: var(--gray-700);
-            margin-bottom: 6px;
-            font-size: 0.95rem;
-        }
-
-        .form-group label .required {
-            color: var(--danger-color);
-        }
-
-        .form-control-input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--gray-200);
-            border-radius: var(--border-radius-sm);
-            font-size: 1rem;
-            font-family: 'Inter', sans-serif;
-            transition: var(--transition);
-            background: white;
-        }
-
-        .form-control-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        .form-control-input::placeholder {
-            color: var(--gray-400);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 25px;
-        }
-
-        .modal-actions .btn {
-            flex: 1;
-        }
-
-        .btn-secondary {
-            background: var(--gray-200);
-            color: var(--gray-700);
-        }
-
-        .btn-secondary:hover {
-            background: var(--gray-300);
-        }
-
-        .course-badge {
-            display: inline-block;
-            padding: 2px 12px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: white;
-        }
-
-        /* Event Details Card */
-        .details-card {
-            margin-top: 16px;
-            background: white;
-            border: 1px solid var(--gray-200);
-            border-radius: var(--border-radius);
-            padding: 18px;
-            box-shadow: var(--card-shadow);
-        }
-
-        .details-card-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 14px;
-        }
-
-        .details-card-header > i {
-            color: var(--primary-color);
-        }
-
-        .details-close {
-            margin-left: auto;
-            background: none;
-            border: none;
-            color: var(--gray-400);
-            cursor: pointer;
-            font-size: 1rem;
-            padding: 4px;
-            transition: var(--transition);
-        }
-
-        .details-close:hover {
-            color: var(--dark-color);
-        }
-
-        .details-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 14px;
-        }
-
-        .details-row {
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-        }
-
-        .details-row > i {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            background: var(--primary-light);
-            color: var(--primary-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            font-size: 0.85rem;
-        }
-
-        .details-label {
-            display: block;
-            font-size: 0.75rem;
-            color: var(--gray-500);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-
-        .details-value {
-            display: block;
-            font-size: 0.95rem;
-            color: var(--dark-color);
-            font-weight: 500;
-            word-break: break-word;
-        }
-
-        .details-description {
-            margin-top: 16px;
-            padding-top: 14px;
-            border-top: 1px solid var(--gray-200);
-        }
-
-        .details-description strong {
-            display: block;
-            font-size: 0.75rem;
-            color: var(--gray-500);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 6px;
-        }
-
-        .details-description p {
-            color: var(--gray-600);
-            line-height: 1.6;
-        }
-
-        /* Inline delete confirmation */
-        .delete-confirm {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 12px;
-            padding: 12px;
-            background: rgba(239, 68, 68, 0.06);
-            border: 1px solid rgba(239, 68, 68, 0.25);
-            border-radius: var(--border-radius-sm);
-        }
-
-        .delete-confirm > span {
-            flex: 1;
-            min-width: 180px;
-            color: var(--danger-color);
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        /* Day Marks */
-        .calendar-day.marked {
-            position: relative;
-            border-color: var(--mark-color, #ec4899);
-        }
-
-        .calendar-day.marked::before {
-            content: '\2605';
-            position: absolute;
-            top: 1px;
-            right: 4px;
-            font-size: 0.65rem;
-            color: var(--mark-color, #ec4899);
-        }
-
-        .calendar-day.marked.today::before {
-            color: white;
-        }
-
-        .day-mark-banner {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 18px;
-            border-radius: var(--border-radius);
-            background: var(--gray-50);
-            border-left: 4px solid var(--mark-color, #ec4899);
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-
-        .day-mark-banner i {
-            color: var(--mark-color, #ec4899);
-        }
-
-        .day-mark-banner .mark-repeat {
-            margin-left: auto;
-            font-size: 0.8rem;
-            font-weight: 500;
-            color: var(--gray-500);
-        }
-
-        .mark-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .mark-list-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border: 1px solid var(--gray-200);
-            border-radius: var(--border-radius-sm);
-        }
-
-        .mark-list-item .mark-text {
-            flex: 1;
-            color: var(--dark-color);
-        }
-
-        .mark-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        /* Notification Toast */
-        .notification-toast {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: white;
-            padding: 20px 25px;
-            border-radius: var(--border-radius);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            transform: translateX(120%);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 10001;
-            max-width: 400px;
-            border-left: 4px solid var(--primary-color);
-        }
-
-        .notification-toast.show {
-            transform: translateX(0);
-        }
-
-        .notification-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--primary-light);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--primary-color);
-            font-size: 1.2rem;
-            flex-shrink: 0;
-        }
-
-        .notification-content {
-            flex: 1;
-        }
-
-        .notification-title {
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 3px;
-        }
-
-        .notification-message {
-            color: var(--gray-500);
-            font-size: 0.9rem;
-        }
-
-        .notification-close {
-            background: none;
-            border: none;
-            color: var(--gray-400);
-            cursor: pointer;
-            font-size: 1.2rem;
-            padding: 5px;
-            transition: var(--transition);
-        }
-
-        .notification-close:hover {
-            color: var(--dark-color);
-        }
-
-        /* ===== RESPONSIVE BREAKPOINTS ===== */
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-            
-            .schedule-header {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .schedule-actions {
-                justify-content: center;
-            }
-            
-            .time-slot {
-                flex-direction: column;
-                gap: 15px;
-            }
-            
-            .time-label {
-                min-width: auto;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .modal-content {
-                padding: 20px;
-                margin: 10px;
-            }
-
-            .notification-toast {
-                bottom: 20px;
-                right: 20px;
-                left: 20px;
-                max-width: none;
-                padding: 15px 20px;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .page-header {
-                padding: 30px 20px;
-            }
-            
-            .page-title {
-                font-size: 2rem;
-            }
-            
-            .schedule-main {
-                padding: 20px;
-            }
-            
-            .calendar-sidebar {
-                padding: 20px;
-            }
-        }
-
-        /* Print Styles */
-        @media print {
-            .btn, .action-btn, .schedule-actions, .modal-overlay, .notification-toast {
-                display: none !important;
-            }
-            
-            .schedule-main, .calendar-sidebar {
-                box-shadow: none !important;
-                border: 1px solid #ddd !important;
-            }
-            
-            .page-header {
-                background: #4361ee !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <header class="page-header">
-            <div class="header-content">
-                <div class="page-icon">
-                    <i class="fas fa-calendar-alt"></i>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ======================================================================
+   TEACHER SCHEDULE
+   Saved on the server (not in the browser), so it is the same on every
+   device and feeds the dashboard:
+     GET  /api/teacher/schedule?from&to     your events + live classes + private lessons + marked days
+     POST /api/teacher/events               PATCH/DELETE /api/teacher/events/<id>
+     POST /api/teacher/events/<id>/status   done / missed for one day
+     POST /api/teacher/marks                DELETE /api/teacher/marks/<id>
+   All times are Nairobi time. Scoped to .sc with its own light/dark
+   colours (data-no-theme); the main colour follows Settings > Appearance.
+   No pop-ups: messages are shown on the page.
+   ====================================================================== */
+.sc {
+    --sc-accent: var(--primary-color, #4361ee);
+    --sc-accent-2: var(--secondary-color, #7209b7);
+    --sc-accent-soft: color-mix(in srgb, var(--sc-accent) 11%, transparent);
+    --sc-accent-line: color-mix(in srgb, var(--sc-accent) 35%, transparent);
+    --sc-surface: #ffffff;
+    --sc-surface-2: #f8fafc;
+    --sc-hover: #f1f5f9;
+    --sc-border: #e5e7eb;
+    --sc-grid: #eef0f4;
+    --sc-text: #0f172a;
+    --sc-text-2: #475569;
+    --sc-text-3: #64748b;
+    --sc-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 6px 18px rgba(15, 23, 42, .06);
+    --sc-ok: #059669; --sc-ok-soft: #ecfdf5;
+    --sc-bad: #dc2626; --sc-bad-soft: #fef2f2;
+    --sc-warn: #b45309; --sc-warn-soft: #fffbeb;
+    --sc-hour: 52px;
+    max-width: 1400px; margin: 0 auto; color: var(--sc-text);
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+body.dark-mode .sc {
+    --sc-accent-soft: color-mix(in srgb, var(--sc-accent) 22%, transparent);
+    --sc-accent-line: color-mix(in srgb, var(--sc-accent) 50%, transparent);
+    --sc-surface: #111827;
+    --sc-surface-2: #0f172a;
+    --sc-hover: #1e293b;
+    --sc-border: #263244;
+    --sc-grid: #1c2636;
+    --sc-text: #e5e7eb;
+    --sc-text-2: #cbd5e1;
+    --sc-text-3: #94a3b8;
+    --sc-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+    --sc-ok: #34d399; --sc-ok-soft: rgba(16, 185, 129, .14);
+    --sc-bad: #f87171; --sc-bad-soft: rgba(239, 68, 68, .14);
+    --sc-warn: #fbbf24; --sc-warn-soft: rgba(245, 158, 11, .14);
+}
+.sc *, .sc *::before, .sc *::after { box-sizing: border-box; }
+.sc button, .sc input, .sc select, .sc textarea { font-family: inherit; }
+.sc :focus-visible { outline: 3px solid var(--sc-accent-line); outline-offset: 2px; }
+.sc [hidden] { display: none !important; }
+.sc h1, .sc h2, .sc h3, .sc h4, .sc p { margin: 0; }
+
+/* ---------- buttons ---------- */
+.sc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 15px; border-radius: 11px; border: 1px solid var(--sc-border); background: var(--sc-surface); color: var(--sc-text); font-weight: 600; font-size: .87rem; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background .15s, border-color .15s, color .15s; }
+.sc-btn:hover { background: var(--sc-hover); }
+.sc-btn.primary { background: var(--sc-accent); border-color: transparent; color: #fff; }
+.sc-btn.primary:hover { background: var(--primary-dark, var(--sc-accent-2)); }
+.sc-btn.ghost { background: transparent; border-color: transparent; color: var(--sc-text-2); }
+.sc-btn.ghost:hover { background: var(--sc-hover); color: var(--sc-text); }
+.sc-btn.ok { color: var(--sc-ok); } .sc-btn.ok:hover { background: var(--sc-ok-soft); }
+.sc-btn.danger { color: var(--sc-bad); } .sc-btn.danger:hover { background: var(--sc-bad-soft); }
+.sc-btn.sure { background: var(--sc-bad); border-color: transparent; color: #fff; }
+.sc-btn.sm { height: 32px; padding: 0 11px; font-size: .8rem; border-radius: 9px; }
+.sc-btn:disabled { opacity: .5; cursor: not-allowed; }
+.sc-icon { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--sc-border); background: var(--sc-surface); color: var(--sc-text-2); cursor: pointer; display: grid; place-items: center; flex: 0 0 auto; }
+.sc-icon:hover { background: var(--sc-hover); color: var(--sc-text); }
+
+/* ---------- hero ---------- */
+.sc-hero { position: relative; overflow: hidden; display: flex; gap: 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 22px 26px; margin-bottom: 16px; border-radius: 20px; color: #fff; background: linear-gradient(135deg, var(--sc-accent), var(--sc-accent-2)); box-shadow: 0 12px 30px color-mix(in srgb, var(--sc-accent) 28%, transparent); }
+.sc-hero::after { content: ''; position: absolute; right: -70px; top: -90px; width: 260px; height: 260px; border-radius: 50%; background: rgba(255, 255, 255, .08); pointer-events: none; }
+.sc-hero > * { position: relative; z-index: 1; }
+.sc-hero small { font-size: .88rem; opacity: .9; }
+.sc-hero h1 { font: 800 1.7rem/1.2 'Poppins', sans-serif; color: #fff; margin: 2px 0 6px; }
+.sc-hero p { font-size: .94rem; opacity: .95; max-width: 640px; line-height: 1.5; }
+.sc-hero-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.sc-hbtn { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 15px; border-radius: 12px; font-weight: 700; font-size: .86rem; border: 1px solid rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .14); color: #fff; cursor: pointer; transition: background .15s; }
+.sc-hbtn:hover { background: rgba(255, 255, 255, .26); }
+.sc-hbtn.solid { background: #fff; color: var(--sc-accent); border-color: #fff; }
+.sc-hbtn.solid:hover { background: #eef2ff; }
+
+/* ---------- KPIs ---------- */
+.sc-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.sc-kpi { padding: 14px 16px; border-radius: 16px; background: var(--sc-surface); border: 1px solid var(--sc-border); box-shadow: var(--sc-shadow); min-width: 0; }
+.sc-kpi i { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 8px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.sc-kpi b { display: block; font: 700 1.3rem 'Poppins', sans-serif; color: var(--sc-text); font-variant-numeric: tabular-nums; }
+.sc-kpi span { font-size: .76rem; color: var(--sc-text-3); }
+
+/* ---------- note ---------- */
+.sc-note { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px; border-radius: 12px; font-size: .87rem; line-height: 1.45; margin-bottom: 14px; }
+.sc-note.ok { background: var(--sc-ok-soft); color: var(--sc-ok); }
+.sc-note.bad { background: var(--sc-bad-soft); color: var(--sc-bad); }
+.sc-note.info { background: var(--sc-accent-soft); color: var(--sc-text); }
+.sc-note i { margin-top: 2px; }
+
+/* ---------- layout ---------- */
+.sc-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
+.sc-side { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 12px; }
+.sc-card { background: var(--sc-surface); border: 1px solid var(--sc-border); border-radius: 18px; box-shadow: var(--sc-shadow); padding: 16px; min-width: 0; }
+.sc-card h3 { font: 700 .92rem 'Poppins', sans-serif; color: var(--sc-text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.sc-card h3 small { margin-left: auto; font: 600 .74rem 'Inter', sans-serif; color: var(--sc-text-3); }
+.sc-muted { font-size: .84rem; color: var(--sc-text-3); line-height: 1.5; }
+
+/* mini calendar */
+.sc-mhead { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.sc-mhead b { flex: 1; font: 700 .98rem 'Poppins', sans-serif; }
+.sc-mhead .sc-icon { width: 32px; height: 32px; border-radius: 9px; }
+.sc-mini { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; }
+.sc-mini .dow { font-size: .7rem; font-weight: 700; color: var(--sc-text-3); padding: 4px 0; }
+.sc-mday { position: relative; aspect-ratio: 1; border: 0; border-radius: 9px; background: transparent; color: var(--sc-text); font-size: .82rem; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: background .12s; }
+.sc-mday:hover { background: var(--sc-hover); }
+.sc-mday.out { color: var(--sc-text-3); opacity: .55; }
+.sc-mday.past:not(.out) { color: var(--sc-text-3); }
+.sc-mday.today { color: var(--sc-accent); font-weight: 800; box-shadow: inset 0 0 0 2px var(--sc-accent-line); }
+.sc-mday.sel { background: var(--sc-accent); color: #fff; }
+.sc-mday.inweek:not(.sel) { background: var(--sc-accent-soft); }
+.sc-mday .dots { display: flex; gap: 2px; height: 5px; }
+.sc-mday .dots u { width: 5px; height: 5px; border-radius: 50%; background: var(--d); }
+.sc-mday.sel .dots u { background: #fff; }
+.sc-mday .mk { position: absolute; top: 2px; right: 4px; font-size: .55rem; color: var(--m); }
+.sc-mday.sel .mk { color: #fff; }
+
+/* filters */
+.sc-legend { display: flex; flex-direction: column; gap: 6px; }
+.sc-lg { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 10px; cursor: pointer; font-size: .85rem; color: var(--sc-text); }
+.sc-lg:hover { background: var(--sc-hover); }
+.sc-lg input { width: 17px; height: 17px; accent-color: var(--sc-accent); margin: 0; }
+.sc-lg i { width: 10px; height: 10px; border-radius: 3px; background: var(--d); flex: 0 0 auto; }
+.sc-lg em { margin-left: auto; font-style: normal; font-size: .74rem; color: var(--sc-text-3); }
+
+/* side lists */
+.sc-slist { display: flex; flex-direction: column; gap: 6px; }
+.sc-sitem { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 11px; border: 1px solid var(--sc-border); background: var(--sc-surface-2); min-width: 0; }
+.sc-sitem .bar { width: 4px; align-self: stretch; border-radius: 4px; background: var(--d); flex: 0 0 auto; }
+.sc-sitem .tx { flex: 1; min-width: 0; }
+.sc-sitem b { display: block; font-size: .83rem; color: var(--sc-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-sitem small { font-size: .74rem; color: var(--sc-text-3); }
+.sc-sitem .acts { display: flex; gap: 4px; }
+
+/* ---------- main ---------- */
+.sc-main { min-width: 0; }
+.sc-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 14px; margin-bottom: 12px; border-radius: 16px; background: var(--sc-surface); border: 1px solid var(--sc-border); box-shadow: var(--sc-shadow); }
+.sc-bar h2 { font: 700 1.05rem 'Poppins', sans-serif; color: var(--sc-text); margin-left: 6px; flex: 1 1 200px; min-width: 0; }
+.sc-bar h2 small { display: block; font: 500 .78rem 'Inter', sans-serif; color: var(--sc-text-3); margin-top: 2px; }
+.sc-seg { display: inline-flex; padding: 3px; border-radius: 11px; background: var(--sc-hover); }
+.sc-seg button { height: 34px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: var(--sc-text-2); font-weight: 600; font-size: .83rem; cursor: pointer; }
+.sc-seg button:hover { color: var(--sc-text); }
+.sc-seg button[aria-pressed="true"] { background: var(--sc-surface); color: var(--sc-text); box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
+
+/* time grid */
+.sc-cal { background: var(--sc-surface); border: 1px solid var(--sc-border); border-radius: 16px; box-shadow: var(--sc-shadow); overflow: hidden; }
+.sc-scroll { overflow-x: auto; }
+.sc-heads { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr)); border-bottom: 1px solid var(--sc-border); background: var(--sc-surface); }
+.sc-heads .h { padding: 10px 6px; text-align: center; border-left: 1px solid var(--sc-grid); min-width: 0; }
+.sc-heads .h button { border: 0; background: transparent; cursor: pointer; color: inherit; padding: 2px 6px; border-radius: 8px; }
+.sc-heads .h button:hover { background: var(--sc-hover); }
+.sc-heads .h small { display: block; font-size: .72rem; font-weight: 700; color: var(--sc-text-3); text-transform: uppercase; letter-spacing: .4px; }
+.sc-heads .h b { font: 700 1.15rem 'Poppins', sans-serif; color: var(--sc-text); }
+.sc-heads .h.today b { color: #fff; background: var(--sc-accent); border-radius: 999px; padding: 0 8px; }
+.sc-heads .h .mks { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
+.sc-heads .h .mks span { display: block; padding: 2px 6px; border-radius: 6px; font-size: .68rem; font-weight: 700; color: #fff; background: var(--m); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-body { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr)); position: relative; max-height: 640px; overflow-y: auto; }
+.sc-hours { position: relative; }
+.sc-hours span { position: absolute; right: 8px; transform: translateY(-50%); font-size: .7rem; color: var(--sc-text-3); font-variant-numeric: tabular-nums; }
+.sc-col { position: relative; border-left: 1px solid var(--sc-grid); background-image: repeating-linear-gradient(to bottom, var(--sc-grid) 0, var(--sc-grid) 1px, transparent 1px, transparent var(--sc-hour)); cursor: copy; }
+.sc-col.past { background-color: color-mix(in srgb, var(--sc-hover) 55%, transparent); cursor: default; }
+.sc-col.today { background-color: color-mix(in srgb, var(--sc-accent) 4%, transparent); }
+.sc-now { position: absolute; left: 0; right: 0; height: 2px; background: #ef4444; z-index: 3; pointer-events: none; }
+.sc-now::before { content: ''; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; }
+.sc-ev { position: absolute; z-index: 2; border: 0; border-left: 3px solid var(--d); border-radius: 8px; padding: 4px 7px; text-align: left; cursor: pointer; overflow: hidden; background: color-mix(in srgb, var(--d) 15%, var(--sc-surface)); color: var(--sc-text); font-size: .74rem; line-height: 1.3; transition: box-shadow .12s, filter .12s; }
+.sc-ev:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, .18); z-index: 4; filter: saturate(1.15); }
+.sc-ev b { display: block; font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-ev small { display: block; color: var(--sc-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-ev.done { opacity: .6; }
+.sc-ev.done b { text-decoration: line-through; }
+.sc-ev.missed { opacity: .6; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--d) 12%, var(--sc-surface)) 0 6px, var(--sc-surface) 6px 12px); }
+.sc-ev .ic { float: right; font-size: .68rem; margin-left: 4px; color: var(--d); }
+.sc-allday { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr)); border-bottom: 1px solid var(--sc-border); }
+.sc-allday .lbl { font-size: .66rem; color: var(--sc-text-3); padding: 6px; text-align: right; }
+
+/* agenda */
+.sc-agenda { display: flex; flex-direction: column; gap: 14px; }
+.sc-aday { background: var(--sc-surface); border: 1px solid var(--sc-border); border-radius: 16px; box-shadow: var(--sc-shadow); overflow: hidden; }
+.sc-aday-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--sc-border); background: var(--sc-surface-2); }
+.sc-aday-h b { font: 700 .95rem 'Poppins', sans-serif; }
+.sc-aday-h small { font-size: .78rem; color: var(--sc-text-3); }
+.sc-aday-h .today-tag { padding: 2px 8px; border-radius: 999px; font-size: .7rem; font-weight: 800; background: var(--sc-accent); color: #fff; }
+.sc-mchip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700; color: #fff; background: var(--m); }
+.sc-arow { display: grid; grid-template-columns: 92px 4px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 16px; border: 0; border-top: 1px solid var(--sc-grid); background: transparent; width: 100%; text-align: left; cursor: pointer; color: inherit; transition: background .12s; }
+.sc-arow:first-of-type { border-top: 0; }
+.sc-arow:hover { background: var(--sc-hover); }
+.sc-arow .t { font-weight: 700; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.sc-arow .t small { display: block; font-weight: 500; font-size: .74rem; color: var(--sc-text-3); }
+.sc-arow .bar { align-self: stretch; border-radius: 4px; background: var(--d); }
+.sc-arow .tx b { display: block; font-size: .92rem; color: var(--sc-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-arow .tx span { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; font-size: .78rem; color: var(--sc-text-3); }
+.sc-arow.done .tx b { text-decoration: line-through; color: var(--sc-text-3); }
+.sc-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.sc-chip.k { background: color-mix(in srgb, var(--d) 14%, transparent); color: var(--d); }
+.sc-chip.now { background: #ef4444; color: #fff; }
+.sc-chip.next { background: var(--sc-accent-soft); color: var(--sc-accent); }
+.sc-chip.done { background: var(--sc-ok-soft); color: var(--sc-ok); }
+.sc-chip.missed { background: var(--sc-bad-soft); color: var(--sc-bad); }
+.sc-chip.ended { background: var(--sc-warn-soft); color: var(--sc-warn); }
+.sc-empty { text-align: center; padding: 40px 16px; color: var(--sc-text-3); }
+.sc-empty i { font-size: 2rem; opacity: .6; display: block; margin-bottom: 10px; }
+.sc-empty h3 { font: 700 1rem 'Poppins', sans-serif; color: var(--sc-text); margin-bottom: 4px; }
+.sc-empty p { font-size: .86rem; margin-bottom: 14px; }
+.sc-skel { height: 14px; border-radius: 7px; margin: 12px 16px; background: linear-gradient(90deg, var(--sc-hover), var(--sc-surface-2), var(--sc-hover)); background-size: 200% 100%; animation: scSk 1.2s infinite; }
+@keyframes scSk { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ---------- drawer (details / editor / mark) ---------- */
+#scDrawer { position: fixed; inset: 0; z-index: 3500; display: none; }
+#scDrawer.show { display: block; }
+.sc-scrim { position: absolute; inset: 0; background: rgba(15, 23, 42, .45); animation: scFade .15s ease; }
+.sc-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(500px, 100%); display: flex; flex-direction: column; background: var(--sc-surface); color: var(--sc-text); box-shadow: -10px 0 40px rgba(15, 23, 42, .25); animation: scIn .2s ease; font-family: 'Inter', system-ui, sans-serif; }
+@keyframes scIn { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes scFade { from { opacity: 0; } to { opacity: 1; } }
+.sc-ph { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--sc-border); }
+.sc-ph .tx { flex: 1; min-width: 0; }
+.sc-ph h2 { font: 700 1.15rem/1.3 'Poppins', sans-serif; color: var(--sc-text); overflow-wrap: anywhere; }
+.sc-ph p { font-size: .84rem; color: var(--sc-text-3); margin-top: 4px; }
+.sc-pb { flex: 1; overflow-y: auto; padding: 18px 20px; }
+.sc-pf { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 14px 20px; border-top: 1px solid var(--sc-border); }
+.sc-pf .msg { flex: 1 1 100%; font-size: .82rem; font-weight: 600; }
+.sc-pf .msg:empty { display: none; }
+.sc-pf .msg.bad { color: var(--sc-bad); } .sc-pf .msg.ok { color: var(--sc-ok); } .sc-pf .msg.warn { color: var(--sc-warn); }
+.sc-rows { display: flex; flex-direction: column; gap: 12px; }
+.sc-row { display: flex; gap: 12px; align-items: flex-start; }
+.sc-row > i { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: 0 0 auto; background: var(--sc-accent-soft); color: var(--sc-accent); font-size: .85rem; }
+.sc-row b { display: block; font-size: .74rem; color: var(--sc-text-3); font-weight: 600; }
+.sc-row span, .sc-row a { font-size: .92rem; font-weight: 600; color: var(--sc-text); overflow-wrap: anywhere; }
+.sc-row a { color: var(--sc-accent); }
+.sc-notes { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--sc-surface-2); border: 1px solid var(--sc-border); font-size: .88rem; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
+.sc-stbox { margin-top: 16px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--sc-border); }
+.sc-stbox b { display: block; font-size: .84rem; margin-bottom: 8px; }
+.sc-stbox .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.sc-del { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--sc-bad-soft); }
+.sc-del b { display: block; color: var(--sc-bad); font-size: .86rem; margin-bottom: 8px; }
+.sc-del .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* form */
+.sc-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.sc-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sc-f.wide { grid-column: 1 / -1; }
+.sc-f > label, .sc-f > .lbl { font-size: .8rem; font-weight: 700; color: var(--sc-text-2); }
+.sc-f > label .req { color: var(--sc-bad); }
+.sc-in, .sc-sel, .sc-ta { width: 100%; border-radius: 10px; border: 1px solid var(--sc-border); background: var(--sc-surface-2); color: var(--sc-text); font-size: .9rem; }
+.sc-in, .sc-sel { height: 42px; padding: 0 12px; }
+.sc-ta { min-height: 84px; padding: 10px 12px; resize: vertical; line-height: 1.5; }
+.sc-in:focus, .sc-sel:focus, .sc-ta:focus { outline: none; border-color: var(--sc-accent); box-shadow: 0 0 0 3px var(--sc-accent-soft); }
+.sc-f.err .sc-in, .sc-f.err .sc-sel { border-color: var(--sc-bad); }
+.sc-ferr { font-size: .76rem; font-weight: 600; color: var(--sc-bad); }
+.sc-ferr:empty { display: none; }
+.sc-hint { font-size: .74rem; color: var(--sc-text-3); }
+.sc-kinds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.sc-kinds label { position: relative; cursor: pointer; }
+.sc-kinds input { position: absolute; opacity: 0; pointer-events: none; }
+.sc-kinds span { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--sc-border); background: var(--sc-surface-2); font-size: .76rem; font-weight: 600; color: var(--sc-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-kinds span::before { content: ''; width: 9px; height: 9px; border-radius: 3px; background: var(--d); flex: 0 0 auto; }
+.sc-kinds input:checked + span { border-color: var(--d); background: color-mix(in srgb, var(--d) 13%, transparent); color: var(--sc-text); }
+.sc-kinds input:focus-visible + span { outline: 3px solid var(--sc-accent-line); outline-offset: 2px; }
+.sc-durs { display: flex; gap: 6px; flex-wrap: wrap; }
+.sc-durs button { height: 32px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--sc-border); background: var(--sc-surface-2); color: var(--sc-text-2); font-size: .78rem; font-weight: 600; cursor: pointer; }
+.sc-durs button[aria-pressed="true"] { background: var(--sc-accent); border-color: var(--sc-accent); color: #fff; }
+.sc-conflict { grid-column: 1 / -1; padding: 10px 12px; border-radius: 10px; background: var(--sc-warn-soft); color: var(--sc-warn); font-size: .82rem; line-height: 1.45; }
+.sc-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.sc-swatches label { position: relative; cursor: pointer; }
+.sc-swatches input { position: absolute; opacity: 0; pointer-events: none; }
+.sc-swatches span { display: block; width: 30px; height: 30px; border-radius: 50%; background: var(--m); box-shadow: inset 0 0 0 3px var(--sc-surface); border: 2px solid transparent; }
+.sc-swatches input:checked + span { border-color: var(--m); }
+.sc-swatches input:focus-visible + span { outline: 3px solid var(--sc-accent-line); outline-offset: 2px; }
+.sc-check { display: flex; align-items: center; gap: 10px; font-size: .88rem; cursor: pointer; }
+.sc-check input { width: 18px; height: 18px; accent-color: var(--sc-accent); margin: 0; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1200px) { .sc-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 1000px) {
+    .sc-layout { grid-template-columns: minmax(0, 1fr); }
+    .sc-side { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sc-main { order: -1; }
+}
+@media (max-width: 700px) {
+    .sc-hero { padding: 18px; border-radius: 16px; }
+    .sc-hero h1 { font-size: 1.35rem; }
+    .sc-hero-btns { width: 100%; }
+    .sc-hbtn { flex: 1 1 auto; justify-content: center; }
+    .sc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sc-side { grid-template-columns: minmax(0, 1fr); }
+    .sc-bar h2 { flex-basis: 100%; order: -1; margin: 0 0 4px; }
+    .sc-seg { margin-left: auto; }
+    .sc-arow { grid-template-columns: 70px 4px minmax(0, 1fr); gap: 10px; padding: 12px; }
+    .sc-arow > :last-child:not(.tx) { grid-column: 3; justify-self: start; }
+    .sc-form { grid-template-columns: minmax(0, 1fr); }
+    .sc-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sc-heads .h b { font-size: 1rem; }
+    .sc-body { max-height: 560px; }
+}
+@media print {
+    .sc-hero-btns, .sc-side, .sc-bar .sc-seg, .sc-bar .sc-icon, .sc-bar .sc-btn, #scDrawer, .sc-note { display: none !important; }
+    .sc-layout { grid-template-columns: 1fr; }
+    .sc-body { max-height: none; overflow: visible; }
+    .sc-hero { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+
+<div class="sc" data-no-theme id="sc" data-email="{{ email }}">
+    <header class="sc-hero">
+        <div>
+            <small id="heroDate"></small>
+            <h1>Schedule</h1>
+            <p id="heroText">Loading your day…</p>
+        </div>
+        <div class="sc-hero-btns">
+            <button type="button" class="sc-hbtn solid" id="newBtn"><i class="fas fa-plus"></i> New event</button>
+            <button type="button" class="sc-hbtn" id="markBtn"><i class="fas fa-star"></i> Mark a day</button>
+            <button type="button" class="sc-hbtn" id="icsBtn" title="Add the next 60 days to Google Calendar, Outlook or your phone"><i class="fas fa-calendar-plus"></i> Add to calendar app</button>
+            <button type="button" class="sc-hbtn" id="printBtn"><i class="fas fa-print"></i> Print</button>
+        </div>
+    </header>
+
+    <div class="sc-kpis" id="kpis"></div>
+    <div id="note" hidden></div>
+
+    <div class="sc-layout">
+        <aside class="sc-side" aria-label="Calendar and filters">
+            <section class="sc-card">
+                <div class="sc-mhead">
+                    <button type="button" class="sc-icon" id="mPrev" aria-label="Previous month"><i class="fas fa-chevron-left"></i></button>
+                    <b id="mTitle"></b>
+                    <button type="button" class="sc-icon" id="mNext" aria-label="Next month"><i class="fas fa-chevron-right"></i></button>
                 </div>
-                <h1 class="page-title">Academic Schedule</h1>
-                <p class="page-subtitle">Manage your classes, assignments, and events in one place</p>
+                <div class="sc-mini" id="mini"></div>
+            </section>
+            <section class="sc-card">
+                <h3><i class="fas fa-filter" style="color:var(--sc-accent)"></i> Show</h3>
+                <div class="sc-legend" id="legend"></div>
+            </section>
+            <section class="sc-card" id="needsCard" hidden>
+                <h3><i class="fas fa-clipboard-check" style="color:var(--sc-warn)"></i> Did these happen? <small id="needsN"></small></h3>
+                <div class="sc-slist" id="needs"></div>
+            </section>
+            <section class="sc-card">
+                <h3><i class="fas fa-star" style="color:#ec4899"></i> Marked days <small>next 90 days</small></h3>
+                <div class="sc-slist" id="marksList"></div>
+            </section>
+        </aside>
+
+        <main class="sc-main">
+            <div class="sc-bar">
+                <button type="button" class="sc-btn" id="todayBtn">Today</button>
+                <button type="button" class="sc-icon" id="prevBtn" aria-label="Previous"><i class="fas fa-chevron-left"></i></button>
+                <button type="button" class="sc-icon" id="nextBtn" aria-label="Next"><i class="fas fa-chevron-right"></i></button>
+                <h2 id="rangeTitle"></h2>
+                <div class="sc-seg" role="group" aria-label="View">
+                    <button type="button" data-view="day" aria-pressed="false">Day</button>
+                    <button type="button" data-view="week" aria-pressed="true">Week</button>
+                    <button type="button" data-view="agenda" aria-pressed="false">List</button>
+                </div>
             </div>
-        </header>
-
-        <!-- Schedule Container -->
-        <div class="schedule-container">
-            <!-- Calendar Sidebar -->
-            <aside class="calendar-sidebar">
-                <div class="calendar-header">
-                    <h3 class="current-month" id="currentMonth">October 2023</h3>
-                    <div class="calendar-nav">
-                        <button class="calendar-nav-btn" onclick="changeMonth(-1)">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <button class="calendar-nav-btn" onclick="changeMonth(1)">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="calendar-weekdays">
-                    <div class="weekday">Sun</div>
-                    <div class="weekday">Mon</div>
-                    <div class="weekday">Tue</div>
-                    <div class="weekday">Wed</div>
-                    <div class="weekday">Thu</div>
-                    <div class="weekday">Fri</div>
-                    <div class="weekday">Sat</div>
-                </div>
-                
-                <div class="calendar-days" id="calendarDays">
-                    <!-- Calendar days will be generated by JavaScript -->
-                </div>
-                
-                <div class="events-summary">
-                    <h4>Today's Events</h4>
-                    <div class="events-list" id="todayEvents">
-                        <!-- Today's events will be loaded here -->
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Main Schedule Content -->
-            <main class="schedule-main">
-                <div class="schedule-header">
-                    <div>
-                        <h2 id="scheduleTitle">Today's Schedule</h2>
-                        <p id="scheduleDate">Monday, October 16, 2023</p>
-                    </div>
-                    <div class="schedule-actions">
-                        <button class="btn btn-primary" onclick="openAddEventModal()">
-                            <i class="fas fa-plus"></i> Add Event
-                        </button>
-                        <button class="btn btn-success" onclick="openMarkModal()">
-                            <i class="fas fa-star"></i> Mark
-                        </button>
-                        <button class="btn btn-outline" onclick="shareSchedule()">
-                            <i class="fas fa-share-alt"></i> Share
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Daily View -->
-                <div id="dailyView" class="daily-schedule">
-                    <!-- Schedule items will be loaded here -->
-                </div>
-
-                <!-- Empty State -->
-                <div class="empty-state" id="emptyState" style="display: none;">
-                    <div class="empty-icon">
-                        <i class="fas fa-calendar-times"></i>
-                    </div>
-                    <h3 class="empty-title">No Schedule Items</h3>
-                    <p class="empty-text">No events scheduled for this day. Add new events or check other dates.</p>
-                    <button class="btn btn-primary" onclick="openAddEventModal()">
-                        <i class="fas fa-plus"></i> Add New Event
-                    </button>
-                </div>
-            </main>
-        </div>
+            <div id="view"><div class="sc-cal"><div class="sc-skel"></div><div class="sc-skel"></div><div class="sc-skel"></div></div></div>
+        </main>
     </div>
+</div>
 
-    <!-- ===== ADD EVENT MODAL ===== -->
-    <div class="modal-overlay" id="addEventModal">
-        <div class="modal-content">
-            <h2><i class="fas fa-calendar-plus" style="color:var(--primary-color);"></i> Add New Event</h2>
-            <p class="modal-subtitle">Fill in the details to schedule a new event. It will be saved permanently.</p>
-            
-            <form id="addEventForm" onsubmit="submitNewEvent(event)">
-                <div class="form-group">
-                    <label>Event Title <span class="required">*</span></label>
-                    <input type="text" class="form-control-input" id="eventTitle" placeholder="e.g., Calculus Lecture" required>
-                </div>
+<div id="scDrawer" class="sc" data-no-theme role="dialog" aria-modal="true" aria-labelledby="drTitle" style="max-width:none;margin:0">
+    <div class="sc-scrim" data-close></div>
+    <div class="sc-panel" id="drPanel"></div>
+</div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Course</label>
-                        <select class="form-control-input" id="eventCourse">
-                            <option value="">No Course</option>
-                            <option value="math101">Mathematics 101</option>
-                            <option value="physics201">Physics 201</option>
-                            <option value="cs301">Computer Science 301</option>
-                            <option value="english101">English Literature 101</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Event Type <span class="required">*</span></label>
-                        <select class="form-control-input" id="eventType" required>
-                            <option value="lecture">Lecture</option>
-                            <option value="lab">Lab</option>
-                            <option value="assignment">Assignment</option>
-                            <option value="exam">Exam</option>
-                            <option value="break">Break</option>
-                        </select>
-                    </div>
-                </div>
+<script>
+(() => {
+"use strict";
+const TZ = "Africa/Nairobi";
+const root = document.getElementById("sc");
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const safeUrl = u => /^https?:\/\//i.test(u || "") || /^\/(?!\/)/.test(u || "") ? u : "";
+const pad = n => String(n).padStart(2, "0");
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Date <span class="required">*</span></label>
-                        <input type="date" class="form-control-input" id="eventDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Time <span class="required">*</span></label>
-                        <input type="time" class="form-control-input" id="eventTime" required>
-                    </div>
-                </div>
+/* ---------- dates (all in Nairobi time) ---------- */
+const fmtParts = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+function nb(ts) {   // {day:'YYYY-MM-DD', min: minutes after midnight} for a UTC timestamp
+    const p = Object.fromEntries(fmtParts.formatToParts(new Date(ts)).map(x => [x.type, x.value]));
+    return { day: `${p.year}-${p.month}-${p.day}`, min: Number(p.hour) * 60 + Number(p.minute) };
+}
+const hm = m => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
+const addDays = (key, n) => { const d = new Date(key + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const dow = key => (new Date(key + "T12:00:00Z").getUTCDay() + 6) % 7;      // Monday = 0
+const monday = key => addDays(key, -dow(key));
+const longDay = (key, o) => new Date(key + "T12:00:00Z").toLocaleDateString("en-GB", Object.assign({ timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }, o || {}));
+const shortDay = key => new Date(key + "T12:00:00Z").toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
+const durText = m => m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? " " + (m % 60) + " min" : ""}` : `${m} min`;
+let TODAY = nb(Date.now()).day;
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Duration (minutes)</label>
-                        <input type="number" class="form-control-input" id="eventDuration" placeholder="90" value="60" min="0" step="1">
-                    </div>
-                    <div class="form-group">
-                        <label>Priority</label>
-                        <select class="form-control-input" id="eventPriority">
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="high">High</option>
-                        </select>
-                    </div>
-                </div>
+/* ---------- state ---------- */
+let data = { items: [], marks: [], kinds: {}, subjects: [], mark_colors: [] }, rangeFrom = null, rangeTo = null;
+let view = window.innerWidth < 700 ? "day" : "week", sel = TODAY, miniMonth = TODAY.slice(0, 7);
+let show = { event: true, live: true, lesson: true, marks: true };
+try { const v = JSON.parse(localStorage.getItem("sc.show") || "null"); if (v) show = Object.assign(show, v); const vw = localStorage.getItem("sc.view"); if (vw && !(window.innerWidth < 700 && vw === "week")) view = vw; } catch (e) {}
 
-                <div class="form-group">
-                    <label>Location</label>
-                    <input type="text" class="form-control-input" id="eventLocation" placeholder="e.g., Room 302, Online, Lab 105">
-                </div>
+async function api(url, opts) {
+    const r = await fetch(url, Object.assign({ credentials: "same-origin" }, opts || {}));
+    if (r.status === 401) { location.href = "/login"; throw new Error("Please sign in again."); }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.success === false) throw Object.assign(new Error(d.message || `Something went wrong (${r.status}).`), { errors: d.errors || {} });
+    return d;
+}
+const send = (url, method, body) => api(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+function note(text, kind) {
+    const n = $("note");
+    if (!text) { n.hidden = true; return; }
+    n.className = "sc-note " + (kind || "info"); n.hidden = false;
+    n.innerHTML = `<i class="fas ${kind === "bad" ? "fa-circle-exclamation" : kind === "ok" ? "fa-circle-check" : "fa-circle-info"}"></i><div>${esc(text)}</div>`;
+    clearTimeout(note.t); note.t = setTimeout(() => { n.hidden = true; }, 6000);
+}
 
-                <div class="form-group">
-                    <label>Instructor</label>
-                    <input type="text" class="form-control-input" id="eventInstructor" placeholder="e.g., Dr. Smith">
-                </div>
+/* ---------- loading ---------- */
+async function load(force) {
+    const need = [addDays(sel, -10), addDays(sel, 40), addDays(miniMonth + "-01", -7), addDays(miniMonth + "-01", 42), addDays(TODAY, -15), addDays(TODAY, 8)];
+    const lo = need.reduce((a, b) => a < b ? a : b), hi = need.reduce((a, b) => a > b ? a : b);
+    if (!force && rangeFrom && lo >= rangeFrom && hi <= rangeTo) return draw();
+    const from = addDays(lo, -14), to = addDays(hi, 21);
+    try {
+        const d = await api(`/api/teacher/schedule?from=${from}&to=${to}`);
+        data = d; rangeFrom = from; rangeTo = to; TODAY = d.today || TODAY;
+    } catch (e) { note("Couldn’t load your schedule: " + e.message, "bad"); }
+    draw();
+}
 
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea class="form-control-input" id="eventDescription" rows="3" placeholder="Add details about this event..." style="resize:vertical;"></textarea>
-                </div>
+/* ---------- helpers on items ---------- */
+function enrich(x) {
+    const s = nb(x.start);
+    x._day = s.day; x._min = s.min; x._end = Date.parse(x.start) + x.minutes * 60000;
+    x._color = x.color || "#4361ee";
+    return x;
+}
+function visible(x) { return show[x.type] !== false; }
+function itemsOn(day) { return data.items.map(enrich).filter(x => x._day === day && visible(x)).sort((a, b) => a._min - b._min); }
+function marksOn(day) { return show.marks ? data.marks.filter(m => m.day === day) : []; }
+function stateOf(x) {
+    const now = Date.now(), st = Date.parse(x.start);
+    if (x.status === "done" || x.status === "completed") return "done";
+    if (x.status === "missed") return "missed";
+    if (st <= now && now < x._end) return "now";
+    if (x._end <= now) return x.type === "event" ? "ended" : "done";
+    return "upcoming";
+}
+const stateChip = s => ({ now: '<span class="sc-chip now">Now</span>', done: '<span class="sc-chip done"><i class="fas fa-check"></i> Done</span>', missed: '<span class="sc-chip missed">Missed</span>', ended: '<span class="sc-chip ended">Not marked</span>' }[s] || "");
+const typeLabel = x => x.type === "event" ? x.kind_label : x.type === "live" ? "Live class" : "Private lesson";
+const typeIcon = x => x.type === "live" ? "fa-video" : x.type === "lesson" ? "fa-chalkboard-user" : "fa-calendar-day";
+const keyOf = x => `${x.type}:${x.id}:${x._day}`;
 
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeAddEventModal()">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-check"></i> Add Event
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+/* ---------- drawing ---------- */
+function draw() {
+    drawHero(); drawKpis(); drawMini(); drawLegend(); drawNeeds(); drawMarks(); drawView();
+}
+function drawHero() {
+    $("heroDate").textContent = longDay(TODAY, { year: "numeric" });
+    const today = itemsOn(TODAY), now = Date.now();
+    const next = data.items.map(enrich).filter(x => visible(x) && x._end > now && !["done", "missed"].includes(x.status)).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
+    const on = next && Date.parse(next.start) <= now;
+    let t = today.length ? `Today: ${today.length} item${today.length === 1 ? "" : "s"}, ${durText(today.reduce((a, x) => a + x.minutes, 0))} in total.` : "Nothing on your schedule today.";
+    if (next) t += on ? ` Happening now: ${next.title} until ${hm(next._min + next.minutes)}.`
+        : ` Next: ${next.title}, ${next._day === TODAY ? "today" : next._day === addDays(TODAY, 1) ? "tomorrow" : shortDay(next._day)} at ${hm(next._min)}.`;
+    const mk = data.marks.filter(m => m.day === TODAY);
+    if (mk.length) t += ` ★ ${mk.map(m => m.label).join(", ")}.`;
+    $("heroText").textContent = t;
+}
+function drawKpis() {
+    const w0 = monday(TODAY), w1 = addDays(w0, 6);
+    const week = data.items.map(enrich).filter(x => x._day >= w0 && x._day <= w1);
+    const teach = week.filter(x => x.type !== "event" || ["class", "practical", "office"].includes(x.kind));
+    const own = week.filter(x => x.type === "event");
+    const ended = own.filter(x => x._end <= Date.now());
+    const done = ended.filter(x => x.status === "done").length;
+    const unmarked = data.items.map(enrich).filter(x => x.type === "event" && x._end <= Date.now() && !x.status && x._day >= addDays(TODAY, -14)).length;
+    const k = [
+        ["fa-sun", "#f59e0b", itemsOn(TODAY).length, "on today"],
+        ["fa-calendar-week", "#4361ee", week.length, "this week (Mon–Sun)"],
+        ["fa-person-chalkboard", "#0ea5e9", durText(teach.reduce((a, x) => a + x.minutes, 0)), "teaching time this week"],
+        ["fa-video", "#e11d48", week.filter(x => x.type === "live").length, "live classes this week"],
+        ["fa-circle-check", "#10b981", ended.length ? `${done}/${ended.length}` : "–", "of your events done this week"],
+        ["fa-clipboard-question", unmarked ? "#b45309" : "#64748b", unmarked, "past events to mark"],
+    ];
+    $("kpis").innerHTML = k.map(x => `<div class="sc-kpi" style="--c:${x[1]}"><i class="fas ${x[0]}" aria-hidden="true"></i><b>${esc(x[2])}</b><span>${esc(x[3])}</span></div>`).join("");
+}
+function drawMini() {
+    const [y, m] = miniMonth.split("-").map(Number);
+    $("mTitle").textContent = new Date(Date.UTC(y, m - 1, 15)).toLocaleDateString("en-GB", { timeZone: "UTC", month: "long", year: "numeric" });
+    const first = `${miniMonth}-01`, start = monday(first);
+    const wk0 = monday(sel), wk1 = addDays(wk0, 6);
+    let h = ["M", "T", "W", "T", "F", "S", "S"].map(d => `<span class="dow">${d}</span>`).join("");
+    for (let i = 0; i < 42; i++) {
+        const key = addDays(start, i), items = itemsOn(key), mk = marksOn(key);
+        const colors = [...new Set(items.map(x => x._color))].slice(0, 3);
+        const cls = [key.slice(0, 7) !== miniMonth ? "out" : "", key < TODAY ? "past" : "", key === TODAY ? "today" : "", key === sel ? "sel" : "", view === "week" && key >= wk0 && key <= wk1 ? "inweek" : ""].join(" ");
+        h += `<button type="button" class="sc-mday ${cls}" data-day="${key}" aria-label="${longDay(key)}${items.length ? `, ${items.length} item${items.length === 1 ? "" : "s"}` : ""}${mk.length ? ", " + mk.map(x => x.label).join(", ") : ""}">
+            ${mk.length ? `<span class="mk" style="--m:${esc(mk[0].color)}">★</span>` : ""}${Number(key.slice(8))}<span class="dots">${colors.map(c => `<u style="--d:${esc(c)}"></u>`).join("")}</span></button>`;
+    }
+    $("mini").innerHTML = h;
+}
+function drawLegend() {
+    const w0 = monday(sel), w1 = addDays(w0, 6), inWeek = t => data.items.filter(x => x.type === t && x.day >= w0 && x.day <= w1).length;
+    const rows = [["event", "My events", "#4361ee"], ["live", "Live classes", "#e11d48"], ["lesson", "Private lessons", "#10b981"], ["marks", "Marked days", "#ec4899"]];
+    $("legend").innerHTML = rows.map(r => `<label class="sc-lg"><input type="checkbox" data-show="${r[0]}" ${show[r[0]] ? "checked" : ""}><i style="--d:${r[2]}"></i>${r[1]}<em>${r[0] === "marks" ? data.marks.filter(m => m.day >= w0 && m.day <= w1).length : inWeek(r[0])} this week</em></label>`).join("")
+        + `<p class="sc-muted" style="margin-top:6px;font-size:.76rem">My events are coloured by type: ${Object.values(data.kinds || {}).map(k => `<span style="color:${k.color};font-weight:700">●</span> ${esc(k.label)}`).join(" · ")}</p>`;
+}
+function drawNeeds() {
+    const list = data.items.map(enrich).filter(x => x.type === "event" && x._end <= Date.now() && !x.status && x._day >= addDays(TODAY, -14)).sort((a, b) => Date.parse(b.start) - Date.parse(a.start));
+    $("needsCard").hidden = !list.length; $("needsN").textContent = list.length ? `${list.length}` : "";
+    $("needs").innerHTML = list.slice(0, 6).map(x => `<div class="sc-sitem"><span class="bar" style="--d:${x._color}"></span>
+        <button type="button" class="tx" data-open="${esc(keyOf(x))}" style="border:0;background:none;text-align:left;cursor:pointer;padding:0;color:inherit"><b>${esc(x.title)}</b><small>${esc(shortDay(x._day))} · ${hm(x._min)}</small></button>
+        <span class="acts"><button type="button" class="sc-btn sm ok" data-st="done" data-ev="${x.id}" data-day="${x._day}" aria-label="Mark ${esc(x.title)} done"><i class="fas fa-check"></i></button><button type="button" class="sc-btn sm danger" data-st="missed" data-ev="${x.id}" data-day="${x._day}" aria-label="Mark ${esc(x.title)} missed"><i class="fas fa-xmark"></i></button></span></div>`).join("")
+        + (list.length > 6 ? `<p class="sc-muted" style="font-size:.76rem">+ ${list.length - 6} more in the list view.</p>` : "");
+}
+function drawMarks() {
+    const upto = addDays(TODAY, 90);
+    const list = data.marks.filter(m => m.day >= TODAY && m.day <= upto);
+    $("marksList").innerHTML = list.length ? list.slice(0, 8).map(m => `<div class="sc-sitem"><span class="bar" style="--d:${esc(m.color)}"></span>
+        <button type="button" class="tx" data-day="${m.day}" style="border:0;background:none;text-align:left;cursor:pointer;padding:0;color:inherit"><b>${esc(m.label)}</b><small>${esc(shortDay(m.day))}${m.yearly ? " · every year" : ""}${m.day === TODAY ? " · today" : ""}</small></button>
+        <span class="acts"><button type="button" class="sc-btn sm danger" data-unmark="${m.id}" aria-label="Remove ${esc(m.label)}"><i class="fas fa-trash-can"></i></button></span></div>`).join("")
+        : '<p class="sc-muted">Holidays, exam weeks, trips or birthdays you mark show here and on the calendar.</p>';
+}
 
-    <!-- ===== MARK DAY MODAL ===== -->
-    <div class="modal-overlay" id="markModal">
-        <div class="modal-content">
-            <h2><i class="fas fa-star" style="color:var(--warning-color);"></i> Mark a Day</h2>
-            <p class="modal-subtitle">Highlight a special day such as a birthday, holiday or trip.</p>
-
-            <form id="markForm" onsubmit="submitMark(event)">
-                <div class="form-group">
-                    <label>Date <span class="required">*</span></label>
-                    <input type="date" class="form-control-input" id="markDate" required onchange="refreshMarkList()">
-                </div>
-
-                <div class="form-group">
-                    <label>Label <span class="required">*</span></label>
-                    <input type="text" class="form-control-input" id="markLabel" list="markSuggestions" placeholder="e.g., My Birthday" maxlength="60" required>
-                    <datalist id="markSuggestions">
-                        <option value="My Birthday"></option>
-                        <option value="Holiday"></option>
-                        <option value="Exam Week"></option>
-                        <option value="Trip"></option>
-                    </datalist>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Color</label>
-                        <select class="form-control-input" id="markColor">
-                            <option value="#ec4899">Pink</option>
-                            <option value="#ef4444">Red</option>
-                            <option value="#8b5cf6">Purple</option>
-                            <option value="#10b981">Green</option>
-                            <option value="#f59e0b">Orange</option>
-                            <option value="#3b82f6">Blue</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Repeat</label>
-                        <label style="display:flex;align-items:center;gap:8px;font-weight:400;padding:12px 0;">
-                            <input type="checkbox" id="markYearly" style="width:auto;"> Every year
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-group" id="markListWrap" style="display:none;">
-                    <label>Already marked on this date</label>
-                    <div class="mark-list" id="markList"></div>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeMarkModal()">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-star"></i> Mark Day
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ===== NOTIFICATION TOAST ===== -->
-    <div class="notification-toast" id="notificationToast">
-        <div class="notification-icon">
-            <i class="fas fa-bell"></i>
-        </div>
-        <div class="notification-content">
-            <div class="notification-title" id="notificationTitle">New Event Added</div>
-            <div class="notification-message" id="notificationMessage">Event has been scheduled successfully</div>
-        </div>
-        <button class="notification-close" onclick="closeNotification()">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-
-    <script>
-        // =========================
-        // DATA & STATE
-        // =========================
-        let currentDate = new Date();
-        let selectedDate = new Date();
-        let nextEventId = 1;
-        let notificationTimeout = null;
-
-        // Returns today's date as YYYY-MM-DD in the user's LOCAL timezone
-        // (toISOString() would use UTC and can be off by a day)
-        function getTodayString() {
-            const t = new Date();
-            const y = t.getFullYear();
-            const m = String(t.getMonth() + 1).padStart(2, '0');
-            const d = String(t.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        }
-        
-        // Default start time for new events: the exact current local time (HH:MM)
-        function getDefaultTimeString() {
-            const now = new Date();
-            return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        }
-
-        // True once the user edits the time field by hand
-        let eventTimeTouched = false;
-
-        // Which event's details card is open, and which event is awaiting delete confirmation
-        let expandedEventId = null;
-        let pendingDeleteId = null;
-
-        // ===== LOCAL STORAGE FUNCTIONS =====
-        function getStorageKey() {
-            const email = '{{ session.get('email', 'default_user') }}';
-            return `scheduleData_${email}`;
-        }
-
-        function getNotificationsKey() {
-            const email = '{{ session.get('email', 'default_user') }}';
-            return `notifications_${email}`;
-        }
-
-        function loadScheduleData() {
-            const key = getStorageKey();
-            const stored = localStorage.getItem(key);
-            if (stored) {
-                try {
-                    const parsed = JSON.parse(stored);
-                    if (parsed.length > 0) {
-                        const maxId = Math.max(...parsed.map(e => e.id));
-                        nextEventId = maxId + 1;
-                    }
-                    return parsed;
-                } catch (e) {
-                    console.warn('Failed to parse stored schedule data');
-                }
-            }
-            return [];
-        }
-
-        function saveScheduleData(events) {
-            const key = getStorageKey();
-            localStorage.setItem(key, JSON.stringify(events));
-        }
-
-        function loadNotifications() {
-            const key = getNotificationsKey();
-            const stored = localStorage.getItem(key);
-            if (stored) {
-                try {
-                    return JSON.parse(stored);
-                } catch (e) {
-                    console.warn('Failed to parse stored notifications');
-                }
-            }
-            return [];
-        }
-
-        function saveNotifications(notifications) {
-            const key = getNotificationsKey();
-            localStorage.setItem(key, JSON.stringify(notifications));
-        }
-
-        // ===== RECENT ACTIVITY (feeds the dashboard's Recent Activity card) =====
-        function getRecentActivityKey() {
-            const email = '{{ session.get('email', 'default_user') }}';
-            return `recentActivity_${email}`;
-        }
-
-        function loadRecentActivity() {
-            const key = getRecentActivityKey();
-            const stored = localStorage.getItem(key);
-            if (stored) {
-                try { return JSON.parse(stored); } catch (e) { console.warn('Failed to parse recent activity'); }
-            }
-            return [];
-        }
-
-        // type must be one of: event-added, event-completed, event-deleted,
-        // event-updated, event-incomplete (the dashboard knows how to render these)
-        function pushRecentActivity(type, courseName, extra) {
-            const key = getRecentActivityKey();
-            const activity = loadRecentActivity();
-            activity.unshift({
-                type: type,
-                courseName: courseName,
-                extra: extra || '',
-                timestamp: Date.now()
-            });
-            if (activity.length > 50) {
-                activity.length = 50;
-            }
-            localStorage.setItem(key, JSON.stringify(activity));
-        }
-
-        function addNotification(message, type = 'event') {
-            const notifications = loadNotifications();
-            const timestamp = new Date().toISOString();
-            notifications.unshift({
-                id: Date.now(),
-                message: message,
-                type: type,
-                timestamp: timestamp,
-                read: false
-            });
-            // Keep only last 50 notifications
-            if (notifications.length > 50) {
-                notifications.length = 50;
-            }
-            saveNotifications(notifications);
-            
-            // Also send to dashboard via sessionStorage for cross-tab communication
-            try {
-                sessionStorage.setItem('dashboard_notification', JSON.stringify({
-                    message: message,
-                    type: type,
-                    timestamp: timestamp,
-                    id: Date.now()
-                }));
-            } catch (e) {
-                // Ignore sessionStorage errors
-            }
-            
-            return notifications;
-        }
-
-        // ===== NOTIFICATION FUNCTIONS =====
-        function showNotification(title, message, type = 'info') {
-            const toast = document.getElementById('notificationToast');
-            const titleEl = document.getElementById('notificationTitle');
-            const messageEl = document.getElementById('notificationMessage');
-            const iconEl = document.querySelector('.notification-icon i');
-            
-            // Set content
-            titleEl.textContent = title;
-            messageEl.textContent = message;
-            
-            // Set icon and color based on type
-            const iconMap = {
-                'success': { icon: 'fa-check-circle', color: 'var(--success-color)' },
-                'warning': { icon: 'fa-exclamation-triangle', color: 'var(--warning-color)' },
-                'error': { icon: 'fa-times-circle', color: 'var(--danger-color)' },
-                'info': { icon: 'fa-bell', color: 'var(--primary-color)' }
-            };
-            const config = iconMap[type] || iconMap.info;
-            iconEl.className = `fas ${config.icon}`;
-            document.querySelector('.notification-icon').style.color = config.color;
-            document.querySelector('.notification-icon').style.background = config.color + '20';
-            toast.style.borderLeftColor = config.color;
-            
-            // Show toast
-            toast.classList.add('show');
-            
-            // Clear existing timeout
-            if (notificationTimeout) {
-                clearTimeout(notificationTimeout);
-            }
-            
-            // Auto-hide after 5 seconds
-            notificationTimeout = setTimeout(() => {
-                toast.classList.remove('show');
-            }, 5000);
-        }
-
-        function closeNotification() {
-            const toast = document.getElementById('notificationToast');
-            toast.classList.remove('show');
-            if (notificationTimeout) {
-                clearTimeout(notificationTimeout);
-            }
-        }
-
-        // ===== NOTIFICATION TO DASHBOARD =====
-        // courseName should be the event's own title, so the dashboard's
-        // Recent Activity card can show "You scheduled 'Calculus Lecture'"
-        // rather than the whole formatted toast message.
-        function sendToDashboard(message, type = 'event', courseName = '', extra = '') {
-            // Add to local notifications
-            const notifications = addNotification(message, type);
-
-            // Record it in Recent Activity so it shows up on the dashboard
-            const activityTypeMap = {
-                'event': 'event-added',
-                'complete': 'event-completed',
-                'delete': 'event-deleted',
-                'update': 'event-updated',
-                'incomplete': 'event-incomplete'
-            };
-            pushRecentActivity(activityTypeMap[type] || 'event-added', courseName || message, extra);
-            
-            // Show toast notification
-            const eventTypes = {
-                'event': { title: '📅 New Event', type: 'info' },
-                'complete': { title: '✅ Task Completed', type: 'success' },
-                'delete': { title: '🗑️ Event Deleted', type: 'warning' },
-                'update': { title: '📝 Event Updated', type: 'info' },
-                'incomplete': { title: '⚠️ Event Incomplete', type: 'warning' }
-            };
-            const config = eventTypes[type] || eventTypes.event;
-            showNotification(config.title, message, config.type);
-            
-            // Trigger storage event for other tabs
-            try {
-                localStorage.setItem('notification_trigger', Date.now().toString());
-            } catch (e) {
-                // Ignore
-            }
-            
-            // Try to update dashboard if it's in the same window
-            updateDashboardActivity(message, type);
-        }
-
-        // ===== DASHBOARD UPDATE FUNCTION =====
-        function updateDashboardActivity(message, type = 'event') {
-            try {
-                // Check if dashboard exists in same window
-                const dashboardElement = document.getElementById('recentActivity');
-                if (dashboardElement) {
-                    // If dashboard is on the same page, update it directly
-                    const activityItem = document.createElement('div');
-                    activityItem.className = 'activity-item';
-                    const now = new Date();
-                    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                    
-                    const typeColors = {
-                        'event': 'var(--primary-color)',
-                        'complete': 'var(--success-color)',
-                        'delete': 'var(--danger-color)',
-                        'update': 'var(--warning-color)',
-                        'incomplete': 'var(--danger-color)'
-                    };
-                    const color = typeColors[type] || 'var(--primary-color)';
-                    
-                    activityItem.innerHTML = `
-                        <div style="display:flex;align-items:center;gap:12px;padding:10px 15px;border-bottom:1px solid var(--gray-100);">
-                            <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
-                            <div style="flex:1;">
-                                <div style="font-size:0.9rem;color:var(--dark-color);">${message}</div>
-                                <div style="font-size:0.75rem;color:var(--gray-400);">${timeStr}</div>
-                            </div>
-                            <div style="font-size:0.7rem;padding:2px 8px;border-radius:12px;background:${color}20;color:${color};">
-                                ${type.charAt(0).toUpperCase() + type.slice(1)}
-                            </div>
-                        </div>
-                    `;
-                    
-                    // Add at the top of the activity list
-                    const activityList = dashboardElement.querySelector('.activity-list') || dashboardElement;
-                    if (activityList.firstChild) {
-                        activityList.insertBefore(activityItem, activityList.firstChild);
-                    } else {
-                        activityList.appendChild(activityItem);
-                    }
-                    
-                    // Limit to last 10 activities
-                    const items = activityList.querySelectorAll('.activity-item');
-                    if (items.length > 10) {
-                        items[items.length - 1].remove();
-                    }
-                    
-                    // Update notification badge count if exists
-                    const badge = document.querySelector('.notification-badge');
-                    if (badge) {
-                        let count = parseInt(badge.textContent) || 0;
-                        count++;
-                        badge.textContent = count;
-                        badge.style.display = 'block';
-                    }
-                }
-            } catch (e) {
-                console.log('Dashboard not available in current view');
-            }
-        }
-
-        // ===== INITIALIZE SCHEDULE DATA =====
-        let scheduleData = loadScheduleData();
-
-        // =========================
-        // DAY MARKS (birthdays, holidays, etc.)
-        // =========================
-        function getMarksKey() {
-            const email = '{{ session.get('email', 'default_user') }}';
-            return `dayMarks_${email}`;
-        }
-
-        function loadMarks() {
-            const stored = localStorage.getItem(getMarksKey());
-            if (stored) {
-                try { return JSON.parse(stored); } catch (e) { console.warn('Failed to parse day marks'); }
-            }
-            return [];
-        }
-
-        function saveMarks() {
-            localStorage.setItem(getMarksKey(), JSON.stringify(marksData));
-        }
-
-        let marksData = loadMarks();
-
-        // month is 0-based (JS style); returns YYYY-MM-DD
-        function dateKey(year, month, day) {
-            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        }
-
-        function escapeHtml(str) {
-            return String(str).replace(/[&<>"']/g, c => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-            }[c]));
-        }
-
-        // Marks that apply to a date: exact match, or yearly marks on the same month/day
-        function getMarksForDate(year, month, day) {
-            const key = dateKey(year, month, day);
-            const monthDay = key.slice(5);
-            return marksData.filter(mk =>
-                mk.date === key || (mk.yearly && mk.date.slice(5) === monthDay && mk.date <= key)
-            );
-        }
-
-        function renderMarkBanners() {
-            const marks = getMarksForDate(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-            if (marks.length === 0) return;
-            const html = marks.map(mk => `
-                <div class="day-mark-banner" style="--mark-color:${mk.color};">
-                    <i class="fas fa-star"></i>
-                    <span>${escapeHtml(mk.label)}</span>
-                    ${mk.yearly ? '<span class="mark-repeat"><i class="fas fa-redo" style="color:inherit;"></i> Every year</span>' : ''}
-                </div>
-            `).join('');
-            document.getElementById('dailyView').insertAdjacentHTML('afterbegin', html);
-        }
-
-        function openMarkModal() {
-            const selectedKey = dateKey(
-                selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()
-            );
-            document.getElementById('markDate').min = getTodayString();
-            document.getElementById('markDate').value = selectedKey < getTodayString() ? getTodayString() : selectedKey;
-            document.getElementById('markLabel').value = '';
-            document.getElementById('markColor').value = '#ec4899';
-            document.getElementById('markYearly').checked = false;
-            refreshMarkList();
-
-            document.getElementById('markModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
-            setTimeout(() => document.getElementById('markLabel').focus(), 100);
-        }
-
-        function closeMarkModal() {
-            document.getElementById('markModal').classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-
-        // Lists marks already on the chosen date, each with a Remove button
-        function refreshMarkList() {
-            const wrap = document.getElementById('markListWrap');
-            const list = document.getElementById('markList');
-            const val = document.getElementById('markDate').value;
-            list.innerHTML = '';
-            if (!val) { wrap.style.display = 'none'; return; }
-
-            const [y, m, d] = val.split('-').map(Number);
-            const marks = getMarksForDate(y, m - 1, d);
-            if (marks.length === 0) { wrap.style.display = 'none'; return; }
-
-            wrap.style.display = 'block';
-            marks.forEach(mk => {
-                const row = document.createElement('div');
-                row.className = 'mark-list-item';
-                row.innerHTML = `
-                    <span class="mark-dot" style="background:${mk.color};"></span>
-                    <span class="mark-text">${escapeHtml(mk.label)}${mk.yearly ? ' (every year)' : ''}</span>
-                    <button type="button" class="action-btn danger" onclick="deleteMark(${mk.id})">
-                        <i class="fas fa-trash"></i> Remove
-                    </button>
-                `;
-                list.appendChild(row);
-            });
-        }
-
-        function submitMark(e) {
-            e.preventDefault();
-
-            const dateStr = document.getElementById('markDate').value;
-            const label = document.getElementById('markLabel').value.trim();
-            const color = document.getElementById('markColor').value;
-            const yearly = document.getElementById('markYearly').checked;
-
-            if (!dateStr || !label) {
-                showNotification('Missing Info', 'Please choose a date and enter a label.', 'error');
-                return;
-            }
-
-            if (dateStr < getTodayString()) {
-                showNotification('Invalid Date', 'You can only mark today or a future date.', 'error');
-                return;
-            }
-
-            marksData = loadMarks();
-            const nextId = marksData.length > 0 ? Math.max(...marksData.map(mk => mk.id)) + 1 : 1;
-            marksData.push({ id: nextId, date: dateStr, label: label, color: color, yearly: yearly });
-            saveMarks();
-            closeMarkModal();
-
-            // Jump to the marked day so the user can see it
-            const [y, m, d] = dateStr.split('-').map(Number);
-            currentDate = new Date(y, m - 1, 1);
-            selectDate(new Date(y, m - 1, d));
-
-            showNotification('Day Marked', `"${label}" marked on ${new Date(y, m - 1, d).toLocaleDateString()}${yearly ? ' (every year)' : ''}.`, 'success');
-        }
-
-        function deleteMark(markId) {
-            marksData = loadMarks().filter(mk => mk.id !== markId);
-            saveMarks();
-            refreshMarkList();
-            renderCalendar();
-            loadSchedule();
-            showNotification('Mark Removed', 'The mark has been removed.', 'warning');
-        }
-
-        // =========================
-        // INITIALIZATION
-        // =========================
-        document.addEventListener('DOMContentLoaded', () => {
-            // Default to today and block all past dates in the date picker
-            document.getElementById('eventDate').value = getTodayString();
-            document.getElementById('eventDate').min = getTodayString();
-            document.getElementById('eventTime').value = getDefaultTimeString();
-            document.getElementById('markDate').min = getTodayString();
-            
-            initializeCalendar();
-            loadSchedule();
-            updateScheduleHeader();
-            updateTodayEvents();
-            
-            // Check for pending notifications from other tabs
-            checkPendingNotifications();
-            
-            // Listen for storage events from other tabs
-            window.addEventListener('storage', function(e) {
-                if (e.key === 'notification_trigger') {
-                    checkPendingNotifications();
-                }
-            });
-
-            // Re-check for past-due events once a minute in case the tab
-            // stays open across midnight (or a day boundary).
-            setInterval(() => {
-                updatePastEventStatuses();
-                loadSchedule();
-                updateTodayEvents();
-                renderCalendar();
-                updateAddEventButtons();
-            }, 60000);
+/* ---------- main views ---------- */
+function drawView() {
+    document.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+    if (view === "agenda") return drawAgenda();
+    const days = view === "week" ? Array.from({ length: 7 }, (_, i) => addDays(monday(sel), i)) : [sel];
+    $("rangeTitle").innerHTML = view === "week"
+        ? `${esc(shortDay(days[0]))} – ${esc(shortDay(days[6]))} ${days[6].slice(0, 4)}<small>Week ${isoWeek(days[0])} · tap an empty time to add an event</small>`
+        : `${esc(longDay(sel, { year: "numeric" }))}<small>${sel === TODAY ? "Today" : sel < TODAY ? "Past day" : "Tap an empty time to add an event"}</small>`;
+    const all = days.map(d => itemsOn(d));
+    const minH = 0, maxH = 24;          // the whole day, midnight to midnight (the grid scrolls)
+    const nowP = nb(Date.now());
+    const H = parseFloat(getComputedStyle(root).getPropertyValue("--sc-hour")) || 52, total = (maxH - minH) * H;
+    const heads = days.map(d => {
+        const mk = marksOn(d);
+        return `<div class="h ${d === TODAY ? "today" : ""}"><button type="button" data-goday="${d}" aria-label="Open ${longDay(d)}"><small>${new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" })}</small><b>${Number(d.slice(8))}</b></button>
+            ${mk.length ? `<div class="mks">${mk.map(m => `<span style="--m:${esc(m.color)}" title="${esc(m.label)}">★ ${esc(m.label)}</span>`).join("")}</div>` : ""}</div>`;
+    }).join("");
+    const hours = Array.from({ length: maxH - minH }, (_, i) => `<span style="top:${i * H}px${i ? "" : ";transform:none"}">${pad(minH + i)}:00</span>`).join("");
+    const cols = days.map((d, ci) => {
+        const items = all[ci];
+        // side-by-side lanes for items that overlap
+        const lanes = [], placed = [];
+        items.forEach(x => {
+            const s = x._min, e = x._min + Math.max(x.minutes, 20);
+            let lane = lanes.findIndex(end => end <= s); if (lane < 0) { lane = lanes.length; lanes.push(0); }
+            lanes[lane] = e; placed.push({ x, lane, s, e });
         });
+        placed.forEach(p => { p.n = Math.max(1, ...placed.filter(q => q.s < p.e && p.s < q.e).map(q => q.lane + 1)); });
+        const blocks = placed.map(p => {
+            const x = p.x, st = stateOf(x), top = (p.s - minH * 60) / 60 * H, h = Math.max(22, x.minutes / 60 * H - 2);
+            const w = 100 / p.n;
+            return `<button type="button" class="sc-ev ${st === "done" ? "done" : st === "missed" ? "missed" : ""}" style="--d:${esc(x._color)};top:${top}px;height:${h}px;left:calc(${p.lane * w}% + 2px);width:calc(${w}% - 4px)" data-open="${esc(keyOf(x))}" aria-label="${esc(x.title)}, ${hm(x._min)} to ${hm(x._min + x.minutes)}, ${esc(typeLabel(x))}">
+                <i class="fas ${typeIcon(x)} ic" aria-hidden="true"></i><b>${esc(x.title)}</b>${h > 34 ? `<small>${hm(x._min)}–${hm(x._min + x.minutes)}${x.type === "lesson" ? " · " + esc(x.student) : x.location ? " · " + esc(x.location) : ""}</small>` : ""}</button>`;
+        }).join("");
+        const now = d === nowP.day ? `<div class="sc-now" style="top:${(nowP.min - minH * 60) / 60 * H}px"></div>` : "";
+        return `<div class="sc-col ${d < TODAY ? "past" : ""} ${d === TODAY ? "today" : ""}" data-col="${d}" data-min="${minH}" style="height:${total}px">${blocks}${now}</div>`;
+    }).join("");
+    const empty = !all.flat().length;
+    $("view").innerHTML = `<div class="sc-cal"><div class="sc-scroll"><div style="min-width:${view === "week" ? 640 : 0}px;--cols:${days.length}">
+        <div class="sc-heads">${'<div></div>'}${heads}</div>
+        <div class="sc-body" id="grid"><div class="sc-hours" style="height:${total}px">${hours}</div>${cols}</div>
+        </div></div></div>
+        ${empty ? `<div class="sc-card" style="margin-top:12px"><div class="sc-empty" style="padding:18px"><i class="far fa-calendar"></i><h3>${view === "week" ? "Nothing this week" : "Nothing on this day"}</h3><p>${sel < TODAY && view === "day" ? "This day has passed." : "Add a class, an exam, marking time or a meeting. Live classes and private lessons appear here on their own."}</p>${sel >= TODAY || view === "week" ? '<button type="button" class="sc-btn primary" data-new><i class="fas fa-plus"></i> New event</button>' : ""}</div></div>` : ""}`;
+    const g = $("grid"); if (g) { const first = all.flat()[0]; const focus = days.includes(nowP.day) ? nowP.min : first ? first._min : 8 * 60; g.scrollTop = Math.max(0, (focus - minH * 60) / 60 * H - 80); }
+}
+function isoWeek(key) { const d = new Date(key + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + 3 - (d.getUTCDay() + 6) % 7); const w1 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4)); return 1 + Math.round(((d - w1) / 864e5 - 3 + (w1.getUTCDay() + 6) % 7) / 7); }
+function drawAgenda() {
+    const end = addDays(sel, 29);
+    $("rangeTitle").innerHTML = `${esc(shortDay(sel))} – ${esc(shortDay(end))}<small>30 days from the selected day</small>`;
+    let html = "", count = 0, nextMarked = false;
+    for (let i = 0; i < 30; i++) {
+        const d = addDays(sel, i), items = itemsOn(d), mk = marksOn(d);
+        if (!items.length && !mk.length) continue;
+        count += items.length;
+        html += `<section class="sc-aday"><div class="sc-aday-h"><b>${esc(longDay(d))}</b>${d === TODAY ? '<span class="today-tag">Today</span>' : ""}<small>${items.length ? `${items.length} item${items.length === 1 ? "" : "s"} · ${durText(items.reduce((a, x) => a + x.minutes, 0))}` : ""}</small>${mk.map(m => `<span class="sc-mchip" style="--m:${esc(m.color)}">★ ${esc(m.label)}</span>`).join("")}</div>
+            ${items.map(x => {
+                const st = stateOf(x); let chip = stateChip(st);
+                if (st === "upcoming" && !nextMarked) { nextMarked = true; chip = '<span class="sc-chip next">Up next</span>'; }
+                const meta = [x.subject && x.type !== "lesson" ? x.subject + (x.grade ? " · " + x.grade : "") : "", x.type === "lesson" ? x.student : "", x.location, x.repeat && x.repeat !== "none" ? "Repeats " + ({ daily: "daily", weekdays: "on weekdays", weekly: "weekly" }[x.repeat]) : ""].filter(Boolean);
+                return `<button type="button" class="sc-arow ${st === "done" ? "done" : ""}" data-open="${esc(keyOf(x))}"><span class="t">${hm(x._min)}<small>${durText(x.minutes)}</small></span><span class="bar" style="--d:${esc(x._color)}"></span>
+                    <span class="tx"><b>${esc(x.title)}</b><span><span class="sc-chip k" style="--d:${esc(x._color)}"><i class="fas ${typeIcon(x)}"></i> ${esc(typeLabel(x))}</span>${meta.map(m => `<span>${esc(m)}</span>`).join("")}</span></span>${chip}</button>`;
+            }).join("")}</section>`;
+    }
+    $("view").innerHTML = html ? `<div class="sc-agenda">${html}</div>` : `<div class="sc-card"><div class="sc-empty"><i class="far fa-calendar-check"></i><h3>Nothing in the next 30 days</h3><p>Your events, live classes and private lessons will be listed here by day.</p><button type="button" class="sc-btn primary" data-new><i class="fas fa-plus"></i> New event</button></div></div>`;
+}
 
-        function checkPendingNotifications() {
-            try {
-                const pending = sessionStorage.getItem('dashboard_notification');
-                if (pending) {
-                    const notification = JSON.parse(pending);
-                    // Only show if it's new (within last minute)
-                    const timeDiff = Date.now() - notification.id;
-                    if (timeDiff < 60000) {
-                        const typeMap = {
-                            'event': 'Event Scheduled',
-                            'complete': 'Task Completed',
-                            'delete': 'Event Deleted',
-                            'update': 'Event Updated',
-                            'incomplete': 'Event Incomplete'
-                        };
-                        showNotification(
-                            `📢 ${typeMap[notification.type] || 'Update'}`,
-                            notification.message,
-                            notification.type
-                        );
-                    }
-                    sessionStorage.removeItem('dashboard_notification');
-                }
-            } catch (e) {
-                // Ignore
-            }
-        }
+/* ---------- drawer ---------- */
+const drawer = $("scDrawer"), panel = $("drPanel"); let lastFocus = null, current = null;
+function openDrawer(html, focusSel) {
+    lastFocus = document.activeElement; panel.innerHTML = html; drawer.classList.add("show"); document.body.style.overflow = "hidden";
+    const f = panel.querySelector(focusSel || "[data-close]"); if (f) f.focus();
+}
+function closeDrawer() { drawer.classList.remove("show"); panel.innerHTML = ""; document.body.style.overflow = ""; current = null; if (lastFocus && lastFocus.isConnected) lastFocus.focus(); }
+const head = (title, sub) => `<div class="sc-ph"><div class="tx"><h2 id="drTitle">${title}</h2>${sub ? `<p>${sub}</p>` : ""}</div><button type="button" class="sc-icon" data-close aria-label="Close"><i class="fas fa-xmark"></i></button></div>`;
 
-        // =========================
-        // CALENDAR FUNCTIONS
-        // =========================
-        function initializeCalendar() {
-            renderCalendar();
-        }
+function findItem(key) { const [t, id, day] = key.split(":"); return data.items.map(enrich).find(x => x.type === t && String(x.id) === id && x._day === day); }
+function showDetails(x) {
+    current = x;
+    const st = stateOf(x), end = x._min + x.minutes, link = safeUrl(x.link);
+    const rows = [
+        ["fa-clock", "When", `${longDay(x._day)}, ${hm(x._min)}–${hm(end)} (${durText(x.minutes)})`],
+        x.repeat && x.repeat !== "none" ? ["fa-repeat", "Repeats", `${ { daily: "Every day", weekdays: "Every weekday (Mon–Fri)", weekly: "Every week on " + new Date(x.first_day + "T12:00:00Z").toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "long" }) }[x.repeat]} until ${shortDay(x.repeat_until)}`] : null,
+        x.subject ? ["fa-book", "Subject", x.subject + (x.grade ? " · " + x.grade : "")] : null,
+        x.type === "lesson" ? ["fa-user-graduate", "Learner", x.student] : null,
+        x.location ? ["fa-location-dot", "Where", x.location] : null,
+    ].filter(Boolean);
+    const acts = [];
+    if (link && st !== "done" && st !== "missed" && (st === "now" || x._end > Date.now())) acts.push(x.type === "live"
+        ? `<a class="sc-btn ${st === "now" ? "primary" : ""}" href="${esc(link)}"><i class="fas fa-tower-broadcast"></i> ${st === "now" ? "Back to studio" : "Open studio"}</a>`
+        : `<a class="sc-btn ${st === "now" ? "primary" : ""}" href="${esc(link)}" target="_blank" rel="noopener"><i class="fas fa-video"></i> ${st === "now" ? "Join now" : "Open link"}</a>`);
+    if (x.type === "event") {
+        if (x._day >= TODAY || x.status || st === "ended") acts.push('<button type="button" class="sc-btn" data-edit><i class="fas fa-pen"></i> Edit</button>');
+        acts.push('<button type="button" class="sc-btn danger" data-delask><i class="fas fa-trash-can"></i> Delete</button>');
+    } else if (x.type === "live") acts.push('<a class="sc-btn" href="/teacher-live"><i class="fas fa-up-right-from-square"></i> Manage in Live classes</a>');
+    else acts.push('<a class="sc-btn" href="/teacher-dashboard#tdPrivate"><i class="fas fa-up-right-from-square"></i> Open private teaching</a>');
+    const started = Date.parse(x.start) <= Date.now();
+    openDrawer(head(esc(x.title), `<span class="sc-chip k" style="--d:${esc(x._color)}"><i class="fas ${typeIcon(x)}"></i> ${esc(typeLabel(x))}</span> ${stateChip(st)}`) +
+        `<div class="sc-pb"><div class="sc-rows">${rows.map(r => `<div class="sc-row"><i class="fas ${r[0]}" aria-hidden="true"></i><div><b>${r[1]}</b><span>${esc(r[2])}</span></div></div>`).join("")}
+            ${link ? `<div class="sc-row"><i class="fas fa-link" aria-hidden="true"></i><div><b>Link</b><a href="${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a></div></div>` : ""}</div>
+            ${x.notes ? `<div class="sc-notes">${esc(x.notes)}</div>` : ""}
+            ${x.type === "event" && started ? `<div class="sc-stbox"><b>${x.status ? "Marked " + (x.status === "done" ? "done" : "missed") + ". Change it?" : "Did it happen?"}</b><div class="btns">
+                <button type="button" class="sc-btn ok" data-setst="done" ${x.status === "done" ? "disabled" : ""}><i class="fas fa-check"></i> Done</button>
+                <button type="button" class="sc-btn danger" data-setst="missed" ${x.status === "missed" ? "disabled" : ""}><i class="fas fa-xmark"></i> Missed</button>
+                ${x.status ? '<button type="button" class="sc-btn ghost" data-setst="">Clear</button>' : ""}</div></div>` : ""}
+            <div id="delBox"></div>
+        </div><div class="sc-pf"><span class="msg" id="drMsg" role="status"></span>${acts.join("")}</div>`);
+}
+async function setStatus(id, day, status, msgEl) {
+    try {
+        await send(`/api/teacher/events/${id}/status`, "POST", { day, status });
+        data.items.forEach(x => { if (x.type === "event" && x.id === id && x.day === day) x.status = status; });
+        draw();
+        if (current) { const again = findItem(`event:${id}:${day}`); if (again) showDetails(again); }
+        note(status ? `Marked ${status}.` : "Cleared.", "ok");
+    } catch (e) { if (msgEl) { msgEl.className = "msg bad"; msgEl.textContent = e.message; } else note(e.message, "bad"); }
+}
 
-        function renderCalendar() {
-            const month = currentDate.getMonth();
-            const year = currentDate.getFullYear();
-            
-            const monthNames = ["January", "February", "March", "April", "May", "June",
-                               "July", "August", "September", "October", "November", "December"];
-            document.getElementById('currentMonth').textContent = `${monthNames[month]} ${year}`;
-            
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const prevMonthDays = new Date(year, month, 0).getDate();
-            
-            const calendarDays = document.getElementById('calendarDays');
-            calendarDays.innerHTML = '';
-            
-            for (let i = firstDay - 1; i >= 0; i--) {
-                const day = prevMonthDays - i;
-                const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day other-month';
-                dayElement.textContent = day;
-                dayElement.onclick = () => selectDate(new Date(year, month - 1, day));
-                calendarDays.appendChild(dayElement);
-            }
-            
-            const today = new Date();
-            for (let i = 1; i <= daysInMonth; i++) {
-                const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day';
-                dayElement.textContent = i;
-                
-                if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-                    dayElement.classList.add('today');
-                }
-                
-                if (i === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear()) {
-                    dayElement.classList.add('selected');
-                }
-                
-                if (hasEventsOnDate(i, month, year)) {
-                    dayElement.classList.add('event');
-                }
+/* ---------- editor ---------- */
+const DURS = [30, 40, 45, 60, 80, 90, 120];
+function showEditor(x, preset) {
+    const e = x || {}, p = preset || {};
+    const day = e.first_day || p.day || (sel >= TODAY ? sel : TODAY);
+    let time = e.time || p.time;
+    if (!time) { const n = nb(Date.now()); const m = Math.min(23 * 60, Math.ceil((n.min + 5) / 30) * 30); time = day === TODAY ? hm(m) : "08:00"; }
+    const kinds = data.kinds || {}, minutes = e.minutes || 60, rep = e.repeat || "none";
+    openDrawer(head(x ? "Edit event" : "New event", x && x.repeat !== "none" ? "Changes apply to every day this event repeats." : "Saved to your account, on every device.") +
+        `<form class="sc-pb" id="evForm" novalidate><div class="sc-form">
+            <div class="sc-f wide" data-f="title"><label for="fTitle">Title <span class="req">*</span></label><input class="sc-in" id="fTitle" maxlength="120" value="${esc(e.title || "")}" placeholder="e.g. Form 3 Chemistry: Moles"><span class="sc-ferr"></span></div>
+            <div class="sc-f wide"><span class="lbl" id="kindL">Type</span><div class="sc-kinds" role="radiogroup" aria-labelledby="kindL">${Object.entries(kinds).map(([k, v]) => `<label><input type="radio" name="fKind" value="${k}" ${(e.kind || "class") === k ? "checked" : ""}><span style="--d:${v.color}">${esc(v.label)}</span></label>`).join("")}</div></div>
+            <div class="sc-f" data-f="day"><label for="fDay">Date <span class="req">*</span></label><input class="sc-in" type="date" id="fDay" value="${day}" ${x ? "" : `min="${TODAY}"`}><span class="sc-ferr"></span></div>
+            <div class="sc-f" data-f="start_time"><label for="fTime">Starts <span class="req">*</span></label><input class="sc-in" type="time" id="fTime" value="${time}" step="300"><span class="sc-ferr"></span></div>
+            <div class="sc-f wide" data-f="minutes"><span class="lbl">Length</span><div class="sc-durs" id="fDurs">${DURS.map(d => `<button type="button" data-dur="${d}" aria-pressed="${d === minutes}">${durText(d)}</button>`).join("")}<input class="sc-in" type="number" id="fMin" min="5" max="720" step="5" value="${minutes}" style="width:96px;height:32px" aria-label="Length in minutes"></div><span class="sc-hint" id="fEnds"></span><span class="sc-ferr"></span></div>
+            <div class="sc-f"><label for="fSubj">Subject</label><select class="sc-sel" id="fSubj"><option value="">None</option>${(data.subjects || []).map(s => `<option ${e.subject === s ? "selected" : ""}>${esc(s)}</option>`).join("")}${e.subject && !(data.subjects || []).includes(e.subject) ? `<option selected>${esc(e.subject)}</option>` : ""}</select></div>
+            <div class="sc-f"><label for="fGrade">Grade</label><select class="sc-sel" id="fGrade"><option value="">None</option>${Array.from({ length: 11 }, (_, i) => `Grade ${i + 1}`).map(g => `<option ${e.grade === g ? "selected" : ""}>${g}</option>`).join("")}</select></div>
+            <div class="sc-f"><label for="fRep">Repeat</label><select class="sc-sel" id="fRep">${[["none", "Doesn’t repeat"], ["daily", "Every day"], ["weekdays", "Every weekday (Mon–Fri)"], ["weekly", "Every week"]].map(r => `<option value="${r[0]}" ${rep === r[0] ? "selected" : ""}>${r[1]}</option>`).join("")}</select></div>
+            <div class="sc-f" data-f="repeat_until" id="untilWrap" ${rep === "none" ? "hidden" : ""}><label for="fUntil">Until</label><input class="sc-in" type="date" id="fUntil" value="${e.repeat_until || addDays(day, 7 * 12)}"><span class="sc-ferr"></span></div>
+            <div class="sc-f wide"><label for="fLoc">Where</label><input class="sc-in" id="fLoc" maxlength="80" value="${esc(e.location || "")}" placeholder="e.g. Room 12, Lab 2, Staffroom"></div>
+            <div class="sc-f wide" data-f="link"><label for="fLink">Online link</label><input class="sc-in" id="fLink" maxlength="300" inputmode="url" value="${esc(e.link || "")}" placeholder="https://meet.google.com/…"><span class="sc-ferr"></span></div>
+            <div class="sc-f wide"><label for="fNotes">Notes</label><textarea class="sc-ta" id="fNotes" maxlength="1000" placeholder="What to bring, topics to cover, who is coming…">${esc(e.notes || "")}</textarea></div>
+            <div class="sc-conflict" id="fConflict" hidden></div>
+        </div></form>
+        <div class="sc-pf"><span class="msg" id="drMsg" role="status"></span><button type="button" class="sc-btn" data-close>Cancel</button><button type="button" class="sc-btn primary" id="fSave"><i class="fas fa-check"></i> ${x ? "Save changes" : "Add event"}</button></div>`, "#fTitle");
+    current = x || null;
+    panel.dataset.editing = x ? x.id : "";
+    panel.dataset.confirmed = "";
+    updateEnds();
+}
+function formValues() {
+    return {
+        title: $("fTitle").value.trim(), kind: (panel.querySelector('input[name="fKind"]:checked') || {}).value || "class",
+        day: $("fDay").value, start_time: $("fTime").value, minutes: Number($("fMin").value) || 0,
+        subject: $("fSubj").value, grade: $("fGrade").value, repeat: $("fRep").value,
+        repeat_until: $("fRep").value === "none" ? "" : $("fUntil").value,
+        location: $("fLoc").value.trim(), link: $("fLink").value.trim(), notes: $("fNotes").value.trim()
+    };
+}
+function updateEnds() {
+    const v = formValues(); if (!v.start_time) return;
+    const [h, m] = v.start_time.split(":").map(Number);
+    $("fEnds").textContent = v.minutes >= 5 ? `Ends at ${hm(h * 60 + m + v.minutes)}${h * 60 + m + v.minutes >= 1440 ? " (next day)" : ""}` : "";
+    panel.querySelectorAll("[data-dur]").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.dur) === v.minutes)));
+    panel.dataset.confirmed = ""; $("fSave").innerHTML = `<i class="fas fa-check"></i> ${panel.dataset.editing ? "Save changes" : "Add event"}`; $("fConflict").hidden = true;
+}
+function conflicts(v) {
+    if (!v.day || !v.start_time || v.minutes < 5) return [];
+    const [h, m] = v.start_time.split(":").map(Number), s = h * 60 + m, e = s + v.minutes, editing = Number(panel.dataset.editing || 0);
+    return itemsOn(v.day).filter(x => !(x.type === "event" && x.id === editing) && x._min < e && s < x._min + x.minutes);
+}
+async function saveEvent() {
+    const v = formValues(), msg = $("drMsg"), editing = Number(panel.dataset.editing || 0);
+    panel.querySelectorAll(".sc-f").forEach(f => { f.classList.remove("err"); const er = f.querySelector(".sc-ferr"); if (er) er.textContent = ""; });
+    msg.textContent = "";
+    const errs = {};
+    if (!v.title) errs.title = "Give it a title.";
+    if (!v.day) errs.day = "Choose a date."; else if (!editing && v.day < TODAY) errs.day = "Pick today or a later day.";
+    if (!v.start_time) errs.start_time = "Choose a start time.";
+    else if (!editing && v.day === TODAY) { const [h, m] = v.start_time.split(":").map(Number); if (h * 60 + m + v.minutes <= nb(Date.now()).min) errs.start_time = "That time has already passed today."; }
+    if (!(v.minutes >= 5 && v.minutes <= 720)) errs.minutes = "Between 5 minutes and 12 hours.";
+    if (v.repeat !== "none" && (!v.repeat_until || v.repeat_until < v.day)) errs.repeat_until = "Choose a last day on or after the first day.";
+    if (v.link && !/^https?:\/\//i.test(v.link)) errs.link = "Paste a full link starting with https://";
+    if (showErrors(errs)) return;
+    const clash = conflicts(v);
+    if (clash.length && !panel.dataset.confirmed) {
+        $("fConflict").hidden = false;
+        $("fConflict").innerHTML = `<i class="fas fa-triangle-exclamation"></i> This overlaps with ${clash.map(x => `<b>${esc(x.title)}</b> (${hm(x._min)}–${hm(x._min + x.minutes)})`).join(", ")}. Press <b>Save anyway</b> to keep both.`;
+        panel.dataset.confirmed = "1"; $("fSave").innerHTML = '<i class="fas fa-check"></i> Save anyway';
+        $("fConflict").scrollIntoView({ block: "nearest" });
+        return;
+    }
+    const btn = $("fSave"); btn.disabled = true; msg.className = "msg"; msg.textContent = "Saving…";
+    try {
+        if (editing) await send(`/api/teacher/events/${editing}`, "PATCH", v); else await send("/api/teacher/events", "POST", v);
+        sel = v.day; miniMonth = v.day.slice(0, 7);
+        closeDrawer(); await load(true);
+        note(editing ? `“${v.title}” was updated.` : `“${v.title}” was added on ${shortDay(v.day)} at ${v.start_time}.`, "ok");
+    } catch (e) { btn.disabled = false; msg.className = "msg bad"; msg.textContent = e.message; showErrors(e.errors || {}); }
+}
+function showErrors(errs) {
+    let first = null;
+    Object.entries(errs).forEach(([k, m]) => { const f = panel.querySelector(`[data-f="${k}"]`); if (f) { f.classList.add("err"); f.querySelector(".sc-ferr").textContent = m; first = first || f; } });
+    if (first) { const i = first.querySelector("input,select"); if (i) i.focus(); }
+    return !!first;
+}
 
-                if (dateKey(year, month, i) < getTodayString()) {
-                    dayElement.classList.add('past');
-                }
+/* ---------- marks ---------- */
+function showMarkForm(day) {
+    const d = day && day >= TODAY ? day : (sel >= TODAY ? sel : TODAY);
+    openDrawer(head("Mark a day", "Holidays, exam weeks, trips, birthdays. It shows on the calendar and the dashboard summary.") +
+        `<div class="sc-pb"><div class="sc-form">
+            <div class="sc-f" data-f="day"><label for="mDay">Date <span class="req">*</span></label><input class="sc-in" type="date" id="mDay" value="${d}" min="${TODAY}"><span class="sc-ferr"></span></div>
+            <div class="sc-f" data-f="label"><label for="mLabel">Name <span class="req">*</span></label><input class="sc-in" id="mLabel" maxlength="60" list="mSug" placeholder="e.g. Half term"><datalist id="mSug"><option value="Public holiday"><option value="Half term"><option value="Exam week"><option value="School trip"><option value="Sports day"><option value="Parents’ meeting"><option value="My birthday"></datalist><span class="sc-ferr"></span></div>
+            <div class="sc-f wide"><span class="lbl">Colour</span><div class="sc-swatches">${(data.mark_colors || []).map((c, i) => `<label><input type="radio" name="mColor" value="${c}" ${i ? "" : "checked"} aria-label="Colour ${i + 1}"><span style="--m:${c}"></span></label>`).join("")}</div></div>
+            <div class="sc-f wide"><label class="sc-check"><input type="checkbox" id="mYearly"> Every year on this date</label></div>
+            <div class="sc-f wide" id="mExisting"></div>
+        </div></div>
+        <div class="sc-pf"><span class="msg" id="drMsg" role="status"></span><button type="button" class="sc-btn" data-close>Cancel</button><button type="button" class="sc-btn primary" id="mSave"><i class="fas fa-star"></i> Mark day</button></div>`, "#mLabel");
+    existingMarks();
+}
+function existingMarks() {
+    const d = $("mDay").value, list = data.marks.filter(m => m.day === d);
+    $("mExisting").innerHTML = list.length ? `<span class="lbl">Already on this day</span><div class="sc-slist">${list.map(m => `<div class="sc-sitem"><span class="bar" style="--d:${esc(m.color)}"></span><span class="tx"><b>${esc(m.label)}</b><small>${m.yearly ? "Every year" : "Once"}</small></span><span class="acts"><button type="button" class="sc-btn sm danger" data-unmark="${m.id}">Remove</button></span></div>`).join("")}</div>` : "";
+}
+async function saveMark() {
+    const day = $("mDay").value, label = $("mLabel").value.trim(), msg = $("drMsg");
+    panel.querySelectorAll(".sc-f").forEach(f => f.classList.remove("err")); panel.querySelectorAll(".sc-ferr").forEach(e => { e.textContent = ""; });
+    const errs = {}; if (!day) errs.day = "Choose a date."; else if (day < TODAY) errs.day = "Pick today or a later day."; if (!label) errs.label = "Give the day a name.";
+    if (showErrors(errs)) return;
+    $("mSave").disabled = true;
+    try {
+        await send("/api/teacher/marks", "POST", { day, label, color: (panel.querySelector('input[name="mColor"]:checked') || {}).value, yearly: $("mYearly").checked });
+        sel = day; miniMonth = day.slice(0, 7); closeDrawer(); await load(true);
+        note(`“${label}” marked on ${shortDay(day)}${$("mYearly") && $("mYearly").checked ? " every year" : ""}.`, "ok");
+    } catch (e) { $("mSave").disabled = false; msg.className = "msg bad"; msg.textContent = e.message; }
+}
+async function unmark(btn) {
+    if (!btn.dataset.sure) {
+        btn.dataset.sure = "1"; btn.classList.add("sure"); const old = btn.innerHTML; btn.innerHTML = "Remove?";
+        setTimeout(() => { if (btn.isConnected && btn.dataset.sure) { delete btn.dataset.sure; btn.classList.remove("sure"); btn.innerHTML = old; } }, 4000);
+        return;
+    }
+    btn.disabled = true;
+    try {
+        await send(`/api/teacher/marks/${btn.dataset.unmark}`, "DELETE");
+        data.marks = data.marks.filter(m => String(m.id) !== btn.dataset.unmark); draw();
+        if ($("mExisting")) existingMarks();
+        note("Mark removed.", "ok");
+    } catch (e) { btn.disabled = false; note(e.message, "bad"); }
+}
 
-                const dayMarks = getMarksForDate(year, month, i);
-                if (dayMarks.length > 0) {
-                    dayElement.classList.add('marked');
-                    dayElement.style.setProperty('--mark-color', dayMarks[0].color);
-                    dayElement.title = dayMarks.map(mk => mk.label).join(', ');
-                }
-                
-                dayElement.onclick = () => selectDate(new Date(year, month, i));
-                calendarDays.appendChild(dayElement);
-            }
-            
-            const totalCells = 42;
-            const nextMonthDays = totalCells - (firstDay + daysInMonth);
-            for (let i = 1; i <= nextMonthDays; i++) {
-                const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day other-month';
-                dayElement.textContent = i;
-                dayElement.onclick = () => selectDate(new Date(year, month + 1, i));
-                calendarDays.appendChild(dayElement);
-            }
-        }
-
-        function hasEventsOnDate(day, month, year) {
-            return scheduleData.some(event => 
-                event.day === day && 
-                event.month === month && 
-                event.year === year
-            );
-        }
-
-        function changeMonth(delta) {
-            currentDate.setMonth(currentDate.getMonth() + delta);
-            renderCalendar();
-        }
-
-        function selectDate(date) {
-            selectedDate = date;
-            renderCalendar();
-            loadSchedule();
-            updateScheduleHeader();
-        }
-
-        // =========================
-        // SCHEDULE FUNCTIONS
-        // =========================
-
-        // Returns the Date when an event ends, from its "HH:MM-HH:MM" time
-        // (or just "HH:MM" when the duration is 0)
-        function getEventEndDate(event) {
-            const parts = event.time.split('-');
-            const endStr = parts[1] || parts[0];
-            const [h, m] = endStr.split(':').map(Number);
-            return new Date(event.year, event.month, event.day, h, m, 0, 0);
-        }
-
-        // Flips any event whose END time has passed from "upcoming" (or any
-        // non-completed status) to "incomplete", and persists the change.
-        // Events marked "completed" are left alone.
-        function updatePastEventStatuses() {
-            let changed = false;
-            const newlyIncomplete = [];
-            scheduleData.forEach(event => {
-                if (event.status === 'completed') return;
-
-                if (new Date() > getEventEndDate(event) && event.status !== 'incomplete') {
-                    event.status = 'incomplete';
-                    changed = true;
-                    newlyIncomplete.push(event);
-                }
-            });
-
-            if (changed) {
-                saveScheduleData(scheduleData);
-                // Notify the dashboard's Recent Activity feed for each event
-                // that just crossed over into "incomplete".
-                newlyIncomplete.forEach(event => {
-                    sendToDashboard(`Missed: ${event.title}`, 'incomplete', event.title);
-                });
-            }
-        }
-
-        function loadSchedule() {
-            scheduleData = loadScheduleData();
-            updatePastEventStatuses();
-            
-            const dayEvents = scheduleData.filter(event => 
-                event.day === selectedDate.getDate() && 
-                event.month === selectedDate.getMonth() && 
-                event.year === selectedDate.getFullYear()
-            );
-            
-            const emptyState = document.getElementById('emptyState');
-            if (dayEvents.length === 0) {
-                emptyState.style.display = 'block';
-            } else {
-                emptyState.style.display = 'none';
-            }
-            
-            loadDailyView(dayEvents);
-            renderMarkBanners();
-        }
-
-        function loadDailyView(events) {
-            const dailyView = document.getElementById('dailyView');
-            dailyView.innerHTML = '';
-            
-            events.sort((a, b) => {
-                const timeA = a.time.split('-')[0];
-                const timeB = b.time.split('-')[0];
-                return timeA.localeCompare(timeB);
-            });
-            
-            if (events.length === 0) {
-                dailyView.innerHTML = `
-                    <div style="text-align:center;padding:40px 20px;color:var(--gray-500);">
-                        <i class="fas fa-calendar-day" style="font-size:2.5rem;margin-bottom:15px;display:block;"></i>
-                        <p>No events scheduled for this day.</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            const courseColors = {
-                math101: '#4361ee',
-                physics201: '#ff6b6b',
-                cs301: '#1dd1a1',
-                english101: '#feca57'
-            };
-            
-            events.forEach(event => {
-                const timeSlot = document.createElement('div');
-                timeSlot.className = `time-slot ${event.type}`;
-                
-                const color = event.course ? courseColors[event.course] : '#6b7280';
-                
-                timeSlot.innerHTML = `
-                    <div class="time-label" style="color: ${color}">
-                        ${event.time}
-                    </div>
-                    <div class="slot-content">
-                        <h3 class="slot-title">${event.title}</h3>
-                        <div class="slot-meta">
-                            ${event.course ? `<span class="meta-item"><i class="fas fa-book"></i> ${getCourseName(event.course)}</span>` : ''}
-                            ${event.location ? `<span class="meta-item"><i class="fas fa-map-marker-alt"></i> ${event.location}</span>` : ''}
-                            ${event.instructor ? `<span class="meta-item"><i class="fas fa-chalkboard-teacher"></i> ${event.instructor}</span>` : ''}
-                            ${event.priority ? `<span class="meta-item"><i class="fas fa-flag"></i> ${event.priority}</span>` : ''}
-                        </div>
-                        <p class="slot-description">${event.description || 'No description provided.'}</p>
-                        <div class="slot-actions">
-                            <button class="action-btn" onclick="viewEventDetails(${event.id})">
-                                <i class="fas fa-info-circle"></i> Details
-                            </button>
-                            ${event.type === 'lecture' || event.type === 'lab' ? 
-                                `<button class="action-btn" onclick="joinEvent(${event.id})">
-                                    <i class="fas fa-video"></i> Join
-                                </button>` : ''}
-                            ${event.status === 'completed' ?
-                                `<button class="action-btn success" disabled title="This event is already completed">
-                                    <i class="fas fa-check-double"></i> Completed
-                                </button>` :
-                            event.status === 'incomplete' ?
-                                `<button class="action-btn success" disabled title="This event has ended and can no longer be completed">
-                                    <i class="fas fa-check"></i> Complete
-                                </button>` :
-                                `<button class="action-btn success" onclick="markAsCompleted(${event.id})">
-                                    <i class="fas fa-check"></i> Complete
-                                </button>`}
-                            ${event.status === 'incomplete' ?
-                                `<button class="action-btn danger" disabled title="This event has ended and can no longer be deleted">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>` :
-                                `<button class="action-btn danger" onclick="deleteEvent(${event.id})" style="color:var(--danger-color);">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>`}
-                        </div>
-                        ${event.id === pendingDeleteId ? `
-                            <div class="delete-confirm">
-                                <span><i class="fas fa-exclamation-triangle"></i> Delete this event? This cannot be undone.</span>
-                                <button class="action-btn danger" onclick="confirmDelete(${event.id})">
-                                    <i class="fas fa-trash"></i> Yes, delete
-                                </button>
-                                <button class="action-btn" onclick="cancelDelete()">Cancel</button>
-                            </div>` : ''}
-                        ${event.id === expandedEventId ? buildEventDetailsCard(event) : ''}
-                    </div>
-                    <span class="slot-status status-${event.status || 'upcoming'}">${event.status || 'upcoming'}</span>
-                `;
-                
-                dailyView.appendChild(timeSlot);
-            });
-        }
-
-        function updateTodayEvents() {
-            const today = new Date();
-            const todayEvents = scheduleData.filter(event => 
-                event.day === today.getDate() && 
-                event.month === today.getMonth() && 
-                event.year === today.getFullYear()
-            ).slice(0, 3);
-            
-            const todayEventsContainer = document.getElementById('todayEvents');
-            todayEventsContainer.innerHTML = '';
-            
-            if (todayEvents.length === 0) {
-                todayEventsContainer.innerHTML = '<p style="color:#666;font-size:0.9rem">No events scheduled for today.</p>';
-                return;
-            }
-            
-            todayEvents.forEach(event => {
-                const eventElement = document.createElement('div');
-                eventElement.className = 'event-item';
-                eventElement.onclick = () => viewEventDetails(event.id);
-                eventElement.innerHTML = `
-                    <div class="event-title">${event.title}</div>
-                    <div class="event-time">${event.time}</div>
-                `;
-                todayEventsContainer.appendChild(eventElement);
-            });
-        }
-
-        // Add Event buttons are disabled while a past day is selected
-        function updateAddEventButtons() {
-            const selectedKey = dateKey(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-            const isPast = selectedKey < getTodayString();
-            document.querySelectorAll('[onclick="openAddEventModal()"]').forEach(btn => {
-                btn.disabled = isPast;
-                btn.title = isPast ? 'Past days cannot be scheduled. Select today or a future day.' : '';
-            });
-        }
-
-        function updateScheduleHeader() {
-            updateAddEventButtons();
-            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('scheduleDate').textContent = selectedDate.toLocaleDateString('en-US', dateOptions);
-            document.getElementById('scheduleTitle').textContent =
-                dateKey(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()) === getTodayString()
-                    ? "Today's Schedule"
-                    : 'Schedule';
-        }
-
-        // =========================
-        // EVENT HANDLERS
-        // =========================
-        // Builds the inline details card shown inside an event
-        function buildEventDetailsCard(event) {
-            const cap = str => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
-            const dateLabel = new Date(event.year, event.month, event.day).toLocaleDateString('en-US', {
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-            });
-
-            const rows = [
-                ['fa-book', 'Course', getCourseName(event.course)],
-                ['fa-tag', 'Type', cap(event.type)],
-                ['fa-calendar', 'Date', dateLabel],
-                ['fa-clock', 'Time', event.time],
-                ['fa-hourglass-half', 'Duration', event.duration > 0 ? `${event.duration} min` : 'None'],
-                ['fa-map-marker-alt', 'Location', event.location || 'Not specified'],
-                ['fa-chalkboard-teacher', 'Instructor', event.instructor || 'Not specified'],
-                ['fa-flag', 'Priority', cap(event.priority) || 'Not set'],
-                ['fa-info-circle', 'Status', cap(event.status || 'upcoming')]
-            ];
-
-            const rowsHtml = rows.map(([icon, label, value]) => `
-                <div class="details-row">
-                    <i class="fas ${icon}"></i>
-                    <div>
-                        <span class="details-label">${label}</span>
-                        <span class="details-value">${escapeHtml(value)}</span>
-                    </div>
-                </div>
-            `).join('');
-
-            return `
-                <div class="details-card">
-                    <div class="details-card-header">
-                        <i class="fas fa-calendar-check"></i>
-                        <span>Event Details</span>
-                        <button class="details-close" onclick="viewEventDetails(${event.id})" aria-label="Close details">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="details-grid">${rowsHtml}</div>
-                    <div class="details-description">
-                        <strong>Description</strong>
-                        <p>${escapeHtml(event.description || 'No description provided.')}</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Toggles the details card for an event (and jumps to its date if needed)
-        function viewEventDetails(eventId) {
-            const event = scheduleData.find(e => e.id === eventId);
-            if (!event) return;
-
-            expandedEventId = (expandedEventId === eventId) ? null : eventId;
-            currentDate = new Date(event.year, event.month, 1);
-            selectDate(new Date(event.year, event.month, event.day));
-        }
-
-        function joinEvent(eventId) {
-            const event = scheduleData.find(e => e.id === eventId);
-            if (event) {
-                if (event.type === 'lecture' || event.type === 'lab') {
-                    showNotification('Joining Event', `Joining ${event.title}... The meeting link would open here.`, 'info');
-                } else {
-                    showNotification('Cannot Join', 'This event cannot be joined.', 'warning');
-                }
-            }
-        }
-
-        function markAsCompleted(eventId) {
-            const event = scheduleData.find(e => e.id === eventId);
-            if (event) {
-                if (event.status === 'completed') {
-                    return;
-                }
-                if (event.status === 'incomplete') {
-                    showNotification('Cannot Complete', 'This event has ended and can no longer be completed.', 'error');
-                    return;
-                }
-                event.status = 'completed';
-                const index = scheduleData.indexOf(event);
-                scheduleData[index] = event;
-                saveScheduleData(scheduleData);
-                loadSchedule();
-                updateTodayEvents();
-                renderCalendar();
-                
-                // Send notification to dashboard
-                const message = `Completed: ${event.title}`;
-                sendToDashboard(message, 'complete', event.title);
-                
-            }
-        }
-
-        // Step 1: show the inline "Yes, delete / Cancel" bar inside the event card
-        function deleteEvent(eventId) {
-            const event = scheduleData.find(e => e.id === eventId);
-            if (!event) return;
-
-            if (event.status === 'incomplete') {
-                showNotification('Cannot Delete', 'This event has ended and can no longer be deleted.', 'error');
-                return;
-            }
-
-            pendingDeleteId = eventId;
-            loadSchedule();
-        }
-
-        function cancelDelete() {
-            pendingDeleteId = null;
-            loadSchedule();
-        }
-
-        // Step 2: actually delete after the user confirms
-        function confirmDelete(eventId) {
-            const index = scheduleData.findIndex(e => e.id === eventId);
-            if (index === -1) {
-                pendingDeleteId = null;
-                loadSchedule();
-                return;
-            }
-
-            const event = scheduleData[index];
-            if (event.status === 'incomplete') {
-                pendingDeleteId = null;
-                loadSchedule();
-                showNotification('Cannot Delete', 'This event has ended and can no longer be deleted.', 'error');
-                return;
-            }
-
-            const eventTitle = event.title;
-            scheduleData.splice(index, 1);
-            saveScheduleData(scheduleData);
-            pendingDeleteId = null;
-            if (expandedEventId === eventId) expandedEventId = null;
-            loadSchedule();
-            updateTodayEvents();
-            renderCalendar();
-
-            // Send notification to dashboard
-            sendToDashboard(`Deleted: ${eventTitle}`, 'delete', eventTitle);
-        }
-
-        // =========================
-        // ADD EVENT MODAL FUNCTIONS
-        // =========================
-        function openAddEventModal() {
-            const viewedKey = dateKey(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-            if (viewedKey < getTodayString()) {
-                showNotification('Past Day', 'Past days cannot be scheduled. Select today or a future day.', 'error');
-                return;
-            }
-
-            // Refresh "today" every time the modal opens so the minimum date
-            // stays correct even if the tab was left open past midnight
-            const selectedKey = dateKey(
-                selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()
-            );
-            const defaultDate = selectedKey < getTodayString() ? getTodayString() : selectedKey;
-            document.getElementById('eventDate').value = defaultDate;
-            document.getElementById('eventDate').min = getTodayString();
-            document.getElementById('eventTime').value = getDefaultTimeString();
-            eventTimeTouched = false;
-            document.getElementById('eventTitle').value = '';
-            document.getElementById('eventCourse').value = '';
-            document.getElementById('eventType').value = 'lecture';
-            document.getElementById('eventDuration').value = '60';
-            document.getElementById('eventPriority').value = 'medium';
-            document.getElementById('eventLocation').value = '';
-            document.getElementById('eventInstructor').value = '';
-            document.getElementById('eventDescription').value = '';
-            
-            document.getElementById('addEventModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
-            
-            setTimeout(() => {
-                document.getElementById('eventTitle').focus();
-            }, 100);
-        }
-
-        function closeAddEventModal() {
-            document.getElementById('addEventModal').classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-
-        function submitNewEvent(e) {
-            e.preventDefault();
-            
-            const title = document.getElementById('eventTitle').value.trim();
-            const course = document.getElementById('eventCourse').value;
-            const type = document.getElementById('eventType').value;
-            const dateStr = document.getElementById('eventDate').value;
-            let timeStr = document.getElementById('eventTime').value;
-            const duration = parseInt(document.getElementById('eventDuration').value) || 60;
-            const priority = document.getElementById('eventPriority').value;
-            const location = document.getElementById('eventLocation').value.trim();
-            const instructor = document.getElementById('eventInstructor').value.trim();
-            const description = document.getElementById('eventDescription').value.trim();
-            
-            if (!title) {
-                showNotification('Missing Info', 'Please enter an event title.', 'error');
-                return;
-            }
-            
-            if (!dateStr) {
-                showNotification('Missing Info', 'Please select a date.', 'error');
-                return;
-            }
-
-            // Block dates that have already passed
-            // (YYYY-MM-DD strings compare correctly in chronological order)
-            if (dateStr < getTodayString()) {
-                showNotification('Invalid Date', 'You can only schedule events for today or a future date.', 'error');
-                return;
-            }
-            
-            if (!timeStr) {
-                showNotification('Missing Info', 'Please select a time.', 'error');
-                return;
-            }
-
-            // If the time field was left at its default, use the exact current
-            // time at the moment of submitting (the form may have been open a while)
-            if (dateStr === getTodayString() && !eventTimeTouched) {
-                timeStr = getDefaultTimeString();
-            }
-
-            // Block times that have already passed today
-            if (dateStr === getTodayString()) {
-                const now = new Date();
-                const [h, m] = timeStr.split(':').map(Number);
-                if (h * 60 + m < now.getHours() * 60 + now.getMinutes()) {
-                    showNotification('Invalid Time', 'That time has already passed today.', 'error');
-                    return;
-                }
-            }
-            
-            const dateParts = dateStr.split('-');
-            const year = parseInt(dateParts[0]);
-            const month = parseInt(dateParts[1]) - 1;
-            const day = parseInt(dateParts[2]);
-            
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            const startMinutes = hours * 60 + minutes;
-            const endMinutes = startMinutes + duration;
-            const endHours = Math.floor(endMinutes / 60);
-            const endMins = endMinutes % 60;
-            const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
-            
-            const newEvent = {
-                id: nextEventId++,
-                title: title,
-                course: course || null,
-                type: type,
-                description: description || 'No description provided.',
-                time: duration > 0 ? `${timeStr}-${endTime}` : timeStr,
-                day: day,
-                month: month,
-                year: year,
-                duration: duration,
-                location: location || 'Not specified',
-                instructor: instructor || null,
-                priority: priority,
-                status: 'upcoming'
-            };
-            
-            scheduleData.push(newEvent);
-            saveScheduleData(scheduleData);
-            closeAddEventModal();
-
-            // Jump to the event's date so the user can see it right away
-            currentDate = new Date(year, month, 1);
-            updateTodayEvents();
-            selectDate(new Date(year, month, day));
-            
-            // Send notification to dashboard
-            const message = `Added: ${title} (${getCourseName(course) || 'No Course'})`;
-            sendToDashboard(message, 'event', title, `${dateStr} at ${timeStr}`);
-            
-        }
-
-        document.getElementById('addEventModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeAddEventModal();
-            }
+/* ---------- calendar file (.ics) ---------- */
+async function exportIcs() {
+    const btn = $("icsBtn"); btn.disabled = true;
+    try {
+        const d = await api(`/api/teacher/schedule?from=${TODAY}&to=${addDays(TODAY, 60)}`);
+        const stamp = t => new Date(t).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+        const txt = s => String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+        const fold = l => l.length <= 74 ? l : l.match(/.{1,74}/g).join("\r\n ");
+        const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//eSchool//Teacher schedule//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:eSchool schedule"];
+        d.items.forEach(x => {
+            const s = Date.parse(x.start);
+            lines.push("BEGIN:VEVENT", `UID:${x.type}-${x.id}-${x.day}@eschool`, `DTSTAMP:${stamp(Date.now())}`, `DTSTART:${stamp(s)}`, `DTEND:${stamp(s + x.minutes * 60000)}`,
+                fold(`SUMMARY:${txt(x.title)}`), fold(`DESCRIPTION:${txt([x.kind_label, x.subject, x.grade, x.student, x.notes].filter(Boolean).join(" · "))}`),
+                ...(x.location ? [fold(`LOCATION:${txt(x.location)}`)] : []), ...(safeUrl(x.link) ? [fold(`URL:${x.link}`)] : []), "END:VEVENT");
         });
-
-        document.getElementById('eventTime').addEventListener('input', () => { eventTimeTouched = true; });
-
-        document.getElementById('markModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeMarkModal();
-            }
+        d.marks.forEach(m => {
+            const next = addDays(m.day, 1).replace(/-/g, "");
+            lines.push("BEGIN:VEVENT", `UID:mark-${m.id}-${m.day}@eschool`, `DTSTAMP:${stamp(Date.now())}`, `DTSTART;VALUE=DATE:${m.day.replace(/-/g, "")}`, `DTEND;VALUE=DATE:${next}`, fold(`SUMMARY:★ ${txt(m.label)}`), "TRANSP:TRANSPARENT", "END:VEVENT");
         });
+        lines.push("END:VCALENDAR");
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/calendar" }));
+        a.download = `eschool-schedule-${TODAY}.ics`; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        note(`Saved ${d.items.length + d.marks.length} item${d.items.length + d.marks.length === 1 ? "" : "s"} for the next 60 days. Open the file to add them to Google Calendar, Outlook or your phone’s calendar.`, "ok");
+    } catch (e) { note("Couldn’t make the calendar file: " + e.message, "bad"); }
+    btn.disabled = false;
+}
 
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeAddEventModal();
-                closeMarkModal();
-                closeNotification();
-            }
-        });
+/* ---------- events ---------- */
+function go(delta) {
+    const step = view === "day" ? 1 : view === "week" ? 7 : 30;
+    sel = addDays(sel, delta * step); miniMonth = sel.slice(0, 7); load();
+}
+$("todayBtn").addEventListener("click", () => { sel = TODAY; miniMonth = TODAY.slice(0, 7); load(); });
+$("prevBtn").addEventListener("click", () => go(-1));
+$("nextBtn").addEventListener("click", () => go(1));
+$("mPrev").addEventListener("click", () => { const [y, m] = miniMonth.split("-").map(Number); miniMonth = m === 1 ? `${y - 1}-12` : `${y}-${pad(m - 1)}`; load(); });
+$("mNext").addEventListener("click", () => { const [y, m] = miniMonth.split("-").map(Number); miniMonth = m === 12 ? `${y + 1}-01` : `${y}-${pad(m + 1)}`; load(); });
+document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; try { localStorage.setItem("sc.view", view); } catch (e) {} draw(); }));
+$("newBtn").addEventListener("click", () => showEditor(null));
+$("markBtn").addEventListener("click", () => showMarkForm(sel));
+$("icsBtn").addEventListener("click", exportIcs);
+$("printBtn").addEventListener("click", () => window.print());
 
-        function shareSchedule() {
-            showNotification('Share Schedule', 'Sharing (PDF, email, calendar export, link) is not available yet.', 'info');
-        }
+root.addEventListener("change", e => {
+    const s = e.target.closest("[data-show]");
+    if (s) { show[s.dataset.show] = s.checked; try { localStorage.setItem("sc.show", JSON.stringify(show)); } catch (x) {} draw(); }
+});
+root.addEventListener("click", e => {
+    const t = e.target;
+    const o = t.closest("[data-open]"); if (o) { const x = findItem(o.dataset.open); if (x) showDetails(x); return; }
+    const dd = t.closest("[data-day]"); if (dd && !t.closest("[data-st]")) { sel = dd.dataset.day; miniMonth = sel.slice(0, 7); load(); return; }
+    const gd = t.closest("[data-goday]"); if (gd) { sel = gd.dataset.goday; view = "day"; draw(); return; }
+    if (t.closest("[data-new]")) { showEditor(null); return; }
+    const st = t.closest("[data-st]"); if (st) { st.disabled = true; setStatus(Number(st.dataset.ev), st.dataset.day, st.dataset.st); return; }
+    const um = t.closest("[data-unmark]"); if (um) { unmark(um); return; }
+    const col = t.closest("[data-col]");
+    if (col && !t.closest(".sc-ev")) {
+        const day = col.dataset.col; if (day < TODAY) return;
+        const H = parseFloat(getComputedStyle(root).getPropertyValue("--sc-hour")) || 52;
+        const y = e.clientY - col.getBoundingClientRect().top, mins = Number(col.dataset.min) * 60 + Math.floor(y / H * 60 / 15) * 15;
+        if (day === TODAY && mins < nb(Date.now()).min) { note("That time has already passed today. Pick a later time.", "info"); return; }
+        showEditor(null, { day, time: hm(Math.min(mins, 23 * 60 + 45)) });
+    }
+});
+drawer.addEventListener("click", e => {
+    const t = e.target;
+    if (t.closest("[data-close]")) return closeDrawer();
+    if (t.closest("#fSave")) return saveEvent();
+    if (t.closest("#mSave")) return saveMark();
+    const um = t.closest("[data-unmark]"); if (um) return unmark(um);
+    const dur = t.closest("[data-dur]"); if (dur) { $("fMin").value = dur.dataset.dur; updateEnds(); return; }
+    const ss = t.closest("[data-setst]"); if (ss && current) { ss.disabled = true; return setStatus(current.id, current._day, ss.dataset.setst, $("drMsg")); }
+    if (t.closest("[data-edit]") && current) return showEditor(current);
+    if (t.closest("[data-delask]") && current) {
+        const rep = current.repeat && current.repeat !== "none";
+        $("delBox").innerHTML = `<div class="sc-del"><b>${rep ? "This event repeats. Delete which?" : "Delete this event? This can’t be undone."}</b><div class="btns">
+            ${rep ? `<button type="button" class="sc-btn danger" data-del="one">Only ${esc(shortDay(current._day))}</button><button type="button" class="sc-btn sure" data-del="all">Every day</button>` : '<button type="button" class="sc-btn sure" data-del="all">Delete</button>'}
+            <button type="button" class="sc-btn ghost" data-delno>Keep it</button></div></div>`;
+        $("delBox").scrollIntoView({ block: "nearest" });
+        return;
+    }
+    if (t.closest("[data-delno]")) { $("delBox").innerHTML = ""; return; }
+    const del = t.closest("[data-del]");
+    if (del && current) {
+        del.disabled = true;
+        const title = current.title;
+        send(`/api/teacher/events/${current.id}?scope=${del.dataset.del}&day=${current._day}`, "DELETE")
+            .then(async d => { closeDrawer(); await load(true); note(d.message || `“${title}” deleted.`, "ok"); })
+            .catch(err => { del.disabled = false; $("drMsg").className = "msg bad"; $("drMsg").textContent = err.message; });
+    }
+});
+drawer.addEventListener("input", e => {
+    const f = e.target.closest(".sc-f.err"); if (f) { f.classList.remove("err"); const er = f.querySelector(".sc-ferr"); if (er) er.textContent = ""; }
+    if (["fMin", "fTime", "fDay"].includes(e.target.id)) updateEnds();
+    if (e.target.id === "mDay") existingMarks();
+});
+drawer.addEventListener("change", e => {
+    if (e.target.id === "fRep") { $("untilWrap").hidden = e.target.value === "none"; updateEnds(); }
+    if (e.target.name === "fKind") updateEnds();
+});
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && drawer.classList.contains("show")) closeDrawer();
+    if (e.key === "Enter" && drawer.classList.contains("show") && e.target.matches("#evForm input")) { e.preventDefault(); saveEvent(); }
+});
 
-        function getCourseName(courseId) {
-            const courses = {
-                math101: 'Mathematics 101',
-                physics201: 'Physics 201',
-                cs301: 'Computer Science 301',
-                english101: 'English Literature 101'
-            };
-            return courses[courseId] || courseId || 'No Course';
-        }
-    </script>
-</body>
-</html>
+/* ---------- move what the old page kept in this browser into the account (once) ---------- */
+async function importOld() {
+    const email = root.dataset.email || "default_user";
+    const keys = [`scheduleData_${email}`, `dayMarks_${email}`];
+    let events = [], marks = [];
+    try { events = JSON.parse(localStorage.getItem(keys[0]) || "[]"); marks = JSON.parse(localStorage.getItem(keys[1]) || "[]"); } catch (e) { return; }
+    if (!Array.isArray(events)) events = []; if (!Array.isArray(marks)) marks = [];
+    if (!events.length && !marks.length) return;
+    try {
+        const d = await send("/api/teacher/schedule/import", "POST", { events, marks });
+        keys.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+        if (d.events || d.marks) { await load(true); note(`Moved ${d.events} event${d.events === 1 ? "" : "s"} and ${d.marks} marked day${d.marks === 1 ? "" : "s"} from this browser into your account, so they now show on every device.`, "ok"); }
+    } catch (e) { /* try again next time */ }
+}
+
+load().then(importOld);
+setInterval(() => { TODAY = nb(Date.now()).day; if (!drawer.classList.contains("show")) draw(); }, 60000);
+})();
+</script>
 {% endblock %}

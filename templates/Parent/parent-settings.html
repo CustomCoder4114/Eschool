@@ -1,0 +1,1041 @@
+{% extends "Parent/parent-body.html" %}
+
+{% block allcontent %}
+{#
+    PARENT PAGE - Settings  (templates/Parent/parent-settings.html)
+    Route: /parent-settings (parents opening /settings are sent here).
+    Every choice is real and saved on the server, except Appearance, which is
+    kept per device like on the learner Settings page.
+      GET/POST /api/profile/details        personal details
+      POST     /api/settings/upload-photo  profile photo (form field "photo")
+      GET/POST /api/settings               sign-in alerts, automatic sign-out
+      POST     /api/account/change-password | logout-all | deactivate | delete
+      GET/POST /api/notification-prefs     (parent categories)
+      POST     /notifications/read-all, /notifications/clear-read
+      GET/POST /api/privacy                profile visibility, search, messages
+      GET      /api/privacy/export         download your data
+      GET      /api/parent/children        linked children and what they share
+#}
+<style>
+/* ======================================================================
+   PARENT SETTINGS
+   Scoped to .ps. Own light and dark colours (data-no-theme); the main
+   colour follows Settings > Appearance through --primary-color. No pop-ups.
+   ====================================================================== */
+.ps {
+    --ps-accent: var(--primary-color, #4361ee);
+    --ps-accent-2: var(--secondary-color, #3a0ca3);
+    --ps-accent-dark: var(--primary-dark, #2a44c7);
+    --ps-accent-soft: color-mix(in srgb, var(--ps-accent) 11%, transparent);
+    --ps-accent-line: color-mix(in srgb, var(--ps-accent) 35%, transparent);
+    --ps-accent-text: var(--ps-accent);
+    --ps-surface: #ffffff; --ps-surface-2: #f8fafc; --ps-hover: #f1f5f9;
+    --ps-border: #e5e7eb; --ps-track: #e8edf3; --ps-input: #ffffff;
+    --ps-text: #0f172a; --ps-text-2: #475569; --ps-text-3: #64748b;
+    --ps-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06);
+    --ps-ok: #059669;   --ps-ok-soft: #ecfdf5;
+    --ps-warn: #b45309; --ps-warn-soft: #fffbeb;
+    --ps-bad: #dc2626;  --ps-bad-soft: #fef2f2;
+    --ps-radius: 16px;
+    max-width: 1360px; margin: 0 auto; padding: 6px 0 40px;
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ps-text);
+}
+body.dark-mode .ps {
+    --ps-accent-soft: color-mix(in srgb, var(--ps-accent) 20%, transparent);
+    --ps-accent-line: color-mix(in srgb, var(--ps-accent) 45%, transparent);
+    --ps-accent-text: color-mix(in srgb, var(--ps-accent) 55%, #ffffff);
+    --ps-surface: #111827; --ps-surface-2: #0f172a; --ps-hover: #1e293b;
+    --ps-border: #263244; --ps-track: #263244; --ps-input: #0f172a;
+    --ps-text: #e5e7eb; --ps-text-2: #cbd5e1; --ps-text-3: #94a3b8;
+    --ps-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25);
+    --ps-ok: #34d399;   --ps-ok-soft: rgba(16, 185, 129, .14);
+    --ps-warn: #fbbf24; --ps-warn-soft: rgba(245, 158, 11, .14);
+    --ps-bad: #f87171;  --ps-bad-soft: rgba(239, 68, 68, .14);
+}
+.ps *, .ps *::before, .ps *::after { box-sizing: border-box; }
+.ps h1, .ps h2, .ps h3, .ps h4, .ps p, .ps ul { margin: 0; }
+.ps button, .ps input, .ps select, .ps textarea { font-family: inherit; }
+.ps :focus-visible { outline: 3px solid var(--ps-accent-line); outline-offset: 2px; }
+.ps [hidden] { display: none !important; }
+
+/* hero */
+.ps-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 24px 26px; margin-bottom: 16px;
+    border-radius: var(--ps-radius); color: #fff; background: linear-gradient(135deg, var(--ps-accent), var(--ps-accent-2)); box-shadow: var(--ps-shadow); }
+.ps-hero::after { content: ""; position: absolute; right: -70px; top: -90px; width: 280px; height: 280px; border-radius: 50%; background: rgba(255, 255, 255, .08); pointer-events: none; }
+.ps-hero-av { position: relative; z-index: 1; width: 78px; height: 78px; border-radius: 50%; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, .2); border: 3px solid rgba(255, 255, 255, .45); font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.6rem; color: #fff; }
+.ps-hero-av img { width: 100%; height: 100%; object-fit: cover; }
+.ps-hero-text { flex: 1; min-width: 220px; position: relative; z-index: 1; }
+.ps-hero h1 { font-family: 'Poppins', sans-serif; font-size: 1.55rem; font-weight: 700; color: #fff; }
+.ps-hero-meta { display: flex; gap: 6px 16px; flex-wrap: wrap; margin-top: 6px; font-size: .88rem; opacity: .94; }
+.ps-hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
+.ps-complete { position: relative; z-index: 1; min-width: 220px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .25); }
+.ps-complete-top { display: flex; justify-content: space-between; font-size: .8rem; font-weight: 600; }
+.ps-complete-bar { height: 7px; border-radius: 99px; background: rgba(255, 255, 255, .25); overflow: hidden; margin: 7px 0 6px; }
+.ps-complete-bar i { display: block; height: 100%; border-radius: inherit; background: #fff; transition: width .5s ease; }
+.ps-complete small { font-size: .74rem; opacity: .9; display: block; line-height: 1.4; }
+
+/* layout */
+.ps-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; align-items: start; }
+.ps-nav { position: sticky; top: 100px; display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: var(--ps-radius); background: var(--ps-surface); border: 1px solid var(--ps-border); box-shadow: var(--ps-shadow); }
+.ps-tab { display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ps-text-2); font-size: .89rem; font-weight: 600; text-align: left; cursor: pointer; }
+.ps-tab i { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--ps-surface-2); color: var(--ps-text-3); font-size: .85rem; }
+.ps-tab small { display: block; font-weight: 500; font-size: .72rem; color: var(--ps-text-3); }
+.ps-tab:hover { background: var(--ps-hover); color: var(--ps-text); }
+.ps-tab[aria-selected="true"] { background: var(--ps-accent-soft); color: var(--ps-accent-text); }
+.ps-tab[aria-selected="true"] i { background: var(--ps-accent); color: #fff; }
+.ps-tab .ps-dot { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: var(--ps-bad); color: #fff; font-size: .68rem; display: inline-flex; align-items: center; justify-content: center; }
+.ps-nav-sep { height: 1px; background: var(--ps-border); margin: 6px 8px; }
+
+.ps-panel { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ps-panel-head h2 { font-family: 'Poppins', sans-serif; font-size: 1.2rem; color: var(--ps-text); }
+.ps-panel-head p { font-size: .86rem; color: var(--ps-text-3); margin-top: 3px; line-height: 1.5; }
+
+/* cards */
+.ps-card { background: var(--ps-surface); border: 1px solid var(--ps-border); border-radius: var(--ps-radius); box-shadow: var(--ps-shadow); padding: 20px; min-width: 0; }
+.ps-card.danger { border-color: color-mix(in srgb, var(--ps-bad) 35%, var(--ps-border)); }
+.ps-card-h { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.ps-card-h .ic { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--ps-accent-soft); color: var(--ps-accent-text); }
+.ps-card.danger .ps-card-h .ic { background: var(--ps-bad-soft); color: var(--ps-bad); }
+.ps-card-h h3 { font-family: 'Poppins', sans-serif; font-size: 1.02rem; font-weight: 600; color: var(--ps-text); }
+.ps-card-h p { font-size: .83rem; color: var(--ps-text-3); margin-top: 2px; line-height: 1.5; }
+.ps-card-h .right { margin-left: auto; flex-shrink: 0; }
+.ps-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+
+/* forms */
+.ps-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.ps-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ps-field.full { grid-column: 1 / -1; }
+.ps-field label, .ps-field .lbl { font-size: .8rem; font-weight: 700; color: var(--ps-text); }
+.ps-field label .opt { font-weight: 500; color: var(--ps-text-3); }
+.ps-input, .ps-select, .ps-textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--ps-border); background: var(--ps-input); color: var(--ps-text); font-size: .9rem; }
+.ps-input:focus, .ps-select:focus, .ps-textarea:focus { outline: none; border-color: var(--ps-accent); box-shadow: 0 0 0 3px var(--ps-accent-soft); }
+.ps-input[readonly] { background: var(--ps-surface-2); color: var(--ps-text-3); cursor: not-allowed; }
+.ps-input.bad, .ps-select.bad, .ps-textarea.bad { border-color: var(--ps-bad); }
+.ps-textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
+.ps-hint { font-size: .75rem; color: var(--ps-text-3); line-height: 1.45; }
+.ps-err { font-size: .76rem; color: var(--ps-bad); }
+.ps-err:empty { display: none; }
+.ps-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--ps-border); }
+.ps-actions .ps-note { margin-right: auto; }
+
+.ps-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 15px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; font-weight: 600; font-size: .85rem; text-decoration: none; line-height: 1.2; transition: background-color .15s, border-color .15s, color .15s; }
+.ps-btn-primary { background: var(--ps-accent); color: #fff; }
+.ps-btn-primary:hover:not(:disabled) { background: var(--ps-accent-dark); color: #fff; }
+.ps-btn-ghost { background: var(--ps-surface); color: var(--ps-text-2); border-color: var(--ps-border); }
+.ps-btn-ghost:hover:not(:disabled) { background: var(--ps-hover); color: var(--ps-text); border-color: var(--ps-accent-line); }
+.ps-btn-danger { background: var(--ps-surface); color: var(--ps-bad); border-color: color-mix(in srgb, var(--ps-bad) 35%, transparent); }
+.ps-btn-danger:hover:not(:disabled) { background: var(--ps-bad-soft); }
+.ps-btn-danger.solid { background: var(--ps-bad); color: #fff; border-color: var(--ps-bad); }
+.ps-btn-danger.solid:hover:not(:disabled) { background: color-mix(in srgb, var(--ps-bad) 85%, #000); color: #fff; }
+.ps-btn-sm { padding: 6px 11px; font-size: .79rem; }
+.ps-btn:disabled { opacity: .55; cursor: default; }
+.ps-note { font-size: .84rem; line-height: 1.45; display: flex; align-items: center; gap: 7px; }
+.ps-note:empty { display: none; }
+.ps-note.ok { color: var(--ps-ok); } .ps-note.bad { color: var(--ps-bad); } .ps-note.info { color: var(--ps-text-2); }
+
+/* rows with a switch */
+.ps-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px solid var(--ps-border); }
+.ps-row:first-of-type { border-top: 0; padding-top: 0; }
+.ps-row .txt { flex: 1; min-width: 0; }
+.ps-row .txt b { display: block; font-size: .9rem; color: var(--ps-text); font-weight: 600; }
+.ps-row .txt small { display: block; font-size: .78rem; color: var(--ps-text-3); line-height: 1.45; margin-top: 2px; }
+.ps-row .ico { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--c, var(--ps-accent)) 14%, transparent); color: var(--c, var(--ps-accent)); }
+body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent)) 60%, #fff); }
+.ps-switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+.ps-switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.ps-switch span { position: absolute; inset: 0; border-radius: 99px; background: var(--ps-track); transition: background-color .2s; }
+.ps-switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .2s; }
+.ps-switch input:checked + span { background: var(--ps-accent); }
+.ps-switch input:checked + span::after { transform: translateX(20px); }
+.ps-switch input:focus-visible + span { outline: 3px solid var(--ps-accent-line); outline-offset: 2px; }
+.ps-switch input:disabled + span { opacity: .5; }
+.ps-lock { color: var(--ps-text-3); font-size: .85rem; }
+
+/* option cards (radio) */
+.ps-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ps-opt { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 13px 14px; border: 2px solid var(--ps-border); border-radius: 12px; background: var(--ps-surface); cursor: pointer; color: var(--ps-text-2); font-size: .8rem; line-height: 1.45; }
+.ps-opt b { display: flex; align-items: center; gap: 8px; color: var(--ps-text); font-size: .88rem; }
+.ps-opt b i { color: var(--ps-accent-text); }
+.ps-opt:hover { background: var(--ps-hover); }
+.ps-opt[aria-checked="true"] { border-color: var(--ps-accent); background: var(--ps-accent-soft); }
+.ps-opt:disabled { opacity: .6; cursor: default; }
+
+/* family */
+.ps-family-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ps-stat { padding: 14px 16px; border-radius: 14px; background: var(--ps-surface); border: 1px solid var(--ps-border); box-shadow: var(--ps-shadow); display: flex; align-items: center; gap: 12px; }
+.ps-stat i { width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: var(--ps-accent-soft); color: var(--ps-accent-text); flex-shrink: 0; }
+.ps-stat b { display: block; font-family: 'Poppins', sans-serif; font-size: 1.3rem; color: var(--ps-text); line-height: 1.2; }
+.ps-stat span { font-size: .76rem; color: var(--ps-text-3); }
+.ps-kids { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ps-kid { display: flex; flex-direction: column; gap: 12px; }
+.ps-kid-top { display: flex; gap: 12px; align-items: center; }
+.ps-avatar { width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--ps-accent), var(--ps-accent-2)); color: #fff; font-family: 'Poppins', sans-serif; font-weight: 700; }
+.ps-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ps-kid-top b { display: block; font-size: .98rem; color: var(--ps-text); }
+.ps-kid-top small { display: block; font-size: .78rem; color: var(--ps-text-3); line-height: 1.45; }
+.ps-share-h { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ps-text-3); }
+.ps-shares { display: flex; flex-wrap: wrap; gap: 6px; }
+.ps-share { display: inline-flex; align-items: center; gap: 6px; font-size: .76rem; font-weight: 600; padding: 4px 10px; border-radius: 99px; background: var(--ps-ok-soft); color: var(--ps-ok); }
+.ps-share.off { background: var(--ps-surface-2); color: var(--ps-text-3); border: 1px dashed var(--ps-border); }
+.ps-kid-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+.ps-can { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ps-can h4 { display: flex; align-items: center; gap: 8px; font-size: .88rem; color: var(--ps-text); margin-bottom: 8px; }
+.ps-can ul { padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: .84rem; color: var(--ps-text-2); line-height: 1.45; }
+.ps-empty { text-align: center; padding: 26px 14px; color: var(--ps-text-3); font-size: .9rem; }
+.ps-empty > i { display: block; font-size: 1.9rem; opacity: .5; margin-bottom: 10px; }
+.ps-empty h3 { font-family: 'Poppins', sans-serif; font-size: 1.02rem; color: var(--ps-text); margin-bottom: 6px; }
+.ps-empty p { max-width: 460px; margin: 0 auto 12px; line-height: 1.6; }
+.ps-loading { padding: 18px; text-align: center; color: var(--ps-text-3); font-size: .88rem; }
+
+/* notifications inbox */
+.ps-inbox { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.ps-inbox div { padding: 14px; border-radius: 12px; background: var(--ps-surface-2); border: 1px solid var(--ps-border); text-align: center; }
+.ps-inbox b { display: block; font-family: 'Poppins', sans-serif; font-size: 1.5rem; color: var(--ps-text); }
+.ps-inbox span { font-size: .78rem; color: var(--ps-text-3); }
+
+/* range */
+.ps-range { display: flex; align-items: center; gap: 14px; }
+.ps-range input { flex: 1; accent-color: var(--ps-accent); }
+.ps-range output { min-width: 96px; text-align: right; font-weight: 700; color: var(--ps-text); font-size: .9rem; }
+
+/* inline confirm */
+.ps-confirm { margin-top: 12px; padding: 14px; border-radius: 12px; border: 1px solid var(--ps-border); background: var(--ps-surface-2); display: flex; flex-direction: column; gap: 10px; }
+.ps-confirm.danger { border-color: color-mix(in srgb, var(--ps-bad) 40%, transparent); background: var(--ps-bad-soft); }
+.ps-confirm b { color: var(--ps-text); font-size: .9rem; }
+.ps-confirm p { font-size: .83rem; color: var(--ps-text-2); line-height: 1.5; }
+.ps-confirm .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.ps-danger-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 0; border-top: 1px solid var(--ps-border); }
+.ps-danger-row:first-of-type { border-top: 0; padding-top: 0; }
+.ps-danger-row .txt { flex: 1; min-width: 220px; }
+.ps-danger-row b { display: block; font-size: .9rem; color: var(--ps-text); }
+.ps-danger-row small { display: block; font-size: .8rem; color: var(--ps-text-3); line-height: 1.5; margin-top: 2px; }
+.ps-danger-row .ps-confirm { flex-basis: 100%; }
+
+/* password */
+.ps-pw-meter { height: 6px; border-radius: 99px; background: var(--ps-track); overflow: hidden; }
+.ps-pw-meter i { display: block; height: 100%; width: 0; border-radius: inherit; transition: width .25s, background-color .25s; }
+.ps-pw-wrap { position: relative; }
+.ps-pw-wrap .ps-input { padding-right: 44px; }
+.ps-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--ps-text-3); cursor: pointer; }
+.ps-eye:hover { background: var(--ps-hover); color: var(--ps-text); }
+
+/* appearance */
+.ps-modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ps-mode { display: flex; flex-direction: column; gap: 10px; padding: 10px; border: 2px solid var(--ps-border); border-radius: 14px; background: var(--ps-surface); cursor: pointer; text-align: left; color: var(--ps-text-2); }
+.ps-mode:hover { background: var(--ps-hover); }
+.ps-mode[aria-checked="true"] { border-color: var(--ps-accent); box-shadow: 0 0 0 3px var(--ps-accent-soft); }
+.ps-mode b { display: block; color: var(--ps-text); font-size: .88rem; }
+.ps-mode small { font-size: .74rem; color: var(--ps-text-3); }
+.ps-mock { height: 82px; border-radius: 9px; overflow: hidden; display: flex; border: 1px solid rgba(0, 0, 0, .08); }
+.ps-mock .side { width: 26%; }
+.ps-mock .main { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+.ps-mock .bar { height: 10px; border-radius: 4px; background: var(--ps-accent); opacity: .9; }
+.ps-mock .line { height: 6px; border-radius: 3px; width: 80%; }
+.ps-mock .line.s { width: 50%; }
+.ps-mock.light { background: #f1f5f9; } .ps-mock.light .side { background: #fff; } .ps-mock.light .line { background: #cbd5e1; }
+.ps-mock.dark { background: #0f172a; } .ps-mock.dark .side { background: #1e293b; } .ps-mock.dark .line { background: #334155; }
+.ps-mock.auto { background: linear-gradient(90deg, #f1f5f9 50%, #0f172a 50%); }
+.ps-mock.auto .side { background: #fff; } .ps-mock.auto .line { background: linear-gradient(90deg, #cbd5e1 60%, #334155 60%); }
+.ps-swatches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.ps-swatch { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 2px solid var(--ps-border); border-radius: 12px; background: var(--ps-surface); cursor: pointer; text-align: left; color: var(--ps-text-2); }
+.ps-swatch:hover { background: var(--ps-hover); }
+.ps-swatch i { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; background: var(--c); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: .75rem; }
+.ps-swatch i::before { opacity: 0; }
+.ps-swatch[aria-checked="true"] { border-color: var(--c); }
+.ps-swatch[aria-checked="true"] i::before { opacity: 1; }
+.ps-swatch b { display: block; font-size: .84rem; color: var(--ps-text); }
+.ps-swatch small { font-size: .72rem; color: var(--ps-text-3); }
+.ps-sizes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.ps-size { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px; border: 2px solid var(--ps-border); border-radius: 12px; background: var(--ps-surface); color: var(--ps-text-2); cursor: pointer; font-size: .78rem; font-weight: 600; }
+.ps-size span { font-family: 'Poppins', sans-serif; font-weight: 700; color: var(--ps-text); line-height: 1.1; }
+.ps-size:hover { background: var(--ps-hover); }
+.ps-size[aria-checked="true"] { border-color: var(--ps-accent); background: var(--ps-accent-soft); color: var(--ps-accent-text); }
+.ps-preview { margin-top: 14px; padding: 14px; border-radius: 12px; background: var(--ps-surface-2); border: 1px solid var(--ps-border); }
+.ps-preview-l { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ps-text-3); margin-bottom: 8px; }
+.ps-pv { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: var(--ps-surface); border: 1px solid var(--ps-border); }
+.ps-pv .ic { width: 40px; height: 40px; border-radius: 11px; background: var(--ps-accent-soft); color: var(--ps-accent-text); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ps-pv b { display: block; font-size: .9rem; color: var(--ps-text); }
+.ps-pv small { display: block; font-size: .76rem; color: var(--ps-text-3); }
+.ps-pv .bar { height: 6px; border-radius: 99px; background: var(--ps-track); overflow: hidden; margin-top: 6px; }
+.ps-pv .bar i { display: block; width: 62%; height: 100%; background: var(--ps-accent); border-radius: inherit; }
+.ps-pv .ps-btn { margin-left: auto; }
+.ps-saved { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 700; color: var(--ps-ok); opacity: 0; transition: opacity .25s; }
+.ps-saved.show { opacity: 1; }
+
+/* legal */
+.ps-seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--ps-surface-2); border: 1px solid var(--ps-border); }
+.ps-seg button { border: 0; background: transparent; color: var(--ps-text-2); padding: 8px 14px; border-radius: 9px; font-weight: 600; font-size: .84rem; cursor: pointer; }
+.ps-seg button[aria-selected="true"] { background: var(--ps-accent); color: #fff; }
+.ps-legal { font-size: .9rem; line-height: 1.7; color: var(--ps-text-2); }
+.ps-legal h4 { font-family: 'Poppins', sans-serif; font-size: .98rem; color: var(--ps-text); margin: 18px 0 6px; }
+.ps-legal h4:first-of-type { margin-top: 8px; }
+.ps-legal ul { padding-left: 20px; margin: 6px 0; }
+.ps-legal p { margin: 0 0 8px; }
+.ps-legal .upd { display: inline-block; font-size: .76rem; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: var(--ps-surface-2); border: 1px solid var(--ps-border); color: var(--ps-text-3); }
+.ps-legal .box { padding: 12px 14px; border-radius: 12px; background: var(--ps-accent-soft); color: var(--ps-text); margin: 10px 0; }
+
+@media (max-width: 1100px) { .ps-kids, .ps-can { grid-template-columns: minmax(0, 1fr); } .ps-swatches { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+    .ps-layout { grid-template-columns: minmax(0, 1fr); }
+    .ps-nav { position: static; flex-direction: row; overflow-x: auto; scrollbar-width: none; padding: 6px; }
+    .ps-nav::-webkit-scrollbar { display: none; }
+    .ps-tab { width: auto; flex-shrink: 0; padding: 8px 12px; white-space: nowrap; }
+    .ps-tab small, .ps-nav-sep { display: none; }
+    .ps-tab i { width: 26px; height: 26px; }
+}
+@media (max-width: 640px) {
+    .ps-hero { padding: 18px; gap: 14px; }
+    .ps-hero h1 { font-size: 1.25rem; }
+    .ps-hero-av { width: 62px; height: 62px; font-size: 1.25rem; }
+    .ps-complete { min-width: 0; width: 100%; }
+    .ps-card { padding: 16px; }
+    .ps-form, .ps-grid2, .ps-opts, .ps-modes, .ps-family-sum, .ps-inbox { grid-template-columns: minmax(0, 1fr); }
+    .ps-sizes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ps-swatches { grid-template-columns: minmax(0, 1fr); }
+    .ps-actions .ps-btn { flex: 1; }
+    .ps-pv .ps-btn { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .ps *, .ps *::before, .ps *::after { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="ps" data-no-theme>
+    <header class="ps-hero">
+        <div class="ps-hero-av" id="psHeroAv" data-profile-avatar>{% if avatar_url %}<img src="{{ avatar_url }}" alt="">{% else %}{{ (firstname or '')[:1] }}{{ (lastname or '')[:1] }}{% endif %}</div>
+        <div class="ps-hero-text">
+            <h1 id="psHeroName">{{ firstname or '' }} {{ lastname or '' }}</h1>
+            <div class="ps-hero-meta">
+                <span><i class="fas fa-envelope"></i> {{ session.get('email', '') }}</span>
+                <span><i class="fas fa-user-shield"></i> Parent account</span>
+                <span><i class="fas fa-children"></i> {{ children_count }} child{{ '' if children_count == 1 else 'ren' }} linked</span>
+            </div>
+        </div>
+        <div class="ps-complete" id="psComplete" hidden>
+            <div class="ps-complete-top"><span>Profile complete</span><b id="psCompletePct">0%</b></div>
+            <div class="ps-complete-bar"><i id="psCompleteBar" style="width:0%"></i></div>
+            <small id="psCompleteTip"></small>
+        </div>
+    </header>
+
+    <div class="ps-layout">
+        <nav class="ps-nav" role="tablist" aria-label="Settings" aria-orientation="vertical" id="psNav">
+            <button type="button" class="ps-tab" role="tab" id="tab-profile" data-tab="profile" aria-controls="panel-profile"><i class="fas fa-user"></i><span>Profile<small>Photo and personal details</small></span></button>
+            <button type="button" class="ps-tab" role="tab" id="tab-family" data-tab="family" aria-controls="panel-family"><i class="fas fa-people-roof"></i><span>Family<small>Linked children</small></span>{% if pending_count %}<span class="ps-dot" title="">{{ pending_count }}</span>{% endif %}</button>
+            <button type="button" class="ps-tab" role="tab" id="tab-notifications" data-tab="notifications" aria-controls="panel-notifications"><i class="fas fa-bell"></i><span>Notifications<small>What reaches your bell</small></span></button>
+            <button type="button" class="ps-tab" role="tab" id="tab-security" data-tab="security" aria-controls="panel-security"><i class="fas fa-shield-halved"></i><span>Sign-in &amp; security<small>Password and devices</small></span></button>
+            <button type="button" class="ps-tab" role="tab" id="tab-privacy" data-tab="privacy" aria-controls="panel-privacy"><i class="fas fa-lock"></i><span>Privacy &amp; data<small>Who can see and message you</small></span></button>
+            <button type="button" class="ps-tab" role="tab" id="tab-appearance" data-tab="appearance" aria-controls="panel-appearance"><i class="fas fa-palette"></i><span>Appearance<small>Theme, colour and text size</small></span></button>
+            <div class="ps-nav-sep" role="presentation"></div>
+            <button type="button" class="ps-tab" role="tab" id="tab-legal" data-tab="legal" aria-controls="panel-legal"><i class="fas fa-file-contract"></i><span>Policies<small>Privacy policy and terms</small></span></button>
+        </nav>
+
+        <div>
+            <!-- ================= PROFILE ================= -->
+            <section class="ps-panel" id="panel-profile" role="tabpanel" aria-labelledby="tab-profile" hidden>
+                <div class="ps-panel-head"><h2>Profile</h2><p>How you appear to teachers and to your children on eSchool.</p></div>
+
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-camera"></i></span><div><h3>Profile photo</h3><p>Shown next to your messages and on your profile. JPG, PNG, GIF or WEBP, up to 2 MB.</p></div></div>
+                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                        <div class="ps-avatar" id="psPhoto" style="width:76px;height:76px;font-size:1.4rem;" data-profile-avatar>{% if avatar_url %}<img src="{{ avatar_url }}" alt="Profile photo">{% else %}{{ (firstname or '')[:1] }}{{ (lastname or '')[:1] }}{% endif %}</div>
+                        <input type="file" id="psPhotoInput" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+                        <button type="button" class="ps-btn ps-btn-primary" id="psPhotoBtn"><i class="fas fa-upload"></i> <span>Upload a new photo</span></button>
+                        <div class="ps-note" id="psPhotoNote" role="status" aria-live="polite"></div>
+                    </div>
+                </div>
+
+                <form class="ps-card" id="psPersonal" novalidate>
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-id-card"></i></span><div><h3>Personal details</h3><p>Your name is shown to your children's teachers and on goals you set.</p></div></div>
+                    <div class="ps-form" id="psPersonalBody"><div class="ps-loading">Loading your details...</div></div>
+                    <div class="ps-actions">
+                        <div class="ps-note" id="psPersonalNote" role="status" aria-live="polite"></div>
+                        <button type="button" class="ps-btn ps-btn-ghost" data-reset="personal" disabled>Discard changes</button>
+                        <button type="submit" class="ps-btn ps-btn-primary" data-save="personal" disabled><i class="fas fa-check"></i> Save details</button>
+                    </div>
+                </form>
+
+                <form class="ps-card" id="psLocation" novalidate>
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-location-dot"></i></span><div><h3>Location &amp; time zone</h3><p>Used for dates and times in your notifications and lesson bookings.</p></div></div>
+                    <div class="ps-form" id="psLocationBody"><div class="ps-loading">Loading...</div></div>
+                    <div class="ps-actions">
+                        <div class="ps-note" id="psLocationNote" role="status" aria-live="polite"></div>
+                        <button type="button" class="ps-btn ps-btn-ghost" data-reset="location" disabled>Discard changes</button>
+                        <button type="submit" class="ps-btn ps-btn-primary" data-save="location" disabled><i class="fas fa-check"></i> Save location</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- ================= FAMILY ================= -->
+            <section class="ps-panel" id="panel-family" role="tabpanel" aria-labelledby="tab-family" hidden>
+                <div class="ps-panel-head"><h2>Family</h2><p>The children linked to your account and what each of them shares with you.</p></div>
+                <div class="ps-family-sum">
+                    <div class="ps-stat"><i class="fas fa-children"></i><div><b>{{ children_count }}</b><span>Linked child{{ '' if children_count == 1 else 'ren' }}</span></div></div>
+                    <div class="ps-stat"><i class="fas fa-hourglass-half"></i><div><b>{{ pending_count }}</b><span>Waiting for a child to accept</span></div></div>
+                    <a class="ps-stat" href="/parent-link" style="text-decoration:none;"><i class="fas fa-user-plus"></i><div><b style="font-size:1rem;">Link a child</b><span>With a code or by email</span></div></a>
+                </div>
+                <div id="psKids"><div class="ps-card"><div class="ps-loading">Loading your children...</div></div></div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-scale-balanced"></i></span><div><h3>What a linked parent can and can't do</h3><p>The same rules your child sees in their own Privacy settings.</p></div></div>
+                    <div class="ps-can">
+                        <div>
+                            <h4><i class="fas fa-circle-check" style="color:var(--ps-ok)"></i> You can</h4>
+                            <ul>
+                                <li>See what your child chose to share: grades and progress, schedule, attendance, resources and activity updates</li>
+                                <li>See who your child talks to, and read messages if they shared "Messages"</li>
+                                <li>Set screen time, quiet hours, contact rules and features on Manage learner</li>
+                                <li>Set goals and rewards, hire teachers and pay for subscriptions</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4><i class="fas fa-circle-xmark" style="color:var(--ps-bad)"></i> You can't</h4>
+                            <ul>
+                                <li>See your child's password or sign in as them</li>
+                                <li>Change their profile, settings or privacy choices</li>
+                                <li>Message, follow, post or spend points as them</li>
+                                <li>Link to a child without the child agreeing first</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= NOTIFICATIONS ================= -->
+            <section class="ps-panel" id="panel-notifications" role="tabpanel" aria-labelledby="tab-notifications" hidden>
+                <div class="ps-panel-head"><h2>Notifications</h2><p>Choose what shows up in your notification bell. Changes save straight away.</p></div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-sliders"></i></span><div><h3>You choose</h3><p>Switch off anything you don't want to hear about.</p></div></div>
+                    <div id="psPrefs"><div class="ps-loading">Loading...</div></div>
+                    <div class="ps-note" id="psPrefsNote" role="status" aria-live="polite" style="margin-top:10px;"></div>
+                </div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-shield-heart"></i></span><div><h3>Always on</h3><p>These keep your children safe and your money accounted for, so they can't be switched off.</p></div></div>
+                    <div class="ps-row"><span class="ico" style="--c:#0ea5e9"><i class="fas fa-link"></i></span><div class="txt"><b>Linking</b><small>When a child accepts or declines your link request, or changes what they share with you</small></div><i class="fas fa-lock ps-lock" aria-label="Always on"></i></div>
+                    <div class="ps-row"><span class="ico" style="--c:#ef4444"><i class="fas fa-user-shield"></i></span><div class="txt"><b>Safety alerts</b><small>Contact requests from your child and daily limits reached. Choose which ones per child on Manage learner.</small></div><i class="fas fa-lock ps-lock" aria-label="Always on"></i></div>
+                    <div class="ps-row"><span class="ico" style="--c:#10b981"><i class="fas fa-receipt"></i></span><div class="txt"><b>Payments</b><small>When a subscription or teaching payment is confirmed or can't be confirmed</small></div><i class="fas fa-lock ps-lock" aria-label="Always on"></i></div>
+                    <div class="ps-row"><span class="ico" style="--c:#8b5cf6"><i class="fas fa-key"></i></span><div class="txt"><b>Account security</b><small>Password changes and sign-in alerts (set under Sign-in &amp; security)</small></div><i class="fas fa-lock ps-lock" aria-label="Always on"></i></div>
+                </div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-inbox"></i></span><div><h3>Your inbox</h3><p>Tidy up the notifications you already have.</p></div><a class="ps-btn ps-btn-ghost ps-btn-sm right" href="/notifications">Open all <i class="fas fa-arrow-right"></i></a></div>
+                    <div class="ps-inbox"><div><b id="psUnread">-</b><span>Unread</span></div><div><b id="psTotal">-</b><span>In total</span></div></div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        <button type="button" class="ps-btn ps-btn-ghost" id="psReadAll"><i class="fas fa-check-double"></i> Mark all as read</button>
+                        <button type="button" class="ps-btn ps-btn-ghost" id="psClearRead"><i class="fas fa-trash-can"></i> Delete read notifications</button>
+                    </div>
+                    <div class="ps-note" id="psInboxNote" role="status" aria-live="polite" style="margin-top:10px;"></div>
+                </div>
+            </section>
+
+            <!-- ================= SECURITY ================= -->
+            <section class="ps-panel" id="panel-security" role="tabpanel" aria-labelledby="tab-security" hidden>
+                <div class="ps-panel-head"><h2>Sign-in &amp; security</h2><p>Keep your account, and the controls you set for your children, safe.</p></div>
+
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-key"></i></span><div><h3>Password</h3><p>Use at least 8 characters. A mix of words, numbers and symbols is strongest.</p></div>
+                        <button type="button" class="ps-btn ps-btn-ghost ps-btn-sm right" id="psPwOpen" aria-expanded="false" aria-controls="psPwForm"><i class="fas fa-pen"></i> Change password</button></div>
+                    <form id="psPwForm" class="ps-form" hidden novalidate>
+                        <div class="ps-field full">
+                            <label for="psPwCur">Current password</label>
+                            <div class="ps-pw-wrap"><input type="password" class="ps-input" id="psPwCur" autocomplete="current-password"><button type="button" class="ps-eye" data-eye="psPwCur" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
+                            <span class="ps-hint">Signed up with Google and never set a password? Leave this empty.</span>
+                        </div>
+                        <div class="ps-field">
+                            <label for="psPwNew">New password</label>
+                            <div class="ps-pw-wrap"><input type="password" class="ps-input" id="psPwNew" autocomplete="new-password"><button type="button" class="ps-eye" data-eye="psPwNew" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
+                            <div class="ps-pw-meter" aria-hidden="true"><i id="psPwMeter"></i></div>
+                            <span class="ps-hint" id="psPwStrength">At least 8 characters.</span>
+                        </div>
+                        <div class="ps-field">
+                            <label for="psPwNew2">Confirm new password</label>
+                            <div class="ps-pw-wrap"><input type="password" class="ps-input" id="psPwNew2" autocomplete="new-password"><button type="button" class="ps-eye" data-eye="psPwNew2" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
+                        </div>
+                        <div class="ps-actions ps-field full" style="margin-top:0;">
+                            <div class="ps-note" id="psPwNote" role="status" aria-live="polite"></div>
+                            <button type="button" class="ps-btn ps-btn-ghost" id="psPwCancel">Cancel</button>
+                            <button type="submit" class="ps-btn ps-btn-primary" id="psPwSave"><i class="fas fa-check"></i> Update password</button>
+                        </div>
+                        <p class="ps-hint ps-field full"><i class="fas fa-circle-info"></i> Your other devices will be signed out. This one stays signed in.</p>
+                    </form>
+                    <div class="ps-note" id="psPwDone" role="status" aria-live="polite"></div>
+                </div>
+
+                <div class="ps-grid2">
+                    <div class="ps-card">
+                        <div class="ps-card-h"><span class="ic"><i class="fas fa-bell"></i></span><div><h3>Sign-in alerts</h3><p>Spot a sign-in that wasn't you.</p></div></div>
+                        <div class="ps-row"><div class="txt"><b>Tell me every time I sign in</b><small>A notice goes to your bell with the time of each sign-in.</small></div>
+                            <label class="ps-switch"><input type="checkbox" id="psLoginAlerts" role="switch" aria-label="Sign-in alerts" disabled><span></span></label></div>
+                        <div class="ps-note" id="psLoginNote" role="status" aria-live="polite"></div>
+                    </div>
+                    <div class="ps-card">
+                        <div class="ps-card-h"><span class="ic"><i class="fas fa-hourglass-end"></i></span><div><h3>Automatic sign-out</h3><p>After this long with no activity on any eSchool tab you get a 1-minute warning, then you're signed out.</p></div></div>
+                        <div class="ps-range"><input type="range" id="psTimeout" min="5" max="120" step="5" value="30" aria-label="Minutes before automatic sign-out"><output id="psTimeoutOut" for="psTimeout">30 minutes</output></div>
+                        <div class="ps-note" id="psTimeoutNote" role="status" aria-live="polite" style="margin-top:10px;"></div>
+                    </div>
+                </div>
+
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-laptop-mobile"></i></span><div><h3>Signed-in devices</h3><p>Lost a phone, or signed in on a shared computer? Sign out everywhere, including here.</p></div></div>
+                    <button type="button" class="ps-btn ps-btn-ghost" id="psLogoutAll"><i class="fas fa-right-from-bracket"></i> Sign out of all devices</button>
+                    <div id="psLogoutAllBox"></div>
+                </div>
+
+                <div class="ps-card danger">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-triangle-exclamation"></i></span><div><h3>Close your account</h3><p>Your children's own accounts are never affected.</p></div></div>
+                    <div class="ps-danger-row">
+                        <div class="txt"><b>Deactivate</b><small>Hides your profile and signs you out. Your children stay linked and everything is kept. Sign in again to come back.</small></div>
+                        <button type="button" class="ps-btn ps-btn-danger" id="psDeactivate"><i class="fas fa-user-slash"></i> Deactivate</button>
+                        <div id="psDeactivateBox" style="flex-basis:100%;"></div>
+                    </div>
+                    <div class="ps-danger-row">
+                        <div class="txt"><b>Delete permanently</b><small>Removes your account, your links to your children, the goals and controls you set, and your messages. This can't be undone.</small></div>
+                        <button type="button" class="ps-btn ps-btn-danger" id="psDelete"><i class="fas fa-trash"></i> Delete account</button>
+                        <div id="psDeleteBox" style="flex-basis:100%;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= PRIVACY ================= -->
+            <section class="ps-panel" id="panel-privacy" role="tabpanel" aria-labelledby="tab-privacy" hidden>
+                <div class="ps-panel-head"><h2>Privacy &amp; data</h2><p>These choices are checked on eSchool's servers and save straight away. Your own children can always see and message you.</p></div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-eye"></i></span><div><h3>Who can see your profile</h3><p>Your linked children can always open it.</p></div></div>
+                    <div class="ps-opts" role="radiogroup" aria-label="Who can see your profile" id="psVis">
+                        <button type="button" class="ps-opt" role="radio" data-vis="everyone" aria-checked="false"><b><i class="fas fa-globe"></i> Everyone</b>Anyone signed in to eSchool.</button>
+                        <button type="button" class="ps-opt" role="radio" data-vis="teachers" aria-checked="false"><b><i class="fas fa-chalkboard-user"></i> Teachers</b>Teachers, plus your own children.</button>
+                        <button type="button" class="ps-opt" role="radio" data-vis="private" aria-checked="false"><b><i class="fas fa-lock"></i> Only my children</b>Nobody else can open your profile.</button>
+                    </div>
+                    <div class="ps-note" id="psVisNote" role="status" aria-live="polite" style="margin-top:10px;"></div>
+                </div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-comments"></i></span><div><h3>Who can message and call you</h3><p>Teachers and your own children can always reach you.</p></div></div>
+                    <div class="ps-opts" role="radiogroup" aria-label="Who can message you" id="psMsg">
+                        <button type="button" class="ps-opt" role="radio" data-msg="everyone" aria-checked="false"><b><i class="fas fa-globe"></i> Everyone</b>Anyone on eSchool.</button>
+                        <button type="button" class="ps-opt" role="radio" data-msg="following" aria-checked="false"><b><i class="fas fa-user-check"></i> People I follow</b>Plus teachers and your children.</button>
+                        <button type="button" class="ps-opt" role="radio" data-msg="teachers" aria-checked="false"><b><i class="fas fa-chalkboard-user"></i> Teachers only</b>Plus your children.</button>
+                    </div>
+                    <div class="ps-row" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--ps-border);"><div class="txt"><b>Show me in people search</b><small>Teachers can find you by name to message you about your child.</small></div>
+                        <label class="ps-switch"><input type="checkbox" id="psSearchable" role="switch" aria-label="Show me in people search" disabled><span></span></label></div>
+                    <div class="ps-note" id="psMsgNote" role="status" aria-live="polite" style="margin-top:6px;"></div>
+                </div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-database"></i></span><div><h3>Your data</h3><p>What eSchool keeps about you, and a copy you can take with you.</p></div></div>
+                    <div class="ps-danger-row"><div class="txt"><b>Download a copy of your data</b><small>Your account and personal details, links to your children, messages and notifications, in one JSON file.</small></div>
+                        <a class="ps-btn ps-btn-primary" href="/api/privacy/export" download id="psExport"><i class="fas fa-download"></i> Download my data</a></div>
+                    <div class="ps-danger-row"><div class="txt"><b>How eSchool uses your data</b><small>What we collect, why, and how long we keep it, including what we keep about your children.</small></div>
+                        <button type="button" class="ps-btn ps-btn-ghost" data-go="legal"><i class="fas fa-user-shield"></i> Read the privacy policy</button></div>
+                    <div class="ps-note" id="psExportNote" role="status" aria-live="polite"></div>
+                </div>
+            </section>
+
+            <!-- ================= APPEARANCE ================= -->
+            <section class="ps-panel" id="panel-appearance" role="tabpanel" aria-labelledby="tab-appearance" hidden>
+                <div class="ps-panel-head"><h2>Appearance</h2><p>How eSchool looks on this device. Changes apply straight away to every page.</p></div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-circle-half-stroke"></i></span><div><h3>Theme</h3><p>Light, dark, or follow your device.</p></div><span class="ps-saved right" id="psApSaved"><i class="fas fa-check"></i> Saved</span></div>
+                    <div class="ps-modes" role="radiogroup" aria-label="Theme">
+                        <button type="button" class="ps-mode" role="radio" data-mode="light" aria-checked="false"><span class="ps-mock light" aria-hidden="true"><span class="side"></span><span class="main"><span class="bar"></span><span class="line"></span><span class="line s"></span></span></span><span><b>Light</b><small>Bright and clear</small></span></button>
+                        <button type="button" class="ps-mode" role="radio" data-mode="dark" aria-checked="false"><span class="ps-mock dark" aria-hidden="true"><span class="side"></span><span class="main"><span class="bar"></span><span class="line"></span><span class="line s"></span></span></span><span><b>Dark</b><small>Easier on the eyes at night</small></span></button>
+                        <button type="button" class="ps-mode" role="radio" data-mode="auto" aria-checked="false"><span class="ps-mock auto" aria-hidden="true"><span class="side"></span><span class="main"><span class="bar"></span><span class="line"></span><span class="line s"></span></span></span><span><b>System</b><small id="psSysNow">Follows your device</small></span></button>
+                    </div>
+                </div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-palette"></i></span><div><h3>Accent colour</h3><p>Used for buttons, links, highlights and page headers.</p></div></div>
+                    <div class="ps-swatches" role="radiogroup" aria-label="Accent colour">
+                        <button type="button" class="ps-swatch" role="radio" data-color="blue" style="--c:#4361ee" aria-checked="false"><i class="fas fa-check"></i><span><b>Ocean Blue</b><small>Default</small></span></button>
+                        <button type="button" class="ps-swatch" role="radio" data-color="green" style="--c:#10b981" aria-checked="false"><i class="fas fa-check"></i><span><b>Emerald</b><small>Calm and fresh</small></span></button>
+                        <button type="button" class="ps-swatch" role="radio" data-color="purple" style="--c:#8b5cf6" aria-checked="false"><i class="fas fa-check"></i><span><b>Violet</b><small>Creative</small></span></button>
+                        <button type="button" class="ps-swatch" role="radio" data-color="dark" style="--c:#1e293b" aria-checked="false"><i class="fas fa-check"></i><span><b>Slate</b><small>Minimal</small></span></button>
+                    </div>
+                    <div class="ps-preview" aria-hidden="true">
+                        <div class="ps-preview-l">Preview</div>
+                        <div class="ps-pv"><span class="ic"><i class="fas fa-chart-line"></i></span><div style="flex:1;min-width:0;"><b>Grade 10 Mathematics</b><small>12 of 25 modules · B+</small><div class="bar"><i></i></div></div><span class="ps-btn ps-btn-primary ps-btn-sm">Full report</span></div>
+                    </div>
+                </div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-text-height"></i></span><div><h3>Text size</h3><p>Make reading more comfortable. Applies to the parent pages on this device.</p></div></div>
+                    <div class="ps-sizes" role="radiogroup" aria-label="Text size">
+                        <button type="button" class="ps-size" role="radio" data-size="14" aria-checked="false"><span style="font-size:13px">Aa</span>Small</button>
+                        <button type="button" class="ps-size" role="radio" data-size="16" aria-checked="false"><span style="font-size:16px">Aa</span>Default</button>
+                        <button type="button" class="ps-size" role="radio" data-size="18" aria-checked="false"><span style="font-size:19px">Aa</span>Large</button>
+                        <button type="button" class="ps-size" role="radio" data-size="20" aria-checked="false"><span style="font-size:22px">Aa</span>Extra large</button>
+                    </div>
+                    <div class="ps-range"><span style="font-size:.8rem">A</span><input type="range" id="psFont" min="12" max="20" step="1" value="16" aria-label="Text size in pixels"><span style="font-size:1.2rem">A</span><output id="psFontOut" for="psFont">16px</output></div>
+                </div>
+                <div class="ps-card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:200px;"><b style="display:block;color:var(--ps-text);">Restore default appearance</b><small style="color:var(--ps-text-3);">Light theme, Ocean Blue and default text size.</small></div>
+                    <button type="button" class="ps-btn ps-btn-ghost" id="psApReset"><i class="fas fa-rotate-left"></i> Reset to defaults</button>
+                    <div class="ps-note" id="psApNote" role="status" aria-live="polite" style="flex-basis:100%;"></div>
+                </div>
+            </section>
+
+            <!-- ================= POLICIES ================= -->
+            <section class="ps-panel" id="panel-legal" role="tabpanel" aria-labelledby="tab-legal" hidden>
+                <div class="ps-panel-head" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:200px;"><h2>Policies</h2><p>The rules for using eSchool, and how your family's data is handled.</p></div>
+                    <div class="ps-seg" role="tablist" aria-label="Policy"><button type="button" role="tab" data-doc="privacy" aria-selected="true">Privacy policy</button><button type="button" role="tab" data-doc="terms" aria-selected="false">Terms of service</button></div>
+                </div>
+                <article class="ps-card ps-legal" id="docPrivacy">
+                    <span class="upd">Last updated: 24 October 2026</span>
+                    <h4>1. What we collect</h4>
+                    <p>Details you give us (your name, email address, phone number, location and profile photo) and information created as you use eSchool, such as sign-in times, messages, payments you make and the settings you choose for your children.</p>
+                    <h4>2. Parents and children's data</h4>
+                    <div class="box">A parent can only link to a child after the child agrees. The child decides what to share (grades and progress, schedule, attendance, resources, activity updates and messages) and can change it at any time.</div>
+                    <ul>
+                        <li>Controls you set on Manage learner (screen time, contact rules, features) are stored so eSchool can enforce them, and your child is told when they change.</li>
+                        <li>Goals and rewards you set are visible to the child they are for.</li>
+                        <li>We never show you your child's password, and you can't sign in as them.</li>
+                    </ul>
+                    <h4>3. How we use information</h4>
+                    <ul>
+                        <li>To run eSchool and show you your children's progress</li>
+                        <li>To send the notifications you chose, plus safety and payment notices</li>
+                        <li>To keep accounts secure (sign-in alerts, automatic sign-out)</li>
+                        <li>To process subscription and teaching payments (M-Pesa codes are checked by our team)</li>
+                    </ul>
+                    <h4>4. Sharing</h4>
+                    <p>We don't sell personal information. Teachers you hire see your name and the child they teach. Other people see your profile only as allowed in Privacy &amp; data.</p>
+                    <h4>5. Keeping and deleting data</h4>
+                    <p>We keep your information while your account is active. Deactivating hides your profile but keeps your data. Deleting your account removes your personal data, your links to your children and the controls and goals you set, except where the law requires us to keep records such as payments.</p>
+                    <h4>6. Your choices</h4>
+                    <p>You can change your details, notifications and privacy here at any time, and download a copy of your data from Privacy &amp; data.</p>
+                    <h4>7. Contact</h4>
+                    <p>Questions about privacy can be sent to our team through <a href="/support" style="color:var(--ps-accent-text);">Help &amp; Support</a>.</p>
+                </article>
+                <article class="ps-card ps-legal" id="docTerms" hidden>
+                    <span class="upd">Last updated: 24 October 2026</span>
+                    <h4>1. Agreeing to these terms</h4>
+                    <p>By creating an account and using eSchool you agree to these terms and to the privacy policy.</p>
+                    <h4>2. Your account</h4>
+                    <p>Keep your password private. You're responsible for what happens on your account, including payments and the controls you set for your children. Tell us straight away if you think someone else has used it.</p>
+                    <h4>3. Parent accounts</h4>
+                    <ul>
+                        <li>Only link to children you are the parent or legal guardian of, or are responsible for with the family's permission.</li>
+                        <li>Use what you see about your child to support their learning. Don't share it publicly.</li>
+                        <li>Teachers you hire through eSchool are paid for the sessions you buy. Report any concern about a session from the Teachers page.</li>
+                    </ul>
+                    <h4>4. Payments</h4>
+                    <p>Subscriptions and teaching sessions start once your M-Pesa payment is confirmed. Payments that can't be confirmed are not charged on eSchool's side. Ask Help &amp; Support about refunds.</p>
+                    <h4>5. Acceptable use</h4>
+                    <ul>
+                        <li>Don't misuse eSchool, try to get around security or parental controls, or interfere with other people's use</li>
+                        <li>Don't post anything unlawful, abusive or that breaks someone else's privacy</li>
+                        <li>Course materials can't be shared outside eSchool without permission</li>
+                    </ul>
+                    <h4>6. Suspension and closing accounts</h4>
+                    <p>We may suspend accounts that break these terms. You can deactivate or delete your account at any time from Sign-in &amp; security.</p>
+                    <h4>7. Service and liability</h4>
+                    <p>eSchool is provided as it is. We work to keep it running but can't promise it will never be interrupted. As far as the law allows, we aren't liable for indirect losses from using it.</p>
+                    <h4>8. Changes</h4>
+                    <p>We may update these terms. We'll show the new date here, and using eSchool after a change means you accept it.</p>
+                </article>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var USER = "{{ session.get('email', 'anonymous') }}";
+    var TABS = ['profile', 'family', 'notifications', 'security', 'privacy', 'appearance', 'legal'];
+    var SHARE_LABELS = { grades: 'Grades & progress', schedule: 'Schedule', attendance: 'Attendance', resources: 'Resources', notifications: 'Activity updates', messages: 'Messages & contacts' };
+    var PREF_META = {
+        messages: ['fa-envelope', '#4361ee', 'Messages', 'When your child, a teacher or anyone else sends you a message'],
+        goals: ['fa-trophy', '#db2777', 'Goals & rewards', 'When your child reaches or misses a goal you set'],
+        tutoring: ['fa-chalkboard-user', '#0ea5e9', 'Private teaching', 'Teacher replies, booked lessons and lesson reports'],
+        announcements: ['fa-bullhorn', '#f59e0b', 'News from eSchool', 'Announcements from teachers and the eSchool team']
+    };
+    var TIMEZONES = ['Africa/Nairobi', 'Africa/Kampala', 'Africa/Dar_es_Salaam', 'Africa/Kigali', 'Africa/Addis_Ababa', 'Africa/Lagos', 'Africa/Accra', 'Africa/Johannesburg', 'Europe/London', 'America/New_York', 'America/Toronto', 'Asia/Kolkata', 'Australia/Sydney'];
+    var GENDERS = [['', 'Prefer not to say'], ['female', 'Female'], ['male', 'Male'], ['other', 'Other']];
+    var ACCENTS = { blue: null, green: { color: '#10b981', hover: '#059669' }, purple: { color: '#8b5cf6', hover: '#7c3aed' }, dark: { color: '#1e293b', hover: '#0f172a' } };
+
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function key(n) { return 'settings.' + n + '.' + USER; }
+    function lsGet(n) { try { return localStorage.getItem(key(n)); } catch (e) { return null; } }
+    function lsSet(n, v) { try { if (v === null) localStorage.removeItem(key(n)); else localStorage.setItem(key(n), v); } catch (e) { /* ignore */ } }
+    function note(el, msg, type, keep) {
+        el = typeof el === 'string' ? $(el) : el;
+        if (!el) return;
+        el.className = 'ps-note ' + (type || 'info');
+        el.innerHTML = msg ? '<i class="fas ' + (type === 'ok' ? 'fa-circle-check' : type === 'bad' ? 'fa-circle-exclamation' : 'fa-circle-info') + '"></i><span></span>' : '';
+        if (msg) el.querySelector('span').textContent = msg;
+        clearTimeout(el._t);
+        if (msg && !keep && type !== 'bad') el._t = setTimeout(function () { el.innerHTML = ''; }, 5000);
+    }
+    async function api(url, opt) {
+        var r = await fetch(url, Object.assign({ credentials: 'same-origin' }, opt || {}));
+        if (r.status === 401) { location.href = '/Login'; throw new Error('Please sign in again.'); }
+        var d = null; try { d = await r.json(); } catch (e) { /* none */ }
+        if (!r.ok || (d && d.success === false)) { var e = new Error((d && d.message) || ('Something went wrong (' + r.status + ').')); e.data = d; throw e; }
+        return d || {};
+    }
+    function send(url, method, body) { return api(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }); }
+    function initials(name) { return String(name || '?').split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(); }
+
+    /* ---------- tabs (remembered in the address) ---------- */
+    var loaded = {};
+    function openTab(name, focus) {
+        if (TABS.indexOf(name) < 0) name = 'profile';
+        TABS.forEach(function (t) {
+            var on = t === name;
+            $('tab-' + t).setAttribute('aria-selected', String(on));
+            $('tab-' + t).tabIndex = on ? 0 : -1;
+            $('panel-' + t).hidden = !on;
+        });
+        try { history.replaceState(null, '', '#' + name); } catch (e) { /* ignore */ }
+        if (focus) $('tab-' + name).focus();
+        if (!loaded[name]) { loaded[name] = true; (LOADERS[name] || function () {})(); }
+    }
+    $('psNav').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) openTab(b.dataset.tab); });
+    $('psNav').addEventListener('keydown', function (e) {
+        var keys = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 };
+        if (!(e.key in keys) && e.key !== 'Home' && e.key !== 'End') return;
+        e.preventDefault();
+        var cur = TABS.indexOf(document.activeElement.dataset.tab);
+        var i = e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : (cur + keys[e.key] + TABS.length) % TABS.length;
+        openTab(TABS[i], true);
+    });
+    document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('.ps [data-go]'); if (b) { openTab(b.dataset.go); window.scrollTo({ top: 0, behavior: 'smooth' }); } });
+
+    /* ---------- profile ---------- */
+    var P = { details: null, countries: {} };
+    var PERSONAL = ['firstname', 'lastname', 'phone', 'gender', 'bio'];
+    var LOCATION = ['country', 'city', 'address', 'timezone'];
+    function field(k, label, html, opts) {
+        opts = opts || {};
+        return '<div class="ps-field' + (opts.full ? ' full' : '') + '"><label for="pf-' + k + '">' + label + (opts.optional ? ' <span class="opt">(optional)</span>' : '') + '</label>' + html +
+            (opts.hint ? '<span class="ps-hint">' + opts.hint + '</span>' : '') + '<span class="ps-err" id="err-' + k + '"></span></div>';
+    }
+    function input(k, type, extra) { return '<input class="ps-input" id="pf-' + k + '" data-k="' + k + '" type="' + (type || 'text') + '" value="' + esc(P.details[k]) + '" ' + (extra || '') + '>'; }
+    function select(k, opts) { return '<select class="ps-select" id="pf-' + k + '" data-k="' + k + '">' + opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(P.details[k] || '') === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>'; }
+    function renderProfile() {
+        var d = P.details;
+        $('psPersonalBody').innerHTML =
+            field('firstname', 'First name', input('firstname', 'text', 'autocomplete="given-name" maxlength="50"')) +
+            field('lastname', 'Last name', input('lastname', 'text', 'autocomplete="family-name" maxlength="50"')) +
+            field('email', 'Email address', '<input class="ps-input" id="pf-email" type="email" value="' + esc(d.email) + '" readonly>', { hint: 'Your sign-in email. To change it, contact <a href="/support" style="color:var(--ps-accent-text)">Help &amp; Support</a>.' }) +
+            field('phone', 'Phone number', input('phone', 'tel', 'autocomplete="tel" placeholder="+254 712 345 678" maxlength="20"'), { optional: true, hint: 'Teachers you hire can use this to reach you about lessons.' }) +
+            field('gender', 'Gender', select('gender', GENDERS), { optional: true }) +
+            '<div class="ps-field"></div>' +
+            field('bio', 'About you', '<textarea class="ps-textarea" id="pf-bio" data-k="bio" maxlength="300" placeholder="e.g. Mum of two. Happy to hear from my children\'s teachers any time.">' + esc(d.bio) + '</textarea>', { full: true, optional: true, hint: '<span id="bioCount">' + (d.bio || '').length + '</span>/300. Shown on your profile.' });
+        var countries = Object.keys(P.countries).map(function (k) { return [k, P.countries[k]]; }).sort(function (a, b) { return a[1].localeCompare(b[1]); });
+        var tz = TIMEZONES.slice(); if (d.timezone && tz.indexOf(d.timezone) < 0) tz.unshift(d.timezone);
+        $('psLocationBody').innerHTML =
+            field('country', 'Country', select('country', [['', 'Choose a country']].concat(countries))) +
+            field('city', 'Town or city', input('city', 'text', 'autocomplete="address-level2" maxlength="80"'), { optional: true }) +
+            field('address', 'Address', input('address', 'text', 'autocomplete="street-address" maxlength="200"'), { full: true, optional: true, hint: 'Only used for in-person lessons you book.' }) +
+            field('timezone', 'Time zone', select('timezone', tz.map(function (z) { return [z, z.replace(/_/g, ' ')]; })));
+        completeness();
+        dirtyCheck('personal'); dirtyCheck('location');
+    }
+    function values(group) {
+        var out = {};
+        (group === 'personal' ? PERSONAL : LOCATION).forEach(function (k) { var el = $('pf-' + k); if (el) out[k] = el.value.trim(); });
+        return out;
+    }
+    function dirtyCheck(group) {
+        var v = values(group), dirty = Object.keys(v).some(function (k) { return v[k] !== String(P.details[k] || ''); });
+        document.querySelector('[data-save="' + group + '"]').disabled = !dirty;
+        document.querySelector('[data-reset="' + group + '"]').disabled = !dirty;
+        return dirty;
+    }
+    function completeness() {
+        var d = P.details, checks = [
+            [d.firstname && d.lastname, 'Add your full name'], [document.querySelector('#psPhoto img'), 'Add a profile photo'],
+            [d.phone, 'Add a phone number'], [d.country, 'Choose your country'], [d.city, 'Add your town or city'], [d.bio, 'Write a line about you']];
+        var done = checks.filter(function (c) { return c[0]; }).length, pct = Math.round(done / checks.length * 100);
+        var next = checks.filter(function (c) { return !c[0]; })[0];
+        $('psComplete').hidden = false;
+        $('psCompletePct').textContent = pct + '%';
+        $('psCompleteBar').style.width = pct + '%';
+        $('psCompleteTip').textContent = next ? 'Next: ' + next[1] + '.' : 'Your profile is complete.';
+    }
+    async function loadProfile() {
+        try {
+            var d = await api('/api/profile/details');
+            P.details = d.details; P.countries = d.countries || {};
+            renderProfile();
+        } catch (e) {
+            $('psPersonalBody').innerHTML = '<p class="ps-note bad" style="grid-column:1/-1;">' + esc(e.message) + '</p>';
+        }
+    }
+    ['personal', 'location'].forEach(function (group) {
+        var form = $(group === 'personal' ? 'psPersonal' : 'psLocation');
+        form.addEventListener('input', function (e) {
+            if (e.target.id === 'pf-bio') $('bioCount').textContent = e.target.value.length;
+            var err = e.target.dataset.k && $('err-' + e.target.dataset.k); if (err) { err.textContent = ''; e.target.classList.remove('bad'); }
+            dirtyCheck(group);
+        });
+        form.addEventListener('change', function () { dirtyCheck(group); });
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var noteEl = $(group === 'personal' ? 'psPersonalNote' : 'psLocationNote');
+            var v = values(group), body = {};
+            Object.keys(v).forEach(function (k) { if (v[k] !== String(P.details[k] || '')) body[k] = v[k]; });
+            if (!Object.keys(body).length) return;
+            if (group === 'personal' && (!v.firstname || !v.lastname)) {
+                if (!v.firstname) { $('err-firstname').textContent = 'First name is required.'; $('pf-firstname').classList.add('bad'); }
+                if (!v.lastname) { $('err-lastname').textContent = 'Last name is required.'; $('pf-lastname').classList.add('bad'); }
+                note(noteEl, 'Please fix the highlighted fields.', 'bad'); return;
+            }
+            var btn = form.querySelector('[data-save]'); btn.disabled = true; note(noteEl, 'Saving...', 'info', true);
+            try {
+                var d = await send('/api/profile/details', 'POST', body);
+                P.details = d.details;
+                renderProfile();
+                if (body.firstname || body.lastname) {
+                    var full = (P.details.firstname + ' ' + P.details.lastname).trim();
+                    $('psHeroName').textContent = full;
+                    document.querySelectorAll('.user-name, .user-name-sm').forEach(function (el) { el.textContent = full; });
+                }
+                note(noteEl, group === 'personal' ? 'Details saved.' : 'Location saved.', 'ok');
+            } catch (err) {
+                var errs = (err.data && err.data.errors) || {};
+                Object.keys(errs).forEach(function (k) { var el = $('err-' + k); if (el) { el.textContent = errs[k]; $('pf-' + k).classList.add('bad'); } });
+                note(noteEl, err.message, 'bad');
+                dirtyCheck(group);
+            }
+        });
+        form.querySelector('[data-reset]').addEventListener('click', function () { renderProfile(); note(group === 'personal' ? 'psPersonalNote' : 'psLocationNote', 'Changes discarded.', 'info'); });
+    });
+
+    /* photo */
+    $('psPhotoBtn').addEventListener('click', function () { $('psPhotoInput').click(); });
+    $('psPhotoInput').addEventListener('change', async function () {
+        var f = this.files && this.files[0]; if (!f) return;
+        if (!/^image\/(png|jpe?g|gif|webp)$/.test(f.type)) { note('psPhotoNote', 'Use a JPG, PNG, GIF or WEBP image.', 'bad'); this.value = ''; return; }
+        if (f.size > 2 * 1024 * 1024) { note('psPhotoNote', 'That image is over 2 MB. Choose a smaller one.', 'bad'); this.value = ''; return; }
+        var btn = $('psPhotoBtn'); btn.disabled = true; note('psPhotoNote', 'Uploading...', 'info', true);
+        var fd = new FormData(); fd.append('photo', f);
+        try {
+            var d = await api('/api/settings/upload-photo', { method: 'POST', body: fd });
+            document.querySelectorAll('[data-profile-avatar]').forEach(function (el) { el.innerHTML = '<img src="' + esc(d.avatar_url) + '" alt="Profile photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'; });
+            note('psPhotoNote', 'Photo updated.', 'ok');
+            if (P.details) completeness();
+        } catch (e) { note('psPhotoNote', e.message, 'bad'); }
+        finally { btn.disabled = false; this.value = ''; }
+    });
+
+    /* ---------- family ---------- */
+    async function loadFamily() {
+        var box = $('psKids');
+        try {
+            var d = await api('/api/parent/children'), kids = d.children || [];
+            if (!kids.length) {
+                box.innerHTML = '<div class="ps-card"><div class="ps-empty"><i class="fas fa-children"></i><h3>No children linked yet</h3><p>Link your child\'s account to follow their progress, set goals and manage their learner settings.</p><a class="ps-btn ps-btn-primary" href="/parent-link"><i class="fas fa-link"></i> Link a child</a></div></div>';
+                return;
+            }
+            box.innerHTML = '<div class="ps-kids">' + kids.map(function (c) {
+                var p = c.permissions || {};
+                var shares = Object.keys(SHARE_LABELS).map(function (k) { return '<span class="ps-share' + (p[k] ? '' : ' off') + '"><i class="fas ' + (p[k] ? 'fa-check' : 'fa-minus') + '"></i> ' + esc(SHARE_LABELS[k]) + '</span>'; }).join('');
+                var n = Object.keys(SHARE_LABELS).filter(function (k) { return p[k]; }).length;
+                return '<div class="ps-card ps-kid"><div class="ps-kid-top"><div class="ps-avatar">' + (c.avatar_url ? '<img src="' + esc(c.avatar_url) + '" alt="">' : esc(initials(c.name))) + '</div>' +
+                    '<div><b>' + esc(c.name) + '</b><small>' + esc([c.grade, c.relationship ? 'You: ' + c.relationship : '', c.linked_since ? 'Linked ' + c.linked_since : ''].filter(Boolean).join(' · ')) + '</small></div></div>' +
+                    '<div><div class="ps-share-h">Shares ' + n + ' of ' + Object.keys(SHARE_LABELS).length + ' with you</div><div class="ps-shares" style="margin-top:6px;">' + shares + '</div></div>' +
+                    '<div class="ps-kid-acts"><a class="ps-btn ps-btn-ghost ps-btn-sm" href="/parent-progress?child=' + c.id + '"><i class="fas fa-chart-line"></i> Progress</a>' +
+                    '<a class="ps-btn ps-btn-ghost ps-btn-sm" href="/parent-controls"><i class="fas fa-user-gear"></i> Manage learner</a>' +
+                    '<a class="ps-btn ps-btn-ghost ps-btn-sm" href="/parent-children"><i class="fas fa-sliders"></i> Access &amp; unlink</a></div></div>';
+            }).join('') + '</div>';
+        } catch (e) { box.innerHTML = '<div class="ps-card"><p class="ps-note bad">' + esc(e.message) + '</p></div>'; }
+    }
+
+    /* ---------- notifications ---------- */
+    async function loadPrefs() {
+        try {
+            var d = await api('/api/notification-prefs');
+            $('psPrefs').innerHTML = (d.categories || []).map(function (c) {
+                var m = PREF_META[c.key] || ['fa-bell', '#64748b', c.key, c.desc];
+                return '<div class="ps-row"><span class="ico" style="--c:' + m[1] + '"><i class="fas ' + m[0] + '"></i></span><div class="txt"><b>' + esc(m[2]) + '</b><small>' + esc(m[3]) + '</small></div>' +
+                    '<label class="ps-switch"><input type="checkbox" role="switch" data-pref="' + esc(c.key) + '" aria-label="' + esc(m[2]) + '"' + (d.prefs[c.key] ? ' checked' : '') + '><span></span></label></div>';
+            }).join('');
+            $('psUnread').textContent = d.unread; $('psTotal').textContent = d.total;
+        } catch (e) { $('psPrefs').innerHTML = '<p class="ps-note bad">' + esc(e.message) + '</p>'; }
+    }
+    $('psPrefs').addEventListener('change', async function (e) {
+        var t = e.target; if (!t.dataset.pref) return;
+        var body = {}; body[t.dataset.pref] = t.checked; t.disabled = true;
+        try { await send('/api/notification-prefs', 'POST', body); note('psPrefsNote', (PREF_META[t.dataset.pref] || [, , t.dataset.pref])[2] + (t.checked ? ' turned on.' : ' turned off.'), 'ok'); }
+        catch (err) { t.checked = !t.checked; note('psPrefsNote', err.message, 'bad'); }
+        finally { t.disabled = false; }
+    });
+    async function inbox(url, msg) {
+        try {
+            var d = await send(url, 'POST', {});
+            note('psInboxNote', typeof msg === 'function' ? msg(d) : msg, 'ok');
+            var r = await api('/api/notification-prefs'); $('psUnread').textContent = r.unread; $('psTotal').textContent = r.total;
+            var badge = document.getElementById('notificationBadge'); if (badge && url.indexOf('read-all') > -1) badge.style.display = 'none';
+        } catch (e) { note('psInboxNote', e.message, 'bad'); }
+    }
+    $('psReadAll').addEventListener('click', function () { inbox('/notifications/read-all', 'All notifications marked as read.'); });
+    $('psClearRead').addEventListener('click', function () { inbox('/notifications/clear-read', function (d) { return (d.deleted || 0) + ' read notification' + (d.deleted === 1 ? '' : 's') + ' deleted.'; }); });
+
+    /* ---------- security ---------- */
+    async function loadSecurity() {
+        try {
+            var d = await api('/api/settings'), a = d.account || {};
+            $('psLoginAlerts').checked = !!a.loginNotifications; $('psLoginAlerts').disabled = false;
+            if (a.sessionTimeoutMinutes) { $('psTimeout').value = a.sessionTimeoutMinutes; showTimeout(); lsSet('sessionTimeout', String(a.sessionTimeoutMinutes)); }
+        } catch (e) { note('psLoginNote', e.message, 'bad'); }
+    }
+    $('psLoginAlerts').addEventListener('change', async function () {
+        var t = this; t.disabled = true;
+        try { await send('/api/settings', 'POST', { loginNotifications: t.checked }); note('psLoginNote', t.checked ? 'You\'ll get a notice each time you sign in.' : 'Sign-in alerts turned off.', 'ok'); }
+        catch (e) { t.checked = !t.checked; note('psLoginNote', e.message, 'bad'); }
+        finally { t.disabled = false; }
+    });
+    function showTimeout() { var m = +$('psTimeout').value; $('psTimeoutOut').textContent = m >= 60 ? (m / 60 === 1 ? '1 hour' : (m % 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m / 60 + ' hours')) : m + ' minutes'; }
+    $('psTimeout').addEventListener('input', showTimeout);
+    $('psTimeout').addEventListener('change', async function () {
+        var m = +this.value;
+        try { await send('/api/settings', 'POST', { sessionTimeoutMinutes: m }); lsSet('sessionTimeout', String(m)); note('psTimeoutNote', 'Saved. You\'ll be signed out after ' + $('psTimeoutOut').textContent + ' without activity.', 'ok'); }
+        catch (e) { note('psTimeoutNote', e.message, 'bad'); }
+    });
+    /* password */
+    function pwOpen(open) {
+        $('psPwForm').hidden = !open; $('psPwOpen').setAttribute('aria-expanded', String(open));
+        if (open) { ['psPwCur', 'psPwNew', 'psPwNew2'].forEach(function (id) { $(id).value = ''; }); strength(); note('psPwNote', ''); $('psPwCur').focus(); }
+    }
+    $('psPwOpen').addEventListener('click', function () { pwOpen($('psPwForm').hidden); });
+    $('psPwCancel').addEventListener('click', function () { pwOpen(false); $('psPwOpen').focus(); });
+    document.querySelectorAll('[data-eye]').forEach(function (b) {
+        b.addEventListener('click', function () { var i = $(b.dataset.eye), show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); b.innerHTML = '<i class="fas ' + (show ? 'fa-eye-slash' : 'fa-eye') + '"></i>'; });
+    });
+    function strength() {
+        var v = $('psPwNew').value, s = 0;
+        if (v.length >= 8) s++; if (v.length >= 12) s++; if (/[A-Z]/.test(v) && /[a-z]/.test(v)) s++; if (/\d/.test(v)) s++; if (/[^A-Za-z0-9]/.test(v)) s++;
+        var lv = !v ? [0, '', 'At least 8 characters.'] : v.length < 8 ? [15, '#ef4444', 'Too short: ' + v.length + ' of 8 characters.'] : s <= 2 ? [45, '#f59e0b', 'Fair. Add numbers or symbols to make it stronger.'] : s <= 3 ? [70, '#3b82f6', 'Good.'] : [100, '#10b981', 'Strong.'];
+        $('psPwMeter').style.width = lv[0] + '%'; $('psPwMeter').style.background = lv[1]; $('psPwStrength').textContent = lv[2];
+    }
+    $('psPwNew').addEventListener('input', strength);
+    $('psPwForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var cur = $('psPwCur').value, n1 = $('psPwNew').value, n2 = $('psPwNew2').value;
+        if (n1.length < 8) { note('psPwNote', 'The new password needs at least 8 characters.', 'bad'); $('psPwNew').focus(); return; }
+        if (n1 !== n2) { note('psPwNote', 'The two new passwords don\'t match.', 'bad'); $('psPwNew2').focus(); return; }
+        var btn = $('psPwSave'); btn.disabled = true; note('psPwNote', 'Updating...', 'info', true);
+        try {
+            var d = await send('/api/account/change-password', 'POST', { currentPassword: cur, newPassword: n1 });
+            pwOpen(false); note('psPwDone', d.message || 'Password updated.', 'ok');
+        } catch (err) { note('psPwNote', err.message, 'bad'); }
+        finally { btn.disabled = false; }
+    });
+    /* inline confirmations */
+    function confirmBox(host, opts) {
+        host = $(host);
+        if (host.firstChild) { host.innerHTML = ''; return; }
+        host.innerHTML = '<div class="ps-confirm' + (opts.danger ? ' danger' : '') + '" role="group" aria-label="' + esc(opts.title) + '"><b>' + esc(opts.title) + '</b><p>' + esc(opts.text) + '</p>' +
+            (opts.type ? '<input class="ps-input" placeholder="Type ' + opts.type + ' to confirm" autocomplete="off" aria-label="Type ' + opts.type + ' to confirm">' : '') +
+            '<div class="ps-note" role="status" aria-live="polite"></div><div class="row"><button type="button" class="ps-btn ps-btn-ghost" data-no>Cancel</button><button type="button" class="ps-btn ' + (opts.danger ? 'ps-btn-danger solid' : 'ps-btn-primary') + '" data-yes' + (opts.type ? ' disabled' : '') + '>' + esc(opts.ok) + '</button></div></div>';
+        var box = host.firstChild, yes = box.querySelector('[data-yes]'), typed = box.querySelector('input');
+        if (typed) { typed.addEventListener('input', function () { yes.disabled = typed.value.trim() !== opts.type; }); typed.focus(); } else yes.focus();
+        box.querySelector('[data-no]').addEventListener('click', function () { host.innerHTML = ''; });
+        yes.addEventListener('click', async function () {
+            yes.disabled = true; note(box.querySelector('.ps-note'), 'Working...', 'info', true);
+            try { await opts.run(typed ? typed.value.trim() : ''); }
+            catch (e) { note(box.querySelector('.ps-note'), e.message, 'bad'); yes.disabled = false; }
+        });
+    }
+    function leave() { try { localStorage.setItem('eschool_logout', String(Date.now())); } catch (e) { /* ignore */ } location.href = '/Login'; }
+    $('psLogoutAll').addEventListener('click', function () {
+        confirmBox('psLogoutAllBox', { title: 'Sign out of every device?', text: 'Every phone, tablet and computer signed in to your account will be signed out, including this one. You can sign straight back in.', ok: 'Sign out everywhere',
+            run: async function () { await send('/api/account/logout-all', 'POST', {}); leave(); } });
+    });
+    $('psDeactivate').addEventListener('click', function () {
+        confirmBox('psDeactivateBox', { danger: true, title: 'Deactivate your account?', text: 'Your profile is hidden and you are signed out. Your children stay linked and the controls you set keep working. Sign in again to come back.', ok: 'Deactivate',
+            run: async function () { await send('/api/account/deactivate', 'POST', {}); leave(); } });
+    });
+    $('psDelete').addEventListener('click', function () {
+        confirmBox('psDeleteBox', { danger: true, type: 'DELETE', title: 'Delete your account for good?', text: 'This removes your account, your links to your children, the goals, rewards and controls you set, and your messages. Your children\'s accounts stay. This can\'t be undone.', ok: 'Delete my account',
+            run: async function (typed) { await send('/api/account/delete', 'POST', { confirm: typed }); leave(); } });
+    });
+
+    /* ---------- privacy ---------- */
+    var PV = null;
+    function renderPrivacy() {
+        document.querySelectorAll('[data-vis]').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.vis === PV.profile_visibility)); });
+        document.querySelectorAll('[data-msg]').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.msg === PV.messages_from)); });
+        $('psSearchable').checked = !!PV.searchable; $('psSearchable').disabled = false;
+    }
+    async function loadPrivacy() { try { PV = (await api('/api/privacy')).privacy; renderPrivacy(); } catch (e) { note('psVisNote', e.message, 'bad'); } }
+    async function savePrivacy(body, noteId, okMsg) {
+        var old = Object.assign({}, PV); Object.assign(PV, body); renderPrivacy();
+        try { PV = (await send('/api/privacy', 'POST', body)).privacy; renderPrivacy(); note(noteId, okMsg, 'ok'); }
+        catch (e) { PV = old; renderPrivacy(); note(noteId, e.message, 'bad'); }
+    }
+    $('psVis').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-vis]'); if (!b || !PV || b.dataset.vis === PV.profile_visibility) return;
+        savePrivacy({ profile_visibility: b.dataset.vis }, 'psVisNote', { everyone: 'Anyone signed in can see your profile.', teachers: 'Only teachers and your children can see your profile.', private: 'Only your children can see your profile.' }[b.dataset.vis]);
+    });
+    $('psMsg').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-msg]'); if (!b || !PV || b.dataset.msg === PV.messages_from) return;
+        savePrivacy({ messages_from: b.dataset.msg }, 'psMsgNote', { everyone: 'Anyone can message you.', following: 'People you follow, teachers and your children can message you.', teachers: 'Only teachers and your children can message you.' }[b.dataset.msg]);
+    });
+    $('psSearchable').addEventListener('change', function () { savePrivacy({ searchable: this.checked }, 'psMsgNote', this.checked ? 'You show up in people search.' : 'You\'re hidden from people search.'); });
+    [['psVis', '[data-vis]'], ['psMsg', '[data-msg]']].forEach(function (g) {
+        $(g[0]).addEventListener('keydown', function (e) {
+            if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].indexOf(e.key) < 0) return;
+            e.preventDefault();
+            var opts = Array.prototype.slice.call(this.querySelectorAll(g[1])), i = opts.indexOf(document.activeElement);
+            var n = opts[(i + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : opts.length - 1)) % opts.length]; n.focus(); n.click();
+        });
+    });
+
+    /* ---------- appearance (this device; every page reads the same keys) ---------- */
+    var dq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : { matches: false };
+    function flashSaved() { var s = $('psApSaved'); s.classList.add('show'); clearTimeout(s._t); s._t = setTimeout(function () { s.classList.remove('show'); }, 1600); }
+    function refreshTheme() { if (window.eschoolTheme && window.eschoolTheme.refresh) window.eschoolTheme.refresh(); }
+    function applyMode(mode, save) {
+        document.body.classList.toggle('dark-mode', mode === 'dark' || (mode === 'auto' && dq.matches));
+        document.querySelectorAll('[data-mode]').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.mode === mode)); });
+        $('psSysNow').textContent = 'Follows your device (' + (dq.matches ? 'dark' : 'light') + ' now)';
+        if (save) { lsSet('themeMode', mode); flashSaved(); refreshTheme(); }
+    }
+    function applyAccent(name, save) {
+        var a = ACCENTS[name], root = document.documentElement.style;
+        if (a) {
+            root.setProperty('--accent-color', a.color); root.setProperty('--accent-hover', a.hover); root.setProperty('--accent-soft', a.color + '1a');
+            root.setProperty('--primary-color', a.color); root.setProperty('--secondary-color', a.hover); root.setProperty('--primary-dark', a.hover);
+            root.setProperty('--primary-light', 'color-mix(in srgb, ' + a.color + ' 15%, white)');
+        } else ['--accent-color', '--accent-hover', '--accent-soft', '--primary-color', '--secondary-color', '--primary-dark', '--primary-light'].forEach(function (p) { root.removeProperty(p); });
+        document.querySelectorAll('[data-color]').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.color === (name || 'blue'))); });
+        if (save) { lsSet('themeColor', name); flashSaved(); refreshTheme(); }
+    }
+    function applySize(px, save) {
+        px = Math.max(12, Math.min(20, +px || 16));
+        document.documentElement.style.fontSize = px === 16 ? '' : px + 'px';
+        document.documentElement.style.setProperty('--base-font-size', px + 'px');
+        $('psFont').value = px; $('psFontOut').textContent = px + 'px';
+        document.querySelectorAll('[data-size]').forEach(function (b) { b.setAttribute('aria-checked', String(+b.dataset.size === px)); });
+        if (save) { lsSet('fontSize', String(px)); flashSaved(); }
+    }
+    document.querySelector('.ps-modes').addEventListener('click', function (e) { var b = e.target.closest('[data-mode]'); if (b) applyMode(b.dataset.mode, true); });
+    document.querySelector('.ps-swatches').addEventListener('click', function (e) { var b = e.target.closest('[data-color]'); if (b) applyAccent(b.dataset.color, true); });
+    document.querySelector('.ps-sizes').addEventListener('click', function (e) { var b = e.target.closest('[data-size]'); if (b) applySize(b.dataset.size, true); });
+    $('psFont').addEventListener('input', function () { applySize(this.value, false); });
+    $('psFont').addEventListener('change', function () { applySize(this.value, true); });
+    $('psApReset').addEventListener('click', function () { applyMode('light', true); applyAccent('blue', true); applySize(16, true); note('psApNote', 'Appearance reset to the defaults.', 'ok'); });
+    if (dq.addEventListener) dq.addEventListener('change', function () { applyMode(lsGet('themeMode') || 'light', false); });
+    [['.ps-modes', '[data-mode]'], ['.ps-swatches', '[data-color]'], ['.ps-sizes', '[data-size]']].forEach(function (g) {
+        document.querySelector(g[0]).addEventListener('keydown', function (e) {
+            if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].indexOf(e.key) < 0) return;
+            e.preventDefault();
+            var opts = Array.prototype.slice.call(this.querySelectorAll(g[1])), i = opts.indexOf(document.activeElement);
+            var n = opts[(i + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : opts.length - 1)) % opts.length]; n.focus(); n.click();
+        });
+    });
+    function loadAppearance() { applyMode(lsGet('themeMode') || 'light', false); applyAccent(lsGet('themeColor') || 'blue', false); applySize(lsGet('fontSize') || 16, false); }
+
+    /* ---------- policies ---------- */
+    document.querySelector('.ps-seg').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-doc]'); if (!b) return;
+        this.querySelectorAll('[data-doc]').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); });
+        $('docPrivacy').hidden = b.dataset.doc !== 'privacy'; $('docTerms').hidden = b.dataset.doc !== 'terms';
+    });
+
+    var LOADERS = { profile: loadProfile, family: loadFamily, notifications: loadPrefs, security: loadSecurity, privacy: loadPrivacy, appearance: loadAppearance };
+    loadAppearance(); loaded.appearance = true;
+    loadProfile(); loaded.profile = true;   // the header's completeness needs the details
+    openTab((location.hash || '').slice(1) || 'profile');
+})();
+</script>
+{% endblock %}

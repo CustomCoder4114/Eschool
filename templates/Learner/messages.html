@@ -1,1083 +1,1066 @@
 {% extends "Learner/body.html" %}
 
 {% block allcontent %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Messages - eSchool</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --primary-dark: #3a0ca3;
-            --secondary-color: #7209b7;
-            --accent-color: #4cc9f0;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --danger-color: #ef4444;
-            --info-color: #3b82f6;
-            --dark-color: #1e293b;
-            --light-color: #f8fafc;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --border-radius: 20px;
-            --border-radius-sm: 12px;
-            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-            --hover-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, white 0%, 100%);
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-
-        }
-
-        /* Header Styles - Very Small */
-        .page-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 30px 120px;
-            border-radius: var(--border-radius);
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header-content {
-            position: relative;
-            z-index: 2;
-            text-align: center;
-        }
-
-        .page-icon {
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 10px;
-            font-size: 1.5rem;
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .page-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 3rem;
-            margin-bottom: 15px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
-
-        .page-subtitle {
-            font-size: 1.2rem;
-            opacity: 0.95;
-            max-width: 700px;
-            margin: 0 auto;
-            line-height: 1.6;
-        }
-
-        /* Chat Layout - Much Bigger */
-        .chat-layout {
-            display: grid;
-            grid-template-columns: 520px 1fr;
-            gap: 20px;
-            background: white;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            box-shadow: var(--card-shadow);
-            min-height: 750px;
-            height: 42vh;
-        }
-
-        /* Chat Sidebar */
-        .chat-sidebar {
-            background: var(--gray-50);
-            border-right: 1px solid var(--gray-200);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chat-sidebar-header {
-            padding: 18px 20px;
-            background: white;
-            border-bottom: 1px solid var(--gray-200);
-        }
-
-        .chat-sidebar-header h3 {
-            font-size: 1.1rem;
-            color: var(--dark-color);
-            margin-bottom: 10px;
-        }
-
-        .search-users {
-            position: relative;
-        }
-
-        .search-users i {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gray-400);
-        }
-
-        .search-users input {
-            width: 100%;
-            padding: 10px 16px 10px 42px;
-            border: 2px solid var(--gray-200);
-            border-radius: 50px;
-            font-size: 0.9rem;
-            transition: var(--transition);
-        }
-
-        .search-users input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        /* User List */
-        .user-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px 12px;
-        }
-
-        .user-list::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .user-list::-webkit-scrollbar-track {
-            background: var(--gray-100);
-            border-radius: 10px;
-        }
-
-        .user-list::-webkit-scrollbar-thumb {
-            background: var(--primary-color);
-            border-radius: 10px;
-        }
-
-        .user-item {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 14px 16px;
-            border-radius: var(--border-radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-            margin-bottom: 6px;
-            border: 1px solid transparent;
-        }
-
-        .user-item:hover {
-            background: var(--gray-100);
-            border-color: var(--gray-200);
-        }
-
-        .user-item.active {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-
-        .user-item.active .user-name,
-        .user-item.active .last-message,
-        .user-item.active .message-time {
-            color: white;
-        }
-
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 1.2rem;
-            flex-shrink: 0;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* Real profile picture, when the account has one */
-        .user-avatar .avatar-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 50%;
-            display: block;
-        }
-
-        /* Initials shown when there's no profile picture, or the image fails to load */
-        .user-avatar .avatar-fallback {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .user-avatar.online {
-            position: relative;
-        }
-
-        .user-avatar.online::after {
-            content: '';
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            width: 14px;
-            height: 14px;
-            background: var(--success-color);
-            border-radius: 50%;
-            border: 2px solid white;
-        }
-
-        .user-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .user-name {
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 4px;
-            font-size: 1rem;
-        }
-
-        .last-message {
-            font-size: 0.85rem;
-            color: var(--gray-500);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .message-time {
-            font-size: 0.7rem;
-            color: var(--gray-400);
-            white-space: nowrap;
-        }
-
-        .unread-badge {
-            background: var(--danger-color);
-            color: white;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            margin-left: 5px;
-        }
-
-        /* Chat Main */
-        .chat-main {
-            display: flex;
-            flex-direction: column;
-            background: white;
-        }
-
-        .chat-header {
-            padding: 15px 25px;
-            border-bottom: 1px solid var(--gray-200);
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .chat-header .user-avatar {
-            width: 45px;
-            height: 45px;
-            font-size: 1rem;
-        }
-
-        .chat-header-info h4 {
-            color: var(--dark-color);
-            margin-bottom: 2px;
-            font-size: 1.05rem;
-        }
-
-        .chat-header-info span {
-            font-size: 0.8rem;
-            color: var(--gray-500);
-        }
-
-        .chat-header-info span.online-status {
-            color: var(--success-color);
-        }
-
-        /* Chat Messages */
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 25px 30px;
-            background: var(--gray-50);
-        }
-
-        .chat-messages::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .chat-messages::-webkit-scrollbar-track {
-            background: var(--gray-100);
-            border-radius: 10px;
-        }
-
-        .chat-messages::-webkit-scrollbar-thumb {
-            background: var(--primary-color);
-            border-radius: 10px;
-        }
-
-        .message {
-            margin-bottom: 18px;
-            display: flex;
-            animation: messageSlide 0.3s ease-out;
-        }
-
-        @keyframes messageSlide {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .message.sent {
-            justify-content: flex-end;
-        }
-
-        .message.received {
-            justify-content: flex-start;
-        }
-
-        .message-bubble {
-            max-width: 70%;
-            padding: 12px 20px;
-            border-radius: 18px;
-            word-wrap: break-word;
-            font-size: 0.95rem;
-        }
-
-        .message.sent .message-bubble {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            border-bottom-right-radius: 4px;
-        }
-
-        .message.received .message-bubble {
-            background: white;
-            color: var(--dark-color);
-            border-bottom-left-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .message-time-small {
-            font-size: 0.6rem;
-            opacity: 0.7;
-            margin-top: 4px;
-            display: block;
-        }
-
-        /* Chat Input */
-        .chat-input {
-            padding: 15px 25px;
-            border-top: 1px solid var(--gray-200);
-            display: flex;
-            gap: 12px;
-            background: white;
-        }
-
-        .chat-input input {
-            flex: 1;
-            padding: 12px 20px;
-            border: 2px solid var(--gray-200);
-            border-radius: 50px;
-            font-size: 0.95rem;
-            transition: var(--transition);
-        }
-
-        .chat-input input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        .chat-input button {
-            padding: 12px 28px;
-            border: none;
-            border-radius: 50px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.95rem;
-        }
-
-        .chat-input button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
-        }
-
-        /* Empty Chat State */
-        .empty-chat {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: var(--gray-500);
-            text-align: center;
-            padding: 40px;
-        }
-
-        .empty-chat i {
-            font-size: 4rem;
-            color: var(--gray-300);
-            margin-bottom: 15px;
-        }
-
-        .empty-chat h3 {
-            color: var(--dark-color);
-            margin-bottom: 8px;
-            font-size: 1.3rem;
-        }
-
-        .empty-chat p {
-            font-size: 0.95rem;
-        }
-
-        /* Empty Users State */
-        .empty-users {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: var(--gray-500);
-            text-align: center;
-            padding: 30px;
-        }
-
-        .empty-users i {
-            font-size: 3.5rem;
-            color: var(--gray-300);
-            margin-bottom: 12px;
-        }
-
-        .empty-users h3 {
-            color: var(--dark-color);
-            margin-bottom: 5px;
-            font-size: 1.1rem;
-        }
-
-        .empty-users p {
-            font-size: 0.9rem;
-        }
-
-        /* No Results / Loading */
-        .no-results {
-            text-align: center;
-            padding: 30px 20px;
-            color: var(--gray-500);
-        }
-
-        .no-results i {
-            font-size: 2.5rem;
-            color: var(--gray-300);
-            margin-bottom: 10px;
-        }
-
-        .no-results h3 {
-            font-size: 1rem;
-            margin-bottom: 5px;
-        }
-
-        /* Responsive */
-        @media (max-width: 968px) {
-            .chat-layout {
-                grid-template-columns: 1fr;
-                height: auto;
-                min-height: 550px;
-            }
-
-            .chat-sidebar {
-                max-height: 400px;
-            }
-
-            .chat-main {
-                min-height: 500px;
-            }
-
-            .page-header {
-                padding: 15px 20px;
-            }
-
-            .page-title {
-                font-size: 1.5rem;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-
-            .page-title {
-                font-size: 1.3rem;
-            }
-
-            .page-subtitle {
-                font-size: 0.8rem;
-            }
-
-            .chat-layout {
-                border-radius: var(--border-radius-sm);
-                min-height: 500px;
-            }
-
-            .chat-input {
-                flex-direction: column;
-            }
-
-            .chat-input input {
-                width: 100%;
-            }
-
-            .chat-input button {
-                width: 100%;
-            }
-
-            .message-bubble {
-                max-width: 85%;
-                font-size: 0.9rem;
-                padding: 10px 16px;
-            }
-
-            .page-header {
-                padding: 12px 15px;
-            }
-
-            .page-icon {
-                width: 40px;
-                height: 40px;
-                font-size: 1.2rem;
-            }
-
-            .chat-messages {
-                padding: 15px;
-            }
-
-            .user-item {
-                padding: 12px 14px;
-            }
-
-            .user-avatar {
-                width: 42px;
-                height: 42px;
-                font-size: 1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .chat-layout {
-                min-height: 450px;
-                height: 85vh;
-            }
-
-            .chat-main {
-                min-height: 400px;
-            }
-
-            .chat-messages {
-                padding: 10px;
-            }
-
-            .message-bubble {
-                max-width: 90%;
-                font-size: 0.85rem;
-                padding: 8px 14px;
-            }
-
-            .user-item {
-                padding: 10px 12px;
-            }
-
-            .user-avatar {
-                width: 36px;
-                height: 36px;
-                font-size: 0.85rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header - Very Small -->
-        <header class="page-header">
-            <div class="header-content">
-                <div class="page-icon">
-                    <i class="fas fa-comments"></i>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ======================================================================
+   MESSAGES
+   Scoped to .ms so nothing here changes other parts of the site. Light
+   and dark colours are set here (data-no-theme), so every hover stays
+   readable in dark mode. The main colour follows Settings > Appearance
+   through --primary-color. No pop-ups: notes appear under the message box.
+   ====================================================================== */
+.ms {
+    --ms-accent: var(--primary-color, #4361ee);
+    --ms-accent-2: var(--secondary-color, #7209b7);
+    --ms-accent-soft: color-mix(in srgb, var(--ms-accent) 11%, transparent);
+    --ms-accent-line: color-mix(in srgb, var(--ms-accent) 35%, transparent);
+    --ms-bg: #f5f7fb;
+    --ms-surface: #ffffff;
+    --ms-surface-2: #f8fafc;
+    --ms-hover: #f1f5f9;
+    --ms-border: #e5e7eb;
+    --ms-text: #0f172a;
+    --ms-text-2: #475569;
+    --ms-text-3: #64748b;
+    --ms-bubble-in: #ffffff;
+    --ms-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 6px 18px rgba(15, 23, 42, .06);
+    --ms-ok: #059669; --ms-bad: #dc2626; --ms-bad-soft: #fef2f2; --ms-info-soft: #eef2ff;
+    max-width: 1400px; margin: 0 auto;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--ms-text);
+}
+body.dark-mode .ms {
+    --ms-accent-soft: color-mix(in srgb, var(--ms-accent) 22%, transparent);
+    --ms-accent-line: color-mix(in srgb, var(--ms-accent) 50%, transparent);
+    --ms-bg: #0b1120;
+    --ms-surface: #111827;
+    --ms-surface-2: #0f172a;
+    --ms-hover: #1e293b;
+    --ms-border: #263244;
+    --ms-text: #e5e7eb;
+    --ms-text-2: #cbd5e1;
+    --ms-text-3: #94a3b8;
+    --ms-bubble-in: #1e293b;
+    --ms-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+    --ms-ok: #34d399; --ms-bad: #f87171; --ms-bad-soft: rgba(239, 68, 68, .14); --ms-info-soft: rgba(99, 102, 241, .16);
+}
+.ms *, .ms *::before, .ms *::after { box-sizing: border-box; }
+.ms button { font-family: inherit; }
+.ms :focus-visible { outline: 3px solid var(--ms-accent-line); outline-offset: 2px; }
+
+/* ---------- header ---------- */
+.ms-hero {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 18px 22px; margin-bottom: 14px;
+    border-radius: 18px; color: #fff; background: linear-gradient(135deg, var(--ms-accent), var(--ms-accent-2));
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--ms-accent) 28%, transparent);
+}
+.ms-hero-ic { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; background: rgba(255, 255, 255, .2); flex-shrink: 0; }
+.ms-hero h1 { margin: 0; font: 700 1.5rem 'Poppins', sans-serif; color: #fff; }
+.ms-hero p { margin: 2px 0 0; font-size: .9rem; opacity: .92; }
+.ms-hero-txt { flex: 1; min-width: 200px; }
+.ms-hero-btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 12px; cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .14); color: #fff; font-weight: 700; font-size: .9rem;
+    transition: background .15s;
+}
+.ms-hero-btn:hover { background: rgba(255, 255, 255, .26); }
+
+/* ---------- two panes ---------- */
+.ms-layout {
+    display: grid; grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr);
+    height: var(--chat-h, calc(100dvh - 220px)); min-height: 460px;
+    background: var(--ms-surface); border: 1px solid var(--ms-border); border-radius: 18px; overflow: hidden; box-shadow: var(--ms-shadow);
+}
+.ms-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--ms-border); background: var(--ms-surface); }
+.ms-side-head { padding: 16px 16px 12px; border-bottom: 1px solid var(--ms-border); }
+.ms-side-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ms-side-top h2 { margin: 0; font: 700 1.05rem 'Poppins', sans-serif; color: var(--ms-text); flex: 1; }
+.ms-icon-btn {
+    width: 38px; height: 38px; border-radius: 11px; border: 1px solid var(--ms-border); cursor: pointer; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; background: var(--ms-surface); color: var(--ms-text-2);
+    transition: background .15s, color .15s, border-color .15s;
+}
+.ms-icon-btn:hover:not(:disabled) { background: var(--ms-accent-soft); color: var(--ms-accent); border-color: var(--ms-accent-line); }
+.ms-icon-btn:disabled { opacity: .45; cursor: not-allowed; }
+.ms-search { position: relative; }
+.ms-search i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--ms-text-3); pointer-events: none; font-size: .85rem; }
+.ms-search input {
+    width: 100%; height: 42px; padding: 0 12px 0 38px; border-radius: 11px; font: inherit; font-size: .9rem;
+    border: 1px solid var(--ms-border); background: var(--ms-surface-2); color: var(--ms-text); transition: border-color .15s, box-shadow .15s;
+}
+.ms-search input::placeholder { color: var(--ms-text-3); }
+.ms-search input:hover { border-color: var(--ms-accent-line); }
+.ms-search input:focus { outline: none; border-color: var(--ms-accent); box-shadow: 0 0 0 3px var(--ms-accent-soft); background: var(--ms-surface); }
+.ms-list-label { padding: 10px 18px 4px; font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ms-text-3); }
+.ms-list { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 8px 10px; scrollbar-width: thin; }
+
+.ms-person {
+    position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; margin-bottom: 2px;
+    border: none; border-radius: 12px; background: transparent; color: var(--ms-text); cursor: pointer; text-align: left;
+    transition: background .15s;
+}
+.ms-person:hover { background: var(--ms-hover); }
+.ms-person.active { background: var(--ms-accent-soft); }
+.ms-person.active::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 0 4px 4px 0; background: var(--ms-accent); }
+.ms-person-info { flex: 1; min-width: 0; }
+.ms-person-name { display: block; font-weight: 600; font-size: .95rem; color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-person-last { display: block; margin-top: 2px; font-size: .82rem; color: var(--ms-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-person.unread .ms-person-name { font-weight: 700; }
+.ms-person.unread .ms-person-last { color: var(--ms-text); font-weight: 600; }
+.ms-person-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+.ms-person-time { font-size: .72rem; color: var(--ms-text-3); white-space: nowrap; }
+.ms-person.unread .ms-person-time { color: var(--ms-accent); font-weight: 700; }
+.ms-badge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--ms-accent); color: #fff; font-size: .7rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.ms-new { font-size: .7rem; font-weight: 700; color: var(--ms-accent); }
+
+.ms-av {
+    width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; overflow: hidden; position: relative;
+    display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 1.05rem;
+    background: linear-gradient(135deg, var(--ms-accent), var(--ms-accent-2));
+}
+.ms-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ms-av.sm { width: 40px; height: 40px; font-size: .95rem; }
+.ms-av.xs { width: 34px; height: 34px; font-size: .85rem; }
+/* learners' pictures are badges: show just the badge, with no circle or colour around it */
+.ms-av.is-badge { background: none; border-radius: 0; overflow: visible; box-shadow: none; }
+.ms-av.is-badge img { object-fit: contain; border-radius: 0; filter: drop-shadow(0 2px 4px rgba(15, 23, 42, .25)); }
+
+.ms-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 30px 18px; color: var(--ms-text-3); }
+.ms-empty i { font-size: 2.2rem; color: var(--ms-accent); opacity: .5; margin-bottom: 6px; }
+.ms-empty h3 { margin: 0; font-size: 1rem; color: var(--ms-text); }
+.ms-empty p { margin: 0; font-size: .88rem; line-height: 1.5; max-width: 300px; }
+.ms-empty.full { height: 100%; }
+.ms-empty .ms-btn { margin-top: 10px; }
+
+/* ---------- chat pane ---------- */
+.ms-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ms-surface-2); }
+.ms-chat-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--ms-surface); border-bottom: 1px solid var(--ms-border); flex-shrink: 0; }
+.ms-back { display: none; }
+.ms-chat-who { flex: 1; min-width: 0; }
+.ms-chat-who h3 { margin: 0; font-size: 1rem; font-weight: 700; color: var(--ms-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-chat-who a { color: inherit; text-decoration: none; }
+.ms-chat-who a:hover { color: var(--ms-accent); }
+.ms-chat-who span { display: block; font-size: .8rem; color: var(--ms-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-chat-actions { display: flex; gap: 8px; }
+
+.ms-thread { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 18px 22px; scrollbar-width: thin; }
+.ms-day { display: flex; justify-content: center; margin: 14px 0 10px; }
+.ms-day span { padding: 4px 12px; border-radius: 999px; background: var(--ms-surface); border: 1px solid var(--ms-border); font-size: .74rem; font-weight: 600; color: var(--ms-text-3); }
+.ms-msg { display: flex; margin-bottom: 6px; }
+.ms-msg.out { justify-content: flex-end; }
+.ms-msg.gap { margin-top: 12px; }
+.ms-bubble {
+    max-width: min(72%, 560px); padding: 9px 14px 7px; border-radius: 16px; font-size: .94rem; line-height: 1.5;
+    white-space: pre-wrap; overflow-wrap: anywhere; box-shadow: 0 1px 2px rgba(15, 23, 42, .08);
+}
+.ms-msg.in .ms-bubble { background: var(--ms-bubble-in); color: var(--ms-text); border: 1px solid var(--ms-border); border-bottom-left-radius: 5px; }
+.ms-msg.out .ms-bubble { background: linear-gradient(135deg, var(--ms-accent), var(--ms-accent-2)); color: #fff; border-bottom-right-radius: 5px; }
+.ms-time { display: block; margin-top: 3px; font-size: .68rem; opacity: .72; text-align: right; }
+.ms-msg.in .ms-time { text-align: left; }
+.ms-msg.anim { animation: msIn .22s ease-out; }
+@keyframes msIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ms-sys { display: flex; justify-content: center; margin: 10px 0; }
+.ms-sys span { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: .8rem; font-weight: 600; background: var(--ms-info-soft); color: var(--ms-text-2); }
+.ms-sys.missed span { background: var(--ms-bad-soft); color: var(--ms-bad); }
+.ms-sys small { font-weight: 500; opacity: .8; }
+
+.ms-compose { display: flex; align-items: flex-end; gap: 10px; padding: 12px 14px; background: var(--ms-surface); border-top: 1px solid var(--ms-border); flex-shrink: 0; }
+.ms-compose textarea {
+    flex: 1; min-width: 0; min-height: 44px; max-height: 140px; padding: 11px 16px; resize: none; border-radius: 22px; font: inherit; font-size: .95rem; line-height: 1.45;
+    border: 1px solid var(--ms-border); background: var(--ms-surface-2); color: var(--ms-text); transition: border-color .15s, box-shadow .15s;
+}
+.ms-compose textarea::placeholder { color: var(--ms-text-3); }
+.ms-compose textarea:hover:not(:disabled) { border-color: var(--ms-accent-line); }
+.ms-compose textarea:focus { outline: none; border-color: var(--ms-accent); box-shadow: 0 0 0 3px var(--ms-accent-soft); background: var(--ms-surface); }
+.ms-compose textarea:disabled { opacity: .6; cursor: not-allowed; }
+.ms-send {
+    height: 44px; padding: 0 20px; border-radius: 22px; border: none; cursor: pointer; flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: .92rem; color: #fff;
+    background: linear-gradient(135deg, var(--ms-accent), var(--ms-accent-2)); transition: filter .15s, box-shadow .15s;
+}
+.ms-send:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 6px 16px color-mix(in srgb, var(--ms-accent) 35%, transparent); }
+.ms-send:disabled { opacity: .5; cursor: not-allowed; }
+.ms-note { display: none; align-items: flex-start; gap: 8px; margin: 0 14px 12px; padding: 9px 12px; border-radius: 10px; font-size: .85rem; line-height: 1.45; background: var(--ms-info-soft); color: var(--ms-text-2); }
+.ms-note.show { display: flex; }
+.ms-note.warn { background: var(--ms-bad-soft); color: var(--ms-bad); }
+.ms-note i { margin-top: 3px; }
+
+.ms-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 11px; cursor: pointer;
+    font-weight: 700; font-size: .9rem; border: 1px solid transparent; transition: background .15s, border-color .15s, filter .15s;
+}
+.ms-btn.primary { background: var(--ms-accent); color: #fff; }
+.ms-btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+.ms-btn.ghost { background: var(--ms-surface); color: var(--ms-text); border-color: var(--ms-border); }
+.ms-btn.ghost:hover:not(:disabled) { background: var(--ms-hover); }
+.ms-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- group call picker ---------- */
+.ms-gc[hidden] { display: none; }
+.ms-gc { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, .55); }
+.ms-gc-box { width: min(520px, 100%); max-height: min(720px, 100%); display: flex; flex-direction: column; overflow: hidden; border-radius: 18px; background: var(--ms-surface); border: 1px solid var(--ms-border); box-shadow: 0 24px 60px rgba(0, 0, 0, .35); color: var(--ms-text); }
+.ms-gc-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--ms-border); }
+.ms-gc-head .ms-hero-ic { width: 42px; height: 42px; font-size: 1.05rem; color: var(--ms-accent); background: var(--ms-accent-soft); border-radius: 12px; }
+.ms-gc-head h2 { margin: 0; font-size: 1.08rem; }
+.ms-gc-head p { margin: 2px 0 0; font-size: .82rem; color: var(--ms-text-3); }
+.ms-gc-head .ms-icon-btn { margin-left: auto; }
+.ms-gc-body { padding: 14px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.ms-gc-label { font-size: .8rem; font-weight: 700; color: var(--ms-text-2); }
+.ms-kind { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ms-kind button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: .9rem; border: 2px solid var(--ms-border); background: var(--ms-surface); color: var(--ms-text-2); transition: border-color .15s, background .15s; }
+.ms-kind button:hover { background: var(--ms-hover); }
+.ms-kind button[aria-checked="true"] { border-color: var(--ms-accent); background: var(--ms-accent-soft); color: var(--ms-accent); }
+.ms-gc input[type="text"] { width: 100%; height: 42px; padding: 0 12px; border-radius: 11px; font: inherit; font-size: .9rem; border: 1px solid var(--ms-border); background: var(--ms-surface-2); color: var(--ms-text); }
+.ms-gc input[type="text"]:focus { outline: none; border-color: var(--ms-accent); box-shadow: 0 0 0 3px var(--ms-accent-soft); }
+.ms-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 8px; }
+.ms-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; font-size: .82rem; font-weight: 600; background: var(--ms-accent-soft); color: var(--ms-accent); }
+.ms-chip button { width: 22px; height: 22px; border-radius: 50%; border: none; background: transparent; color: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.ms-chip button:hover { background: var(--ms-accent-line); }
+.ms-pick { max-height: 280px; overflow-y: auto; border: 1px solid var(--ms-border); border-radius: 12px; padding: 4px; }
+.ms-pick-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.ms-pick-row:hover { background: var(--ms-hover); }
+.ms-pick-row input { width: 18px; height: 18px; accent-color: var(--ms-accent); flex-shrink: 0; }
+.ms-pick-row span { flex: 1; min-width: 0; font-weight: 600; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-pick-row.off { opacity: .5; cursor: not-allowed; }
+.ms-gc-foot { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--ms-border); }
+.ms-gc-foot small { flex: 1; color: var(--ms-text-3); font-size: .82rem; }
+.ms-gc .ms-note { margin: 0; }
+
+/* ---------- phone: list and chat take turns ---------- */
+@media (max-width: 860px) {
+    .ms-hero { padding: 14px 16px; border-radius: 14px; margin-bottom: 10px; }
+    .ms-hero-ic { width: 42px; height: 42px; font-size: 1.1rem; border-radius: 12px; }
+    .ms-hero h1 { font-size: 1.25rem; }
+    .ms-hero p { display: none; }
+    .ms-hero-btn span { display: none; }
+    .ms-hero-btn { padding: 10px 12px; }
+    .ms-layout { grid-template-columns: minmax(0, 1fr); border-radius: 14px; }
+    .ms-layout .ms-chat { display: none; }
+    .ms-layout.chat-open .ms-chat { display: flex; }
+    .ms-layout.chat-open .ms-side { display: none; }
+    .ms-side { border-right: 0; }
+    .ms-back { display: inline-flex; }
+    .ms-chat-head { padding: 10px 10px; gap: 8px; }
+    .ms-chat-actions { gap: 6px; }
+    .ms-thread { padding: 12px; }
+    .ms-bubble { max-width: 86%; font-size: .92rem; }
+    .ms-compose { padding: 10px; gap: 8px; }
+    .ms-compose textarea { font-size: 16px; }
+    .ms-send { width: 44px; padding: 0; justify-content: center; border-radius: 50%; }
+    .ms-send span { display: none; }
+    .ms-gc { padding: 0; align-items: flex-end; }
+    .ms-gc-box { max-height: 92vh; border-radius: 18px 18px 0 0; }
+}
+@media (max-width: 380px) { .ms-chat-head .ms-av { display: none; } }
+@media (prefers-reduced-motion: reduce) { .ms *, .ms *::before, .ms *::after { animation: none !important; transition: none !important; } }
+
+/* ---------- added: lists, menu, notes over the compose box, dialogs ---------- */
+.ms .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ms-hint { margin: 8px 2px 0; font-size: .76rem; line-height: 1.4; color: var(--ms-text-3); }
+.ms-ul { list-style: none; margin: 0; padding: 0; }
+.ms-muted { font-size: .72rem; color: var(--ms-text-3); margin-left: 4px; }
+.ms-menu-wrap { position: relative; }
+.ms-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 220px; padding: 6px; border-radius: 12px; background: var(--ms-surface); border: 1px solid var(--ms-border); box-shadow: 0 16px 40px rgba(15, 23, 42, .18); }
+.ms-menu[hidden] { display: none; }
+.ms-menu [role="menuitem"] { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: 8px; background: none; color: var(--ms-text); font: inherit; font-size: .9rem; text-align: left; text-decoration: none; cursor: pointer; }
+.ms-menu [role="menuitem"]:hover, .ms-menu [role="menuitem"]:focus-visible { background: var(--ms-hover); }
+.ms-menu [role="menuitem"] i { width: 16px; color: var(--ms-text-3); }
+.ms-menu .danger, .ms-menu .danger i { color: var(--ms-bad); }
+.ms-thread-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ms-thread-wrap .ms-thread { flex: 1; }
+.ms-jump { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 700; font-size: .82rem; color: #fff; background: var(--ms-accent); box-shadow: 0 6px 16px rgba(15, 23, 42, .25); }
+.ms-jump[hidden] { display: none; }
+.ms-earlier { display: flex; justify-content: center; margin: 4px 0 10px; }
+.ms-compose { position: relative; }
+.ms-compose .ms-note { position: absolute; left: 14px; right: 14px; bottom: calc(100% + 8px); margin: 0; z-index: 3; box-shadow: 0 6px 18px rgba(15, 23, 42, .12); }
+.ms-retry { display: block; margin-top: 4px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: .74rem; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.ms-msg.failed .ms-bubble { opacity: .75; }
+.ms-btn.danger { background: var(--ms-bad); color: #fff; }
+.ms-reasons { display: grid; gap: 6px; }
+.ms-reasons label, .ms-check { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--ms-border); font-size: .9rem; cursor: pointer; }
+.ms-check { border: 0; padding: 4px 0; }
+.ms-reasons input, .ms-check input { width: 18px; height: 18px; accent-color: var(--ms-accent); flex-shrink: 0; }
+.ms-gc textarea { width: 100%; padding: 10px 12px; border-radius: 11px; font: inherit; font-size: .9rem; border: 1px solid var(--ms-border); background: var(--ms-surface-2); color: var(--ms-text); resize: vertical; }
+body.ms-lock { overflow: hidden; }
+@media (max-width: 860px) { .ms-hint { display: none; } }
+</style>
+
+<div class="ms" data-no-theme>
+    <header class="ms-hero" id="msHero">
+        <div class="ms-hero-ic" aria-hidden="true"><i class="fas fa-comments"></i></div>
+        <div class="ms-hero-txt">
+            <h1>Messages</h1>
+            <p>Chat with friends and teachers, and call one person or a whole group.</p>
+        </div>
+        <button type="button" class="ms-hero-btn" id="heroGroupCall"><i class="fas fa-users" aria-hidden="true"></i><span>Group call</span></button>
+    </header>
+
+    <div class="ms-layout" id="msLayout">
+        <!-- people -->
+        <aside class="ms-side" aria-label="Conversations">
+            <div class="ms-side-head">
+                <div class="ms-side-top">
+                    <h2>Chats</h2>
+                    <button type="button" class="ms-icon-btn" id="sideGroupCall" aria-label="Start a group call"><i class="fas fa-users" aria-hidden="true"></i></button>
                 </div>
-                <h1 class="page-title">Messages</h1>
-                <p class="page-subtitle">Connect with friends, share ideas, and collaborate on your learning journey</p>
+                <label class="ms-search">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <input type="search" id="searchUsers" placeholder="Search people by name" autocomplete="off" aria-label="Search people" aria-describedby="searchHint">
+                </label>
+                <p class="ms-hint" id="searchHint">You can find people who are allowed to message you: friends, teachers and family.</p>
             </div>
-        </header>
+            <div class="ms-list-label" id="listLabel">Recent chats</div>
+            <div class="ms-list" id="userList"></div>
+        </aside>
 
-        <!-- Chat Layout - Much Bigger -->
-        <div class="chat-layout">
-            <!-- Sidebar -->
-            <div class="chat-sidebar">
-                <div class="chat-sidebar-header">
-                    <h3><i class="fas fa-users"></i> Conversations</h3>
-                    <div class="search-users">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="searchUsers" placeholder="Search for users..." oninput="searchUsers()">
-                    </div>
+        <!-- chat -->
+        <section class="ms-chat" aria-label="Chat">
+            <div class="ms-chat-head">
+                <button type="button" class="ms-icon-btn ms-back" id="backBtn" aria-label="Back to chats"><i class="fas fa-arrow-left" aria-hidden="true"></i></button>
+                <div class="ms-av sm" id="chatAvatar"><i class="fas fa-user" aria-hidden="true"></i></div>
+                <div class="ms-chat-who">
+                    <h3 id="chatUserName">Pick a chat</h3>
+                    <span id="chatUserStatus">Choose someone on the left, or search for a person</span>
                 </div>
-                <div class="user-list" id="userList">
-                    <!-- Users will be loaded here -->
+                <div class="ms-chat-actions">
+                    <button type="button" class="ms-icon-btn" id="voiceCallBtn" aria-label="Voice call" disabled><i class="fas fa-phone" aria-hidden="true"></i></button>
+                    <button type="button" class="ms-icon-btn" id="videoCallBtn" aria-label="Video call" disabled><i class="fas fa-video" aria-hidden="true"></i></button>
+                    <button type="button" class="ms-icon-btn" id="groupCallBtn" aria-label="Group call with this person and others"><i class="fas fa-users" aria-hidden="true"></i></button>
+                    <div class="ms-menu-wrap">
+                        <button type="button" class="ms-icon-btn" id="moreBtn" aria-label="More options" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu" disabled><i class="fas fa-ellipsis-vertical" aria-hidden="true"></i></button>
+                        <div class="ms-menu" id="moreMenu" role="menu" hidden>
+                            <a role="menuitem" id="menuProfile" href="#"><i class="far fa-user" aria-hidden="true"></i> View profile</a>
+                            <button type="button" role="menuitem" id="menuMute"><i class="far fa-bell-slash" aria-hidden="true"></i> <span>Mute notifications</span></button>
+                            <button type="button" role="menuitem" id="menuBlock"><i class="fas fa-ban" aria-hidden="true"></i> <span>Block</span></button>
+                            <button type="button" role="menuitem" id="menuReport" class="danger"><i class="far fa-flag" aria-hidden="true"></i> Report</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <!-- Chat Main -->
-            <div class="chat-main">
-                <div class="chat-header" id="chatHeader">
-                    <div class="user-avatar" id="chatAvatar"><span class="avatar-fallback">?</span></div>
-                    <div class="chat-header-info">
-                        <h4 id="chatUserName">Select a friend</h4>
-                        <span id="chatUserStatus">to start chatting</span>
+            <div class="ms-thread-wrap">
+                <div class="ms-thread" id="chatMessages" role="log" aria-live="polite" aria-label="Messages">
+                    <div class="ms-empty full">
+                        <i class="fas fa-comment-dots" aria-hidden="true"></i>
+                        <h3>No chat open</h3>
+                        <p>Pick someone from your chats, or search for a person to start messaging.</p>
                     </div>
                 </div>
+                <button type="button" class="ms-jump" id="jumpBtn" hidden><i class="fas fa-arrow-down" aria-hidden="true"></i> <span>Latest messages</span></button>
+            </div>
+            <div class="ms-compose">
+                <div class="ms-note" id="chatStatus" role="status" aria-live="polite"></div>
+                <textarea id="messageInput" rows="1" maxlength="2000" placeholder="Type a message…" aria-label="Message" disabled></textarea>
+                <button type="button" class="ms-send" id="sendBtn" aria-label="Send message" disabled><i class="fas fa-paper-plane" aria-hidden="true"></i><span>Send</span></button>
+            </div>
+        </section>
+    </div>
 
-                <div class="chat-messages" id="chatMessages">
-                    <div class="empty-chat">
-                        <i class="fas fa-comment-dots"></i>
-                        <h3>No conversation selected</h3>
-                        <p>Search for a user above to start messaging</p>
+    <!-- group call picker -->
+    <div class="ms-gc" id="gcPicker" hidden>
+        <div class="ms-gc-box" role="dialog" aria-modal="true" aria-labelledby="gcTitle">
+            <div class="ms-gc-head">
+                <div class="ms-hero-ic" aria-hidden="true"><i class="fas fa-users"></i></div>
+                <div><h2 id="gcTitle">Start a group call</h2><p>Call up to 7 people from your chats. Everyone sees that you started the call.</p></div>
+                <button type="button" class="ms-icon-btn" id="gcClose" aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button>
+            </div>
+            <div class="ms-gc-body">
+                <div>
+                    <div class="ms-gc-label" id="gcKindLbl">Type of call</div>
+                    <div class="ms-kind" role="radiogroup" aria-labelledby="gcKindLbl" id="gcKind">
+                        <button type="button" role="radio" data-kind="audio" aria-checked="true"><i class="fas fa-phone" aria-hidden="true"></i> Voice</button>
+                        <button type="button" role="radio" data-kind="video" aria-checked="false" tabindex="-1"><i class="fas fa-video" aria-hidden="true"></i> Video</button>
                     </div>
                 </div>
-
-                <div class="chat-input">
-                    <input type="text" id="messageInput" placeholder="Type a message...">
-                    <button onclick="sendMessage()">
-                        <i class="fas fa-paper-plane"></i> Send
-                    </button>
+                <div>
+                    <label class="ms-gc-label" for="gcName">Name of the call <span style="font-weight:500;color:var(--ms-text-3)">(optional)</span></label>
+                    <input type="text" id="gcName" maxlength="60" placeholder="e.g. Maths revision group">
                 </div>
+                <div>
+                    <div class="ms-gc-label" id="gcCountLbl">People (0 of 7)</div>
+                    <div class="ms-chips" id="gcChips"></div>
+                </div>
+                <label class="ms-search"><i class="fas fa-search" aria-hidden="true"></i><input type="search" id="gcSearch" placeholder="Search your chats" autocomplete="off" aria-label="Search people for the call"></label>
+                <div class="ms-pick" id="gcList"></div>
+                <div class="ms-note" id="gcNote" role="status" aria-live="polite"></div>
+            </div>
+            <div class="ms-gc-foot">
+                <small>Everyone needs to allow their microphone<span id="gcCamHint" hidden> and camera</span>.</small>
+                <button type="button" class="ms-btn ghost" id="gcCancel">Cancel</button>
+                <button type="button" class="ms-btn primary" id="gcStart" disabled><i class="fas fa-phone" aria-hidden="true"></i> Start call</button>
             </div>
         </div>
     </div>
 
-    <script>
-        // ---------------------------------------------------------------
-        // BACKEND ENDPOINTS — messages are now sent, stored, and loaded
-        // through your Flask app / users.db, so they go to the right
-        // account instead of living only in this browser's localStorage.
-        // ---------------------------------------------------------------
-        const SEARCH_USERS_ENDPOINT = '/messages/search_users';
-        const SEND_MESSAGE_ENDPOINT = '/messages/send';
-        const CONVERSATIONS_ENDPOINT = '/messages/conversations';
-        const CONVERSATION_THREAD_ENDPOINT = (userId) => `/messages/conversation/${userId}`;
+    <!-- report a person -->
+    <div class="ms-gc" id="rpDialog" hidden>
+        <div class="ms-gc-box" role="dialog" aria-modal="true" aria-labelledby="rpTitle">
+            <div class="ms-gc-head">
+                <div class="ms-hero-ic" aria-hidden="true"><i class="fas fa-flag"></i></div>
+                <div><h2 id="rpTitle">Report</h2><p>Eschool staff will read the last 20 messages in this chat to check what happened.</p></div>
+                <button type="button" class="ms-icon-btn" data-rp-close aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button>
+            </div>
+            <div class="ms-gc-body">
+                <div class="ms-gc-label" id="rpWhyLbl">What happened?</div>
+                <div class="ms-reasons" role="radiogroup" aria-labelledby="rpWhyLbl">
+                    <label><input type="radio" name="rpWhy" value="Unkind or bullying"> Unkind or bullying</label>
+                    <label><input type="radio" name="rpWhy" value="Made me feel unsafe or uncomfortable"> Made me feel unsafe or uncomfortable</label>
+                    <label><input type="radio" name="rpWhy" value="Asked for personal details, photos or to meet"> Asked for personal details, photos or to meet</label>
+                    <label><input type="radio" name="rpWhy" value="Spam or someone I don't know"> Spam or someone I don’t know</label>
+                    <label><input type="radio" name="rpWhy" value="Something else"> Something else</label>
+                </div>
+                <label class="ms-gc-label" for="rpMore">Anything else? <span style="font-weight:500;color:var(--ms-text-3)">(optional)</span></label>
+                <textarea id="rpMore" maxlength="400" rows="3"></textarea>
+                <label class="ms-check"><input type="checkbox" id="rpBlock" checked> Also block this person</label>
+                <p class="ms-hint">If you feel in danger, tell a parent, a teacher or another adult you trust straight away.</p>
+                <div class="ms-note" id="rpNote" role="status" aria-live="polite"></div>
+            </div>
+            <div class="ms-gc-foot">
+                <span style="flex:1"></span>
+                <button type="button" class="ms-btn ghost" data-rp-close>Cancel</button>
+                <button type="button" class="ms-btn danger" id="rpSend"><i class="fas fa-flag" aria-hidden="true"></i> Send report</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-        // The logged-in user's own id, used to tell "sent" vs "received"
-        // messages apart when rendering a thread.
-        const currentUserId = {{ user_id | tojson }};
+<script>
+(function () {
+    'use strict';
+    const SEARCH_USERS_ENDPOINT = '/messages/search_users';
+    const SEND_MESSAGE_ENDPOINT = '/messages/send';
+    const CONVERSATIONS_ENDPOINT = '/messages/conversations';
+    const THREAD_ENDPOINT = id => `/messages/conversation/${id}`;
+    const ME = {{ session.get('user_id') | tojson }};
+    const MAX_GROUP = 7;                 // people you can invite (8 with you)
+    const PAGE = 50;                     // messages loaded at a time
+    const DESKTOP_KEYS = window.matchMedia('(pointer: fine)');    // Enter sends only with a real keyboard
+    const PHONE = window.matchMedia('(max-width: 860px)');
 
-        // Current selected user
-        let currentUser = null;
-        let currentUserObj = null;
+    const $ = id => document.getElementById(id);
+    const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-        // Conversations are fetched fresh from the server (not cached in
-        // localStorage), so they reflect real messages tied to your account.
-        let conversations = [];
+    let current = null;                  // the person whose chat is open (fresh from the server)
+    let conversations = [];
+    let people = {};                     // people shown in the list or search, by id (only used to open a chat)
+    let msgs = [];                       // the open chat's messages, oldest first
+    let hasEarlier = false;
+    let threadSeq = 0, listSeq = 0;      // newer requests win
+    let sending = false;
+    let searchTimer = null;
+    let listSig = '';
 
-        let searchDebounceTimer = null;
+    /* ---------- small helpers ---------- */
+    const firstChar = s => (Array.from(String(s || '').trim())[0] || '?').toUpperCase();
+    function safeSrc(u) {
+        if (!u) return '';
+        try { const x = new URL(String(u), location.origin); return x.protocol === 'https:' || x.origin === location.origin ? x.href : ''; } catch (e) { return ''; }
+    }
+    // picture, or the first letter of the name; a broken picture falls back to the letter (see the error listener below)
+    function avatar(p, cls) {
+        const initial = firstChar(p && p.name);
+        const src = safeSrc(p && (p.avatar_url || (p.avatar && /^(https?:)?\//.test(p.avatar) ? p.avatar : '')));
+        const badge = /\/badge-dp\//.test(src) ? ' is-badge' : '';
+        if (src) return `<div class="ms-av ${cls || ''}${badge}" data-initial="${esc(initial)}" aria-hidden="true"><img src="${esc(src)}" alt="" loading="lazy"></div>`;
+        return `<div class="ms-av ${cls || ''}" aria-hidden="true">${esc(initial)}</div>`;
+    }
+    document.addEventListener('error', e => {
+        const img = e.target;
+        if (!(img instanceof HTMLImageElement)) return;
+        const box = img.closest('.ms-av[data-initial]');
+        if (box) { box.classList.remove('is-badge'); box.textContent = box.dataset.initial; }
+    }, true);
 
-        // ---------------------------------------------------------------
-        // AVATAR RESOLUTION — show each account's real profile picture
-        // when one exists, falling back to an initials badge otherwise.
-        //
-        // `avatar_url` is listed first because that's the exact field the
-        // settings page writes: the "Upload New Photo" flow there
-        // (ENDPOINTS.uploadPhoto) saves the file server-side and returns
-        // `{ avatar_url }`, and the profile template itself renders
-        // `{% if avatar_url %}<img src="{{ avatar_url }}">{% endif %}`.
-        // So whatever photo a user set for themselves in Settings is what
-        // shows up for them here automatically, for every account, not
-        // just the person currently logged in. The rest of the list is
-        // just defensive in case some endpoints use a different key name.
-        // ---------------------------------------------------------------
-        const imageFields = ['avatar_url', 'profile_picture', 'photo', 'image', 'profile_pic', 'picture'];
+    let noteTimer = null;
+    function note(text, kind) {
+        const el = $('chatStatus');
+        el.className = 'ms-note' + (text ? ' show' : '') + (kind === 'warn' ? ' warn' : '');
+        el.innerHTML = text ? `<i class="fas ${kind === 'warn' ? 'fa-circle-exclamation' : 'fa-circle-info'}" aria-hidden="true"></i><span>${esc(text)}</span>` : '';
+        clearTimeout(noteTimer);
+        if (text) noteTimer = setTimeout(() => note(''), kind === 'warn' ? 12000 : 6000);
+    }
 
-        function looksLikeImagePath(value) {
-            if (!value) return false;
-            const v = String(value).trim();
-            if (!v) return false;
-            // A real path/URL ("/static/...", "https://...") or a filename
-            // with an image extension counts as a picture; a bare initial
-            // like "JD" does not.
-            return /^(https?:)?\//.test(v) || /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(v);
-        }
+    // times in East Africa Time, like the rest of Eschool, whatever the phone's own setting
+    const TZ = 'Africa/Nairobi';
+    const fmtClock = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
+    const fmtKey = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+    const fmtWeekday = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, weekday: 'short' });
+    const fmtShort = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, day: 'numeric', month: 'short' });
+    // "2026-11-03 10:00:00" (no zone) is read as UTC, which Safari otherwise can't parse
+    function parseTime(v) {
+        if (!v) return new Date(NaN);
+        let s = String(v).trim();
+        if (/^\d{4}-\d{2}-\d{2} \d/.test(s)) s = s.replace(' ', 'T');
+        if (/T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s)) s += 'Z';
+        return new Date(s);
+    }
+    const dayKey = d => fmtKey.format(d);
+    function dayDiff(a, b) { const x = a.split('-').map(Number), y = b.split('-').map(Number); return Math.round((Date.UTC(x[0], x[1] - 1, x[2]) - Date.UTC(y[0], y[1] - 1, y[2])) / 86400000); }
+    function ago(iso) {
+        const d = parseTime(iso); if (isNaN(d)) return '';
+        const s = (Date.now() - d) / 1000;
+        if (s < 60) return 'now';
+        if (s < 3600) return Math.floor(s / 60) + 'm';
+        const diff = dayDiff(dayKey(new Date()), dayKey(d));
+        if (diff === 0) return fmtClock.format(d);
+        if (diff < 7) return fmtWeekday.format(d);
+        return fmtShort.format(d);
+    }
+    function clock(iso) { const d = parseTime(iso); return isNaN(d) ? '' : fmtClock.format(d); }
+    function dayLabel(d) {
+        const diff = dayDiff(dayKey(new Date()), dayKey(d));
+        if (diff === 0) return 'Today';
+        if (diff === 1) return 'Yesterday';
+        const opts = { timeZone: TZ, day: 'numeric', month: 'long' };
+        if (diff < 7) opts.weekday = 'long';
+        if (dayKey(d).slice(0, 4) !== dayKey(new Date()).slice(0, 4)) opts.year = 'numeric';
+        return new Intl.DateTimeFormat('en-GB', opts).format(d);
+    }
+    async function getJSON(url, opt) {
+        const r = await fetch(url, Object.assign({ credentials: 'same-origin', cache: 'no-store' }, opt || {}));
+        if (r.status === 401) { location.href = '/login'; throw new Error('Please sign in again.'); }
+        let d = null; try { d = await r.json(); } catch (e) { /* none */ }
+        if (!r.ok || (d && d.success === false)) throw Object.assign(new Error((d && d.message) || 'Something went wrong. Please try again.'), { status: r.status, fromServer: true });
+        return d;
+    }
+    // a server message is shown as is; network errors get plain words
+    const errText = (e, fallback) => (e && e.fromServer ? e.message : (fallback || 'Couldn’t reach Eschool. Check your connection and try again.'));
 
-        // Returns { src, fallbackText } for a given user object.
-        function resolveAvatar(user) {
-            const name = (user && user.name && user.name.trim()) ? user.name.trim() : '';
-            const fallbackText = looksLikeImagePath(user && user.avatar)
-                ? (name ? name[0].toUpperCase() : '?')
-                : ((user && user.avatar && String(user.avatar).trim()) || (name ? name[0].toUpperCase() : '?'));
-
-            for (const field of imageFields) {
-                if (user && user[field] && String(user[field]).trim()) {
-                    return { src: user[field], fallbackText };
-                }
-            }
-            // Some backends already send `avatar` itself as an image path/URL
-            // rather than initials — use it if it looks like one.
-            if (user && looksLikeImagePath(user.avatar)) {
-                return { src: user.avatar, fallbackText };
-            }
-            return { src: null, fallbackText };
-        }
-
-        // Builds the inner HTML for a .user-avatar element: a real <img>
-        // when a profile picture is available, with a graceful fallback to
-        // initials if there's no picture or the image fails to load.
-        function avatarInnerHTML(user) {
-            const { src, fallbackText } = resolveAvatar(user);
-            const safeAlt = (user && user.name) ? user.name.replace(/"/g, '&quot;') : 'User';
-            if (src) {
-                return `<img class="avatar-img" src="${src}" alt="${safeAlt}" loading="lazy"
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <span class="avatar-fallback" style="display:none;">${fallbackText}</span>`;
-            }
-            return `<span class="avatar-fallback">${fallbackText}</span>`;
-        }
-
-        // Initialize chat
-        document.addEventListener('DOMContentLoaded', async () => {
-            await loadConversations();
-
-            // If there's a selected user in the URL, try to restore them
-            // from an existing conversation first (no extra request needed).
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('user');
-            if (userId) {
-                const existing = conversations.find(u => String(u.id) === userId);
-                if (existing) {
-                    selectUser(existing);
-                }
-            }
+    /* ---------- fit the chat to the visible screen (also when the phone keyboard opens) ---------- */
+    let fitRaf = 0;
+    function fit() {
+        cancelAnimationFrame(fitRaf);
+        fitRaf = requestAnimationFrame(() => {
+            const el = $('msLayout'); if (!el) return;
+            const vv = window.visualViewport;
+            const vh = vv ? vv.height : window.innerHeight;
+            const top = el.getBoundingClientRect().top - (vv ? vv.offsetTop : 0);
+            let h = vh - Math.max(0, top) - 16;
+            if (h < vh * 0.6) h = vh - 24;
+            el.style.setProperty('--chat-h', Math.max(PHONE.matches ? 320 : 440, Math.round(h)) + 'px');
         });
+    }
+    window.addEventListener('resize', fit);
+    window.addEventListener('load', fit);
+    if (window.visualViewport) { visualViewport.addEventListener('resize', fit); visualViewport.addEventListener('scroll', fit); }
+    if (window.ResizeObserver) new ResizeObserver(fit).observe($('msHero'));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
 
-        async function loadConversations() {
-            const container = document.getElementById('userList');
-
-            try {
-                const response = await fetch(CONVERSATIONS_ENDPOINT);
-                if (!response.ok) throw new Error(`Failed to load conversations (${response.status})`);
-                conversations = await response.json();
-            } catch (err) {
-                console.error('Error loading conversations:', err);
-                container.innerHTML = `
-                    <div class="no-results">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Couldn't load conversations</h3>
-                        <p>Please refresh the page</p>
-                    </div>
-                `;
-                return;
-            }
-
-            // If a user is currently selected but has no messages yet (so
-            // the backend doesn't know about them as a conversation), keep
-            // them visible at the top of the list while you chat.
-            let displayList = conversations;
-            if (currentUserObj && !conversations.some(u => u.id === currentUserObj.id)) {
-                displayList = [{ ...currentUserObj, lastMessage: null, unread: 0 }, ...conversations];
-            }
-
-            if (!displayList || displayList.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-users">
-                        <i class="fas fa-user-plus"></i>
-                        <h3>No conversations yet</h3>
-                        <p>Search for users above to start chatting!</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = displayList.map(user => {
-                return renderUserItem(user, user.lastMessage, user.unread || 0, true);
-            }).join('');
+    /* ---------- the list (redrawn only when something changed; focus stays put) ---------- */
+    function rowHTML(p, conv) {
+        people[p.id] = { id: p.id, name: p.name, avatar: p.avatar, avatar_url: p.avatar_url };
+        const unread = conv ? (conv.unread || 0) : 0;
+        const last = conv && conv.lastMessage ? conv.lastMessage : (conv ? 'No messages yet' : 'Start a new chat');
+        return `<li><button type="button" class="ms-person ${current && current.id === p.id ? 'active' : ''} ${unread ? 'unread' : ''}" data-uid="${Number(p.id)}"
+                    aria-label="Chat with ${esc(p.name)}${unread ? ', ' + Number(unread) + ' unread' : ''}${conv && conv.muted ? ', muted' : ''}"${current && current.id === p.id ? ' aria-current="true"' : ''}>
+                    ${avatar(p)}
+                    <span class="ms-person-info"><span class="ms-person-name">${esc(p.name)}${conv && conv.muted ? ' <i class="fas fa-bell-slash ms-muted" aria-hidden="true"></i>' : ''}</span><span class="ms-person-last">${esc(conv && conv.blocked ? 'Blocked' : last)}</span></span>
+                    <span class="ms-person-meta">
+                        ${conv && conv.lastTimestamp ? `<span class="ms-person-time">${esc(ago(conv.lastTimestamp))}</span>` : (conv ? '' : '<span class="ms-new"><i class="fas fa-plus" aria-hidden="true"></i> New</span>')}
+                        ${unread ? `<span class="ms-badge" aria-hidden="true">${unread > 99 ? '99+' : Number(unread)}</span>` : ''}
+                    </span>
+                </button></li>`;
+    }
+    function setList(html) {
+        const box = $('userList');
+        if (html === listSig) return;
+        const a = document.activeElement;
+        const keep = a && box.contains(a) && a.dataset ? a.dataset.uid : null;
+        box.innerHTML = html;
+        listSig = html;
+        if (keep) { const b = box.querySelector(`[data-uid="${keep}"]`); if (b) b.focus(); }
+    }
+    async function loadConversations(fromTimer) {
+        const seq = ++listSeq;
+        try {
+            const d = await getJSON(CONVERSATIONS_ENDPOINT);
+            if (seq !== listSeq) return;
+            conversations = (Array.isArray(d) ? d : []).filter(c => c && c.id > 0 && c.name);
+        } catch (e) {
+            if (fromTimer || seq !== listSeq) return;
+            setList(`<div class="ms-empty"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><h3>Couldn't load your chats</h3><p>${esc(errText(e))}</p><button type="button" class="ms-btn ghost" data-retry-list>Try again</button></div>`);
+            return;
         }
-
-        // Debounced search-as-you-type against the real backend
-        function searchUsers() {
-            clearTimeout(searchDebounceTimer);
-            const searchTerm = document.getElementById('searchUsers').value.trim();
-
-            if (!searchTerm) {
-                loadConversations();
-                return;
-            }
-
-            searchDebounceTimer = setTimeout(() => {
-                performSearch(searchTerm);
-            }, 300);
+        if ($('searchUsers').value.trim()) return;     // a search is showing
+        $('listLabel').textContent = 'Recent chats';
+        let list = conversations.slice();
+        if (current && !list.some(c => c.id === current.id)) list.unshift(Object.assign({}, current, { lastMessage: null, unread: 0 }));
+        if (!list.length) {
+            setList(`<div class="ms-empty"><i class="fas fa-user-plus" aria-hidden="true"></i><h3>No chats yet</h3><p>Search for a friend or teacher above to start your first chat.</p></div>`);
+            return;
         }
-
-        async function performSearch(searchTerm) {
-            const container = document.getElementById('userList');
-            container.innerHTML = `
-                <div class="no-results">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <h3>Searching...</h3>
-                </div>
-            `;
-
-            try {
-                const response = await fetch(`${SEARCH_USERS_ENDPOINT}?q=${encodeURIComponent(searchTerm)}`);
-                if (!response.ok) throw new Error(`Search failed with status ${response.status}`);
-                const results = await response.json();
-                renderSearchResults(results);
-            } catch (err) {
-                console.error('Error searching users:', err);
-                container.innerHTML = `
-                    <div class="no-results">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Couldn't load results</h3>
-                        <p>Please try again</p>
-                    </div>
-                `;
-            }
+        setList('<ul class="ms-ul">' + list.map(c => rowHTML(c, c)).join('') + '</ul>');
+    }
+    function search() {
+        clearTimeout(searchTimer);
+        const q = $('searchUsers').value.trim();
+        if (!q) { loadConversations(); return; }
+        if (q.length < 2) { $('listLabel').textContent = 'People'; setList('<div class="ms-empty"><p>Type at least 2 letters of their name.</p></div>'); return; }
+        searchTimer = setTimeout(() => runSearch(q), 300);
+    }
+    async function runSearch(q) {
+        $('listLabel').textContent = 'People';
+        setList('<div class="ms-empty"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i><p>Searching…</p></div>');
+        try {
+            const res = await getJSON(`${SEARCH_USERS_ENDPOINT}?q=${encodeURIComponent(q)}`);
+            if ($('searchUsers').value.trim() !== q) return;
+            const list = (Array.isArray(res) ? res : []).filter(p => p && p.name && Number(p.id) !== Number(ME));
+            setList(list.length
+                ? '<ul class="ms-ul">' + list.map(p => rowHTML(p, conversations.find(c => c.id === p.id))).join('') + '</ul>'
+                : `<div class="ms-empty"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><h3>Nobody found</h3><p>No one you can message matches "${esc(q)}". Check the spelling. Friends appear here once they follow you.</p></div>`);
+        } catch (e) {
+            if ($('searchUsers').value.trim() !== q) return;
+            setList(`<div class="ms-empty"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><h3>Search didn't work</h3><p>${esc(errText(e))}</p></div>`);
         }
+    }
+    $('searchUsers').addEventListener('input', search);
+    $('searchUsers').addEventListener('keydown', e => { if (e.key === 'Escape') { clearTimeout(searchTimer); e.target.value = ''; loadConversations(); } });
+    $('userList').addEventListener('click', e => {
+        if (e.target.closest('[data-retry-list]')) { loadConversations(); return; }
+        const b = e.target.closest('[data-uid]'); if (!b) return;
+        const p = people[Number(b.dataset.uid)];
+        if (p) openChat(p);
+    });
 
-        function renderSearchResults(results) {
-            const container = document.getElementById('userList');
+    /* ---------- a chat ---------- */
+    const draftKey = id => 'msDraft.' + ME + '.' + id;
+    function saveDraft() { if (!current) return; try { const v = $('messageInput').value; if (v.trim()) localStorage.setItem(draftKey(current.id), v); else localStorage.removeItem(draftKey(current.id)); } catch (e) {} }
+    function loadDraft(id) { try { return localStorage.getItem(draftKey(id)) || ''; } catch (e) { return ''; } }
 
-            if (!results || results.length === 0) {
-                container.innerHTML = `
-                    <div class="no-results">
-                        <i class="fas fa-search"></i>
-                        <h3>No users found</h3>
-                        <p>Try a different search term</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = results.map(user => {
-                const existingConvo = conversations.find(u => u.id === user.id);
-                const isInConversation = !!existingConvo;
-                const lastMsg = existingConvo ? existingConvo.lastMessage : null;
-                const unread = existingConvo ? (existingConvo.unread || 0) : 0;
-                return renderUserItem(user, lastMsg, unread, isInConversation);
-            }).join('');
+    async function openChat(p, fromHistory) {
+        const switching = !current || current.id !== p.id;
+        if (switching) saveDraft();
+        current = { id: p.id, name: p.name, avatar: p.avatar, avatar_url: p.avatar_url, blocked: false, muted: false, can_message: true, reason: '' };
+        if (switching) {
+            msgs = []; hasEarlier = false; note(''); $('jumpBtn').hidden = true;
+            $('chatMessages').innerHTML = '<div class="ms-empty full"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i><p>Loading messages…</p></div>';
+            $('messageInput').value = loadDraft(p.id); grow();
         }
+        drawHead();
+        $('msLayout').classList.add('chat-open');
+        document.querySelectorAll('.ms-person').forEach(x => { const on = Number(x.dataset.uid) === p.id; x.classList.toggle('active', on); if (on) x.setAttribute('aria-current', 'true'); else x.removeAttribute('aria-current'); });
+        // the address keeps ?user=<id>; on a phone it is a new history step, so Back returns to the list
+        try {
+            const u = new URL(location.href); u.searchParams.set('user', p.id);
+            if (!fromHistory && PHONE.matches && !(history.state && history.state.msChat)) history.pushState({ msChat: p.id }, '', u);
+            else history.replaceState(history.state && history.state.msChat ? { msChat: p.id } : history.state, '', u);
+        } catch (e) { /* ignore */ }
+        if ($('searchUsers').value.trim()) { $('searchUsers').value = ''; listSig = ''; }
+        refreshPerson(p.id);
+        await loadThread(p.id);
+        loadConversations();
+        if (DESKTOP_KEYS.matches && !PHONE.matches && !$('messageInput').disabled) $('messageInput').focus();
+    }
+    // block / mute state and whether you may write to them, straight from the server
+    async function refreshPerson(id) {
+        try {
+            const d = await getJSON(`/messages/user/${id}`);
+            if (!current || current.id !== id || !d.user) return;
+            Object.assign(current, d.user, { blocked: !!d.blocked, muted: !!d.muted, can_message: d.can_message !== false, reason: d.reason || '' });
+            drawHead();
+        } catch (e) { /* keep what we have */ }
+    }
+    function drawHead() {
+        const p = current;
+        $('chatAvatar').outerHTML = avatar(p, 'sm').replace('class="ms-av sm', 'id="chatAvatar" class="ms-av sm');
+        $('chatUserName').textContent = p.name;
+        $('chatUserStatus').textContent = p.blocked ? 'You blocked this person' : p.muted ? 'Notifications muted' : 'Only the two of you can read this chat (and Eschool staff if it is reported)';
+        $('menuProfile').href = '/profile/' + Number(p.id);
+        $('menuMute').querySelector('span').textContent = p.muted ? 'Unmute notifications' : 'Mute notifications';
+        $('menuBlock').querySelector('span').textContent = p.blocked ? 'Unblock' : 'Block';
+        $('moreBtn').disabled = false;
+        const canWrite = !p.blocked && p.can_message;
+        $('messageInput').disabled = !canWrite; $('sendBtn').disabled = !canWrite;
+        $('messageInput').placeholder = p.blocked ? 'You blocked this person. Unblock them to send messages.'
+            : !p.can_message ? (p.reason || 'You can’t message this person.') : 'Type a message…';
+        updateCallButtons();
+    }
+    function closeChat() {
+        saveDraft();
+        $('msLayout').classList.remove('chat-open');
+        try { const u = new URL(location.href); u.searchParams.delete('user'); history.replaceState(null, '', u); } catch (e) {}
+    }
+    $('backBtn').addEventListener('click', () => { if (history.state && history.state.msChat) history.back(); else closeChat(); });
+    window.addEventListener('popstate', e => {
+        if (e.state && e.state.msChat) { const p = people[e.state.msChat] || (current && current.id === e.state.msChat ? current : null); if (p) openChat(p, true); }
+        else if ($('msLayout').classList.contains('chat-open')) closeChat();
+    });
 
-        // Shared row renderer for both the conversation list and search results.
-        // Guards every field so a user object missing data (e.g. a stale
-        // entry from localStorage) never renders literal "undefined" text.
-        function renderUserItem(user, lastMsg, unread, isInConversation) {
-            const name = user.name && user.name.trim() ? user.name : null;
-
-            // Skip rendering entirely if there's nothing usable to show —
-            // avoids a blank/undefined row in the list.
-            if (!name) return '';
-
-            const safeUser = JSON.stringify(user).replace(/'/g, '&#39;');
-
-            return `
-                <div class="user-item ${currentUser === user.id ? 'active' : ''}" onclick='selectUser(${safeUser})' data-user-id="${user.id}">
-                    <div class="user-avatar ${user.online ? 'online' : ''}">${avatarInnerHTML(user)}</div>
-                    <div class="user-info">
-                        <div class="user-name">${name}</div>
-                        <div class="last-message">${lastMsg || (isInConversation ? 'No messages yet' : 'Click to start chatting')}</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
-                        <div class="message-time">${user.online ? 'Online' : (user.lastSeen || '')}</div>
-                        ${unread > 0 ? `<div class="unread-badge">${unread}</div>` : ''}
-                        ${!isInConversation ? '<div style="font-size: 0.65rem; color: var(--primary-color);"><i class="fas fa-plus-circle"></i> New</div>' : ''}
-                    </div>
-                </div>
-            `;
+    /* ---------- messages: first the latest page, then only new ones ---------- */
+    function msgHTML(m, prev, animate) {
+        let html = '';
+        const t = parseTime(m.timestamp), day = isNaN(t) ? '' : dayKey(t);
+        const prevT = prev ? parseTime(prev.timestamp) : null;
+        const prevDay = prevT && !isNaN(prevT) ? dayKey(prevT) : '';
+        if (day && day !== prevDay) html += `<div class="ms-day"><span>${esc(dayLabel(t))}</span></div>`;
+        // call records come from the server (kind "call"); a typed 📞 is just a message
+        if (m.kind === 'call') {
+            const missed = /missed|declined/i.test(m.text);
+            return html + `<div class="ms-sys ${missed ? 'missed' : ''}" data-mid="${Number(m.id)}"><span><i class="fas ${missed ? 'fa-phone-slash' : 'fa-phone'}" aria-hidden="true"></i>${esc(String(m.text).replace(/^📞\s*/, ''))} <small>${esc(clock(m.timestamp))}</small></span></div>`;
         }
-
-        async function selectUser(user) {
-            currentUser = user.id;
-            currentUserObj = user;
-
-            // Update chat header — show the real profile picture when one
-            // exists, otherwise fall back to initials.
-            const chatAvatarEl = document.getElementById('chatAvatar');
-            chatAvatarEl.innerHTML = avatarInnerHTML(user);
-            chatAvatarEl.classList.toggle('online', !!user.online);
-
-            document.getElementById('chatUserName').textContent = user.name;
-            document.getElementById('chatUserStatus').textContent = user.online ? '🟢 Online' : `Last seen ${user.lastSeen || ''}`;
-            document.getElementById('chatUserStatus').className = user.online ? 'online-status' : '';
-
-            // Load the real message thread with this person
-            await loadMessages(user.id);
-
-            // Update URL
-            const url = new URL(window.location);
-            url.searchParams.set('user', user.id);
-            window.history.pushState({}, '', url);
-
-            // Refresh the sidebar (drops back to conversation view)
-            await loadConversations();
-
-            // Clear search
-            document.getElementById('searchUsers').value = '';
+        const out = Number(m.sender_id) === Number(ME);
+        const prevSender = prev && prev.kind !== 'call' && day === prevDay ? Number(prev.sender_id) === Number(ME) : null;
+        const gap = prevSender !== null && (prevSender !== out || t - prevT > 5 * 60000);
+        const state = m.pending ? '<span class="ms-time">Sending…</span>' : m.failed ? '<button type="button" class="ms-retry" data-retry-send="' + esc(m.tmp) + '">Couldn’t send. Tap to retry</button>' : `<span class="ms-time">${esc(clock(m.timestamp))}</span>`;
+        return html + `<div class="ms-msg ${out ? 'out' : 'in'} ${gap ? 'gap' : ''} ${animate ? 'anim' : ''} ${m.failed ? 'failed' : ''}" ${m.id ? `data-mid="${Number(m.id)}"` : `data-tmp="${esc(m.tmp)}"`}><div class="ms-bubble"><span class="sr-only">${out ? 'You' : esc(current ? current.name : '')}: </span>${esc(m.text)}${state}</div></div>`;
+    }
+    function nearBottom() { const box = $('chatMessages'); return box.scrollHeight - box.scrollTop - box.clientHeight < 90; }
+    function renderAll(keepScroll) {
+        const box = $('chatMessages');
+        if (!msgs.length) {
+            box.innerHTML = `<div class="ms-empty full"><i class="fas fa-comment-dots" aria-hidden="true"></i><h3>Say hello to ${esc(current.name)}</h3><p>Only the two of you can read this chat. If you report it, Eschool staff can read the reported messages.</p></div>`;
+            return;
         }
+        const oldH = box.scrollHeight, oldTop = box.scrollTop;
+        box.innerHTML = (hasEarlier ? '<div class="ms-earlier"><button type="button" class="ms-btn ghost" data-earlier>Load earlier messages</button></div>' : '') +
+            msgs.map((m, i) => msgHTML(m, msgs[i - 1], false)).join('');
+        if (keepScroll) box.scrollTop = oldTop + (box.scrollHeight - oldH);
+    }
+    function appendNew(list) {
+        const box = $('chatMessages');
+        const stick = nearBottom();
+        if (!msgs.length) box.innerHTML = '';
+        list.forEach(m => {
+            const prev = msgs[msgs.length - 1];
+            msgs.push(m);
+            box.insertAdjacentHTML('beforeend', msgHTML(m, prev, true));
+        });
+        if (stick) box.scrollTop = box.scrollHeight;
+        else if (list.some(m => Number(m.sender_id) !== Number(ME))) $('jumpBtn').hidden = false;
+    }
+    const lastId = () => { for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].id) return msgs[i].id; return 0; };
 
-        async function loadMessages(userId) {
-            const container = document.getElementById('chatMessages');
-
-            try {
-                const response = await fetch(CONVERSATION_THREAD_ENDPOINT(userId));
-                if (!response.ok) throw new Error(`Failed to load thread (${response.status})`);
-                const msgs = await response.json();
-
-                if (!msgs || msgs.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-chat">
-                            <i class="fas fa-comment-dots"></i>
-                            <h3>No messages yet</h3>
-                            <p>Start the conversation with ${currentUserObj ? currentUserObj.name : 'your friend'}!</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                container.innerHTML = msgs.map(msg => `
-                    <div class="message ${msg.sender_id === currentUserId ? 'sent' : 'received'}">
-                        <div class="message-bubble">
-                            ${msg.text}
-                            <span class="message-time-small">${formatTime(msg.timestamp)}</span>
-                        </div>
-                    </div>
-                `).join('');
-
-                // Scroll to bottom
-                container.scrollTop = container.scrollHeight;
-            } catch (err) {
-                console.error('Error loading messages:', err);
-                container.innerHTML = `
-                    <div class="empty-chat">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Couldn't load messages</h3>
-                        <p>Please try again</p>
-                    </div>
-                `;
-            }
+    async function loadThread(uid, fromTimer) {
+        const seq = ++threadSeq;
+        const box = $('chatMessages');
+        const after = fromTimer || msgs.length ? lastId() : 0;
+        const url = after ? `${THREAD_ENDPOINT(uid)}?after=${after}` : `${THREAD_ENDPOINT(uid)}?limit=${PAGE}`;
+        let list;
+        try {
+            const d = await getJSON(url);
+            list = Array.isArray(d) ? d : [];
+        } catch (e) {
+            if (fromTimer || seq !== threadSeq || !current || current.id !== uid) return;
+            if (!msgs.length) box.innerHTML = `<div class="ms-empty full"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><h3>Couldn't load the messages</h3><p>${esc(errText(e))}</p><button type="button" class="ms-btn ghost" data-retry-thread>Try again</button></div>`;
+            return;
         }
-
-        async function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-
-            if (!text || !currentUser) {
-                if (!currentUser) {
-                    alert('Please search and select a user to chat with first!');
-                }
-                return;
-            }
-
-            input.disabled = true;
-
-            try {
-                const response = await fetch(SEND_MESSAGE_ENDPOINT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ receiver_id: currentUser, text: text })
-                });
-
-                if (!response.ok) throw new Error(`Failed to send message (${response.status})`);
-
-                input.value = '';
-
-                // Reload the real thread and sidebar so the message shows
-                // up tied to the recipient's account, not just locally.
-                await loadMessages(currentUser);
-                await loadConversations();
-            } catch (err) {
-                console.error('Error sending message:', err);
-                alert("Couldn't send that message. Please try again.");
-            } finally {
-                input.disabled = false;
-                input.focus();
-            }
+        if (seq !== threadSeq || !current || current.id !== uid) return;      // an older request, or another chat is open now
+        if (!after) {
+            hasEarlier = list.length >= PAGE;
+            msgs = list;
+            renderAll(false);
+            box.scrollTop = box.scrollHeight;
+            return;
         }
+        const known = new Set(msgs.map(m => m.id));
+        const fresh = list.filter(m => {
+            if (known.has(m.id)) return false;
+            // my own message that is still showing "Sending…": confirm it instead of adding it twice
+            const p = Number(m.sender_id) === Number(ME) && msgs.find(x => !x.id && x.pending && x.text === m.text);
+            if (p) { Object.assign(p, m, { pending: false, failed: false }); const el = box.querySelector(`[data-tmp="${CSS.escape(p.tmp)}"]`); if (el) el.outerHTML = msgHTML(p, msgs[msgs.indexOf(p) - 1], false).replace(/^<div class="ms-day">.*?<\/div>/, ''); return false; }
+            return true;
+        });
+        if (fresh.length) appendNew(fresh);
+    }
+    async function loadEarlier(btn) {
+        if (!current || !msgs.length) return;
+        const uid = current.id, first = msgs.find(m => m.id);
+        btn.disabled = true; btn.textContent = 'Loading…';
+        try {
+            const d = await getJSON(`${THREAD_ENDPOINT(uid)}?limit=${PAGE}&before=${first ? first.id : 0}`);
+            if (!current || current.id !== uid) return;
+            const list = Array.isArray(d) ? d : [];
+            hasEarlier = list.length >= PAGE;
+            msgs = list.concat(msgs);
+            renderAll(true);
+        } catch (e) { btn.disabled = false; btn.textContent = 'Load earlier messages'; note(errText(e), 'warn'); }
+    }
+    $('chatMessages').addEventListener('click', e => {
+        const er = e.target.closest('[data-earlier]'); if (er) { loadEarlier(er); return; }
+        if (e.target.closest('[data-retry-thread]') && current) { loadThread(current.id); return; }
+        const rs = e.target.closest('[data-retry-send]'); if (rs) retrySend(rs.dataset.retrySend);
+    });
+    $('chatMessages').addEventListener('scroll', () => { if (nearBottom()) $('jumpBtn').hidden = true; }, { passive: true });
+    $('jumpBtn').addEventListener('click', () => { const box = $('chatMessages'); box.scrollTop = box.scrollHeight; $('jumpBtn').hidden = true; });
 
-        function formatTime(isoString) {
-            const date = new Date(isoString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMin = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMs / 3600000);
-            const diffDays = Math.floor(diffMs / 86400000);
-
-            if (diffMin < 1) return 'Just now';
-            if (diffMin < 60) return `${diffMin}m ago`;
-            if (diffHours < 24) return `${diffHours}h ago`;
-            if (diffDays < 7) return `${diffDays}d ago`;
-            return date.toLocaleDateString();
-        }
-
-        // Auto-refresh so incoming messages from the other real person show
-        // up without a manual reload (no websocket here, so this polls).
-        setInterval(() => {
-            if (currentUser) {
-                loadMessages(currentUser);
-            }
+    /* ---------- sending: the message shows at once, then is confirmed ---------- */
+    const input = $('messageInput');
+    function grow() { input.style.height = 'auto'; input.style.height = Math.min(140, input.scrollHeight + 2) + 'px'; }
+    input.addEventListener('input', () => { grow(); clearTimeout(input._d); input._d = setTimeout(saveDraft, 400); });
+    input.addEventListener('keydown', e => {
+        // with a real keyboard Enter sends (Shift+Enter = new line); on a phone Enter is a new line and the Send button sends
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && DESKTOP_KEYS.matches) { e.preventDefault(); send(); }
+    });
+    $('sendBtn').addEventListener('click', send);
+    let tmpN = 0;
+    async function deliver(m, uid) {
+        try {
+            const d = await getJSON(SEND_MESSAGE_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receiver_id: uid, text: m.text }) });
+            if (!current || current.id !== uid) return;
+            Object.assign(m, d && d.message ? d.message : {}, { pending: false, failed: false });
+            const el = $('chatMessages').querySelector(`[data-tmp="${CSS.escape(m.tmp)}"]`);
+            if (el) { const i = msgs.indexOf(m); el.outerHTML = msgHTML(m, msgs[i - 1], false).replace(/^<div class="ms-day">.*?<\/div>/, ''); }
             loadConversations();
-        }, 8000);
+        } catch (e) {
+            m.pending = false; m.failed = true;
+            const el = $('chatMessages').querySelector(`[data-tmp="${CSS.escape(m.tmp)}"]`);
+            if (el) { const i = msgs.indexOf(m); el.outerHTML = msgHTML(m, msgs[i - 1], false).replace(/^<div class="ms-day">.*?<\/div>/, ''); }
+            note(errText(e, 'Couldn’t send that message. Check your connection, then tap it to try again.'), 'warn');
+        }
+    }
+    async function send() {
+        const text = input.value.trim();
+        if (sending) return;
+        if (!current) { note('Open a chat first.', 'warn'); return; }
+        if (!text) { input.focus(); return; }
+        if (input.disabled) return;
+        sending = true;
+        const m = { tmp: 't' + (++tmpN), text, sender_id: ME, timestamp: new Date().toISOString(), pending: true, kind: 'text' };
+        input.value = ''; grow(); saveDraft(); note('');
+        appendNew([m]);
+        $('chatMessages').scrollTop = $('chatMessages').scrollHeight;
+        sending = false;
+        await deliver(m, current.id);
+        input.focus();
+    }
+    function retrySend(tmp) {
+        const m = msgs.find(x => x.tmp === tmp && x.failed);
+        if (!m || !current) return;
+        m.failed = false; m.pending = true;
+        const el = $('chatMessages').querySelector(`[data-tmp="${CSS.escape(tmp)}"]`);
+        if (el) { const i = msgs.indexOf(m); el.outerHTML = msgHTML(m, msgs[i - 1], false).replace(/^<div class="ms-day">.*?<\/div>/, ''); }
+        deliver(m, current.id);
+    }
 
-        // Send message on Enter key
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
+    /* ---------- more menu: profile, mute, block, report ---------- */
+    function toggleMenu(open) {
+        const m = $('moreMenu');
+        open = open === undefined ? m.hidden : open;
+        m.hidden = !open;
+        $('moreBtn').setAttribute('aria-expanded', String(open));
+        if (open) { const f = m.querySelector('[role="menuitem"]'); if (f) f.focus(); }
+    }
+    $('moreBtn').addEventListener('click', () => toggleMenu());
+    document.addEventListener('click', e => { if (!$('moreMenu').hidden && !e.target.closest('.ms-menu-wrap')) toggleMenu(false); });
+    $('moreMenu').addEventListener('keydown', e => {
+        const items = [...$('moreMenu').querySelectorAll('[role="menuitem"]')];
+        const i = items.indexOf(document.activeElement);
+        if (e.key === 'Escape') { e.stopPropagation(); toggleMenu(false); $('moreBtn').focus(); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i + items.length - 1) % items.length].focus(); }
+        else if (e.key === 'Tab') toggleMenu(false);
+    });
+    async function setFlag(kind) {
+        if (!current) return;
+        const on = kind === 'mute' ? !current.muted : !current.blocked;
+        toggleMenu(false);
+        try {
+            const d = await getJSON(`/messages/${kind}/${current.id}`, { method: on ? 'POST' : 'DELETE' });
+            if (kind === 'mute') { current.muted = !!d.muted; note(current.muted ? 'Muted. You won’t get notifications for this chat.' : 'Notifications are back on for this chat.'); }
+            else { current.blocked = !!d.blocked; note(current.blocked ? current.name + ' is blocked. They can’t message or call you.' : current.name + ' is unblocked.'); }
+            drawHead(); refreshPerson(current.id); listSig = ''; loadConversations();
+        } catch (e) { note(errText(e), 'warn'); }
+        $('moreBtn').focus();
+    }
+    $('menuMute').addEventListener('click', () => setFlag('mute'));
+    $('menuBlock').addEventListener('click', () => setFlag('block'));
+    $('menuReport').addEventListener('click', () => { toggleMenu(false); openDialog('rpDialog', $('moreBtn')); $('rpTitle').textContent = 'Report ' + current.name; $('rpNote').className = 'ms-note'; $('rpMore').value = ''; document.querySelectorAll('[name="rpWhy"]').forEach(r => { r.checked = false; }); $('rpBlock').checked = true; setTimeout(() => document.querySelector('[name="rpWhy"]').focus(), 50); });
+    document.querySelectorAll('[data-rp-close]').forEach(b => b.addEventListener('click', () => closeDialog('rpDialog')));
+    $('rpSend').addEventListener('click', async function () {
+        const why = document.querySelector('[name="rpWhy"]:checked');
+        if (!why) { $('rpNote').className = 'ms-note show warn'; $('rpNote').textContent = 'Choose what happened first.'; return; }
+        this.disabled = true;
+        try {
+            const d = await getJSON(`/messages/report/${current.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: why.value + ($('rpMore').value.trim() ? ': ' + $('rpMore').value.trim() : ''), block: $('rpBlock').checked }) });
+            closeDialog('rpDialog');
+            if (d.blocked) current.blocked = true;
+            drawHead(); listSig = ''; loadConversations();
+            note('Thank you. Eschool staff will look at this.' + (d.blocked ? ' ' + current.name + ' is blocked.' : ''));
+        } catch (e) { $('rpNote').className = 'ms-note show warn'; $('rpNote').textContent = errText(e); }
+        this.disabled = false;
+    });
 
-        // Search on Enter key too
-        document.getElementById('searchUsers').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                clearTimeout(searchDebounceTimer);
-                const searchTerm = document.getElementById('searchUsers').value.trim();
-                if (searchTerm) performSearch(searchTerm);
-            }
+    /* ---------- dialogs: focus stays inside, the page behind is inert, focus goes back after ---------- */
+    const dialogFrom = {};
+    function openDialog(id, from) {
+        dialogFrom[id] = from || document.activeElement;
+        $(id).hidden = false;
+        document.body.classList.add('ms-lock');
+        const root = $(id);
+        for (let el = root; el && el !== document.body; el = el.parentElement) {
+            [...(el.parentElement ? el.parentElement.children : [])].forEach(sib => {
+                if (sib === el || sib.contains(root) || sib.inert || /^(SCRIPT|STYLE|LINK)$/.test(sib.tagName)) return;
+                sib.inert = true; sib.setAttribute('data-ms-inert', id);
+            });
+        }
+    }
+    function closeDialog(id) {
+        if ($(id).hidden) return;
+        $(id).hidden = true;
+        document.querySelectorAll(`[data-ms-inert="${id}"]`).forEach(el => { el.inert = false; el.removeAttribute('data-ms-inert'); });
+        if (!document.querySelector('.ms-gc:not([hidden])')) document.body.classList.remove('ms-lock');
+        const back = dialogFrom[id];
+        if (back && document.contains(back) && !back.disabled) back.focus();
+    }
+    document.addEventListener('keydown', e => {
+        const open = document.querySelector('.ms-gc:not([hidden])');
+        if (!open) return;
+        if (e.key === 'Escape') { closeDialog(open.id); return; }
+        if (e.key === 'Tab') {
+            const f = [...open.querySelectorAll('button, input, textarea, select, a[href]')].filter(x => !x.disabled && x.getClientRects().length && x.tabIndex !== -1);
+            if (!f.length) return;
+            if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+            else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+        }
+    });
+
+    /* ---------- calls (1-to-1 and group, run by /eschool-calls.js on every page) ---------- */
+    const CALLS_DOWN = 'Calls aren’t working right now. Please try again later.';
+    function callProblem() {
+        if (!window.isSecureContext) { console.error('Calls need https: browsers block the microphone and camera on ' + location.origin); return CALLS_DOWN; }
+        if (window.EschoolCallsMissing) { console.error('eschool-calls.js could not be loaded (static/js).'); return CALLS_DOWN; }
+        if (!window.EschoolCalls) return 'Calling is still starting. Wait a second and try again.';
+        if (!window.EschoolCalls.supported()) return 'This browser can’t make calls. Use the latest Chrome, Edge, Firefox or Safari.';
+        return '';
+    }
+    function busy() { return !!(window.EschoolCalls && window.EschoolCalls.isActive()); }
+    function updateCallButtons() {
+        const off = !current || busy() || current.blocked || current.can_message === false;
+        $('voiceCallBtn').disabled = off;
+        $('videoCallBtn').disabled = off;
+        $('groupCallBtn').disabled = busy() || !!(current && (current.blocked || current.can_message === false));
+        ['sideGroupCall', 'heroGroupCall'].forEach(id => { $(id).disabled = busy(); });
+    }
+    function call(kind) {
+        if (!current) { note('Open a chat first, then tap call.'); return; }
+        const p = callProblem(); if (p) { note(p, 'warn'); return; }
+        window.EschoolCalls.start({ id: current.id, name: current.name, avatar_url: current.avatar_url || null }, kind);
+    }
+    $('voiceCallBtn').addEventListener('click', () => call('audio'));
+    $('videoCallBtn').addEventListener('click', () => call('video'));
+    document.addEventListener('eschool:call-state', updateCallButtons);
+    document.addEventListener('eschool:call-ended', e => {
+        const other = e.detail && e.detail.other;
+        if (current && other && Number(other.id) === Number(current.id)) setTimeout(() => loadThread(current.id, true), 700);
+    });
+    window.addEventListener('load', () => {
+        if (!window.EschoolCalls && !window.EschoolCallsMissing) {
+            const s = document.createElement('script'); s.src = '/eschool-calls.js?v=4';
+            s.onload = updateCallButtons;
+            s.onerror = () => { window.EschoolCallsMissing = true; updateCallButtons(); };
+            document.head.appendChild(s);
+        }
+        updateCallButtons();
+    });
+
+    /* ---------- group call picker ---------- */
+    const gc = { kind: 'audio', picked: new Map(), pool: [] };
+    function gcNote(t, kind) { const el = $('gcNote'); el.className = 'ms-note' + (t ? ' show' : '') + (kind === 'warn' ? ' warn' : ''); el.innerHTML = t ? `<i class="fas ${kind === 'warn' ? 'fa-circle-exclamation' : 'fa-circle-info'}" aria-hidden="true"></i><span>${esc(t)}</span>` : ''; }
+    async function openGroupPicker(withCurrent, from) {
+        const p = callProblem(); if (p) { note(p, 'warn'); return; }
+        if (busy()) { note('You are already on a call.'); return; }
+        gc.picked.clear();
+        if (withCurrent && current && !current.blocked && current.can_message !== false) gc.picked.set(current.id, current);
+        $('gcName').value = ''; $('gcSearch').value = ''; gcNote('');
+        setKind('audio');
+        openDialog('gcPicker', from);
+        renderPicked();
+        $('gcList').innerHTML = '<div class="ms-empty"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i><p>Loading your chats…</p></div>';
+        try {
+            const d = await getJSON(CONVERSATIONS_ENDPOINT);
+            gc.pool = (Array.isArray(d) ? d : []).filter(c => c && c.id > 0 && c.name && !c.blocked);
+        } catch (e) { gc.pool = conversations.filter(c => !c.blocked); }
+        if (current && !current.blocked && !gc.pool.some(c => c.id === current.id)) gc.pool.unshift(current);
+        renderPool();
+        setTimeout(() => $('gcSearch').focus(), 60);
+    }
+    function setKind(k) {
+        gc.kind = k;
+        $('gcKind').querySelectorAll('[data-kind]').forEach(b => { b.setAttribute('aria-checked', String(b.dataset.kind === k)); b.tabIndex = b.dataset.kind === k ? 0 : -1; });
+        $('gcCamHint').hidden = k !== 'video';
+        $('gcStart').innerHTML = `<i class="fas ${k === 'video' ? 'fa-video' : 'fa-phone'}" aria-hidden="true"></i> Start ${k === 'video' ? 'video' : 'voice'} call`;
+    }
+    function renderPicked() {
+        $('gcCountLbl').textContent = `People (${gc.picked.size} of ${MAX_GROUP})`;
+        $('gcChips').innerHTML = [...gc.picked.values()].map(p => `<span class="ms-chip">${esc(p.name)}<button type="button" data-unpick="${Number(p.id)}" aria-label="Remove ${esc(p.name)}"><i class="fas fa-times" aria-hidden="true"></i></button></span>`).join('')
+            || '<span style="font-size:.84rem;color:var(--ms-text-3)">Tick the people you want to call.</span>';
+        $('gcStart').disabled = gc.picked.size < 1;
+    }
+    // the list is only rebuilt when the search changes; ticking updates boxes in place (focus stays)
+    function renderPool() {
+        const q = $('gcSearch').value.trim().toLowerCase();
+        const list = gc.pool.filter(p => !q || p.name.toLowerCase().includes(q));
+        if (!gc.pool.length) { $('gcList').innerHTML = '<div class="ms-empty"><i class="fas fa-user-plus" aria-hidden="true"></i><p>You can call people you have chatted with. Send someone a message first.</p></div>'; return; }
+        if (!list.length) { $('gcList').innerHTML = '<div class="ms-empty"><p>Nobody in your chats matches that name.</p></div>'; return; }
+        $('gcList').innerHTML = list.map(p => `<label class="ms-pick-row"><input type="checkbox" data-pick="${Number(p.id)}">${avatar(p, 'xs')}<span>${esc(p.name)}</span></label>`).join('');
+        syncPool();
+    }
+    function syncPool() {
+        const full = gc.picked.size >= MAX_GROUP;
+        $('gcList').querySelectorAll('[data-pick]').forEach(c => {
+            const on = gc.picked.has(Number(c.dataset.pick)), off = !on && full;
+            c.checked = on; c.disabled = off; c.closest('.ms-pick-row').classList.toggle('off', off);
         });
-    </script>
-</body>
-</html>
+    }
+    $('gcList').addEventListener('change', e => {
+        const c = e.target.closest('[data-pick]'); if (!c) return;
+        const p = gc.pool.find(x => x.id === Number(c.dataset.pick)); if (!p) return;
+        if (c.checked) { if (gc.picked.size >= MAX_GROUP) { c.checked = false; gcNote(`You can call up to ${MAX_GROUP} people at once.`, 'warn'); return; } gc.picked.set(p.id, p); }
+        else gc.picked.delete(p.id);
+        renderPicked(); syncPool();
+    });
+    $('gcChips').addEventListener('click', e => { const b = e.target.closest('[data-unpick]'); if (b) { gc.picked.delete(Number(b.dataset.unpick)); renderPicked(); syncPool(); $('gcSearch').focus(); } });
+    $('gcSearch').addEventListener('input', renderPool);
+    $('gcKind').addEventListener('click', e => { const b = e.target.closest('[data-kind]'); if (b) setKind(b.dataset.kind); });
+    $('gcKind').addEventListener('keydown', e => {
+        if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+        e.preventDefault(); setKind(gc.kind === 'audio' ? 'video' : 'audio'); $('gcKind').querySelector(`[data-kind="${gc.kind}"]`).focus();
+    });
+    $('gcClose').addEventListener('click', () => closeDialog('gcPicker'));
+    $('gcCancel').addEventListener('click', () => closeDialog('gcPicker'));
+    $('gcPicker').addEventListener('click', e => { if (e.target === $('gcPicker')) closeDialog('gcPicker'); });
+    $('rpDialog').addEventListener('click', e => { if (e.target === $('rpDialog')) closeDialog('rpDialog'); });
+    $('gcStart').addEventListener('click', async function () {
+        if (!gc.picked.size) return;
+        const p = callProblem(); if (p) { gcNote(p, 'warn'); return; }
+        this.disabled = true; this.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Starting…';
+        const ok = await window.EschoolCalls.startGroup([...gc.picked.values()].map(x => ({ id: x.id, name: x.name, avatar_url: x.avatar_url || null })), gc.kind, $('gcName').value.trim());
+        setKind(gc.kind); this.disabled = gc.picked.size < 1;
+        if (ok) closeDialog('gcPicker');
+        else gcNote('The call could not start. The reason is shown at the bottom of the screen.', 'warn');
+    });
+    $('groupCallBtn').addEventListener('click', e => openGroupPicker(true, e.currentTarget));
+    $('sideGroupCall').addEventListener('click', e => openGroupPicker(false, e.currentTarget));
+    $('heroGroupCall').addEventListener('click', e => openGroupPicker(!!current, e.currentTarget));
+
+    /* ---------- start ---------- */
+    document.addEventListener('DOMContentLoaded', async () => {
+        fit();
+        await loadConversations();
+        updateCallButtons();
+        const want = new URLSearchParams(location.search).get('user');
+        if (want) {
+            const c = conversations.find(x => String(x.id) === want);
+            if (c) { people[c.id] = c; openChat(c, true); }
+            else {
+                try {
+                    const d = await getJSON(`/messages/user/${encodeURIComponent(want)}`);
+                    if (d.user) { people[d.user.id] = d.user; openChat(d.user, true); }
+                } catch (e) { note(errText(e, 'Couldn’t open that chat.'), 'warn'); }
+            }
+        }
+        if (location.hash === '#group') openGroupPicker(false);
+    });
+
+    // new messages from the other person show up without reloading (only the new ones are fetched)
+    setInterval(() => {
+        if (document.hidden) return;
+        if (current) loadThread(current.id, true);
+        loadConversations(true);
+    }, 5000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (current) loadThread(current.id, true); loadConversations(true); } else saveDraft(); });
+    window.addEventListener('pagehide', saveDraft);
+})();
+</script>
 {% endblock %}

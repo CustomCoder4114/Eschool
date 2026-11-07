@@ -1,0 +1,71 @@
+{% extends "Admin/admin_body.html" %}
+{% block title %}Reviews{% endblock %}
+{% block allcontent %}
+{#
+    ADMIN - Reviews  (templates/Admin/admin_reviews.html)   Route: /admin-reviews
+    GET    /api/admin/reviews?stars=low|1..5&q=
+    DELETE /api/admin/reviews/<id>   {reason}                          removes a review (reviewer and teacher are told)
+    POST   /api/admin/reviews/<id>   {action: "remove_reply", reason}  removes only the teacher's reply
+#}
+<div class="ad-page-h">
+    <div><h1>Reviews</h1><p>What learners and parents say about teachers. Remove anything abusive, false, or about the wrong person.</p></div>
+</div>
+<div class="ad-kpis" id="rKpis"><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div></div>
+<div class="ad-card">
+    <div class="ad-tabs" role="group" aria-label="Stars" id="rTabs"></div>
+    <div class="ad-toolbar"><input type="search" class="ad-input" id="rQ" placeholder="Search words, teacher or reviewer" aria-label="Search reviews"></div>
+    <div class="ad-note" id="rNote" role="status" aria-live="polite"></div>
+    <div id="rList"><div class="ad-skel"></div><div class="ad-skel"></div></div>
+</div>
+<style>
+.rv { border: 1px solid var(--ab-border); border-radius: 12px; padding: 14px; }
+.rv + .rv { margin-top: 10px; }
+.rv.low { border-left: 4px solid #ef4444; }
+.rv-h { display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; font-size: .8rem; color: var(--ab-text-3); }
+.rv-h .st { color: #f59e0b; letter-spacing: 1px; }
+.rv-h a { color: var(--ab-accent-text); text-decoration: none; font-weight: 600; }
+.rv p { margin-top: 8px; font-size: .88rem; color: var(--ab-text); line-height: 1.55; overflow-wrap: anywhere; }
+.rv .reply { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--ab-surface-2); border: 1px solid var(--ab-border); font-size: .82rem; color: var(--ab-text-2); }
+.rv .reply b { color: var(--ab-text); }
+.rv-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+</style>
+<script>
+(function () {
+    'use strict';
+    var A = window.AD, $ = function (id) { return document.getElementById(id); };
+    var S = { stars: '', q: '', data: null };
+    function stars(n) { return '★★★★★'.slice(0, n) + '<span style="opacity:.3">' + '★★★★★'.slice(n) + '</span>'; }
+    async function load() {
+        try { S.data = await A.api('/api/admin/reviews?' + new URLSearchParams({ stars: S.stars, q: S.q })); render(); }
+        catch (e) { A.note('rNote', e.message, 'bad'); }
+    }
+    function render() {
+        var d = S.data, c = d.counts;
+        $('rKpis').innerHTML = [['fa-star', '#f59e0b', 'Reviews', c.all], ['fa-star-half-stroke', '#4361ee', 'Average', d.avg != null ? d.avg.toFixed(2) + ' ★' : '–'], ['fa-triangle-exclamation', '#ef4444', '1 or 2 stars', c.low], ['fa-reply', '#10b981', 'No reply from the teacher', c.no_reply]]
+            .map(function (k) { return '<div class="ad-kpi" style="--c:' + k[1] + '"><span><i class="fas ' + k[0] + '"></i>' + k[2] + '</span><b>' + k[3] + '</b></div>'; }).join('');
+        $('rTabs').innerHTML = [['', 'All'], ['low', 'Low (1–2★)'], ['5', '5★'], ['4', '4★'], ['3', '3★'], ['2', '2★'], ['1', '1★']]
+            .map(function (t) { return '<button type="button" class="ad-tab" data-s="' + t[0] + '" aria-pressed="' + (S.stars === t[0]) + '">' + t[1] + '</button>'; }).join('');
+        $('rList').innerHTML = d.reviews.length ? d.reviews.map(function (r) {
+            return '<div class="rv' + (r.stars <= 2 ? ' low' : '') + '" data-id="' + r.id + '"><div class="rv-h"><span class="st" aria-label="' + r.stars + ' stars">' + stars(r.stars) + '</span>' +
+                '<span><a href="/admin-users?id=' + r.reviewer_id + '">' + A.esc(r.reviewer) + '</a> (' + (r.reviewer_role === 'parent' ? 'parent' : 'learner') + ') reviewed <a href="/admin-users?id=' + r.teacher_id + '">' + A.esc(r.teacher) + '</a></span><span>' + A.esc(A.ago(r.created_at)) + '</span></div>' +
+                (r.comment ? '<p>' + A.esc(r.comment) + '</p>' : '<p class="ad-muted">No written comment, stars only.</p>') +
+                (r.reply ? '<div class="reply"><b>Teacher\'s reply</b> · ' + A.esc(A.ago(r.reply_at)) + '<br>' + A.esc(r.reply) + '</div>' : '') +
+                '<div class="rv-acts"><a class="ad-btn sm" href="/profile/' + r.teacher_id + '#reviews"><i class="fas fa-up-right-from-square"></i> See on profile</a>' +
+                (r.reply ? '<button type="button" class="ad-btn sm danger" data-do="reply"><i class="fas fa-comment-slash"></i> Remove reply</button>' : '') +
+                '<button type="button" class="ad-btn sm danger" data-do="remove"><i class="fas fa-trash"></i> Remove review</button></div><div data-box></div></div>';
+        }).join('') : '<div class="ad-empty"><i class="fas fa-star"></i><b>No reviews here</b></div>';
+    }
+    $('rTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-s]'); if (b) { S.stars = b.dataset.s; load(); } });
+    var qt; $('rQ').addEventListener('input', function () { clearTimeout(qt); var v = this.value.trim(); qt = setTimeout(function () { S.q = v; load(); }, 250); });
+    $('rList').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-do]'); if (!b) return;
+        var card = b.closest('[data-id]'), r = S.data.reviews.filter(function (x) { return String(x.id) === card.dataset.id; })[0], reply = b.dataset.do === 'reply';
+        A.confirmIn(card.querySelector('[data-box]'), { title: reply ? 'Remove ' + r.teacher + '\'s reply?' : 'Remove this ' + r.stars + '★ review?', danger: true,
+            text: reply ? 'The review stays; only the reply goes. The teacher is told why and can reply again.' : 'The review disappears from ' + r.teacher + '\'s profile and their rating is worked out again. ' + r.reviewer + ' is told why.',
+            reason: true, yes: reply ? 'Remove reply' : 'Remove review',
+            run: async function (v) { await A.api('/api/admin/reviews/' + r.id, reply ? { method: 'POST', body: { action: 'remove_reply', reason: v.reason } } : { method: 'DELETE', body: { reason: v.reason } }); A.note('rNote', reply ? 'Reply removed.' : 'Review removed.', 'ok'); load(); } });
+    });
+    load();
+})();
+</script>
+{% endblock %}

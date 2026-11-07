@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2360A5FA'/%3E%3Cstop offset='100%25' stop-color='%232DD4BF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='12' fill='%230F172A'/%3E%3Cpath d='M32 6 60 21 32 36 4 21Z' fill='url(%23g)'/%3E%3Ccircle cx='32' cy='21' r='3.4' fill='%230F172A'/%3E%3Cpath d='M32 21C40 27 44 34 44 44' fill='none' stroke='url(%23g)' stroke-width='3.4' stroke-linecap='round'/%3E%3Cpath d='M38 44h12' fill='none' stroke='url(%23g)' stroke-width='3.4' stroke-linecap='round'/%3E%3Ccircle cx='44' cy='49' r='4' fill='url(%23g)'/%3E%3C/svg%3E">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Eschool{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    {#
+        PARENT BASE TEMPLATE  (templates/Parent/parent-body.html)
+        Parent pages extend "Parent/parent-body.html" and put their content in
+        the "allcontent" block. Optional blocks: "title", "head" (styles),
+        "scripts" (scripts at the end of the page).
+        firstname, lastname, avatar_url, user_id, country_name and `me` come
+        from the inject_user context processor in backen.py.
+    #}
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --primary-dark: #2a44c7;
+            --primary-light: #e0e7ff;
+            --accent-color: #4cc9f0;
+            --success-color: #4ade80;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --light-color: #f8fafc;
+            --dark-color: #1e293b;
+            --gray-color: #64748b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --transition: all 0.3s ease;
+        }
+
+        /* "Dark" accent in dark mode: the dark slate would be invisible on the dark background */
+        html[data-accent="dark"] body.dark-mode {
+            --primary-color: #94a3b8;
+            --secondary-color: #64748b;
+            --primary-dark: #64748b;
+            --primary-light: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            line-height: 1.6;
+            color: var(--dark-color);
+            background-color: #f1f5f9;
+            min-height: 100vh;
+        }
+
+        /* ===== HIDE SCROLLBAR ===== */
+        body::-webkit-scrollbar,
+        .mobile-sidebar::-webkit-scrollbar,
+        .notifications-list::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
+        body,
+        .mobile-sidebar,
+        .notifications-list {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        /* ========== HAMBURGER BUTTON ========== */
+        .hamburger {
+            width: 30px;
+            height: 22px;
+            position: relative;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: none;
+            flex-shrink: 0;
+            margin: 0 10px 0 0;
+            padding: 0;
+            z-index: 1100;
+        }
+
+        .hamburger span {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: #333;
+            left: 0;
+            transition: 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .hamburger span:nth-child(1) { top: 0; }
+        .hamburger span:nth-child(2) { top: 9px; }
+        .hamburger span:nth-child(3) { top: 18px; }
+
+        body.dark-mode .hamburger span {
+            background: #f1f5f9;
+        }
+
+        /* ===== MOBILE SIDEBAR ===== */
+        .mobile-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: white;
+            padding: 12px 0 10px 0;
+            transform: translateX(-100%);
+            visibility: hidden;                       /* closed: not reachable with Tab */
+            transition: transform 0.3s ease, visibility 0s linear 0.3s;
+            z-index: 1001;
+            overflow-y: hidden;
+            box-shadow: 2px 0 15px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mobile-sidebar.open {
+            transform: translateX(0);
+            visibility: visible;
+            transition: transform 0.3s ease, visibility 0s;
+        }
+
+        .mobile-sidebar-close {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #666;
+            border-radius: 50%;
+            transition: var(--transition);
+            z-index: 1001;
+        }
+
+        .mobile-sidebar-close:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: #333;
+        }
+
+        body.dark-mode .mobile-sidebar-close {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .mobile-sidebar-close:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+        }
+
+        .mobile-sidebar-header {
+            padding: 8px 16px 6px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            margin-bottom: 4px;
+            flex-shrink: 0;
+        }
+
+        .mobile-sidebar-header .user-info-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mobile-sidebar-header .user-avatar-sm {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .mobile-sidebar-header .user-avatar-sm img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .mobile-sidebar-header .user-name-sm {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--dark-color);
+            line-height: 1.2;
+        }
+
+        .mobile-sidebar-header .user-role-sm {
+            font-size: 0.7rem;
+            color: var(--gray-color);
+        }
+
+        body.dark-mode .mobile-sidebar-header {
+            border-bottom-color: #334155;
+        }
+
+        body.dark-mode .mobile-sidebar-header .user-name-sm {
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .mobile-sidebar-header .user-role-sm {
+            color: #94a3b8;
+        }
+
+        .mobile-sidebar .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 7px 18px;
+            text-decoration: none;
+            color: var(--dark-color);
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+            font-size: 0.85rem;
+        }
+
+        .mobile-sidebar .nav-item:hover {
+            background-color: #f8fafc;
+            color: var(--primary-color);
+        }
+
+        .mobile-sidebar .nav-item.active {
+            background-color: #eef2ff;
+            background-color: color-mix(in srgb, var(--primary-color) 12%, white);
+            color: var(--primary-color);
+            border-left-color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .mobile-sidebar .nav-item i {
+            width: 18px;
+            text-align: center;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .mobile-sidebar .nav-divider {
+            height: 1px;
+            background-color: #f1f5f9;
+            margin: 4px 18px;
+            flex-shrink: 0;
+        }
+
+        .mobile-sidebar .logout-item {
+            color: #e74c3c;
+            margin-top: auto;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 8px;
+        }
+
+        .mobile-sidebar .logout-item i {
+            color: #e74c3c;
+        }
+
+        .mobile-sidebar-nav-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        body.dark-mode .mobile-sidebar {
+            background-color: #1e293b;
+        }
+
+        body.dark-mode .mobile-sidebar .nav-item {
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .mobile-sidebar .nav-item:hover {
+            background-color: #263449;
+            color: #90caf9;
+        }
+
+        body.dark-mode .mobile-sidebar .nav-item.active {
+            background-color: #26365a;
+            background-color: color-mix(in srgb, var(--primary-color) 22%, #1e293b);
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .mobile-sidebar .nav-divider {
+            background-color: #334155;
+        }
+
+        body.dark-mode .mobile-sidebar .logout-item {
+            border-top-color: #334155;
+        }
+
+        .mobile-sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0,0,0,0.4);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .mobile-sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* ===== USER PROFILE + LOGOUT (header) ===== */
+        .user-profile-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-profile-trigger {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+
+        .user-profile-trigger:hover {
+            background-color: rgba(67, 97, 238, 0.08);
+            background-color: color-mix(in srgb, var(--primary-color) 8%, transparent);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .header-logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--danger-color);
+            border: 1px solid #fecaca;
+            background-color: #fef2f2;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .header-logout-btn:hover {
+            background-color: var(--danger-color);
+            border-color: var(--danger-color);
+            color: white;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .dashboard-header {
+            background-color: white;
+            box-shadow: var(--card-shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            flex-wrap: wrap;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            font-size: 2.7rem;
+            color: var(--primary-color);
+        }
+
+        .logo-text {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 2.3rem;
+            color: var(--primary-color);
+        }
+
+        .logo-text span {
+            color: var(--accent-color);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .notification-btn {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            color: var(--gray-color);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--danger-color);
+            color: white;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ===== MAIN LAYOUT ===== */
+        .dashboard-layout {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 30px;
+            min-height: calc(100vh - 120px);
+        }
+
+        .sidebar {
+            background-color: white;
+            border-radius: 12px;
+            padding: 15px 0;
+            box-shadow: var(--card-shadow);
+            height: fit-content;
+            position: sticky;
+            top: calc(var(--hdr-h, 80px) + 20px);
+            max-height: calc(100vh - var(--hdr-h, 80px) - 40px);   /* Settings / Help stay reachable on short screens */
+            overflow-y: auto;
+        }
+
+        .sidebar .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            text-decoration: none;
+            color: var(--dark-color);
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+            font-size: 0.9rem;
+        }
+
+        .sidebar .nav-item:hover {
+            background-color: #f8fafc;
+            color: var(--primary-color);
+        }
+
+        .sidebar .nav-item.active {
+            background-color: #eef2ff;
+            background-color: color-mix(in srgb, var(--primary-color) 12%, white);
+            color: var(--primary-color);
+            border-left-color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .sidebar .nav-item i {
+            width: 18px;
+            text-align: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar .nav-divider {
+            height: 1px;
+            background-color: #f1f5f9;
+            margin: 8px 20px;
+        }
+
+        .dashboard-content-area {
+            width: 100%;
+            min-width: 0;
+        }
+
+        /* Notification Dropdown */
+        .notification-dropdown {
+            position: relative;
+        }
+        
+        .notification-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 360px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .notification-dropdown.active .notification-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .notification-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-header h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+        }
+        
+        .mark-all-read {
+            font-size: 12px;
+            color: var(--primary-color);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-weight: 500;
+        }
+        
+        .mark-all-read:hover {
+            text-decoration: underline;
+        }
+
+        .notifications-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notification-item {
+            padding: 14px 20px;
+            display: flex;
+            gap: 12px;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-item:hover {
+            background-color: #f9fafb;
+        }
+        
+        .notification-item.unread {
+            background-color: #f5f7ff;
+            background-color: color-mix(in srgb, var(--primary-color) 7%, white);
+        }
+        
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .notification-icon i {
+            font-size: 18px;
+        }
+        
+        .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .notification-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        
+        .notification-message {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+        
+        .notification-time {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        .notification-empty,
+        .notification-loading,
+        .notification-error {
+            padding: 32px 20px;
+            text-align: center;
+            color: var(--gray-400);
+            font-size: 0.9rem;
+        }
+
+        .notification-empty i,
+        .notification-loading i,
+        .notification-error i {
+            display: block;
+            font-size: 1.6rem;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+        
+        .notification-footer {
+            padding: 12px 20px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .view-all-link {
+            font-size: 13px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .view-all-link:hover {
+            text-decoration: underline;
+        }
+
+        /* ===== MOBILE STYLES ===== */
+        @media (max-width: 768px) {
+            .header-container {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                padding: 12px 15px 8px 15px;
+                gap: 8px;
+            }
+
+            .hamburger {
+                display: flex;
+                order: 0;
+                margin: 0 8px 0 0;
+            }
+
+            .logo {
+                order: 1;
+                margin-right: auto;
+            }
+
+            .logo-text {
+                font-size: 1.5rem;
+            }
+
+            .logo-icon {
+                font-size: 1.8rem;
+            }
+
+            .header-actions {
+                order: 2;
+                flex-shrink: 0;
+                gap: 10px;
+            }
+
+            .user-info {
+                display: none;
+            }
+
+            .user-profile-wrapper {
+                gap: 6px;
+            }
+
+            .user-profile-trigger {
+                padding: 4px 6px;
+            }
+
+            .user-avatar {
+                width: 30px;
+                height: 30px;
+                font-size: 11px;
+            }
+
+            /* Logout: icon only on mobile */
+            .header-logout-btn {
+                padding: 7px 9px;
+            }
+
+            .header-logout-btn span {
+                display: none;
+            }
+
+            .notification-btn {
+                font-size: 1.1rem;
+            }
+
+            .notification-badge {
+                width: 16px;
+                height: 16px;
+                font-size: 0.6rem;
+                top: -4px;
+                right: -4px;
+            }
+
+            .notification-menu {
+                width: min(360px, 90vw);
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .dashboard-layout {
+                display: block;
+                padding: 16px 10px;
+                gap: 0;
+            }
+
+            .dashboard-content-area {
+                padding: 0;
+            }
+        }
+
+        /* ===== DARK MODE ===== */
+        body.dark-mode {
+            background-color: #0f172a;
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .dashboard-header,
+        body.dark-mode .notification-menu {
+            background-color: #1e293b;
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .notification-header,
+        body.dark-mode .notification-footer {
+            border-color: #334155;
+        }
+
+        body.dark-mode .notification-header h4,
+        body.dark-mode .notification-title {
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .notification-message {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .notification-item {
+            border-bottom-color: #334155;
+        }
+
+        body.dark-mode .notification-item:hover {
+            background-color: #263449;
+        }
+
+        body.dark-mode .notification-item.unread {
+            background-color: #1c2b47;
+        }
+
+        body.dark-mode .notification-empty,
+        body.dark-mode .notification-loading,
+        body.dark-mode .notification-error {
+            color: #64748b;
+        }
+
+        body.dark-mode .sidebar {
+            background-color: #1e293b;
+        }
+
+        body.dark-mode .sidebar .nav-item {
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .sidebar .nav-item:hover {
+            background-color: #263449;
+            color: #90caf9;
+        }
+
+        body.dark-mode .sidebar .nav-item.active {
+            background-color: #26365a;
+            background-color: color-mix(in srgb, var(--primary-color) 22%, #1e293b);
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .sidebar .nav-divider {
+            background-color: #334155;
+        }
+
+        body.dark-mode .user-name {
+            color: #f1f5f9;
+        }
+
+        body.dark-mode .user-role {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .user-profile-trigger:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        body.dark-mode .mark-all-read,
+        body.dark-mode .view-all-link {
+            color: #a5b4fc;
+            color: color-mix(in srgb, var(--primary-color) 55%, white);
+        }
+
+        body.dark-mode .notification-btn {
+            color: #94a3b8;
+        }
+
+        .notification-btn:focus-visible,
+        .hamburger:focus-visible,
+        .mobile-sidebar-close:focus-visible,
+        .nav-item:focus-visible,
+        .header-logout-btn:focus-visible,
+        .user-profile-trigger:focus-visible {
+            outline: 3px solid rgba(67, 97, 238, 0.4);
+            outline: 3px solid color-mix(in srgb, var(--primary-color) 40%, transparent);
+            outline-offset: 2px;
+        }
+
+        body.dark-mode .header-logout-btn {
+            background-color: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.35);
+        }
+
+        body.dark-mode .header-logout-btn:hover {
+            background-color: var(--danger-color);
+            border-color: var(--danger-color);
+            color: white;
+        }
+
+        /* Hide all scrollbars */
+        *::-webkit-scrollbar {
+            display: none;
+        }
+
+        * {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+{#- `me` = the logged-in parent (from inject_user). Pages such as /profile/<id> send their own
+    firstname/lastname/avatar_url for the person being viewed, so the header uses `me`. -#}
+{%- if me is not defined -%}
+{%- set me = {'id': session.get('user_id'), 'firstname': session.get('firstname') or '', 'lastname': session.get('lastname') or '', 'country': session.get('country'), 'avatar_url': avatar_url} -%}
+{%- endif -%}
+{% macro parent_nav() %}
+            <a href="/parent-dashboard" class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+            <a href="/parent-children" class="nav-item"><i class="fas fa-child"></i><span>My children</span></a>
+            <a href="/parent-teacher" class="nav-item"><i class="fas fa-chalkboard-user"></i><span>Teachers</span></a>
+            <a href="/parent-link" class="nav-item"><i class="fas fa-user-plus"></i><span>Link a child</span></a>
+            <div class="nav-divider"></div>
+            <a href="/parent-progress" class="nav-item"><i class="fas fa-chart-line"></i><span>Learner progress</span></a>
+            <a href="/parent-controls" class="nav-item"><i class="fas fa-user-gear"></i><span>Manage learner</span></a>
+            <a href="/parent-message" class="nav-item"><i class="fas fa-envelope"></i><span>Messages</span></a>
+            <a href="/parent-goals" class="nav-item"><i class="fas fa-trophy"></i><span>Goals &amp; rewards</span></a>
+            <div class="nav-divider"></div>
+            <a href="/parent-settings" class="nav-item"><i class="fas fa-cog"></i><span>Settings</span></a>
+            <a href="/parent-support" class="nav-item"><i class="fas fa-question-circle"></i><span>Help &amp; Support</span></a>
+{% endmacro %}
+    <!-- SITE-WIDE APPEARANCE INIT -->
+    <script>
+    (function () {
+        // Settings are saved per account under the user id, so they survive an email change.
+        // Older pages saved them under the email: that value is read first and copied to the
+        // user-id key, so nothing is lost and Settings pages that still use the email keep working.
+        var UID = {{ session.get('user_id', 'anonymous') | tojson }};
+        var EMAIL = {{ session.get('email', '') | tojson }};
+        function keyFor(name, who) { return 'settings.' + name + '.' + who; }
+        function get(name) {
+            try {
+                var v = EMAIL ? localStorage.getItem(keyFor(name, EMAIL)) : null;
+                if (v !== null) {
+                    if (localStorage.getItem(keyFor(name, UID)) !== v) localStorage.setItem(keyFor(name, UID), v);
+                    return v;
+                }
+                return localStorage.getItem(keyFor(name, UID));
+            } catch (e) { return null; }
+        }
+        function isKey(k, name) { return k === keyFor(name, UID) || (!!EMAIL && k === keyFor(name, EMAIL)); }
+        window.EschoolSettings = { get: get, isKey: isKey, userId: UID };
+
+        try {
+            var accentMap = {
+                blue:   { color: '#4a6cf7', hover: '#3a5ce5' },
+                green:  { color: '#10b981', hover: '#059669' },
+                purple: { color: '#8b5cf6', hover: '#7c3aed' },
+                dark:   { color: '#1e293b', hover: '#0f172a' }
+            };
+
+            var savedColor = get('themeColor');
+            if (savedColor && savedColor !== 'blue' && accentMap[savedColor]) {   // blue = the original look, nothing to change
+                var root = document.documentElement;
+                root.setAttribute('data-accent', savedColor);
+                root.style.setProperty('--accent-color', accentMap[savedColor].color);
+                root.style.setProperty('--accent-hover', accentMap[savedColor].hover);
+                root.style.setProperty('--accent-soft', accentMap[savedColor].color + '1a');
+                root.style.setProperty('--primary-color', accentMap[savedColor].color);
+                root.style.setProperty('--secondary-color', accentMap[savedColor].hover);
+            }
+
+            var darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            var savedMode = get('themeMode');
+            if (savedMode === 'dark' || (savedMode === 'auto' && darkQuery.matches)) {
+                document.body.classList.add('dark-mode');
+            }
+
+            // System mode: follow the device live when it switches light/dark
+            // (e.g. phones that go dark at sunset), on every page.
+            var onDeviceChange = function () {
+                if (get('themeMode') === 'auto') document.body.classList.toggle('dark-mode', darkQuery.matches);
+            };
+            if (darkQuery.addEventListener) darkQuery.addEventListener('change', onDeviceChange);
+            else if (darkQuery.addListener) darkQuery.addListener(onDeviceChange);
+
+            // a choice made in Settings in another tab applies here too
+            window.addEventListener('storage', function (e) {
+                if (!e.key || !isKey(e.key, 'themeMode')) return;
+                var m = e.newValue;
+                document.body.classList.toggle('dark-mode', m === 'dark' || (m === 'auto' && darkQuery.matches));
+            });
+
+            var savedFontSize = get('fontSize');
+            if (savedFontSize) {
+                document.documentElement.style.setProperty('--base-font-size', savedFontSize + 'px');
+                // parent pages are sized in rem, so the root size scales all of them
+                if (+savedFontSize >= 12 && +savedFontSize <= 22) document.documentElement.style.fontSize = savedFontSize + 'px';
+            }
+        } catch (e) {
+            // localStorage unavailable
+        }
+    })();
+    </script>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <button class="hamburger" id="hamburger" type="button" aria-label="Open menu" aria-controls="mobileSidebar" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <a href="/parent-dashboard" class="logo" aria-label="Eschool home">
+                <i class="fas fa-graduation-cap logo-icon"></i>
+                <div class="logo-text">E<span>school</span></div>
+            </a>
+            
+            <div class="header-actions">
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <button class="notification-btn" id="notificationBtn" type="button" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
+                        <i class="far fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge"></span>
+                    </button>
+                    
+                    <div class="notification-menu" id="notificationMenu">
+                        <div class="notification-header">
+                            <h4>Notifications</h4>
+                            <button class="mark-all-read" id="markAllRead" type="button">Mark all as read</button>
+                        </div>
+                        <div class="notifications-list" id="notificationsList">
+                            <div class="notification-loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                Loading notifications…
+                            </div>
+                        </div>
+                        <div class="notification-footer">
+                            <a href="/notifications" class="view-all-link">View all notifications →</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Profile (links straight to /profile) + Log Out on the right -->
+                <div class="user-profile-wrapper">
+                    <a href="/profile" class="user-profile-trigger" id="userProfileTrigger" aria-label="My profile">
+                        <div class="user-avatar" data-profile-avatar>
+                            {% if me.avatar_url %}
+                                <img src="{{ me.avatar_url }}" alt="Profile photo">
+                            {% else %}
+                                {{ (me.firstname or '')[:1] }}{{ (me.lastname or '')[:1] }}
+                            {% endif %}
+                        </div>
+                        <div class="user-info">
+                            <div class="user-name">{{ me.firstname or '' }} {{ me.lastname or '' }}</div>
+                            <div class="user-role">Parent{% if country_name %} · {{ country_name }}{% endif %}</div>
+                        </div>
+                    </a>
+
+                    <a href="/logout" class="header-logout-btn" aria-label="Log Out">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Log Out</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Header height, so the idle bar and the sticky sidebar sit just below the header -->
+    <script>
+    (function () {
+        var h = document.querySelector('.dashboard-header');
+        if (!h) return;
+        function set() { document.documentElement.style.setProperty('--hdr-h', h.offsetHeight + 'px'); }
+        set();
+        if (window.ResizeObserver) new ResizeObserver(set).observe(h);
+        else window.addEventListener('resize', set);
+    })();
+    </script>
+
+    <!-- ===== MOBILE SIDEBAR ===== -->
+    <nav class="mobile-sidebar" id="mobileSidebar" aria-label="Menu" inert>
+        <button class="mobile-sidebar-close" id="mobileSidebarClose" type="button" aria-label="Close menu">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <div class="mobile-sidebar-header">
+            <div class="user-info-display">
+                <div class="user-avatar-sm" data-profile-avatar>
+                    {% if me.avatar_url %}
+                        <img src="{{ me.avatar_url }}" alt="Profile photo">
+                    {% else %}
+                        {{ (me.firstname or '')[:1] }}{{ (me.lastname or '')[:1] }}
+                    {% endif %}
+                </div>
+                <div>
+                    <div class="user-name-sm">{{ me.firstname or '' }} {{ me.lastname or '' }}</div>
+                    <div class="user-role-sm">Parent{% if country_name %} · {{ country_name }}{% endif %}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mobile-sidebar-nav-list">
+{{ parent_nav() }}        </div>
+
+        <div class="nav-divider"></div>
+        
+        <a href="/logout" class="nav-item logout-item">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Log Out</span>
+        </a>
+    </nav>
+
+    <!-- Mobile sidebar overlay -->
+    <div class="mobile-sidebar-overlay" id="mobileOverlay"></div>
+
+    <!-- Main Layout -->
+    <div class="dashboard-layout">
+        <nav class="sidebar" id="sidebar" aria-label="Main menu">
+{{ parent_nav() }}        </nav>
+
+        <div class="dashboard-content-area">
+            {% block allcontent %}
+            {% endblock %}
+        </div>
+    </div>
+
+    <script>
+    (function () {
+    const PAGE_USER_ID = {{ session.get('user_id')|tojson }};
+      let leaving = false;
+
+      function goToLogin() {
+        if (leaving) return;
+        leaving = true;
+        window.location.replace('/Login');
+      }
+
+      async function check() {
+        if (leaving) return;
+        try {
+          const r = await fetch('/api/whoami', { cache: 'no-store', credentials: 'same-origin' });
+          if (r.status === 401) { goToLogin(); return; }
+          const d = await r.json().catch(() => ({}));
+          if (!d.logged_in) { goToLogin(); return; }
+          if (d.user_id !== PAGE_USER_ID) { window.location.replace('/'); }
+        } catch (e) { /* offline: ignore */ }
+      }
+
+      // Log Out clicked: tell every other tab at once
+      document.addEventListener('click', function (e) {
+        const link = e.target.closest('a[href$="/logout"], [data-logout]');
+        if (link) {
+          try { localStorage.setItem('eschool_logout', String(Date.now())); } catch (err) {}
+        }
+      }, true);
+
+      window.addEventListener('storage', function (e) {
+        if (e.key === 'eschool_logout') goToLogin();
+      });
+
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+      window.addEventListener('focus', check);
+      window.addEventListener('pageshow', function (e) { if (e.persisted) check(); });
+      setInterval(function () { if (!document.hidden) check(); }, 15000);   // hidden tabs check again when shown
+    })();
+
+
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // ===== HAMBURGER MENU =====
+        const hamburger = document.getElementById('hamburger');
+        const mobileSidebar = document.getElementById('mobileSidebar');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+        const mobileSidebarClose = document.getElementById('mobileSidebarClose');
+
+        function openMobileSidebar() {
+            mobileSidebar.removeAttribute('inert');
+            mobileSidebar.classList.add('open');
+            mobileOverlay.classList.add('active');
+            hamburger.setAttribute('aria-expanded', 'true');
+            document.body.style.overflow = 'hidden';
+            mobileSidebarClose.focus();
+        }
+
+        function closeMobileSidebar(returnFocus) {
+            if (!mobileSidebar.classList.contains('open')) return;
+            mobileSidebar.classList.remove('open');
+            mobileSidebar.setAttribute('inert', '');
+            mobileOverlay.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+            if (returnFocus) hamburger.focus();
+        }
+
+        hamburger.addEventListener('click', openMobileSidebar);
+        mobileSidebarClose.addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeMobileSidebar(true);
+        });
+        mobileOverlay.addEventListener('click', function () { closeMobileSidebar(true); });
+
+        const mobileNavLinks = document.querySelectorAll('.mobile-sidebar .nav-item');
+        mobileNavLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                closeMobileSidebar(false);
+            });
+        });
+
+        // Keep Tab inside the menu while it is open
+        mobileSidebar.addEventListener('keydown', function (e) {
+            if (e.key !== 'Tab' || !mobileSidebar.classList.contains('open')) return;
+            const items = mobileSidebar.querySelectorAll('a[href], button:not([disabled])');
+            if (!items.length) return;
+            const first = items[0], last = items[items.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        });
+
+        // ===================================================================
+        // NOTIFICATIONS — fetched live from the backend, nothing hardcoded.
+        //   GET  /api/notifications        -> [{id, title, message, time, icon, color, read}, ...]
+        //   POST /notifications/<id>/read  -> marks a single notification read
+        //   POST /notifications/read-all   -> marks every notification read
+        // ===================================================================
+        const notificationDropdown = document.getElementById('notificationDropdown');
+        const notificationBtn = document.getElementById('notificationBtn');
+        const notificationBadge = document.getElementById('notificationBadge');
+        const notificationsList = document.getElementById('notificationsList');
+        const markAllReadBtn = document.getElementById('markAllRead');
+
+        let notifications = [];
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text == null ? '' : String(text);
+            return div.innerHTML;
+        }
+
+        function formatNotifTime(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (isNaN(date.getTime())) return escapeHtml(value); // backend already sent a display string
+            const diff = Date.now() - date.getTime();
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+            if (diff < 172800000) return 'Yesterday';
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function updateNotificationBadge() {
+            const unreadCount = notifications.filter(n => !n.read).length;
+            if (unreadCount > 0) {
+                notificationBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                notificationBadge.style.display = 'flex';
+            } else {
+                notificationBadge.style.display = 'none';
+            }
+        }
+        
+        // Picks an icon + colour that matches what the notification is about.
+        // The first rule that matches the type/title/message wins; if nothing
+        // matches, it uses the icon/colour the backend sent, then a plain bell.
+        const NOTIFICATION_STYLES = [
+            { words: ['missed', 'incomplete', 'overdue', 'failed to'],        icon: 'fas fa-triangle-exclamation', color: '#ef4444' },
+            { words: ['quiz passed', 'passed the', 'you passed', 'congrat'],  icon: 'fas fa-trophy',               color: '#f59e0b' },
+            { words: ['quiz', 'test', 'exam', 'assessment'],                  icon: 'fas fa-clipboard-check',      color: '#8b5cf6' },
+            { words: ['streak'],                                              icon: 'fas fa-fire',                 color: '#f97316' },
+            { words: ['grade', 'score', 'gpa', 'result'],                     icon: 'fas fa-award',                color: '#f59e0b' },
+            { words: ['completed', 'finished', 'certificate'],                icon: 'fas fa-circle-check',         color: '#10b981' },
+            { words: ['enrol', 'started', 'new course', 'course'],            icon: 'fas fa-book-open',            color: '#4361ee' },
+            { words: ['deleted', 'cancelled', 'canceled'],                    icon: 'fas fa-calendar-xmark',       color: '#ef4444' },
+            { words: ['scheduled', 'schedule', 'event', 'meeting', 'class'],  icon: 'fas fa-calendar-check',       color: '#06b6d4' },
+            { words: ['reminder', 'due', 'deadline', 'starts in'],            icon: 'fas fa-clock',                color: '#f59e0b' },
+            { words: ['follow'],                                              icon: 'fas fa-user-plus',            color: '#f72585' },
+            { words: ['like', 'liked'],                                       icon: 'fas fa-heart',                color: '#ef4444' },
+            { words: ['comment', 'replied', 'reply'],                         icon: 'fas fa-comment',              color: '#4cc9f0' },
+            { words: ['message', 'inbox', 'chat'],                            icon: 'fas fa-envelope',             color: '#4361ee' },
+            { words: ['post', 'upload', 'shared'],                            icon: 'fas fa-cloud-arrow-up',       color: '#8b5cf6' },
+            { words: ['password', 'security', 'login', 'sign in', 'verify'],  icon: 'fas fa-shield-halved',        color: '#64748b' },
+            { words: ['welcome', 'joined', 'account'],                        icon: 'fas fa-graduation-cap',       color: '#4361ee' }
+        ];
+
+        // The backend sends icons like "fa-user-shield" (no style) and colours like "green"
+        const NAMED_COLORS = { blue: '#4361ee', green: '#10b981', red: '#ef4444', orange: '#f59e0b',
+                               purple: '#8b5cf6', yellow: '#f59e0b', gray: '#64748b', grey: '#64748b' };
+
+        function getNotificationStyle(n) {
+            const text = `${n.type || ''} ${n.title || ''} ${n.message || ''}`.toLowerCase();
+            const match = NOTIFICATION_STYLES.find(rule => rule.words.some(w => text.includes(w)));
+            if (match) return { icon: match.icon, color: match.color };
+            let icon = String(n.icon || 'fa-bell').trim();
+            if (!/(^|\s)(fas|far|fab|fa-solid|fa-regular|fa-brands)(\s|$)/.test(icon)) icon = 'fas ' + icon;
+            const raw = String(n.color || '').trim().toLowerCase();
+            const color = NAMED_COLORS[raw] || (/^#[0-9a-f]{6}$/.test(raw) ? raw : '#4361ee');
+            return { icon, color };
+        }
+
+        function renderNotifications() {
+            if (notifications.length === 0) {
+                notificationsList.innerHTML = `
+                    <div class="notification-empty">
+                        <i class="far fa-bell-slash"></i>
+                        No notifications yet
+                    </div>
+                `;
+                updateNotificationBadge();
+                return;
+            }
+
+            let html = '';
+            notifications.forEach(n => {
+                const style = getNotificationStyle(n);
+                const bg = `${style.color}20`;
+                const fg = style.color;
+                html += `
+                    <div class="notification-item ${n.read ? '' : 'unread'}" data-id="${escapeHtml(n.id)}">
+                        <div class="notification-icon" style="background-color: ${bg}; color: ${fg};">
+                            <i class="${escapeHtml(style.icon)}"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">${escapeHtml(n.title)}</div>
+                            <div class="notification-message">${escapeHtml(n.message)}</div>
+                            <div class="notification-time">${formatNotifTime(n.time)}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            notificationsList.innerHTML = html;
+            updateNotificationBadge();
+
+            notificationsList.querySelectorAll('.notification-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    if (this.classList.contains('unread')) {
+                        markNotificationRead(id);
+                    }
+                });
+            });
+        }
+
+        function loadNotifications() {
+            fetch('/api/notifications', { credentials: 'same-origin', cache: 'no-store' })
+                .then(res => {
+                    if (!res.ok) throw new Error('Request failed');
+                    return res.json();
+                })
+                .then(data => {
+                    notifications = Array.isArray(data) ? data : (data.notifications || []);
+                    renderNotifications();
+                })
+                .catch(err => {
+                    if (notifications.length) return;   // keep what is already shown
+                    notificationsList.innerHTML = `
+                        <div class="notification-error">
+                            <i class="fas fa-exclamation-circle"></i>
+                            Couldn't load notifications
+                        </div>
+                    `;
+                });
+        }
+
+        function markNotificationRead(id) {
+            const n = notifications.find(x => String(x.id) === String(id));
+            if (n) n.read = true;
+            renderNotifications();
+
+            fetch(`/notifications/${encodeURIComponent(id)}/read`, { method: 'POST', credentials: 'same-origin' })
+                .catch(err => console.error('Error marking notification read:', err));
+        }
+
+        function setNotifOpen(open) {
+            notificationDropdown.classList.toggle('active', open);
+            notificationBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        notificationBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            setNotifOpen(!notificationDropdown.classList.contains('active'));
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!notificationDropdown.contains(e.target)) setNotifOpen(false);
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') setNotifOpen(false);
+        });
+
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                notifications.forEach(n => n.read = true);
+                renderNotifications();
+
+                fetch('/notifications/read-all', { method: 'POST', credentials: 'same-origin' })
+                    .catch(err => console.error('Error marking all notifications read:', err));
+            });
+        }
+
+        loadNotifications();
+        setInterval(function () { if (!document.hidden) loadNotifications(); }, 15000); // poll for new notifications
+
+        // "View all notifications" lands on ?notifications=1: open the bell, then tidy the address
+        try {
+            const qs = new URLSearchParams(window.location.search);
+            if (qs.get('notifications') === '1') {
+                setNotifOpen(true);
+                qs.delete('notifications');
+                const rest = qs.toString();
+                history.replaceState(null, '', window.location.pathname + (rest ? '?' + rest : '') + window.location.hash);
+            }
+        } catch (e) { /* old browser: the bell can still be opened by hand */ }
+
+        // Close mobile sidebar on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && mobileSidebar.classList.contains('open')) {
+                closeMobileSidebar(true);
+            }
+        });
+
+    });
+    </script>
+
+    {# Voice / video calls: incoming-call bar, ringing and the call screen on every page. #}
+    {% if session.get('user_id') %}
+    <script src="/eschool-calls.js?v=3" defer></script>
+    {% endif %}
+
+    {#
+        SIGN OUT WHEN INACTIVE (Settings > Account & Security)
+        Off unless the parent turns it on: the minutes come from the server
+        (/api/settings, autoSignOutMinutes; 0 = off). When it is on, after that many
+        minutes with no activity in ANY Eschool tab a bar appears under the header with
+        a 1-minute countdown; then the parent is signed out. Watching a video counts as activity.
+    #}
+    <style>
+        .idle-bar { position: sticky; top: var(--hdr-h, 0px); z-index: 900; display: none; align-items: center; gap: 12px; flex-wrap: wrap;
+                    margin: 0 auto; max-width: 1400px; padding: 12px 20px; background: #fff7ed; color: #9a3412;
+                    border-bottom: 2px solid #fdba74; font-size: .92rem; }
+        .idle-bar.show { display: flex; }
+        .idle-bar button { margin-left: auto; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 600;
+                           background: #ea580c; color: #fff; cursor: pointer; }
+        body.dark-mode .idle-bar { background: #3b2412; color: #fed7aa; border-bottom-color: #9a3412; }
+    </style>
+    <script>
+    (function () {
+        if (!{{ (session.get('user_id') is not none) | tojson }}) return;
+        // "__es_" keys stay in this browser (they are not copied to the server)
+        var ACTIVE_KEY = '__es_lastActivity.' + {{ session.get('user_id') | tojson }};
+        var WARN_MS = 60 * 1000;
+        var minutes = 0;                       // 0 = never sign out for being inactive
+        var bar = null, lastWrite = 0;
+
+        function loadSetting() {
+            fetch('/api/settings', { credentials: 'same-origin', cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) {
+                    var m = d && d.account ? parseInt(d.account.autoSignOutMinutes, 10) : 0;
+                    minutes = m > 0 ? Math.max(5, Math.min(120, m)) : 0;
+                    if (!minutes) hideBar();
+                })
+                .catch(function () {});
+        }
+        function timeoutMs() { return minutes * 60 * 1000; }
+        function lastActive() {
+            var t = 0;
+            try { t = parseInt(localStorage.getItem(ACTIVE_KEY), 10) || 0; } catch (e) {}
+            return t;
+        }
+        function markActive() {
+            var now = Date.now();
+            if (now - lastWrite < 5000) return;          // a few writes a minute is plenty
+            lastWrite = now;
+            try { localStorage.setItem(ACTIVE_KEY, String(now)); } catch (e) {}
+            hideBar();
+        }
+        function mediaPlaying() {
+            return Array.prototype.some.call(document.querySelectorAll('video, audio'), function (m) {
+                return !m.paused && !m.ended;
+            });
+        }
+        function ensureBar() {
+            if (bar) return bar;
+            bar = document.createElement('div');
+            bar.className = 'idle-bar';
+            bar.setAttribute('role', 'status');
+            bar.innerHTML = '<i class="fas fa-hourglass-half"></i><span class="idle-text"></span>' +
+                            '<button type="button">Stay signed in</button>';
+            bar.querySelector('button').addEventListener('click', function () { lastWrite = 0; markActive(); });
+            var header = document.querySelector('.dashboard-header');
+            if (header && header.parentNode) header.parentNode.insertBefore(bar, header.nextSibling);
+            else document.body.insertBefore(bar, document.body.firstChild);
+            return bar;
+        }
+        function hideBar() { if (bar) bar.classList.remove('show'); }
+
+        function tick() {
+            if (!minutes) { hideBar(); return; }          // turned off (the default)
+            if (mediaPlaying()) { markActive(); return; }
+            var idleFor = Date.now() - (lastActive() || Date.now());
+            var limit = timeoutMs();
+            if (idleFor >= limit + WARN_MS) {
+                try { localStorage.setItem('eschool_logout', String(Date.now())); } catch (e) {}
+                window.location.href = '/logout';
+                return;
+            }
+            if (idleFor >= limit) {
+                var left = Math.ceil((limit + WARN_MS - idleFor) / 1000);
+                var b = ensureBar();
+                b.querySelector('.idle-text').textContent =
+                    'You\'ve been inactive for a while. You\'ll be signed out in ' + left + ' second' + (left === 1 ? '' : 's') + '.';
+                b.classList.add('show');
+            } else {
+                hideBar();
+            }
+        }
+
+        ['click', 'keydown', 'scroll', 'mousemove', 'touchstart'].forEach(function (evt) {
+            document.addEventListener(evt, markActive, { passive: true, capture: true });
+        });
+        window.addEventListener('storage', function (e) { if (e.key === ACTIVE_KEY) hideBar(); });
+        // pick up a change made in Settings (in this or another tab) when the page is shown again
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) loadSetting(); });
+        window.eschoolIdle = { refresh: loadSetting };
+        loadSetting();
+        lastWrite = 0; markActive();
+        setInterval(tick, 1000);
+    })();
+    </script>
+
+    <!-- Highlight the menu item for the page you're on (both sidebars) -->
+    <script>
+    (function () {
+        var aliases = { '/settings': '/parent-settings', '/support': '/parent-support', '/messages': '/parent-message', '/dashboard': '/parent-dashboard' };
+        var path = window.location.pathname.replace(/\/+$/, '') || '/parent-dashboard';
+        path = aliases[path] || path;
+        document.querySelectorAll('.sidebar .nav-item, .mobile-sidebar .nav-item').forEach(function (a) {
+            var href = (a.getAttribute('href') || '').replace(/\/+$/, '');
+            href = aliases[href] || href;
+            var on = !!href && href !== '/logout' && (path === href || path.indexOf(href + '/') === 0);
+            a.classList.toggle('active', on);
+            if (on) a.setAttribute('aria-current', 'page');
+            else a.removeAttribute('aria-current');
+        });
+    })();
+    </script>
+    {#
+        SITE-WIDE THEME ADAPTER
+        Makes every page's cards follow Settings > Appearance:
+        - Dark mode: light cards, panels, borders and dark text inside
+          the page content are switched to dark versions.
+        - Accent colour: the built-in eSchool blues used by pages are
+          swapped for the chosen accent colour.
+        Pages that already have their own dark-mode CSS are left alone
+        (their colours are already dark, so nothing matches).
+        Add data-no-theme to any element to skip it and its children.
+    #}
+    <script>
+    (function () {
+        var ROOT_SELECTOR = '.dashboard-content-area';
+        var SKIP_TAGS = { IMG: 1, SVG: 1, CANVAS: 1, VIDEO: 1, IFRAME: 1, SCRIPT: 1, STYLE: 1, PICTURE: 1, path: 1, svg: 1 };
+        var DARK = { card: '#1e293b', panel: '#0f172a', border: '#334155', text: '#f1f5f9', text2: '#cbd5e1', text3: '#94a3b8' };
+
+        /* the blues pages use for "brand" colour -> replaced by the accent */
+        var BRAND_MAIN = ['rgb(67, 97, 238)', 'rgb(74, 108, 247)'];           // #4361ee #4a6cf7
+        var BRAND_DARK = ['rgb(58, 92, 229)', 'rgb(63, 55, 201)', 'rgb(42, 68, 199)'];  // #3a5ce5 #3f37c9 #2a44c7
+        var ACCENTS = {
+            blue:   null,
+            green:  { color: '#10b981', hover: '#059669' },
+            purple: { color: '#8b5cf6', hover: '#7c3aed' },
+            dark:   { color: '#1e293b', hover: '#0f172a' }
+        };
+        var DARK_ACCENT_ON_DARK = { color: '#94a3b8', hover: '#64748b' };   // the dark accent is invisible on a dark page
+
+        var touched = new Set();                // elements we changed
+        var saved = new WeakMap();              // el -> {prop: [value, priority]}
+
+        function readSetting(name) {
+            return window.EschoolSettings ? window.EschoolSettings.get(name) : null;
+        }
+        function isDark() { return document.body.classList.contains('dark-mode'); }
+        function currentAccent() {
+            var key = readSetting('themeColor');
+            var accent = ACCENTS[key] || null;
+            if (accent && key === 'dark' && isDark()) accent = DARK_ACCENT_ON_DARK;
+            return accent;
+        }
+
+        function parse(c) {
+            var m = c && c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
+            if (!m) return null;
+            return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+        }
+        function hsl(c) {
+            var r = c.r / 255, g = c.g / 255, b = c.b / 255;
+            var max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, h = 0, s = 0;
+            if (max !== min) {
+                var d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+                h *= 60;
+            }
+            return { h: h, s: s, l: l };
+        }
+        /* a hex colour mixed with white (works in every browser, unlike color-mix) */
+        function mixWhite(hex, white) {
+            var n = parseInt(hex.slice(1), 16);
+            function m(c) { return Math.round(c + (255 - c) * white); }
+            return 'rgb(' + m((n >> 16) & 255) + ', ' + m((n >> 8) & 255) + ', ' + m(n & 255) + ')';
+        }
+
+        function setProp(el, prop, value) {
+            var store = saved.get(el);
+            if (!store) { store = {}; saved.set(el, store); }
+            if (!(prop in store)) store[prop] = [el.style.getPropertyValue(prop), el.style.getPropertyPriority(prop)];
+            el.style.setProperty(prop, value, 'important');
+            touched.add(el);
+        }
+        function restore(el) {
+            var store = saved.get(el);
+            if (!store) return;
+            Object.keys(store).forEach(function (prop) {
+                var v = store[prop];
+                if (v[0]) el.style.setProperty(prop, v[0], v[1]); else el.style.removeProperty(prop);
+            });
+            saved.delete(el);
+            touched.delete(el);
+        }
+
+        /* is the background behind this element dark (after our changes)? */
+        function bgIsDark(el) {
+            var node = el;
+            while (node && node.nodeType === 1) {
+                // we only ever set dark backgrounds; read our own value because a
+                // CSS transition can still be reporting the old light colour
+                var mine = saved.get(node);
+                if (mine && ('background-color' in mine) && isDark()) return true;
+                var c = parse(getComputedStyle(node).backgroundColor);
+                if (c && c.a > 0.5) return hsl(c).l < 0.45;
+                var img = getComputedStyle(node).backgroundImage;
+                if (img && img !== 'none') {
+                    // gradient: judge by its colours; photo: unknown
+                    var cols = img.match(/rgba?\([^)]+\)/g);
+                    if (!cols) return null;
+                    var sum = 0; cols.forEach(function (c) { sum += hsl(parse(c)).l; });
+                    return sum / cols.length < 0.45;
+                }
+                node = node.parentElement;
+            }
+            return isDark();
+        }
+
+        function darkenElement(el, cs) {
+            // background
+            var bg = parse(cs.backgroundColor);
+            if (bg && bg.a > 0.3) {
+                var b = hsl(bg);
+                if (b.l >= 0.84 || (b.l >= 0.78 && b.s < 0.3)) {
+                    if (b.s < 0.3 || b.l > 0.985) {
+                        setProp(el, 'background-color', b.l > 0.985 ? DARK.card : DARK.panel);
+                    } else {
+                        // pastel tint (badge, chip, soft card) -> dark tint of the same hue
+                        setProp(el, 'background-color', 'hsla(' + Math.round(b.h) + ', ' + Math.round(Math.min(b.s, 0.75) * 100) + '%, 55%, 0.16)');
+                    }
+                }
+            }
+            // borders
+            ['top', 'right', 'bottom', 'left'].forEach(function (side) {
+                if (parseFloat(cs['border-' + side + '-width']) > 0) {
+                    var bc = parse(cs['border-' + side + '-color']);
+                    if (bc && bc.a > 0.2) {
+                        var h = hsl(bc);
+                        if (h.l >= 0.78) setProp(el, 'border-' + side + '-color', h.s < 0.3 ? DARK.border : 'hsla(' + Math.round(h.h) + ', 60%, 55%, 0.35)');
+                    }
+                }
+            });
+            // text
+            var tc = parse(cs.color);
+            if (tc) {
+                var t = hsl(tc);
+                if (t.l < 0.62 && bgIsDark(el) === true) {
+                    if (t.s < 0.22) setProp(el, 'color', t.l < 0.25 ? DARK.text : t.l < 0.42 ? DARK.text2 : DARK.text3);
+                    else if (t.l < 0.5) setProp(el, 'color', 'hsl(' + Math.round(t.h) + ', ' + Math.round(Math.min(t.s, 0.85) * 100) + '%, 72%)');
+                }
+            }
+        }
+
+        function accentElement(el, cs, accent) {
+            ['color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'].forEach(function (prop) {
+                var v = cs.getPropertyValue(prop);
+                if (BRAND_MAIN.indexOf(v) > -1) setProp(el, prop, accent.color);
+                else if (BRAND_DARK.indexOf(v) > -1) setProp(el, prop, accent.hover);
+            });
+            var img = cs.backgroundImage;
+            if (img && img.indexOf('gradient') > -1) {
+                var out = img;
+                BRAND_MAIN.forEach(function (c) { out = out.split(c).join(accent.color); });
+                BRAND_DARK.forEach(function (c) { out = out.split(c).join(accent.hover); });
+                if (out !== img) setProp(el, 'background-image', out);
+            }
+        }
+
+        function processTree(root) {
+            if (!root || root.nodeType !== 1) return;
+            var dark = isDark();
+            var accent = currentAccent();
+            if (!dark && !accent) return;
+            var walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                acceptNode: function (n) {
+                    if (SKIP_TAGS[n.tagName] || n.hasAttribute('data-no-theme')) return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            var el = root;
+            while (el) {
+                if (!SKIP_TAGS[el.tagName] && !el.hasAttribute('data-no-theme')) {
+                    var cs = getComputedStyle(el);
+                    if (accent) accentElement(el, cs, accent);
+                    if (dark) darkenElement(el, getComputedStyle(el));
+                }
+                el = walker.nextNode();
+            }
+        }
+
+        function resetAll() { Array.from(touched).forEach(restore); }
+
+        /* page stylesheets also use --primary-dark / --primary-light (hover, soft tints) */
+        function setAccentVars() {
+            var accent = currentAccent();
+            var root = document.documentElement.style;
+            if (accent) {
+                root.setProperty('--primary-dark', accent.hover);
+                root.setProperty('--primary-light', mixWhite(accent.color, 0.85));
+            } else {
+                root.removeProperty('--primary-dark');
+                root.removeProperty('--primary-light');
+            }
+        }
+
+        function runAll() {
+            setAccentVars();
+            resetAll();
+            document.querySelectorAll(ROOT_SELECTOR).forEach(processTree);
+        }
+
+        /* re-process only what changed (new cards from JS, class toggles) */
+        var pending = new Set(), scheduled = false;
+        function queue(el) {
+            pending.add(el);
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(function () {
+                scheduled = false;
+                var list = Array.from(pending); pending.clear();
+                list.forEach(function (n) {
+                    if (!n.isConnected) return;
+                    for (var p = n.parentElement; p; p = p.parentElement) if (pending.has(p) || list.indexOf(p) > -1) return;
+                    n.querySelectorAll('*').forEach(function (c) { if (saved.has(c)) restore(c); });
+                    restore(n);
+                    processTree(n);
+                });
+                settle();
+            });
+        }
+
+        /* second, gentle pass (no reset) once transitions/animations have settled,
+           so anything that was mid-transition on the first pass is caught */
+        var settleTimer = null;
+        function settle() {
+            clearTimeout(settleTimer);
+            settleTimer = setTimeout(function () {
+                document.querySelectorAll(ROOT_SELECTOR).forEach(processTree);
+            }, 450);
+        }
+
+        function start() {
+            runAll();
+            settle();
+            window.addEventListener('load', settle);
+            var obs = new MutationObserver(function (muts) {
+                muts.forEach(function (m) {
+                    if (m.type === 'childList') {
+                        m.addedNodes.forEach(function (n) { if (n.nodeType === 1) queue(n); });
+                    } else if (m.type === 'attributes' && m.target.nodeType === 1) {
+                        queue(m.target);
+                    }
+                });
+            });
+            document.querySelectorAll(ROOT_SELECTOR).forEach(function (root) {
+                obs.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+            });
+            // ticking a checkbox/radio changes its look through CSS (:checked), not a class,
+            // so re-check that control's area after it changes
+            document.addEventListener('change', function (e) {
+                var t = e.target;
+                if (!t || !t.closest || !t.closest(ROOT_SELECTOR) || t.closest('[data-no-theme]')) return;
+                var group = (t.type === 'radio' && t.name)
+                    ? document.querySelectorAll('input[type="radio"][name="' + t.name + '"]') : [t];
+                Array.prototype.forEach.call(group, function (r) { queue(r.closest('label') || r.parentElement || r); });
+            }, true);
+            // dark mode switched on/off (Settings page, or "auto" following the device)
+            var lastDark = isDark();
+            new MutationObserver(function () {
+                var now = isDark();
+                if (now !== lastDark) { lastDark = now; runAll(); }
+            }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+            window.addEventListener('storage', function (e) {
+                if (!e.key || e.key.indexOf('settings.') !== 0) return;
+                if (window.EschoolSettings && window.EschoolSettings.isKey(e.key, 'themeColor')) {
+                    var c = window.EschoolSettings.get('themeColor');
+                    if (c && c !== 'blue') document.documentElement.setAttribute('data-accent', c);
+                    else document.documentElement.removeAttribute('data-accent');
+                }
+                runAll();
+            });
+        }
+
+        window.eschoolTheme = { refresh: runAll };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+        else start();
+    })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

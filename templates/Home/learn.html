@@ -1,6 +1,22 @@
 {% extends "Home/fronten.html" %}
 
 {% block content %}
+{#
+    LIVE NUMBERS
+    The route sends real counts from the database as `home_stats`, for example:
+      home_stats = {'students': 1520, 'parents': 640, 'teachers': 38, 'courses': 4, 'avg_score': 74,
+                    'subjects': {'Mathematics': {'courses': 9, 'students': 410, 'teachers': 6}, ...}}
+    The page also refreshes these every 60 seconds from /api/home-stats (same keys, JSON).
+    Any number the route does not send shows as 0.
+#}
+{% set hs = home_stats|default({}) %}
+{% macro compact(n) -%}
+  {%- set n = (n or 0)|int -%}
+  {%- if n >= 1000000 -%}{{ ('%.1f'|format(n / 1000000))|replace('.0', '') }}M
+  {%- elif n >= 1000 -%}{{ ('%.1f'|format(n / 1000))|replace('.0', '') }}K
+  {%- else -%}{{ n }}{%- endif -%}
+{%- endmacro %}
+
 <style>
 /* ============================================================
    PAGE-LOCAL TOKENS (inherits fonts/colors from base.html)
@@ -75,7 +91,8 @@
     background: var(--grad-primary); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     display: block;
 }
-.hero-text p{ font-size: 18px; color: var(--text-gray); line-height: 1.75; max-width: 500px; margin: 0 0 34px; }
+.hero-text p{ font-size: 18px; color: var(--text-gray); line-height: 1.75; max-width: 520px; margin: 0 0 34px; }
+.hero-text p strong{ color: var(--text-dark); font-weight: 700; }
 .hero-actions{ display: flex; gap: 16px; flex-wrap: wrap; }
 
 /* ---- CSS-only illustration ---- */
@@ -105,20 +122,24 @@
 }
 .glass-card .num{ font-family: var(--font-display); font-weight: 800; font-size: 22px; color: var(--text-dark); }
 .glass-card .lbl{ font-family: var(--font-body); font-size: 12px; color: var(--text-gray); font-weight: 600; }
+.glass-card .live{ display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; color: #16a34a; margin-left: 6px; text-transform: uppercase; letter-spacing: .5px; }
+.glass-card .live::before{ content:''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: livePulse 1.6s ease-in-out infinite; }
+@keyframes livePulse{ 0%,100%{ box-shadow: 0 0 0 0 rgba(34,197,94,.5); } 50%{ box-shadow: 0 0 0 5px rgba(34,197,94,0); } }
 .glass-card.gc1{ top: 20px; right: 0; animation-delay: -1s; }
 .glass-card.gc2{ bottom: 60px; left: -10px; animation-delay: -3.4s; }
 .glass-card.gc3{ bottom: -10px; right: 40px; animation-delay: -5s; }
+.glass-card.gc4{ top: 70px; left: 0; animation-delay: -2.2s; }
 @keyframes floatY{ 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-14px); } }
 
 @media (max-width: 991px){ .hero-grid{ justify-content: center; text-align: center; } .hero-text{ max-width: 100%; } .hero-actions{ justify-content: center; } .hero-text p{ margin-left: auto; margin-right: auto; } .hero-art{ margin: 20px auto 0; } }
-@media (max-width: 480px){ .hero-art{ height: 320px; } .glass-card{ padding: 12px 14px; } }
+@media (max-width: 480px){ .hero-art{ height: 340px; } .glass-card{ padding: 12px 14px; } .glass-card.gc4{ top: 110px; } }
 
 /* ============================================================
    FEATURES
    ============================================================ */
-.features-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.features-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
 .feature-card{
-    position: relative; background: white; border-radius: var(--radius-md); padding: 34px 28px;
+    position: relative; background: white; border-radius: var(--radius-md); padding: 34px 26px;
     box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease; overflow: hidden;
 }
 .feature-card::before{
@@ -136,19 +157,24 @@
 .feature-icon svg{ width: 28px; height: 28px; stroke: white; }
 .feature-card h3{ font-family: var(--font-display); font-size: 20px; font-weight: 700; margin: 0 0 10px; }
 .feature-card p{ color: var(--text-gray); font-size: 15px; line-height: 1.7; margin: 0; }
+.feature-tag{ display: inline-block; margin-top: 14px; font-size: 12px; font-weight: 700; color: var(--primary); background: #eff6ff; padding: 5px 12px; border-radius: 20px; }
 
-@media (max-width: 900px){ .features-grid{ grid-template-columns: 1fr; } }
+@media (max-width: 1100px){ .features-grid{ grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px){ .features-grid{ grid-template-columns: 1fr; } }
 
 /* ============================================================
-   STATS
+   STATS (live)
    ============================================================ */
 .stats-section{ background: var(--grad-primary); padding: 80px 24px; }
-.stats-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px; text-align: center; }
+.stats-head{ text-align: center; margin-bottom: 44px; }
+.stats-head h2{ font-family: var(--font-display); font-weight: 800; font-size: clamp(1.6rem, 3.4vw, 2.2rem); color: white; margin: 0 0 10px; }
+.stats-head p{ color: rgba(255,255,255,0.85); margin: 0; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; }
+.stats-head p::before{ content:''; width: 9px; height: 9px; border-radius: 50%; background: #4ade80; animation: livePulse 1.6s ease-in-out infinite; }
+.stats-grid{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 34px 30px; text-align: center; }
 .stat-value{ font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 4vw, 2.8rem); color: white; display: block; }
-.stat-label{ font-family: var(--font-body); font-size: 15px; color: rgba(255,255,255,0.85); font-weight: 500; margin-top: 6px; }
+.stat-label{ font-family: var(--font-body); font-size: 15px; color: rgba(255,255,255,0.85); font-weight: 500; margin-top: 6px; display: block; }
 
 @media (max-width: 900px){ .stats-grid{ grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px){ .stats-grid{ grid-template-columns: 1fr; } }
 
 /* ============================================================
    CATEGORIES
@@ -171,6 +197,10 @@
 .category-icon svg{ width: 22px; height: 22px; stroke: var(--primary); }
 .category-card h3{ font-family: var(--font-display); font-size: 17px; font-weight: 700; margin: 0 0 8px; }
 .category-card p{ color: var(--text-gray); font-size: 13.5px; line-height: 1.6; margin: 0 0 18px; }
+.cat-stats{ list-style: none; margin: 0 0 18px; padding: 12px 0 0; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.cat-stats li{ font-size: 12.5px; color: var(--text-gray); font-family: var(--font-body); }
+.cat-stats b{ font-family: var(--font-display); font-weight: 800; color: var(--text-dark); font-size: 14px; }
+.section-sub .cat-total{ color: var(--primary); font-family: var(--font-display); }
 .category-card a{ font-size: 13.5px; font-weight: 700; color: var(--primary); text-decoration: none; }
 .category-card a:hover{ text-decoration: underline; }
 
@@ -178,11 +208,13 @@
 @media (max-width: 480px){ .category-grid{ grid-template-columns: 1fr; } }
 
 /* ============================================================
-   WHY CHOOSE
+   WHY CHOOSE (learners, teachers, parents)
    ============================================================ */
 .why-grid{ display: flex; gap: 60px; align-items: center; flex-wrap: wrap; }
+.why-grid.flip{ flex-direction: row-reverse; }
 .why-left{ flex: 1 1 400px; }
 .why-right{ flex: 1 1 380px; position: relative; min-height: 340px; }
+.why-left .why-lead{ color: var(--text-gray); font-size: 16px; line-height: 1.7; margin: -12px 0 22px; }
 .checklist{ list-style: none; margin: 0; padding: 0; }
 .checklist li{ display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); font-weight: 600; font-family: var(--font-alt); }
 .checklist li:last-child{ border-bottom: none; }
@@ -191,6 +223,7 @@
     display: flex; align-items: center; justify-content: center;
 }
 .check-icon svg{ width: 14px; height: 14px; stroke: white; }
+.why-band{ background: var(--surface); }
 
 .info-card{
     position: absolute; background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -203,33 +236,30 @@
 .info-card.ic2{ top: 130px; right: 0; animation-delay: -3s; }
 .info-card.ic3{ bottom: 0; left: 0; animation-delay: -4.6s; }
 
-@media (max-width: 991px){ .why-right{ min-height: 0; display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; } .info-card{ position: static; width: 240px; } }
+@media (max-width: 991px){ .why-grid.flip{ flex-direction: row; } .why-right{ min-height: 0; display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; } .info-card{ position: static; width: 240px; } }
 
 /* ============================================================
-   TESTIMONIALS
+   HOW IT WORKS (one path per role)
    ============================================================ */
-.testi-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
-.testi-card{
-    background: white; border-radius: var(--radius-md); padding: 30px 26px; box-shadow: var(--shadow-sm);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+.role-tabs{ display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: -24px auto 54px; padding: 6px; background: white; border-radius: 50px; box-shadow: var(--shadow-sm); width: fit-content; max-width: 100%; }
+.role-tab{
+    border: none; background: transparent; cursor: pointer; padding: 12px 22px; border-radius: 40px;
+    font-family: var(--font-body); font-weight: 700; font-size: 15px; color: var(--text-gray);
+    display: inline-flex; align-items: center; gap: 8px; transition: background .25s ease, color .25s ease, box-shadow .25s ease;
 }
-.testi-card:hover{ transform: translateY(-6px); box-shadow: var(--shadow-md); }
-.testi-stars{ color: var(--accent); font-size: 15px; letter-spacing: 2px; margin-bottom: 14px; }
-.testi-card p.quote{ color: var(--text-dark); font-size: 15px; line-height: 1.7; margin: 0 0 22px; }
-.testi-person{ display: flex; align-items: center; gap: 12px; }
-.testi-avatar{
-    width: 44px; height: 44px; border-radius: 50%; background: var(--grad-primary); color: white;
-    display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 15px;
-}
-.testi-person h4{ margin: 0; font-size: 14.5px; font-family: var(--font-alt); }
-.testi-person span{ font-size: 12.5px; color: var(--text-gray); }
+.role-tab svg{ width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.role-tab:hover{ color: var(--primary); background: #eff6ff; }
+.role-tab[aria-selected="true"]{ background: var(--grad-primary); color: white; box-shadow: 0 8px 20px rgba(37,99,235,0.35); }
+.role-tab:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 520px){ .role-tabs{ border-radius: 18px; width: 100%; } .role-tab{ flex: 1 1 30%; justify-content: center; padding: 11px 10px; font-size: 14px; } .role-tab svg{ display: none; } }
 
-@media (max-width: 900px){ .testi-grid{ grid-template-columns: 1fr; } }
+.role-panel[hidden]{ display: none; }
+.role-panel{ animation: panelIn .5s cubic-bezier(.2,.7,.3,1); }
+@keyframes panelIn{ from{ opacity: 0; transform: translateY(16px); } to{ opacity: 1; transform: none; } }
+.role-intro{ text-align: center; max-width: 560px; margin: 0 auto 44px; color: var(--text-gray); font-size: 16px; line-height: 1.7; }
+.role-intro strong{ color: var(--text-dark); }
 
-/* ============================================================
-   LEARNING PROCESS TIMELINE
-   ============================================================ */
-.timeline{ display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; position: relative; }
+.timeline{ display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; position: relative; list-style: none; margin: 0; padding: 0; }
 .timeline::before{
     content:''; position: absolute; top: 28px; left: 8%; right: 8%; height: 2px;
     background: repeating-linear-gradient(90deg, var(--border) 0 8px, transparent 8px 16px);
@@ -241,8 +271,14 @@
     display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800;
     font-size: 20px; margin: 0 auto 18px; box-shadow: 0 10px 24px rgba(37,99,235,0.32);
 }
+.role-panel .timeline-step{ animation: stepIn .55s cubic-bezier(.2,.7,.3,1) both; }
+.role-panel .timeline-step:nth-child(2){ animation-delay: .08s; }
+.role-panel .timeline-step:nth-child(3){ animation-delay: .16s; }
+.role-panel .timeline-step:nth-child(4){ animation-delay: .24s; }
+@keyframes stepIn{ from{ opacity: 0; transform: scale(.9); } to{ opacity: 1; transform: none; } }
 .timeline-step h3{ font-family: var(--font-display); font-size: 16px; margin: 0 0 8px; }
-.timeline-step p{ font-size: 13.5px; color: var(--text-gray); max-width: 200px; margin: 0 auto; line-height: 1.6; }
+.timeline-step p{ font-size: 13.5px; color: var(--text-gray); max-width: 210px; margin: 0 auto; line-height: 1.6; }
+.role-cta{ text-align: center; margin-top: 48px; }
 
 @media (max-width: 768px){ .timeline{ flex-direction: column; } .timeline::before{ display: none; } }
 
@@ -259,7 +295,8 @@
 .cta-section::before{ width: 220px; height: 220px; top: -80px; left: -60px; }
 .cta-section::after{ width: 180px; height: 180px; bottom: -60px; right: -40px; }
 .cta-section h2{ font-family: var(--font-display); font-weight: 800; font-size: clamp(1.8rem, 4vw, 2.6rem); color: white; margin: 0 0 16px; position: relative; }
-.cta-section p{ color: rgba(255,255,255,0.88); font-size: 17px; max-width: 520px; margin: 0 auto 34px; position: relative; }
+.cta-section p{ color: rgba(255,255,255,0.88); font-size: 17px; max-width: 580px; margin: 0 auto 34px; position: relative; line-height: 1.7; }
+.cta-section p strong{ color: white; font-family: var(--font-display); font-weight: 800; }
 .cta-actions{ display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; position: relative; }
 .cta-actions .btn-primary{ background: white; color: var(--primary); box-shadow: 0 10px 26px rgba(0,0,0,0.2); }
 .cta-actions .btn-secondary{ background: transparent; color: white; border-color: rgba(255,255,255,0.5); }
@@ -268,7 +305,7 @@
 @media (max-width: 480px){ .cta-actions{ flex-direction: column; } .cta-actions .btn-primary, .cta-actions .btn-secondary{ width: 100%; justify-content: center; } }
 
 /* ============================================================
-   FOOTER  (new — appended only, nothing above this rule changed)
+   FOOTER
    ============================================================ */
 .eschool-page footer.site-foot{
     background: linear-gradient(180deg, #0F172A, #060b16);
@@ -287,28 +324,21 @@
 .eschool-page footer.site-foot .foot-col ul li{ margin-bottom: 10px; }
 .eschool-page footer.site-foot .foot-col ul a{ color: #94a3b8; text-decoration: none; font-size: 13px; font-family: var(--font-body); transition: color 0.2s ease; }
 .eschool-page footer.site-foot .foot-col ul a:hover{ color: #fff; }
-.eschool-page footer.site-foot .social-row{ display: flex; gap: 10px; margin-top: 16px; }
-.eschool-page footer.site-foot .social-row a{
-    width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.06);
-    display: flex; align-items: center; justify-content: center; color: #94a3b8; transition: all 0.2s ease;
+.eschool-page footer.site-foot .help-box{ border-radius: 14px; padding: 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+.eschool-page footer.site-foot .help-box p{ margin: 0 0 12px; }
+.eschool-page footer.site-foot .help-btn{
+    display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 14px; border-radius: 10px;
+    background: linear-gradient(100deg, var(--primary), var(--accent)); color: #fff; font-weight: 700; font-size: 13px;
+    text-decoration: none; font-family: var(--font-body); transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.eschool-page footer.site-foot .social-row a:hover{ background: var(--primary); color: #fff; transform: translateY(-2px); }
-.eschool-page footer.site-foot .social-row svg{ width: 15px; height: 15px; }
-.eschool-page footer.site-foot .newsletter{ display: flex; gap: 8px; margin-top: 6px; }
-.eschool-page footer.site-foot .newsletter input{
-    flex: 1; height: 42px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.06); color: #fff; padding: 0 14px; font-size: 12.5px; outline: none;
-    font-family: var(--font-body);
-}
-.eschool-page footer.site-foot .newsletter input::placeholder{ color: #64748B; }
-.eschool-page footer.site-foot .newsletter button{
-    height: 42px; padding: 0 16px; border-radius: 10px; border: none; background: var(--primary);
-    color: #fff; font-weight: 700; font-size: 12.5px; cursor: pointer; font-family: var(--font-display);
-}
-.eschool-page footer.site-foot .newsletter-msg{ font-size: 11.5px; color: var(--accent); margin-top: 8px; min-height: 14px; }
+.eschool-page footer.site-foot .help-btn:hover{ transform: translateY(-2px); box-shadow: 0 10px 22px -10px rgba(20,184,166,.7); }
+.eschool-page footer.site-foot .help-btn svg{ width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+.eschool-page footer.site-foot a:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 .eschool-page footer.site-foot .copyright{
     text-align: center; padding-top: 26px; border-top: 1px solid rgba(255,255,255,0.08); color: #64748B; font-size: 12px;
 }
+.eschool-page footer.site-foot .copyright a{ color: #94a3b8; text-decoration: none; }
+.eschool-page footer.site-foot .copyright a:hover{ color: #fff; }
 @media (max-width: 900px){ .eschool-page footer.site-foot .foot-grid{ grid-template-columns: 1fr 1fr; } }
 @media (max-width: 480px){ .eschool-page footer.site-foot .foot-grid{ grid-template-columns: 1fr; } }
 </style>
@@ -321,11 +351,13 @@
         <div class="hero-text reveal fade-up">
             <span class="eyebrow">Education is a right</span>
             <h1>Learn smarter.<span>Build your future.</span></h1>
-            <p>Eschool is a premium online learning platform with expert-led courses, real feedback, and a
-               path that actually gets you somewhere — at your pace, on your terms.</p>
+            <p>Eschool brings everyone in a child's education onto one platform. <strong>Learners</strong> study with
+               video lessons, notes and live classes. <strong>Parents</strong> follow their child's progress and support
+               it from home. <strong>Teachers</strong> share what they know, teach live and earn while they do it. All at
+               your pace, on your terms.</p>
             <div class="hero-actions">
                 <a class="btn-primary" href="/register">Start learning</a>
-                <a class="btn-secondary" href="#categories">Explore courses</a>
+                <a class="btn-secondary" href="#how-it-works">See how it works</a>
             </div>
         </div>
 
@@ -334,9 +366,10 @@
             <div class="blob b2"></div>
             <div class="ring r1"></div>
             <div class="ring r2"></div>
-            <div class="glass-card gc1"><span class="num">15K+</span><br><span class="lbl">Students</span></div>
-            <div class="glass-card gc2"><span class="num">350+</span><br><span class="lbl">Courses</span></div>
-            <div class="glass-card gc3"><span class="num">98%</span><br><span class="lbl">Success rate</span></div>
+            <div class="glass-card gc1"><span class="num" data-stat="students" data-compact="1">{{ compact(hs.get('students')) }}</span><span class="live">Live</span><br><span class="lbl">Students</span></div>
+            <div class="glass-card gc4"><span class="num" data-stat="teachers" data-compact="1">{{ compact(hs.get('teachers')) }}</span><br><span class="lbl">Teachers</span></div>
+            <div class="glass-card gc2"><span class="num" data-stat="courses" data-compact="1">{{ compact(hs.get('courses')) }}</span><br><span class="lbl">Courses</span></div>
+            <div class="glass-card gc3"><span class="num" data-stat="avg_score" data-suffix="%">{{ (hs.get('avg_score') or 0)|int }}%</span><br><span class="lbl">Avg. test score</span></div>
         </div>
     </div>
 </section>
@@ -345,46 +378,58 @@
 <section>
     <div class="container">
         <h2 class="section-title reveal fade-up">Everything you need to learn well</h2>
-        <p class="section-sub reveal fade-up">Three pillars, one platform — built to make learning stick.</p>
+        <p class="section-sub reveal fade-up">Four pillars, one platform, built to make learning stick.</p>
 
         <div class="features-grid">
             <div class="feature-card reveal fade-up">
-                <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="m21 8-4 3.5v1L21 16z"/></svg></div>
-                <h3>Video lessons</h3>
-                <p>Bite-sized, expert-led videos you can watch, rewind, and revisit as many times as you need.</p>
+                <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V6a2 2 0 0 1 2-2h12v15.5M4 19.5A2 2 0 0 0 6 21h13"/><path d="m10 8 4 2.5-4 2.5z"/></svg></div>
+                <h3>All education resources</h3>
+                <p>Clear video lessons you can watch, rewind and revisit, plus excellent notes that follow the syllabus in detail. Everything you need to learn, in one place.</p>
+                <span class="feature-tag">Videos + notes</span>
             </div>
             <div class="feature-card reveal fade-up" style="transition-delay:0.08s">
-                <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></div>
-                <h3>Real skills</h3>
-                <p>Project-based learning that builds abilities you can actually use — not just watch and forget.</p>
+                <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg></div>
+                <h3>Build your career</h3>
+                <p>Strong foundations in every subject today open the doors to the career you want tomorrow. Learn with a goal in mind.</p>
+                <span class="feature-tag">For learners</span>
             </div>
             <div class="feature-card reveal fade-up" style="transition-delay:0.16s">
-                <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.5.4.6 1 .6 1.6v.1h6v-.1c0-.6.1-1.2.6-1.6A6 6 0 0 0 12 3Z"/></svg></div>
-                <h3>Excellent notes</h3>
-                <p>Curated notes that go in detailed to the syllabus, so to always expand and grow your learning.</p>
+                <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></div>
+                <h3>Progress tracking</h3>
+                <p>See every module finished, test passed and streak kept. Parents can follow along too, with what their child chooses to share.</p>
+                <span class="feature-tag">Learners + parents</span>
+            </div>
+            <div class="feature-card reveal fade-up" style="transition-delay:0.24s">
+                <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/><path d="M6 10v5M18 10v5"/></svg></div>
+                <h3>Earn as a teacher</h3>
+                <p>Teach private lessons, run live classes and share your resources. Families pay through Eschool, and Eschool pays you.</p>
+                <span class="feature-tag">For teachers</span>
             </div>
         </div>
     </div>
 </section>
 
-<!-- ============ STATS ============ -->
+<!-- ============ LIVE STATS ============ -->
 <section class="stats-section">
-    <div class="container stats-grid">
-        <div class="reveal zoom-in">
-            <span class="stat-value" id="stat-students">0<span>+</span></span>
-            <span class="stat-label">Students</span>
+    <div class="container">
+        <div class="stats-head reveal fade-up">
+            <h2>Eschool right now</h2>
+            <p>Live numbers, straight from the platform</p>
         </div>
-        <div class="reveal zoom-in" style="transition-delay:0.08s">
-            <span class="stat-value" id="stat-courses">0<span>+</span></span>
-            <span class="stat-label">Courses</span>
-        </div>
-        <div class="reveal zoom-in" style="transition-delay:0.16s">
-            <span class="stat-value" id="stat-pass">0<span>%</span></span>
-            <span class="stat-label">Pass rate</span>
-        </div>
-        <div class="reveal zoom-in" style="transition-delay:0.24s">
-            <span class="stat-value" id="stat-teachers">0<span>+</span></span>
-            <span class="stat-label">Expert teachers</span>
+        <div class="stats-grid">
+            {% set live_stats = [
+                ('students', 'Students', ''),
+                ('parents', 'Parents', ''),
+                ('teachers', 'Expert teachers', ''),
+                ('avg_score', 'Average test score', '%'),
+            ] %}
+            {% for key, label, suffix in live_stats %}
+            {% set value = (hs.get(key) or 0)|int %}
+            <div class="reveal zoom-in" style="transition-delay:{{ (loop.index0 % 4) * 0.08 }}s">
+                <span class="stat-value" data-stat="{{ key }}" data-count="{{ value }}" data-suffix="{{ suffix }}">{{ '{:,}'.format(value) }}{{ suffix }}</span>
+                <span class="stat-label">{{ label }}</span>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </section>
@@ -393,7 +438,7 @@
 <section id="categories">
     <div class="container">
         <h2 class="section-title reveal fade-up">Explore course categories</h2>
-        <p class="section-sub reveal fade-up">From first principles to advanced practice, across eight subjects.</p>
+        <p class="section-sub reveal fade-up"><strong class="cat-total" data-stat="courses">{{ '{:,}'.format((hs.get('courses') or 0)|int) }}</strong> courses across eight subjects, from first principles to advanced practice. Numbers update live.</p>
 
         <div class="category-grid">
             {% set categories = [
@@ -406,11 +451,18 @@
                 ('Biology', 'Learn the scientific study of life and living organism.', 'M12 2a5 5 0 0 1 5 5c0 2.5-2 3.5-2 6h-6c0-2.5-2-3.5-2-6a5 5 0 0 1 5-5ZM9 20h6'),
                 ('Computer Studies', 'Core computing concepts every learner should know.', 'M4 4h16v12H4zM8 20h8M10 16v4M14 16v4'),
             ] %}
+            {% set subject_stats = hs.get('subjects') or {} %}
             {% for name, desc, path in categories %}
+            {% set ss = subject_stats.get(name) or {} %}
             <div class="category-card reveal fade-up" style="transition-delay: {{ loop.index0 * 0.05 }}s">
                 <div class="category-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ path }}"/></svg></div>
                 <h3>{{ name }}</h3>
                 <p>{{ desc }}</p>
+                <ul class="cat-stats" aria-label="{{ name }} on Eschool">
+                    <li><b data-stat="subjects.{{ name }}.courses" data-compact="1">{{ compact(ss.get('courses')) }}</b> courses</li>
+                    <li><b data-stat="subjects.{{ name }}.students" data-compact="1">{{ compact(ss.get('students')) }}</b> students</li>
+                    <li><b data-stat="subjects.{{ name }}.teachers" data-compact="1">{{ compact(ss.get('teachers')) }}</b> teachers</li>
+                </ul>
                 <a href="/services">Learn more &rarr;</a>
             </div>
             {% endfor %}
@@ -418,14 +470,14 @@
     </div>
 </section>
 
-<!-- ============ WHY CHOOSE ============ -->
+<!-- ============ WHY CHOOSE: LEARNERS ============ -->
 <section>
     <div class="container why-grid">
         <div class="why-left reveal slide-left">
-            <span class="eyebrow">Why Eschool</span>
+            <span class="eyebrow">For learners</span>
             <h2 class="section-title" style="text-align:left; margin-bottom: 28px;">Built for learners who mean it</h2>
             <ul class="checklist">
-                {% for item in ['Flexible learning', 'Video lessons', 'Practical projects', 'Certificates', 'Career guidance', 'Affordable education'] %}
+                {% for item in ['Flexible learning', 'Video lessons', 'Live classes', 'Certificates', 'Career guidance', 'Affordable education'] %}
                 <li>
                     <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
                     {{ item }}
@@ -442,68 +494,105 @@
     </div>
 </section>
 
-<!-- ============ TESTIMONIALS ============ -->
-<section style="background:var(--surface);">
-    <div class="container">
-        <h2 class="section-title reveal fade-up">What people say</h2>
-        <p class="section-sub reveal fade-up">A few words from people who've been through it.</p>
+<!-- ============ WHY CHOOSE: TEACHERS ============ -->
+<section class="why-band">
+    <div class="container why-grid flip">
+        <div class="why-left reveal slide-right">
+            <span class="eyebrow">For teachers</span>
+            <h2 class="section-title" style="text-align:left; margin-bottom: 28px;">Built for teachers who love to teach</h2>
+            <p class="why-lead">Reach learners beyond your classroom, teach the way you like, and get paid for it.</p>
+            <ul class="checklist">
+                {% for item in ['Your own teaching profile', 'Upload notes and video resources', 'Live classes inside Eschool', 'Private lessons with families', 'Reviews and ratings that build trust', 'Get paid through Eschool'] %}
+                <li>
+                    <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+                    {{ item }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
 
-        <div class="testi-grid">
-            <div class="testi-card reveal fade-up">
-                <div class="testi-stars">★★★★★</div>
-                <p class="quote">The pacing finally made sense to me. I went from dreading math to actually looking forward to it.</p>
-                <div class="testi-person">
-                    <div class="testi-avatar">AK</div>
-                    <div><h4>Amina K.</h4><span>High school student</span></div>
-                </div>
-            </div>
-            <div class="testi-card reveal fade-up" style="transition-delay:0.08s">
-                <div class="testi-stars">★★★★★</div>
-                <p class="quote">I switched careers into programming using Eschool's courses. The projects were the part that actually stuck.</p>
-                <div class="testi-person">
-                    <div class="testi-avatar">DM</div>
-                    <div><h4>David M.</h4><span>Career switcher</span></div>
-                </div>
-            </div>
-            <div class="testi-card reveal fade-up" style="transition-delay:0.16s">
-                <div class="testi-stars">★★★★★</div>
-                <p class="quote">As a teacher myself, I was picky. Eschool's course quality and structure won me over quickly.</p>
-                <div class="testi-person">
-                    <div class="testi-avatar">RN</div>
-                    <div><h4>Ruth N.</h4><span>Teacher</span></div>
-                </div>
-            </div>
+        <div class="why-right reveal slide-left">
+            <div class="info-card ic1"><h4>Live classroom</h4><p>Teach live with chat you can manage, right inside Eschool. No outside apps.</p></div>
+            <div class="info-card ic2"><h4>Earn as you teach</h4><p>Parents pay Eschool for private lessons, and Eschool pays you after each lesson.</p></div>
+            <div class="info-card ic3"><h4>Grow your reach</h4><p>Followers, ratings and popular resources help more families find you.</p></div>
         </div>
     </div>
 </section>
 
-<!-- ============ LEARNING PROCESS ============ -->
+<!-- ============ WHY CHOOSE: PARENTS ============ -->
 <section>
+    <div class="container why-grid">
+        <div class="why-left reveal slide-left">
+            <span class="eyebrow">For parents</span>
+            <h2 class="section-title" style="text-align:left; margin-bottom: 28px;">Built for parents who stay involved</h2>
+            <p class="why-lead">Be part of your child's learning without looking over their shoulder.</p>
+            <ul class="checklist">
+                {% for item in ['Link to your child safely', 'See grades and progress', 'Set goals and rewards', 'Screen time and quiet hours', 'Hire trusted private teachers', 'Pay securely with M-Pesa'] %}
+                <li>
+                    <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+                    {{ item }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="why-right reveal slide-right">
+            <div class="info-card ic1"><h4>Child-approved link</h4><p>Your child confirms the link and chooses what you can see.</p></div>
+            <div class="info-card ic2"><h4>Goals and rewards</h4><p>Set study goals together and celebrate when they're reached.</p></div>
+            <div class="info-card ic3"><h4>Every lesson visible</h4><p>See every lesson, message and call between a private teacher and your child.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ HOW IT WORKS (per role) ============ -->
+<section id="how-it-works" class="why-band">
     <div class="container">
         <h2 class="section-title reveal fade-up">How it works</h2>
-        <p class="section-sub reveal fade-up">Four steps between you and your first certificate.</p>
+        <p class="section-sub reveal fade-up">Pick who you are and see your path.</p>
 
-        <div class="timeline">
-            <div class="timeline-step reveal zoom-in">
-                <div class="step-num">1</div>
-                <h3>Create account</h3>
-                <p>Sign up in under a minute — no credit card required to start.</p>
-            </div>
-            <div class="timeline-step reveal zoom-in" style="transition-delay:0.1s">
-                <div class="step-num">2</div>
-                <h3>Choose course</h3>
-                <p>Browse eight subject areas and pick what fits where you're headed.</p>
-            </div>
-            <div class="timeline-step reveal zoom-in" style="transition-delay:0.2s">
-                <div class="step-num">3</div>
-                <h3>Start learning</h3>
-                <p>Work through video lessons, notes, and projects at your own pace.</p>
-            </div>
-            <div class="timeline-step reveal zoom-in" style="transition-delay:0.3s">
-                <div class="step-num">4</div>
-                <h3>Earn certificate</h3>
-                <p>Finish strong and walk away with proof of what you can do.</p>
-            </div>
+        <div class="role-tabs" role="tablist" aria-label="Choose who you are">
+            <button type="button" class="role-tab" role="tab" id="tab-learner" aria-controls="panel-learner" aria-selected="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg>I'm a learner
+            </button>
+            <button type="button" class="role-tab" role="tab" id="tab-parent" aria-controls="panel-parent" aria-selected="false" tabindex="-1">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><circle cx="19" cy="8" r="3"/></svg>I'm a parent
+            </button>
+            <button type="button" class="role-tab" role="tab" id="tab-teacher" aria-controls="panel-teacher" aria-selected="false" tabindex="-1">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 7l10-4 10 4-10 4z"/><path d="M6 9v5c3 3 9 3 12 0V9"/></svg>I'm a teacher
+            </button>
+        </div>
+
+        <div class="role-panel" id="panel-learner" role="tabpanel" aria-labelledby="tab-learner" tabindex="0">
+            <p class="role-intro">From your first sign-in to <strong>climbing the monthly leaderboard</strong>.</p>
+            <ol class="timeline">
+                <li class="timeline-step"><div class="step-num">1</div><h3>Create your account</h3><p>Sign up as a learner in under a minute, with email or Google.</p></li>
+                <li class="timeline-step"><div class="step-num">2</div><h3>Choose a course</h3><p>Browse eight subjects and pick what fits where you're headed.</p></li>
+                <li class="timeline-step"><div class="step-num">3</div><h3>Learn your way</h3><p>Videos, notes and live classes, then module tests to check you've got it.</p></li>
+                <li class="timeline-step"><div class="step-num">4</div><h3>Level up</h3><p>Earn Eschool Points, keep your streak and watch your progress grow.</p></li>
+            </ol>
+            <div class="role-cta"><a class="btn-primary" href="/register">Start learning</a></div>
+        </div>
+
+        <div class="role-panel" id="panel-parent" role="tabpanel" aria-labelledby="tab-parent" tabindex="0" hidden>
+            <p class="role-intro">Stay close to your child's learning, <strong>with their agreement</strong>.</p>
+            <ol class="timeline">
+                <li class="timeline-step"><div class="step-num">1</div><h3>Create a parent account</h3><p>Register and choose "parent" as your account type.</p></li>
+                <li class="timeline-step"><div class="step-num">2</div><h3>Link your child</h3><p>Send a request; your child confirms it with a one-time code.</p></li>
+                <li class="timeline-step"><div class="step-num">3</div><h3>Follow and support</h3><p>See their progress, set goals and rewards, and choose screen-time limits.</p></li>
+                <li class="timeline-step"><div class="step-num">4</div><h3>Add a private teacher</h3><p>Request a teacher, pay through Eschool, and see every lesson.</p></li>
+            </ol>
+            <div class="role-cta"><a class="btn-primary" href="/register">Join as a parent</a></div>
+        </div>
+
+        <div class="role-panel" id="panel-teacher" role="tabpanel" aria-labelledby="tab-teacher" tabindex="0" hidden>
+            <p class="role-intro">Turn what you know into lessons, <strong>and get paid for it</strong>.</p>
+            <ol class="timeline">
+                <li class="timeline-step"><div class="step-num">1</div><h3>Register as a teacher</h3><p>Create your account and choose "teacher" as your account type.</p></li>
+                <li class="timeline-step"><div class="step-num">2</div><h3>Build your profile</h3><p>Add your subjects, grades, qualifications, fee and availability.</p></li>
+                <li class="timeline-step"><div class="step-num">3</div><h3>Share and teach</h3><p>Upload resources and run live classes for learners inside Eschool.</p></li>
+                <li class="timeline-step"><div class="step-num">4</div><h3>Earn</h3><p>Accept private lesson requests from parents; Eschool pays you after each lesson.</p></li>
+            </ol>
+            <div class="role-cta"><a class="btn-primary" href="/register">Start teaching</a></div>
         </div>
     </div>
 </section>
@@ -511,60 +600,59 @@
 <!-- ============ CTA ============ -->
 <section>
     <div class="cta-section reveal zoom-in">
-        <h2>Start learning today</h2>
-        <p>Join thousands of learners already building their future with Eschool — the first course is free to explore.</p>
+        <h2>Your place on Eschool is waiting</h2>
+        <p>Join <strong data-stat="students" data-compact="1">{{ compact(hs.get('students')) }}</strong> learners,
+           <strong data-stat="parents" data-compact="1">{{ compact(hs.get('parents')) }}</strong> parents and
+           <strong data-stat="teachers" data-compact="1">{{ compact(hs.get('teachers')) }}</strong> teachers who are
+           already learning, guiding and teaching together. Pick your role and get started today.</p>
         <div class="cta-actions">
-            <a class="btn-primary" href="/register">Register</a>
-            <a class="btn-secondary" href="#categories">Explore courses</a>
+            <a class="btn-primary" href="/register">Join as a learner</a>
+            <a class="btn-secondary" href="/register">Join as a parent</a>
+            <a class="btn-secondary" href="/register">Join as a teacher</a>
         </div>
     </div>
 </section>
 
-<!-- ============ FOOTER (new) ============ -->
+<!-- ============ FOOTER ============ -->
 <footer class="site-foot">
     <div class="container foot-grid">
         <div class="foot-col">
             <div class="foot-brand">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3L1 8l11 5 9-4.09V17h2V8L12 3z" fill="url(#lfg1)"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="url(#lfg1)" opacity=".7"/><defs><linearGradient id="lfg1" x1="1" y1="3" x2="23" y2="21"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#14B8A6"/></linearGradient></defs></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3L1 8l11 5 9-4.09V17h2V8L12 3z" fill="url(#lfg1)"/><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="url(#lfg1)" opacity=".7"/><defs><linearGradient id="lfg1" x1="1" y1="3" x2="23" y2="21"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#14B8A6"/></linearGradient></defs></svg>
                 <span>Eschool</span>
             </div>
             <p>Premium online learning built around real skills, clear video lessons, and a path that actually gets you somewhere.</p>
-            <div class="social-row">
-                <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg></a>
-                <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 5.9c-.7.3-1.5.6-2.3.7.8-.5 1.5-1.3 1.8-2.3-.8.5-1.7.8-2.6 1a4.1 4.1 0 0 0-7 3.7A11.6 11.6 0 0 1 3.4 4.6a4.1 4.1 0 0 0 1.3 5.5c-.7 0-1.3-.2-1.9-.5v.1c0 2 1.4 3.6 3.3 4a4.1 4.1 0 0 1-1.8.1 4.1 4.1 0 0 0 3.8 2.9A8.3 8.3 0 0 1 2 18.4a11.6 11.6 0 0 0 6.3 1.8c7.5 0 11.7-6.3 11.7-11.7v-.5c.8-.6 1.5-1.3 2-2.1z"/></svg></a>
-                <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.1c.5-1 1.9-2 3.8-2 4 0 4.8 2.6 4.8 6V21h-4v-5.3c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V21H9z"/></svg></a>
-                <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.7 0 3 0 4.1.06 1.1.05 1.8.22 2.4.46.7.28 1.2.6 1.7 1.1.5.5.9 1 1.1 1.7.25.6.42 1.4.46 2.4.06 1.1.06 1.5.06 4.1s0 3-.06 4.1c-.04 1.1-.2 1.8-.46 2.4-.28.7-.6 1.2-1.1 1.7-.5.5-1 .8-1.7 1.1-.6.24-1.3.4-2.4.46-1.1.06-1.4.06-4.1.06s-3 0-4.1-.06c-1.1-.06-1.8-.22-2.4-.46-.7-.3-1.2-.6-1.7-1.1-.5-.5-.8-1-1.1-1.7-.24-.6-.4-1.3-.46-2.4C2 15 2 14.7 2 12s0-3 .06-4.1c.06-1.1.22-1.8.46-2.4.3-.7.6-1.2 1.1-1.7.5-.5 1-.8 1.7-1.1.6-.24 1.3-.41 2.4-.46C9 2 9.3 2 12 2zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zm5.2-8.4a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z"/></svg></a>
-            </div>
         </div>
         <div class="foot-col">
             <h5>Quick Links</h5>
             <ul>
                 <li><a href="#categories">Courses</a></li>
-                <li><a href="/aboutus">About</a></li>
+                <li><a href="/aboutus">About us</a></li>
                 <li><a href="/services">Services</a></li>
+                <li><a href="/earn">Earn</a></li>
                 <li><a href="/contact">Contact</a></li>
             </ul>
         </div>
         <div class="foot-col">
             <h5>Support</h5>
             <ul>
-                <li><a href="/help">Help Center</a></li>
-                <li><a href="#">Privacy Policy</a></li>
-                <li><a href="#">Terms of Service</a></li>
+                <li><a href="/support">Help Center</a></li>
+                <li><a href="/policies#faq">Questions</a></li>
+                <li><a href="/policies#safety">Child safety</a></li>
+                <li><a href="/policies#privacy">Privacy Policy</a></li>
+                <li><a href="/policies#terms">Terms of Service</a></li>
             </ul>
         </div>
         <div class="foot-col">
-            <h5>Stay Updated</h5>
-            <p style="margin-bottom:12px;">Get new courses and learning tips in your inbox.</p>
-            <form class="newsletter" id="footNewsForm">
-                <input type="email" placeholder="Your email" required>
-                <button type="submit">Subscribe</button>
-            </form>
-            <div class="newsletter-msg" id="footNewsMsg"></div>
+            <h5>Need help now?</h5>
+            <div class="help-box">
+                <p>Questions about your account, a payment or a lesson? Our team will help, usually within one working day.</p>
+                <a class="help-btn" href="/contact"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Contact support</a>
+            </div>
         </div>
     </div>
     <div class="container">
-        <div class="copyright">&copy; 2025 Eschool. All rights reserved.</div>
+        <div class="copyright">&copy; <span data-year>2026</span> Eschool. All rights reserved. &middot; <a href="/policies#privacy">Privacy</a> &middot; <a href="/policies#terms">Terms</a></div>
     </div>
 </footer>
 
@@ -584,36 +672,39 @@
     }, { threshold: 0.15 });
     revealEls.forEach(el => revealObserver.observe(el));
 
-    // Animated counters
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    function animateCount(el, end, suffixEl, duration) {
-        if (prefersReducedMotion) { el.firstChild.textContent = end.toLocaleString(); return; }
+    // ---------- Live numbers ----------
+    function compact(n) {
+        if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+        if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+        return String(n);
+    }
+    function formatStat(el, n) {
+        const suffix = el.dataset.suffix || '';
+        return (el.dataset.compact ? compact(n) : n.toLocaleString()) + suffix;
+    }
+
+    // Count up the stats band from 0 to the real number when it scrolls into view
+    function animateCount(el, end, duration) {
+        if (prefersReducedMotion || end === 0) { el.textContent = formatStat(el, end); return; }
         let start = null;
         function step(ts) {
             if (!start) start = ts;
             const progress = Math.min((ts - start) / duration, 1);
-            el.firstChild.textContent = Math.floor(progress * end).toLocaleString();
+            el.textContent = formatStat(el, Math.floor(progress * end));
             if (progress < 1) requestAnimationFrame(step);
         }
         requestAnimationFrame(step);
     }
-
-    const statTargets = [
-        ['stat-students', 15000, 2000],
-        ['stat-courses', 350, 1600],
-        ['stat-pass', 98, 1400],
-        ['stat-teachers', 120, 1800],
-    ];
 
     const statsSection = document.querySelector('.stats-section');
     if (statsSection) {
         const statsObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    statTargets.forEach(([id, end, duration]) => {
-                        const el = document.getElementById(id);
-                        if (el) animateCount(el, end, null, duration);
+                    statsSection.querySelectorAll('[data-count]').forEach(el => {
+                        animateCount(el, parseInt(el.dataset.count, 10) || 0, 1600);
                     });
                     statsObserver.unobserve(entry.target);
                 }
@@ -621,6 +712,47 @@
         }, { threshold: 0.4 });
         statsObserver.observe(statsSection);
     }
+
+    // Refresh every 60 seconds while the tab is open; stops quietly if the endpoint is missing
+    let liveTimer = null;
+    function refreshStats() {
+        if (document.hidden) return;
+        fetch('/api/home-stats', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(data => {
+                document.querySelectorAll('.eschool-page [data-stat]').forEach(el => {
+                    // keys like "subjects.Mathematics.courses" read nested values
+                    const raw = el.dataset.stat.split('.').reduce((o, k) => (o == null ? undefined : o[k]), data);
+                    const v = parseInt(raw, 10);
+                    if (isNaN(v)) return;
+                    el.dataset.count = v;
+                    el.textContent = formatStat(el, v);
+                });
+            })
+            .catch(() => { clearInterval(liveTimer); });
+    }
+    liveTimer = setInterval(refreshStats, 60000);
+
+    // ---------- How it works: role tabs ----------
+    const tabs = Array.from(document.querySelectorAll('.eschool-page .role-tab'));
+    function selectTab(tab, focus) {
+        tabs.forEach(t => {
+            const on = t === tab;
+            t.setAttribute('aria-selected', String(on));
+            t.tabIndex = on ? 0 : -1;
+            document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+        });
+        if (focus) tab.focus();
+    }
+    tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => selectTab(tab));
+        tab.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            e.preventDefault();
+            const next = (i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+            selectTab(tabs[next], true);
+        });
+    });
 
     // Subtle mouse parallax on the hero illustration
     const heroArt = document.querySelector('.hero-art');
@@ -642,18 +774,8 @@
 </script>
 
 <script>
-// Footer newsletter — kept in its own script tag so the block above
-// (and everything it wires up) is left completely untouched.
-(function () {
-    const form = document.getElementById('footNewsForm');
-    const msg = document.getElementById('footNewsMsg');
-    if (!form) return;
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        msg.textContent = "Thanks — you're on the list!";
-        form.reset();
-    });
-})();
+// Footer: keep the copyright year current
+document.querySelectorAll('.eschool-page [data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
 </script>
 
 {% endblock %}

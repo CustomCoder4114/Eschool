@@ -1,53 +1,27 @@
 {% extends "Learner/body.html" %}
 
 {% block allcontent %}
-<!--
-    PROFILE PAGE — expects these variables from your Flask route, e.g.:
-
-        return render_template(
-            'profile.html',
-            profile_user_id=user.id,
-            username=user.username,               # "superior111_"
-            firstname=user.firstname,              # "Forson"
-            lastname=user.lastname,
-            avatar_url=user.avatar_url,            # same field settings.html writes/reads
-            is_own_profile=(user.id == session.get('user_id')),
-            is_following=current_user_follows_this_profile,  # bool, only used when is_own_profile is False
-            posts_count=posts_count,
-            followers_count=followers_count,
-            following_count=following_count,
-            bio_lines=["NEVER AVERAGE", "1% \U0001F464\U0001F464", "ROMANS 8:18"],  # or bio.split('\n')
-        )
-
-    The uploads grid itself is fetched client-side from
-    /api/resources/user/<profile_user_id> (see the JS at the bottom) —
-    that endpoint already returns views/likes/file type/etc, so the grid
-    doesn't depend on a `posts` variable from the route at all.
-
-    Nothing here is hardcoded to one account — every account that hits this
-    route sees their own username, avatar, counts, bio, and uploads.
-
-    STRENGTH / ACHIEVEMENTS TABS — these read the SAME localStorage keys
-    (myCoursesData_<email>, keyed off course definitions) that the
-    Progress Tracking page writes to. That data lives in the browser of
-    whoever is currently logged in — it is NOT fetched from a server per
-    profile_user_id. That means:
-      - On your own profile (is_own_profile == True) these tabs show your
-        real course progress, computed the same way the Progress page
-        computes grades/achievements.
-      - On someone else's profile, there is no way to read their
-        localStorage from your browser, so these tabs show a short
-        "this is private to each device" notice instead of fake/zeroed
-        data. If you later move course progress to a real backend table
-        keyed by user id, swap loadMyCourses() below for a fetch to that
-        endpoint and the privacy check can go away.
--->
+{#
+    PROFILE PAGE (templates/Learner/profile.html), rendered by render_profile(build_profile_context(id)).
+    Variables from build_profile_context:
+        profile_user_id, username, firstname, lastname, avatar_url (teachers), bio ('' if none),
+        dp (learners: their badge picture), is_own_profile, is_following, profile_role
+        ('student' | 'teacher' | 'parent' | 'admin'), hidden_parts (what a learner keeps private),
+        rel_state / rel_request_id (friend or follow button), friends_count, teachers_count,
+        learners_count, friend_requests_count, posts_count, status_note, highlights (optional).
+    Loaded by the page:
+        Learners  GET /api/users/<id>/learner-profile   (the server leaves out private parts)
+                  GET /api/leaderboard?scope=all|following&focus=<id>
+        Teachers  GET /api/resources/user/<id>, GET /api/users/<id>/live-classes,
+                  GET/POST /api/users/<id>/ratings, POST /api/ratings/<id>/report
+        Everyone  /api/people (search, 2+ letters), /api/friends, /api/users/<id>/follow,
+                  /messages/block/<id>, /messages/report/<id>
+    #tab in the address opens that tab (overview, badges, leaders, uploads, live, ratings).
+#}
 <style>
     :root {
-        --primary-color: #4361ee;
-        --primary-dark: #3a0ca3;
+        /* the main colour (--primary-color) comes from Settings > Appearance via body.html */
         --secondary-color: #7209b7;
-        --accent-color: #4cc9f0;
         --success-color: #10b981;
         --warning-color: #f59e0b;
         --danger-color: #ef4444;
@@ -70,6 +44,43 @@
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
+    /* Theme tokens used by this page (Learner/body.html doesn't define them).
+       Without these, "empty" stars rendered dark, so a 1-star review looked
+       like 5 stars and updates seemed not to change anything. */
+    .profile-page,
+    .rp-modal-overlay,
+    .fr-overlay {
+        --ig-bg: transparent;
+        --ig-surface: #ffffff;
+        --ig-border: #e5e7eb;
+        --ig-text: #1e293b;
+        --ig-text-dim: #64748b;
+        --ig-pill: #eef2f7;
+        --ig-pill-hover: #e2e8f0;
+    }
+
+    body.dark-mode .profile-page,
+    body.dark-mode .rp-modal-overlay,
+    body.dark-mode .fr-overlay {
+        --ig-surface: #1e293b;
+        --ig-border: #334155;
+        --ig-text: #f1f5f9;
+        --ig-text-dim: #94a3b8;
+        --ig-pill: #334155;
+        --ig-pill-hover: #475569;
+    }
+
+    /* empty stars: always a light grey, never the text colour */
+    .stars-bg,
+    .rt-picker button:not(.on) {
+        color: #d1d5db;
+    }
+
+    body.dark-mode .stars-bg,
+    body.dark-mode .rt-picker button:not(.on) {
+        color: #475569;
+    }
+
     .profile-page {
         background: var(--ig-bg);
         color: var(--ig-text);
@@ -87,10 +98,66 @@
         margin: 0 auto;
     }
 
+    /* ---------- Back button + search row ---------- */
+    .profile-topbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin: 4px 0 32px;
+    }
+
+    .profile-back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        padding: 10px 16px;
+        border-radius: 999px;
+        border: 1.5px solid #c7d2fe;
+        background: #eef2ff;
+        color: #4338ca;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 0.92rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        transition: var(--transition);
+    }
+
+    .profile-back-btn:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        transform: translateX(-2px);
+    }
+
+    .profile-back-btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.2);
+    }
+
+    body.dark-mode .profile-back-btn {
+        background: rgba(99, 102, 241, 0.18);
+        border-color: rgba(129, 140, 248, 0.45);
+        color: #c7d2fe;
+    }
+
+    body.dark-mode .profile-back-btn:hover {
+        border-color: var(--primary-color);
+        color: #90caf9;
+    }
+
+    @media (max-width: 600px) {
+        .profile-topbar { gap: 10px; margin-bottom: 22px; }
+        .profile-back-btn { padding: 10px 13px; }
+        .profile-back-btn span { display: none; }   /* arrow only on phones */
+    }
+
     /* ---------- User search bar ---------- */
     .profile-search-section {
+        flex: 1;
+        min-width: 0;
         max-width: 480px;
-        margin: 4px auto 32px;
+        margin: 0 auto;
     }
 
     .profile-search-wrapper {
@@ -198,6 +265,15 @@
         font-weight: 500;
     }
 
+    .profile-search-role {
+        margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+    }
+    .profile-search-role.student { background: #eef2ff; color: #4338ca; }
+    .profile-search-role.teacher { background: #ecfdf5; color: #047857; }
+    body.dark-mode .profile-search-role.student { background: rgba(99, 102, 241, 0.2); color: #c7d2fe; }
+    body.dark-mode .profile-search-role.teacher { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; }
+
     .profile-search-empty {
         padding: 16px;
         text-align: center;
@@ -246,6 +322,15 @@
         flex-wrap: wrap;
     }
 
+    /* Eschool Points avatar frames (bought on the Eschool Points page) */
+    .ep-frame-gold { box-shadow: 0 0 0 3px #fbbf24, 0 0 0 5px rgba(251, 191, 36, 0.35), 0 0 14px rgba(245, 158, 11, 0.55) !important; }
+    .ep-frame-neon { box-shadow: 0 0 0 3px #ec4899, 0 0 0 5px #22d3ee, 0 0 16px rgba(236, 72, 153, 0.6) !important; }
+    .ep-frame-diamond { box-shadow: 0 0 0 3px #a5f3fc, 0 0 0 5px #8b5cf6, 0 0 18px rgba(6, 182, 212, 0.65) !important; }
+    .ep-title-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 0.68rem; font-weight: 800;
+        color: #b45309; background: rgba(245, 158, 11, 0.15); margin-left: 4px; }
+    .lchip.ep-title { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+    body.dark-mode .lchip.ep-title { color: #fbbf24; }
+
     .profile-avatar-wrap {
         position: relative;
         flex-shrink: 0;
@@ -287,7 +372,7 @@
         position: absolute;
         top: -6px;
         right: -18px;
-        background: #2b2b2b;
+        background: #1f2937;
         border-radius: 16px;
         padding: 6px 12px 6px 14px;
         font-size: 12px;
@@ -325,7 +410,7 @@
     }
 
     .profile-settings-icon {
-        color: var(--ig-text);
+        color: #6366f1;
         font-size: 20px;
         cursor: pointer;
         opacity: 0.9;
@@ -373,8 +458,20 @@
     }
 
     .pill-btn.primary {
-        background: #0095f6;
+        background: var(--primary-color, #4361ee);
+        color: #fff;
     }
+
+    /* Coloured buttons */
+    .pill-btn i { margin-right: 7px; font-size: 13px; }
+    .pill-btn.tint-indigo { background: #eef2ff; color: #4338ca; }
+    .pill-btn.tint-indigo:hover { background: #e0e7ff; }
+    .pill-btn.tint-green { background: #ecfdf5; color: #047857; }
+    .pill-btn.tint-green:hover { background: #d1fae5; }
+    body.dark-mode .pill-btn.tint-indigo { background: rgba(99, 102, 241, 0.2); color: #c7d2fe; }
+    body.dark-mode .pill-btn.tint-indigo:hover { background: rgba(99, 102, 241, 0.3); }
+    body.dark-mode .pill-btn.tint-green { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; }
+    body.dark-mode .pill-btn.tint-green:hover { background: rgba(16, 185, 129, 0.28); }
 
     .pill-btn.primary:hover {
         background: #1877f2;
@@ -417,7 +514,46 @@
         }
     }
 
+    /* ---------- Badge profile picture (learners) ---------- */
+    .profile-avatar.badge-dp {
+        background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--b) 55%, #fff) 0%, var(--b) 55%, color-mix(in srgb, var(--b) 70%, #000) 100%);
+        box-shadow: 0 0 0 4px var(--ig-bg, #fff), 0 0 0 7px var(--t), 0 10px 24px color-mix(in srgb, var(--b) 35%, transparent);
+        font-size: 60px; position: relative; overflow: visible;
+    }
+    .profile-avatar.badge-dp i { filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .25)); }
+    .profile-avatar.badge-dp.badge-img { background: none !important; padding: 0; overflow: visible; box-shadow: none !important; border-radius: 0; }
+    .profile-avatar.badge-dp.badge-img img { width: 100%; height: 100%; object-fit: contain; border-radius: 0; display: block; filter: drop-shadow(0 6px 14px rgba(15, 23, 42, .25)); }
+    .profile-avatar.badge-dp.badge-img.ep-frame-gold,
+    .profile-avatar.badge-dp.badge-img.ep-frame-neon,
+    .profile-avatar.badge-dp.badge-img.ep-frame-diamond { border-radius: 50% !important; padding: 8px; }
+    .profile-avatar.badge-dp.badge-img.ep-frame-gold { box-shadow: 0 0 0 3px #fbbf24, 0 0 0 5px rgba(251, 191, 36, 0.35), 0 0 14px rgba(245, 158, 11, 0.55) !important; }
+    .profile-avatar.badge-dp.badge-img.ep-frame-neon { box-shadow: 0 0 0 3px #ec4899, 0 0 0 5px #22d3ee, 0 0 16px rgba(236, 72, 153, 0.6) !important; }
+    .profile-avatar.badge-dp.badge-img.ep-frame-diamond { box-shadow: 0 0 0 3px #a5f3fc, 0 0 0 5px #8b5cf6, 0 0 18px rgba(6, 182, 212, 0.65) !important; }
+    .profile-avatar.badge-dp.empty { background: linear-gradient(135deg, #e2e8f0, #cbd5e1); color: #64748b; box-shadow: 0 0 0 4px var(--ig-bg, #fff), 0 0 0 7px #cbd5e1; }
+    button.profile-avatar.badge-dp { border: 0; cursor: pointer; padding: 0; font-family: inherit; }
+    button.profile-avatar.badge-dp:hover { filter: brightness(1.06); }
+    button.profile-avatar.badge-dp:focus-visible { outline: 3px solid #2563eb; outline-offset: 6px; }
+    .dp-caption { margin-top: 12px; text-align: center; font-size: 12.5px; color: var(--ig-text-dim); max-width: 150px; line-height: 1.35; }
+    .dp-caption b { display: block; color: var(--ig-text); font-size: 13px; }
+    .dp-caption .tier { font-weight: 700; color: var(--t); }
+    @media (max-width: 600px) {
+        .profile-avatar.badge-dp { font-size: 36px; }
+        .dp-caption { max-width: 100px; font-size: 11.5px; }
+    } .dp-msg.ok { color: #059669; }
+
     /* Bio */
+    .bio-edit-btn { border: 0; background: none; color: #2563eb; font-weight: 600; font-size: 13px; cursor: pointer; padding: 4px 0; font-family: inherit; }
+    .bio-edit-btn:hover { text-decoration: underline; }
+    .bio-editor { margin-top: 8px; max-width: 520px; }
+    .bio-editor[hidden] { display: none; }
+    .bio-editor textarea { width: 100%; box-sizing: border-box; min-height: 84px; resize: vertical; padding: 10px 12px; border-radius: 12px;
+        border: 1px solid var(--ig-border); background: var(--ig-bg, #fff); color: var(--ig-text); font: inherit; font-size: 14px; line-height: 1.5; }
+    .bio-editor textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .15); }
+    .bio-editor-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .bio-editor-foot .count { font-size: 12px; color: var(--ig-text-dim); margin-right: auto; }
+    .bio-editor-foot .msg { font-size: 12.5px; width: 100%; }
+    .bio-editor-foot .msg.bad { color: #dc2626; }
+    .profile-bio.empty { color: var(--ig-text-dim); font-style: italic; }
     .profile-fullname {
         font-weight: 600;
         font-size: 14px;
@@ -463,7 +599,7 @@
         align-items: center;
         justify-content: center;
         overflow: hidden;
-        background: #1a1a1a;
+        background: #1f2937;
     }
 
     .highlight-circle img {
@@ -513,11 +649,15 @@
 
     .profile-tab i {
         font-size: 18px;
+        color: var(--tab, var(--ig-text-dim));
     }
 
+    .profile-tab:hover { color: var(--tab, var(--ig-text)); }
+
     .profile-tab.active {
-        color: var(--ig-text);
-        border-top-color: var(--ig-text);
+        color: var(--tab, var(--ig-text));
+        border-top: 2px solid var(--tab, var(--ig-text));
+        font-weight: 700;
     }
 
     @media (max-width: 600px) {
@@ -600,6 +740,29 @@
     .post-tile:focus-visible .post-overlay {
         opacity: 1;
     }
+    /* touch screens have no hover: show views and likes along the bottom of each tile */
+    @media (hover: none) {
+        .post-overlay { opacity: 1; inset: auto 0 0 0; height: 34px; gap: 14px; font-size: 12px; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
+    }
+    .pf-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    body.pf-lock { overflow: hidden; }
+    .profile-search-result-item.active { background: var(--ig-pill, #f1f5f9); }
+    .pf-more { position: relative; display: inline-block; }
+    .pf-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 190px; padding: 6px; border-radius: 12px; background: var(--ig-surface, #fff); border: 1px solid var(--ig-border, #e5e7eb); box-shadow: 0 16px 40px rgba(15, 23, 42, .18); }
+    .pf-menu[hidden] { display: none; }
+    .pf-menu [role="menuitem"] { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border: 0; border-radius: 8px; background: none; color: var(--ig-text, #0f172a); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+    .pf-menu [role="menuitem"]:hover, .pf-menu [role="menuitem"]:focus-visible { background: var(--ig-pill, #f1f5f9); }
+    .pf-menu .danger { color: #dc2626; }
+    .pf-report { margin: 12px 0 0; padding: 14px; border-radius: 12px; border: 1px solid var(--ig-border, #e5e7eb); background: var(--ig-surface, #fff); display: grid; gap: 8px; max-width: 460px; }
+    .pf-report[hidden] { display: none; }
+    .pf-report label { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--ig-text, #0f172a); }
+    .pf-report-msg { font-size: 13px; color: #dc2626; min-height: 1em; }
+    .rt-report { margin-top: 6px; border: 0; background: none; padding: 0; font: inherit; font-size: 12px; color: var(--ig-text-dim, #64748b); cursor: pointer; }
+    .rt-report:hover { text-decoration: underline; }
+    .rt-reply { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--ig-pill, #f1f5f9); font-size: 13px; }
+    .rt-role { font-weight: 500; opacity: .7; }
+    .lc-soon { color: #b45309; font-weight: 600; }
+    .rp-dl { margin-left: auto; color: var(--primary-color, #4361ee); text-decoration: none; font-weight: 600; }
 
     .post-overlay span {
         display: flex;
@@ -729,7 +892,7 @@
     }
 
     .rp-modal-fallback a {
-        color: #0095f6;
+        color: var(--primary-color, #4361ee);
         text-decoration: none;
         font-weight: 600;
     }
@@ -751,208 +914,888 @@
         gap: 6px;
     }
 
-    /* ---------- Strength tab (grade-based) ---------- */
-    .grade-overall {
+    /* ---------- Uploads: insights + toolbar ---------- */
+
+    .insight-card {
         display: flex;
-        justify-content: center;
-        gap: 48px;
-        padding: 30px 20px;
-        border-bottom: 1px solid var(--ig-border);
-        margin-bottom: 24px;
-        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius-sm);
+        padding: 14px 16px;
+        min-width: 0;
     }
 
-    .grade-overall-item {
-        text-align: center;
-    }
-
-    .grade-overall-number {
-        font-size: 40px;
-        font-weight: 700;
-        color: var(--ig-text);
-        line-height: 1;
-    }
-
-    .grade-overall-label {
-        font-size: 12px;
-        color: var(--ig-text-dim);
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        margin-top: 8px;
-    }
-
-    .grade-badge {
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 700;
-        display: inline-block;
-        white-space: nowrap;
-    }
-
-    .grade-badge.grade-a { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-    .grade-badge.grade-b { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-    .grade-badge.grade-c { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-    .grade-badge.grade-d { background: rgba(239, 68, 68, 0.15); color: #f87171; }
-    .grade-badge.grade-f { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-
-    .strength-list {
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-        padding: 0 4px 40px;
-    }
-
-    .strength-row {
-        display: flex;
-        align-items: flex-start;
-        gap: 14px;
-    }
-
-    .strength-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        flex-shrink: 0;
+    .insight-card > i {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #fff;
-        font-size: 18px;
-        margin-top: 2px;
+        font-size: 15px;
+        color: var(--c, var(--primary-color));
+        background: color-mix(in srgb, var(--c, var(--primary-color)) 15%, transparent);
+        flex-shrink: 0;
     }
 
-    .strength-details {
+    .insight-card > div {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .insight-card strong {
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.2;
+        color: var(--ig-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .insight-card span {
+        font-size: 12px;
+        color: var(--ig-text-dim);
+    }
+
+    .uploads-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+
+    .filter-chips {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .filter-chip {
+        border: 1px solid var(--ig-border);
+        background: var(--ig-surface);
+        color: var(--ig-text-dim);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .filter-chip span {
+        margin-left: 4px;
+        opacity: 0.7;
+        font-weight: 500;
+    }
+
+    .filter-chip:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    .filter-chip.active {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        color: #fff;
+    }
+
+    .sort-select {
+        border: 1px solid var(--ig-border);
+        background: var(--ig-surface);
+        color: var(--ig-text);
+        border-radius: 999px;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .sort-select:focus {
+        border-color: var(--primary-color);
+    }
+
+    /* =========================================================
+       LIVE CLASSES TAB
+       ========================================================= */
+    .lc-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .lc-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-bottom: 40px;
+    }
+
+    .lc-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius-sm);
+        padding: 16px 18px;
+        transition: var(--transition);
+    }
+
+    .lc-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--card-shadow);
+    }
+
+    .lc-card.live {
+        border-color: var(--danger-color);
+    }
+
+    .lc-card.ended {
+        opacity: 0.8;
+    }
+
+    .lc-date {
+        width: 58px;
+        flex-shrink: 0;
+        text-align: center;
+        border-radius: 12px;
+        padding: 8px 0;
+        background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+        color: var(--primary-color);
+    }
+
+    .lc-card.live .lc-date {
+        background: color-mix(in srgb, var(--danger-color) 12%, transparent);
+        color: var(--danger-color);
+    }
+
+    .lc-card.ended .lc-date {
+        background: var(--ig-pill);
+        color: var(--ig-text-dim);
+    }
+
+    .lc-date .m {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+    }
+
+    .lc-date .d {
+        display: block;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+
+    .lc-main {
         flex: 1;
         min-width: 0;
     }
 
-    .strength-name-row {
+    .lc-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--ig-text);
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        margin-bottom: 8px;
         gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 4px;
     }
 
-    .strength-name {
-        font-size: 14px;
+    .lc-status {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 10px;
+        border-radius: 999px;
+        letter-spacing: 0.3px;
+    }
+
+    .lc-status.upcoming { background: rgba(67, 97, 238, 0.12); color: var(--primary-color); }
+    .lc-status.ended { background: var(--ig-pill); color: var(--ig-text-dim); }
+    .lc-status.live { background: var(--danger-color); color: #fff; }
+    .lc-status.live::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #fff;
+        margin-right: 6px;
+        animation: lcPulse 1.2s infinite;
+    }
+
+    @keyframes lcPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+
+    .lc-desc {
+        font-size: 13px;
+        color: var(--ig-text-dim);
+        line-height: 1.45;
+        margin-bottom: 8px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .lc-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        font-size: 12.5px;
+        color: var(--ig-text-dim);
+    }
+
+    .lc-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .lc-action {
+        flex-shrink: 0;
+    }
+
+    /* =========================================================
+       RATINGS TAB
+       ========================================================= */
+    .rt-summary {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 28px;
+        align-items: center;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius);
+        padding: 26px 28px;
+        margin-bottom: 18px;
+    }
+
+    .rt-score {
+        text-align: center;
+    }
+
+    .rt-score-number {
+        font-size: 52px;
+        font-weight: 800;
+        line-height: 1;
+        color: var(--ig-text);
+    }
+
+    .rt-score-number small {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--ig-text-dim);
+    }
+
+    .rt-score-count {
+        font-size: 13px;
+        color: var(--ig-text-dim);
+        margin-top: 8px;
+    }
+
+    .stars {
+        position: relative;
+        display: inline-block;
+        font-size: 20px;
+        letter-spacing: 2px;
+        line-height: 1;
+        margin-top: 10px;
+    }
+
+    .stars-bg {
+        color: var(--ig-border);
+    }
+
+    .stars-fg {
+        position: absolute;
+        left: 0;
+        top: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        color: #f59e0b;
+    }
+
+    .stars.sm {
+        font-size: 15px;
+        margin-top: 0;
+    }
+
+    .rt-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .rt-bar-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 13px;
+        color: var(--ig-text-dim);
+    }
+
+    .rt-bar-label {
+        width: 44px;
+        flex-shrink: 0;
         font-weight: 600;
         color: var(--ig-text);
     }
 
-    .strength-track {
+    .rt-bar-label i {
+        color: #f59e0b;
+        font-size: 11px;
+        margin-left: 2px;
+    }
+
+    .rt-bar-track {
+        flex: 1;
         height: 8px;
-        border-radius: 4px;
-        background: var(--ig-surface);
-        border: 1px solid var(--ig-border);
+        border-radius: 999px;
+        background: var(--ig-pill);
         overflow: hidden;
     }
 
-    .strength-fill {
+    .rt-bar-fill {
         height: 100%;
-        border-radius: 4px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
         transition: width 0.6s ease;
     }
 
-    .strength-sub {
-        font-size: 12px;
-        color: var(--ig-text-dim);
-        margin-top: 6px;
+    .rt-bar-count {
+        width: 28px;
+        text-align: right;
+        flex-shrink: 0;
     }
 
-    /* ---------- Achievements tab ---------- */
-    .achievements-summary {
-        text-align: center;
-        padding: 20px;
-        color: var(--ig-text-dim);
-        font-size: 13px;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        border-bottom: 1px solid var(--ig-border);
-        margin-bottom: 20px;
-    }
-
-    .achievements-dark-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 14px;
-        padding: 0 4px 40px;
-    }
-
-    @media (max-width: 600px) {
-        .achievements-dark-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .achv-card {
-        display: flex;
-        gap: 14px;
-        align-items: center;
+    .rt-form {
         background: var(--ig-surface);
         border: 1px solid var(--ig-border);
         border-radius: var(--border-radius-sm);
-        padding: 16px;
+        padding: 18px 20px;
+        margin-bottom: 18px;
     }
 
-    .achv-card.locked {
-        opacity: 0.5;
-        filter: grayscale(0.6);
+    .rt-form h4 {
+        margin: 0 0 12px;
+        font-size: 15px;
+        font-weight: 700;
     }
 
-    .achv-icon {
-        width: 50px;
-        height: 50px;
+    .rt-picker {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 12px;
+    }
+
+    .rt-picker button {
+        background: none;
+        border: none;
+        font-size: 28px;
+        line-height: 1;
+        cursor: pointer;
+        color: var(--ig-border);
+        padding: 0 2px;
+        transition: transform 0.15s ease, color 0.15s ease;
+    }
+
+    .rt-picker button.on {
+        color: #f59e0b;
+    }
+
+    .rt-picker button:hover {
+        transform: scale(1.15);
+    }
+
+    .rt-form textarea {
+        width: 100%;
+        min-height: 80px;
+        resize: vertical;
+        border: 1px solid var(--ig-border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-family: inherit;
+        font-size: 14px;
+        background: var(--ig-bg, transparent);
+        color: var(--ig-text);
+        outline: none;
+    }
+
+    .rt-form textarea:focus {
+        border-color: var(--primary-color);
+    }
+
+    .rt-form-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+
+    .rt-form-msg {
+        font-size: 13px;
+        color: var(--ig-text-dim);
+    }
+
+    .rt-form-msg.error {
+        color: var(--danger-color);
+    }
+
+    .rt-form-msg.ok {
+        color: var(--success-color);
+        font-weight: 600;
+    }
+
+    .rt-form.saved {
+        animation: rtSaved 1.4s ease;
+    }
+
+    @keyframes rtSaved {
+        0%   { border-color: var(--success-color); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18); }
+        100% { border-color: var(--ig-border); box-shadow: none; }
+    }
+
+    .rt-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-bottom: 40px;
+    }
+
+    .rt-review {
+        display: flex;
+        gap: 14px;
+        background: var(--ig-surface);
+        border: 1px solid var(--ig-border);
+        border-radius: var(--border-radius-sm);
+        padding: 16px 18px;
+    }
+
+    .rt-avatar {
+        width: 42px;
+        height: 42px;
         border-radius: 50%;
         flex-shrink: 0;
+        overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
         color: #fff;
-        font-size: 20px;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     }
 
-    .achv-info {
+    .rt-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .rt-body {
+        flex: 1;
         min-width: 0;
     }
 
-    .achv-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--ig-text);
-        margin-bottom: 3px;
-    }
-
-    .achv-desc {
-        font-size: 12.5px;
-        color: var(--ig-text-dim);
+    .rt-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
         margin-bottom: 6px;
-        line-height: 1.35;
     }
 
-    .achv-status {
+    .rt-name {
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .rt-date {
         font-size: 12px;
-        font-weight: 600;
+        color: var(--ig-text-dim);
+        margin-left: auto;
+    }
+
+    .rt-score-chip {
+        font-size: 12px;
+        font-weight: 700;
         color: var(--ig-text-dim);
     }
 
-    .achv-card:not(.locked) .achv-status {
-        color: var(--success-color);
+    .rt-comment {
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--ig-text);
+        white-space: pre-line;
+        word-break: break-word;
+    }
+
+    .rt-comment.muted {
+        color: var(--ig-text-dim);
+        font-style: italic;
+    }
+
+    /* ---------- Responsive: live classes + ratings ---------- */
+    @media (max-width: 700px) {
+        .rt-summary { grid-template-columns: 1fr; gap: 20px; padding: 22px 18px; }
+        .lc-card { flex-wrap: wrap; }
+        .lc-action { width: 100%; }
+        .lc-action .pill-btn { width: 100%; justify-content: center; }
+    }
+    @media (max-width: 600px) {
+        .lc-summary { grid-template-columns: 1fr; }
+    }
+    .profile-page .posts-empty .pill-btn { margin-top: 16px; }
+    /* =========================================================
+       LEARNER PROFILE — chips, Progress, Achievements, Leaderboard
+       ========================================================= */
+    .learner-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+    .lchip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 600;
+        background: var(--ig-pill); color: var(--ig-text-dim);
+    }
+    .lchip.role { background: rgba(67, 97, 238, 0.12); color: var(--primary-color); }
+    .lchip.role.teacher { background: rgba(236, 72, 153, 0.12); color: #db2777; }
+    .lchip.level { background: rgba(124, 58, 237, 0.12); color: #7c3aed; }
+    .lchip.rank { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+    .lchip.fire { background: rgba(249, 115, 22, 0.14); color: #ea580c; }
+
+    #panel-overview, #panel-badges, #panel-leaders { padding: 22px 0 40px; }
+
+    .lp-muted { font-size: 13px; color: var(--ig-text-dim); }
+    .lp-bar { height: 8px; border-radius: 999px; background: var(--ig-pill); overflow: hidden; }
+    .lp-bar-lg { height: 10px; }
+    .lp-bar-fill { height: 100%; border-radius: 999px; background: var(--primary-color); transition: width 0.8s ease; }
+    .lp-bar-fill.xp { background: linear-gradient(90deg, #4361ee, #7c3aed); }
+
+    .lp-hero { display: grid; grid-template-columns: 1fr 220px; gap: 14px; margin-bottom: 14px; }
+    .lp-level, .lp-rank, .lp-gpa-card, .lp-tile, .lp-section, .ach-summary, .ach-card, .lb-list {
+        background: var(--ig-surface); border: 1px solid var(--ig-border);
+        border-radius: 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    }
+    .lp-level { display: flex; align-items: center; gap: 18px; padding: 20px 22px; }
+    .lp-level-badge {
+        width: 74px; height: 74px; flex-shrink: 0; border-radius: 20px;
+        background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        box-shadow: 0 8px 20px rgba(67, 97, 238, 0.35);
+    }
+    .lp-level-badge span { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; opacity: 0.85; }
+    .lp-level-badge strong { font-size: 28px; line-height: 1; }
+    .lp-level-info { flex: 1; min-width: 0; }
+    .lp-level-title { font-size: 20px; font-weight: 700; color: var(--ig-text); margin-bottom: 8px; }
+    .lp-level-sub { font-size: 12.5px; color: var(--ig-text-dim); margin-top: 7px; }
+    .lp-rank { padding: 18px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+    .lp-rank-number { font-size: 34px; font-weight: 800; color: var(--ig-text); line-height: 1.1; }
+    .lp-rank-sub { font-size: 13px; color: var(--ig-text-dim); }
+    .lp-rank-pill {
+        align-self: center; margin-top: 8px; padding: 3px 12px; border-radius: 999px;
+        font-size: 12px; font-weight: 700; background: rgba(245, 158, 11, 0.15); color: #b45309;
+    }
+
+    .lp-tile-value .lp-of { font-size: 13px; font-weight: 600; color: var(--ig-text-dim); }
+    .lp-gpa-card {
+        display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center;
+        padding: 20px 22px; margin-bottom: 14px; position: relative;
+    }
+    .lp-gpa-label { font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--ig-text-dim); }
+    .lp-gpa-value { font-size: 40px; font-weight: 800; line-height: 1.1; color: var(--ig-text); }
+    .lp-gpa-value small { font-size: 16px; font-weight: 600; color: var(--ig-text-dim); }
+    .lp-gpa-right { text-align: center; }
+    .lp-grade {
+        width: 60px; height: 60px; border-radius: 50%; margin: 0 auto;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 22px; font-weight: 800; color: #fff; background: var(--tone, var(--primary-color));
+    }
+    .lp-grade-label { font-size: 11px; color: var(--ig-text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.6px; }
+    .lp-gpa-bar { grid-column: 1 / -1; margin-top: 6px; }
+    .lp-gpa-bar .lp-bar-fill { background: var(--tone, var(--primary-color)); }
+    .gpa-great { --tone: #10b981; }
+    .gpa-good  { --tone: #3b82f6; }
+    .gpa-ok    { --tone: #f59e0b; }
+    .gpa-low   { --tone: #ef4444; }
+    .gpa-great .lp-gpa-value, .gpa-good .lp-gpa-value, .gpa-ok .lp-gpa-value, .gpa-low .lp-gpa-value { color: var(--tone); }
+
+    .lp-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+    .lp-tile { display: flex; gap: 12px; align-items: flex-start; padding: 16px; min-width: 0; }
+    .lp-tile-icon {
+        width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent);
+    }
+    .lp-tile-body { min-width: 0; }
+    .lp-tile-value { font-size: 22px; font-weight: 800; line-height: 1.15; color: var(--ig-text); }
+    .lp-tile-label { font-size: 12.5px; font-weight: 600; color: var(--ig-text); }
+    .lp-tile-sub { font-size: 11.5px; color: var(--ig-text-dim); margin-top: 2px; }
+
+    .lp-section { padding: 18px 20px; margin-bottom: 14px; }
+    .lp-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+    .lp-section-head h3 { font-size: 15px; font-weight: 700; color: var(--ig-text); margin: 0; }
+    .lp-link { background: none; border: none; color: var(--primary-color); font-weight: 600; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .lp-course + .lp-course { margin-top: 14px; }
+    .lp-course-top { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 13.5px; }
+    .lp-course-name { font-weight: 600; color: var(--ig-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lp-course-pct { font-weight: 700; color: var(--ig-text); flex-shrink: 0; }
+    /* Recent achievements: the badges themselves (Legendary badges first) */
+    .lp-mini-badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 14px 10px; }
+    .lp-mini-badge { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; margin: 0; }
+    .lp-mini-art { width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; }
+    .lp-mini-art img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(15, 23, 42, .25)); }
+    .lp-mini-medal { width: 66px; height: 66px; border-radius: 50%; padding: 5px;
+        background: conic-gradient(from 210deg, var(--t), #ffffff88, var(--t), #00000033, var(--t));
+        box-shadow: 0 5px 12px rgba(15, 23, 42, .2); }
+    .lp-mini-medal span { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(circle at 35% 30%, #ffffff55, transparent 55%), var(--c); color: #fff; font-size: 22px;
+        box-shadow: inset 0 -3px 6px rgba(0, 0, 0, .25); text-shadow: 0 1px 2px rgba(0, 0, 0, .3); }
+    .lp-mini-name { font-size: 12px; font-weight: 700; color: var(--ig-text); margin-top: 6px; line-height: 1.25; }
+    .lp-mini-tier { font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--ig-text-dim); }
+    .lp-mini-badge.legend .lp-mini-tier { color: #b45309; }
+    body.dark-mode .lp-mini-badge.legend .lp-mini-tier { color: #fcd34d; }
+
+    /* Achievements */
+    .ach-summary { display: flex; gap: 24px; align-items: center; padding: 20px 22px; margin-bottom: 16px; flex-wrap: wrap; }
+    .ach-count { font-size: 34px; font-weight: 800; color: var(--ig-text); line-height: 1.1; }
+    .ach-count small { font-size: 16px; font-weight: 600; color: var(--ig-text-dim); }
+    .ach-summary-bar { flex: 1; min-width: 200px; }
+    .ach-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .ach-card { display: flex; gap: 14px; align-items: flex-start; padding: 16px; transition: var(--transition); }
+    .ach-card.unlocked:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08); }
+    .ach-icon {
+        width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center; font-size: 19px;
+        color: #fff; background: var(--c); box-shadow: 0 6px 14px color-mix(in srgb, var(--c) 35%, transparent);
+    }
+    .ach-card.locked .ach-icon { background: var(--ig-pill); color: var(--ig-text-dim); box-shadow: none; }
+    .ach-body { flex: 1; min-width: 0; }
+    .ach-title { font-size: 14.5px; font-weight: 700; color: var(--ig-text); }
+    .ach-desc { font-size: 12.5px; color: var(--ig-text-dim); margin: 2px 0 8px; }
+    .ach-status { font-size: 12px; font-weight: 700; color: var(--success-color); }
+    .ach-badge-tag { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 1px 8px; border-radius: 999px;
+        font-size: 10.5px; font-weight: 800; letter-spacing: 0.3px; vertical-align: middle;
+        color: var(--t); background: color-mix(in srgb, var(--t) 14%, transparent); }
+    .ach-progress { font-size: 11.5px; color: var(--ig-text-dim); margin-top: 5px; }
+    .ach-card.locked .lp-bar-fill { background: var(--c); opacity: 0.6; }
+
+    /* Leaderboard */
+    .lb-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .lb-hint { font-size: 12.5px; color: var(--ig-text-dim); }
+    .lb-list { overflow: hidden; }
+    .lb-head, .lb-row { display: grid; grid-template-columns: 44px 44px 1fr 70px 90px; align-items: center; gap: 10px; padding: 10px 16px; }
+    .lb-head { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ig-text-dim); border-bottom: 1px solid var(--ig-border); }
+    .lb-head span:nth-child(4), .lb-head span:nth-child(5) { text-align: right; }
+    .lb-row { text-decoration: none; color: var(--ig-text); border-bottom: 1px solid var(--ig-border); transition: background 0.2s; }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-row:hover { background: var(--ig-pill); }
+    .lb-row.focus { background: rgba(67, 97, 238, 0.08); box-shadow: inset 3px 0 0 var(--primary-color); }
+    .lb-pos { text-align: center; }
+    .lb-rank { font-weight: 700; color: var(--ig-text-dim); }
+    .lb-medal {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 28px; height: 28px; border-radius: 50%; font-size: 13px; font-weight: 800; color: #fff;
+    }
+    .lb-medal.m1 { background: linear-gradient(135deg, #fcd34d, #f59e0b); box-shadow: 0 3px 8px rgba(245, 158, 11, 0.45); }
+    .lb-medal.m2 { background: linear-gradient(135deg, #e2e8f0, #94a3b8); box-shadow: 0 3px 8px rgba(148, 163, 184, 0.45); }
+    .lb-medal.m3 { background: linear-gradient(135deg, #fdba74, #b45309); box-shadow: 0 3px 8px rgba(180, 83, 9, 0.4); }
+    .lb-avatar {
+        width: 40px; height: 40px; border-radius: 50%; overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(135deg, var(--primary-color), #7c3aed); color: #fff; font-weight: 700; font-size: 14px;
+    }
+    .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .lb-name { min-width: 0; display: flex; flex-direction: column; }
+    .lb-name span { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lb-name em { font-style: normal; color: var(--primary-color); font-size: 12px; }
+    .lb-name small { font-size: 12px; color: var(--ig-text-dim); }
+    .lb-gpa, .lb-xp { text-align: right; font-weight: 700; font-size: 14px; display: flex; flex-direction: column; align-items: flex-end; }
+    .lb-gpa small, .lb-xp small { font-size: 10.5px; font-weight: 600; color: var(--ig-text-dim); }
+    .lb-gpa small { order: -1; display: none; }
+    .lb-xp { color: var(--primary-color); }
+    .lb-gap { text-align: center; color: var(--ig-text-dim); padding: 6px; font-size: 12px; letter-spacing: 3px; border-bottom: 1px solid var(--ig-border); }
+    .lb-foot { margin-top: 10px; font-size: 12px; color: var(--ig-text-dim); display: flex; gap: 8px; align-items: flex-start; }
+
+    @media (max-width: 760px) {
+        .lp-hero { grid-template-columns: 1fr; }
+        .lp-tiles { grid-template-columns: repeat(2, 1fr); }
+        .ach-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+        .lb-head, .lb-row { grid-template-columns: 34px 36px 1fr 64px; gap: 8px; padding: 10px 12px; }
+        .lb-head span:nth-child(4), .lb-gpa { display: none; }
+        .lb-avatar { width: 34px; height: 34px; }
+        .lp-gpa-value { font-size: 32px; }
+        .lp-level { padding: 16px; gap: 14px; }
+        .lp-level-badge { width: 60px; height: 60px; }
+        .lp-tile { flex-direction: column; gap: 8px; padding: 14px; }
+        .lp-tile-icon { width: 34px; height: 34px; border-radius: 10px; }
+    }
+    /* ---------- friends / following ---------- */
+    .rel-actions { display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .pill-btn.danger { background: #ef4444; color: #fff; }
+    .pill-btn.danger:hover { background: #dc2626; }
+    .pill-btn.sm { padding: 6px 12px; font-size: 12.5px; }
+    .pill-btn.rel-static { cursor: default; opacity: .85; }
+    .pill-btn.rel-static:hover { background: var(--ig-pill); }
+    .pill-btn:disabled { opacity: .6; cursor: default; }
+    .rel-ask { font-size: 13px; font-weight: 600; color: var(--ig-text); }
+    .rel-note { display: none; margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: #ecfdf5; color: #047857; }
+    .rel-note.show { display: block; }
+    .rel-note.bad { background: #fef2f2; color: #b91c1c; }
+    body.dark-mode .rel-note { background: rgba(16, 185, 129, .15); color: #6ee7b7; }
+    body.dark-mode .rel-note.bad { background: rgba(239, 68, 68, .15); color: #fca5a5; }
+    .stat-btn { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+    .stat-btn:hover strong, .stat-btn:focus-visible strong { color: var(--primary-color, #4361ee); }
+    .fr-banner {
+        display: flex; align-items: center; gap: 10px; width: 100%; max-width: 520px; margin: 10px 0 4px; padding: 10px 14px;
+        border-radius: 12px; border: 1px solid color-mix(in srgb, var(--primary-color, #4361ee) 30%, transparent);
+        background: color-mix(in srgb, var(--primary-color, #4361ee) 10%, transparent); color: var(--ig-text);
+        font: inherit; font-size: 14px; cursor: pointer; text-align: left;
+    }
+    .fr-banner i { color: var(--primary-color, #4361ee); }
+    .fr-banner-go { margin-left: auto; font-weight: 600; color: var(--primary-color, #4361ee); white-space: nowrap; }
+    .fr-overlay[hidden] { display: none; }
+    .fr-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(15, 23, 42, .55); display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .fr-sheet { width: min(520px, 100%); max-height: min(640px, 100%); display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: var(--ig-surface); color: var(--ig-text); border: 1px solid var(--ig-border); box-shadow: 0 24px 60px rgba(0, 0, 0, .3); }
+    .fr-head { display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--ig-border); }
+    .fr-head h2 { font-size: 17px; margin: 0; display: flex; gap: 8px; align-items: center; }
+    .fr-head h2 i { color: var(--primary-color, #4361ee); }
+    .fr-x { margin-left: auto; width: 34px; height: 34px; border-radius: 10px; border: 0; background: var(--ig-pill); color: var(--ig-text); cursor: pointer; }
+    .fr-x:hover { background: var(--ig-pill-hover); }
+    .fr-tabs { display: flex; gap: 6px; padding: 12px 18px 0; overflow-x: auto; }
+    .fr-tab { border: 0; background: var(--ig-pill); color: var(--ig-text-dim); padding: 7px 12px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .fr-tab:hover { background: var(--ig-pill-hover); color: var(--ig-text); }
+    .fr-tab[aria-selected="true"] { background: var(--primary-color, #4361ee); color: #fff; }
+    .fr-tab span { opacity: .8; margin-left: 2px; }
+    .fr-body { padding: 10px 18px 18px; overflow-y: auto; }
+    .fr-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ig-border); }
+    .fr-row:last-child { border-bottom: 0; }
+    .fr-av { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; text-decoration: none; background: linear-gradient(135deg, var(--primary-color, #4361ee), #7209b7); }
+    .fr-av img { width: 100%; height: 100%; object-fit: cover; }
+    .fr-name { flex: 1; min-width: 0; font-weight: 600; color: var(--ig-text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fr-name:hover { color: var(--primary-color, #4361ee); }
+    .fr-acts { display: flex; gap: 6px; flex-shrink: 0; }
+    .fr-done { font-size: 13px; font-weight: 600; color: #059669; }
+    .fr-done.bad { color: #dc2626; font-weight: 500; }
+    .fr-empty { padding: 28px 8px; text-align: center; color: var(--ig-text-dim); font-size: 14px; }
+    @media (max-width: 520px) {
+        .fr-overlay { padding: 0; align-items: flex-end; }
+        .fr-sheet { max-height: 88vh; border-radius: 16px 16px 0 0; }
+        .fr-row { flex-wrap: wrap; }
+        .fr-acts { width: 100%; padding-left: 52px; }
+    }
+
+/* ===== Career badge (shield: rim = level, inside = career colour, its own icon) ===== */
+.cbw { --s: 64px; position: relative; display: inline-block; width: var(--s); height: calc(var(--s) * 1.18); flex: none; vertical-align: middle; }
+.cbw .cb, .cbw .cb-in { position: absolute; clip-path: polygon(50% 0, 100% 14%, 100% 50%, 96% 66%, 86% 80%, 70% 92%, 50% 100%, 30% 92%, 14% 80%, 4% 66%, 0 50%, 0 14%); }
+.cbw .cb { inset: 0; filter: drop-shadow(0 6px 10px rgba(15,23,42,.18)); }
+.cbw .cb-in { inset: 7.5% 8% 8.5% 8%; display: grid; place-items: center;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--cc) 65%, #fff), color-mix(in srgb, var(--cc) 70%, #000)); }
+.cbw .cb-in::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 40%; background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0)); }
+.cbw .cb-in i { color: #fff; font-size: calc(var(--s) * .34); margin-top: -12%; filter: drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
+.cbw .cb-stars { position: absolute; left: 0; right: 0; bottom: 19%; text-align: center; font-size: calc(var(--s) * .13); letter-spacing: 1px; color: #fde047;
+    text-shadow: 0 1px 0 #7c5806; line-height: 1; }
+.cbw.bronze .cb { background: linear-gradient(135deg, #f3c79a, #b8733b 50%, #7a4421); }
+.cbw.silver .cb { background: linear-gradient(135deg, #ffffff, #b8c2cf 50%, #6b7684); }
+.cbw.gold .cb { background: linear-gradient(135deg, #fff3b0, #f5b81d 45%, #a36508); }
+.cbw.locked .cb { background: linear-gradient(135deg, #e2e8f0, #94a3b8); }
+.cbw.locked .cb-in { background: linear-gradient(180deg, #e2e8f0, #94a3b8); }
+.cbw.locked .cb-stars { color: #cbd5e1; text-shadow: none; }
+.cbw .cb-lock { position: absolute; right: -4%; bottom: 6%; width: calc(var(--s) * .34); height: calc(var(--s) * .34); border-radius: 50%; background: #0f172a; color: #fff;
+    display: grid; place-items: center; font-size: calc(var(--s) * .15); border: 2px solid #fff; }
+
+    /* ===== Career tab ===== */
+    #panel-career { --pc-border: rgba(100,116,139,.18); }
+    .pc-card { --cc: #4361ee; background: var(--card-bg, #fff); border: 1px solid var(--pc-border); border-radius: 18px; padding: 22px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05); }
+    .pc-head { display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center; }
+    .pc-ic { width: 72px; height: 72px; border-radius: 20px; display: grid; place-items: center; font-size: 1.8rem; color: #fff;
+        background: linear-gradient(145deg, var(--cc), color-mix(in srgb, var(--cc) 60%, #000)); box-shadow: 0 12px 26px color-mix(in srgb, var(--cc) 30%, transparent); }
+    .pc-kicker { font-size: .72rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--cc); }
+    .pc-head h2 { margin: 3px 0 6px; font-size: 1.5rem; }
+    .pc-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: .82rem; opacity: .85; }
+    .pc-link { display: inline-flex; gap: 6px; align-items: center; margin-top: 10px; font-size: .82rem; font-weight: 600; color: var(--cc); text-decoration: none; }
+    .pc-ring { position: relative; width: 112px; height: 112px; }
+    .pc-ring svg { width: 112px; height: 112px; transform: rotate(-90deg); }
+    .pc-ring circle { fill: none; stroke-width: 11; }
+    .pc-ring .bg { stroke: color-mix(in srgb, var(--cc) 14%, transparent); }
+    .pc-ring .fg { stroke: var(--cc); stroke-linecap: round; }
+    .pc-ring span { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; font-weight: 800; font-size: 1.5rem; line-height: 1; }
+    .pc-ring small { display: block; font-size: .68rem; font-weight: 600; opacity: .6; margin-top: 4px; }
+    .pc-kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding-top: 18px; border-top: 1px solid var(--pc-border); }
+    .pc-kpis b { display: block; font-size: 1.3rem; } .pc-kpis b small { font-size: .78rem; opacity: .6; font-weight: 600; }
+    .pc-kpis span { font-size: .76rem; opacity: .65; }
+    .pc-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 16px; }
+    .pc-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+    .pc-h h3 { margin: 0; font-size: 1rem; } .pc-h small { font-size: .76rem; opacity: .6; }
+    .pc-sub { display: grid; grid-template-columns: 120px 1fr 62px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--pc-border); }
+    .pc-sub:last-child { border-bottom: 0; }
+    .pc-sub b { font-size: .86rem; } .pc-sub small { display: block; font-size: .7rem; opacity: .6; font-weight: 500; }
+    .pc-bar { height: 8px; border-radius: 99px; background: rgba(100,116,139,.15); position: relative; }
+    .pc-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; }
+    .pc-bar u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: currentColor; opacity: .8; }
+    .pc-bar.none { background: repeating-linear-gradient(45deg, rgba(100,116,139,.15) 0 6px, transparent 6px 12px); }
+    .pc-g { font-size: .74rem; font-weight: 700; text-align: center; padding: 4px 2px; border-radius: 7px; }
+    .pc-g.ok { background: #ecfdf5; color: #059669; } .pc-g.wr { background: #fffbeb; color: #b45309; } .pc-g.n { background: rgba(100,116,139,.12); opacity: .8; font-size: .68rem; font-weight: 600; }
+    .pc-sr { display: grid; grid-template-columns: 74px 1fr 42px; gap: 10px; align-items: center; font-size: .8rem; margin: 8px 0; }
+    .pc-sr span { opacity: .75; } .pc-sr span.me { opacity: 1; font-weight: 700; } .pc-sr b { text-align: right; }
+    .pc-minis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .pc-minis div { border: 1px solid var(--pc-border); border-radius: 12px; padding: 12px; }
+    .pc-minis b { display: block; font-size: 1.15rem; } .pc-minis span { font-size: .72rem; opacity: .65; }
+    .pc-bwide { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: center; }
+    .pc-bbig { display: grid; justify-items: center; gap: 10px; text-align: center; } .pc-bbig b { font-size: .88rem; }
+    .pc-lvs { display: grid; gap: 16px; }
+    .pc-lv { display: grid; grid-template-columns: 50px 1fr; gap: 14px; }
+    .pc-lv-body b { font-size: .88rem; display: block; } .pc-lv-body small { display: block; font-size: .74rem; opacity: .65; margin: 2px 0 4px; }
+    .pc-lv-body .ok, .pc-req .ok { color: #059669; opacity: 1; }
+    .pc-req { display: grid; grid-template-columns: 1fr 250px; gap: 10px; align-items: center; font-size: .74rem; margin-top: 6px; }
+    .pc-req .pc-bar { height: 7px; } .pc-req span { text-align: right; opacity: .8; }
+    .pc-lv-body .pc-req b { display: inline; }
+    .pc-others { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--pc-border); }
+    .pc-obadges { display: flex; gap: 16px; flex-wrap: wrap; }
+    .pc-ob { width: 96px; text-align: center; display: grid; justify-items: center; gap: 4px; } .pc-ob b { font-size: .76rem; } .pc-ob small { font-size: .7rem; opacity: .6; }
+    .pc-muted { opacity: .65; font-size: .84rem; }
+    @media (max-width: 760px) {
+        .pc-head { grid-template-columns: auto 1fr; } .pc-ring { grid-column: 1 / -1; justify-self: start; }
+        .pc-kpis { grid-template-columns: 1fr 1fr; } .pc-grid { grid-template-columns: 1fr; }
+        .pc-bwide { grid-template-columns: 1fr; } .pc-req { grid-template-columns: 1fr; } .pc-req span { text-align: left; }
+        .pc-sub { grid-template-columns: 96px 1fr 58px; }
     }
 </style>
 
 <div class="profile-page">
     <div class="profile-shell">
-        <!-- ===== User search ===== -->
-        <div class="profile-search-section">
-            <div class="profile-search-wrapper">
-                <i class="fas fa-search profile-search-icon"></i>
-                <input type="text" id="profileUserSearchInput" class="profile-search-input" placeholder="Search for users..." autocomplete="off">
-                <div class="profile-search-results" id="profileUserSearchResults"></div>
+        <!-- ===== Back button + user search ===== -->
+        <div class="profile-topbar">
+            <button type="button" class="profile-back-btn" id="profileBackBtn" aria-label="Go back">
+                <i class="fas fa-arrow-left"></i><span>Back</span>
+            </button>
+            <div class="profile-search-section">
+                <div class="profile-search-wrapper">
+                    <i class="fas fa-search profile-search-icon"></i>
+                    <label for="profileUserSearchInput" class="pf-sr">Search for students and teachers</label>
+                    <input type="text" id="profileUserSearchInput" class="profile-search-input" placeholder="Search for students and teachers..." autocomplete="off"
+                           role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="profileUserSearchResults">
+                    <div class="profile-search-results" id="profileUserSearchResults" role="listbox" aria-label="People"></div>
+                </div>
             </div>
         </div>
 
+        {% set is_learner_profile = (profile_role or 'student') == 'student' %}
         <!-- ===== Header ===== -->
         <div class="profile-header">
             <div class="profile-avatar-wrap">
@@ -963,6 +1806,21 @@
                     <i class="fas fa-chevron-down" style="font-size:9px;"></i>
                 </div>
                 {% endif %}
+                {% if is_learner_profile %}
+                {# learners: the profile picture is a badge they have earned #}
+                {% set b = dp.badge if dp else None %}
+                {# the same badge image used in the header, leaderboard and everywhere else #}
+                <div class="profile-avatar badge-dp badge-img {{ '' if b else 'empty' }}" role="img"
+                    {% if b %}title="{{ b.title }}: {{ b.description }}"{% endif %}
+                    aria-label="{{ ('Profile picture: the ' ~ b.title ~ ' badge') if b else 'No badge yet' }}">
+                    <img src="/badge-dp/{{ profile_user_id }}.svg?v={{ b.key if b else 'starter' }}&d=16" alt="">
+                </div>
+                <div class="dp-caption" id="dpCaption" style="--t:{{ (b.tier_color if b and (b.tier_color or '').startswith('#') else '#94a3b8') }}">
+                    {% if b %}<b>{{ b.title }}</b><span class="tier">{{ b.tier_label }}</span> badge
+                    {% if is_own_profile %}<small style="display:block;margin-top:4px">Your newest Legendary badge is always your picture</small>{% endif %}
+                    {% else %}No badges yet{% endif %}
+                </div>
+                {% else %}
                 <div class="profile-avatar">
                     {% if avatar_url %}
                         <img src="{{ avatar_url }}" alt="{{ username }}'s profile photo">
@@ -970,11 +1828,12 @@
                         <span>{{ (firstname[0] if firstname else username[0]) | upper }}</span>
                     {% endif %}
                 </div>
+                {% endif %}
             </div>
 
             <div class="profile-identity">
                 <div class="profile-username-row">
-                    <span class="profile-username">{{ username }}</span>
+                    <span class="profile-username">{{ ((firstname or '') ~ ' ' ~ (lastname or '')) | trim or username }}</span>
                     {% if is_own_profile %}
                     <a class="profile-settings-icon" href="/settings" title="Settings">
                         <i class="fas fa-cog"></i>
@@ -983,69 +1842,180 @@
 
                     <div class="profile-actions">
                         {% if is_own_profile %}
-                            <a class="pill-btn" href="/settings">Edit Profile</a>
+                            <a class="pill-btn tint-indigo" href="/settings"><i class="fas fa-pen"></i> Edit Profile</a>
                         {% else %}
-                            <button
-                                class="pill-btn primary"
-                                type="button"
-                                data-action="follow"
-                                data-follow-btn="{{ profile_user_id }}"
-                                data-user-id="{{ profile_user_id }}"
-                                data-following="{{ 'true' if is_following else 'false' }}"
-                            >{{ 'Following' if is_following else 'Follow' }}</button>
-                            <a class="pill-btn" href="/messages?user={{ profile_user_id }}">Message</a>
+                            {# friend / follow button: drawn by the script from data-state #}
+                            <span class="rel-actions" id="relActions" data-user-id="{{ profile_user_id }}"
+                                  data-state="{{ rel_state or 'none' }}" data-request-id="{{ rel_request_id or '' }}"
+                                  data-following="{{ 'true' if is_following else 'false' }}"></span>
+                            {% if rel_state != 'parent' %}
+                            <a class="pill-btn tint-green" href="/messages?user={{ profile_user_id }}"><i class="fas fa-paper-plane" aria-hidden="true"></i> Message</a>
+                            {% endif %}
+                            <span class="pf-more">
+                                <button type="button" class="pill-btn" id="pfMoreBtn" aria-label="More options" aria-haspopup="menu" aria-expanded="false" aria-controls="pfMoreMenu"><i class="fas fa-ellipsis" aria-hidden="true"></i></button>
+                                <span class="pf-menu" id="pfMoreMenu" role="menu" hidden>
+                                    <button type="button" role="menuitem" id="pfBlock"><i class="fas fa-ban" aria-hidden="true"></i> <span>Block</span></button>
+                                    <button type="button" role="menuitem" id="pfReportBtn" class="danger"><i class="far fa-flag" aria-hidden="true"></i> Report</button>
+                                </span>
+                            </span>
                         {% endif %}
                     </div>
                 </div>
-
-                <div class="profile-stats">
-                    <span class="stat"><strong id="postsCountStat">{{ posts_count | default(0) }}</strong> posts</span>
-                    <span class="stat" data-followers-stat="{{ profile_user_id }}">
-                        <strong data-followers-count="{{ profile_user_id }}">{{ followers_count | default(0) }}</strong> followers
-                    </span>
-                    <span class="stat"><strong>{{ following_count | default(0) }}</strong> following</span>
+                <div class="rel-note" id="relNote" role="status" aria-live="polite"></div>
+                {% if not is_own_profile %}
+                <div class="pf-report" id="pfReport" role="group" aria-labelledby="pfReportTitle" hidden>
+                    <strong id="pfReportTitle">Report {{ firstname or username }}</strong>
+                    <span style="font-size:13px;opacity:.8">Eschool staff will check it.</span>
+                    <label><input type="radio" name="pfWhy" value="Unkind or bullying"> Unkind or bullying</label>
+                    <label><input type="radio" name="pfWhy" value="Made me feel unsafe or uncomfortable"> Made me feel unsafe or uncomfortable</label>
+                    <label><input type="radio" name="pfWhy" value="Asked for personal details, photos or to meet"> Asked for personal details, photos or to meet</label>
+                    <label><input type="radio" name="pfWhy" value="Fake or rude profile"> Fake or rude profile</label>
+                    <label><input type="checkbox" id="pfAlsoBlock" checked> Also block them</label>
+                    <span class="pf-report-msg" role="alert"></span>
+                    <span style="display:flex;gap:8px"><button type="button" class="pill-btn danger" data-rp-send>Send report</button><button type="button" class="pill-btn" data-rp-cancel>Cancel</button></span>
                 </div>
-
-                {% if firstname or lastname %}
-                <div class="profile-fullname">{{ firstname }} {{ lastname }}</div>
                 {% endif %}
 
-                {% if bio_lines %}
-                <div class="profile-bio">{% for line in bio_lines %}{{ line }}{% if not loop.last %}
-{% endif %}{% endfor %}</div>
-                {% elif bio %}
-                <div class="profile-bio">{{ bio }}</div>
+                <div class="profile-stats">
+                    {% set _hidden = hidden_parts or [] %}
+                    {% if is_learner_profile %}
+                    {% if 'achievements' not in _hidden %}
+                    <span class="stat"><strong id="achCountStat">–</strong> achievements</span>
+                    {% endif %}
+                    {% else %}
+                    <span class="stat"><strong id="postsCountStat">{{ posts_count | default(0) }}</strong> posts</span>
+                    {% endif %}
+                    {% if 'follows' not in _hidden %}
+                    {% if is_learner_profile %}
+                    <button type="button" class="stat stat-btn" data-open-friends="friends">
+                        <strong data-friends-count="{{ profile_user_id }}">{{ friends_count | default(0) }}</strong> friend{{ '' if (friends_count or 0) == 1 else 's' }}
+                    </button>
+                    {% if is_own_profile %}
+                    <button type="button" class="stat stat-btn" data-open-friends="teachers">
+                        <strong id="teachersCountStat">{{ teachers_count | default(0) }}</strong> teacher{{ '' if (teachers_count or 0) == 1 else 's' }}
+                    </button>
+                    {% endif %}
+                    {% elif profile_role == 'teacher' %}
+                    <span class="stat"><strong data-learners-count="{{ profile_user_id }}">{{ learners_count | default(0) }}</strong> following this teacher</span>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                {% if is_own_profile and (friend_requests_count or 0) > 0 %}
+                <button type="button" class="fr-banner" data-open-friends="requests">
+                    <i class="fas fa-user-plus"></i>
+                    <span><strong id="frBannerCount">{{ friend_requests_count }}</strong> friend request{{ '' if friend_requests_count == 1 else 's' }} waiting for you</span>
+                    <span class="fr-banner-go">Review <i class="fas fa-chevron-right"></i></span>
+                </button>
+                {% endif %}
+
+                {% if is_learner_profile %}
+                <div class="learner-chips" id="learnerChips">
+                    <span class="lchip role"><i class="fas fa-user-graduate"></i> Learner</span>
+                </div>
+                {% else %}
+                <div class="learner-chips">
+                    <span class="lchip role teacher"><i class="fas fa-chalkboard-teacher"></i> Teacher</span>
+                </div>
+                {% endif %}
+
+                {% if bio %}
+                <div class="profile-bio" id="bioText">{{ bio }}</div>
+                {% elif is_own_profile %}
+                <div class="profile-bio empty" id="bioText">No bio yet. Tell people a little about you.</div>
+                {% endif %}
+                {% if is_own_profile %}
+                <button type="button" class="bio-edit-btn" id="bioEditBtn" aria-expanded="false" aria-controls="bioEditor"><i class="fas fa-pen" style="font-size:11px"></i> {{ 'Edit bio' if bio else 'Add a bio' }}</button>
+                <div class="bio-editor" id="bioEditor" hidden>
+                    <label for="bioInput" class="an-sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Your bio</label>
+                    <textarea id="bioInput" maxlength="300" aria-describedby="bioHint" placeholder="e.g. Grade 8 · I love maths and science · Dream: engineer">{{ bio or '' }}</textarea>
+                    <div class="bio-hint" id="bioHint" style="font-size:12px;opacity:.75;margin-top:4px">Everyone who can open your profile can read this. Don't write your phone number, address or social media names.</div>
+                    <div class="bio-editor-foot">
+                        <span class="count" id="bioCount">{{ (bio or '') | length }} / 300</span>
+                        <button type="button" class="pill-btn" id="bioCancel">Cancel</button>
+                        <button type="button" class="pill-btn primary" id="bioSave">Save bio</button>
+                        <span class="msg" id="bioMsg" role="status"></span>
+                    </div>
+                </div>
                 {% endif %}
             </div>
         </div>
 
-        <!-- ===== Highlights / New ===== -->
+        <!-- ===== Highlights (only when there are some) ===== -->
+        {% if highlights %}
         <div class="profile-highlights">
-            {% if is_own_profile %}
-            {% endif %}
-            {% for h in highlights | default([]) %}
+            {% for h in highlights %}
             <a class="highlight-item" href="{{ h.url }}">
                 <div class="highlight-circle"><img src="{{ h.cover_url }}" alt="{{ h.label }}"></div>
                 <span class="highlight-label">{{ h.label }}</span>
             </a>
             {% endfor %}
         </div>
+        {% endif %}
 
         <!-- ===== Tabs ===== -->
-        <div class="profile-tabs">
-            <button class="profile-tab active" data-tab="uploads" type="button">
-                <i class="fas fa-th"></i><span>Uploads</span>
+        <div class="profile-tabs" role="tablist" aria-label="Profile sections">
+            {% if is_learner_profile %}
+            <button class="profile-tab active" data-tab="overview" type="button" style="--tab:#4361ee" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true" tabindex="0" aria-label="Progress">
+                <i class="fas fa-chart-pie" aria-hidden="true"></i><span>Progress</span>
             </button>
-            <button class="profile-tab" data-tab="strength" type="button">
-                <i class="fas fa-bolt"></i><span>Strength</span>
+            <button class="profile-tab" data-tab="career" type="button" style="--tab:#e11d48" role="tab" id="tab-career" aria-controls="panel-career" aria-selected="false" tabindex="-1" aria-label="Career">
+                <i class="fas fa-briefcase" aria-hidden="true"></i><span>Career</span>
             </button>
-            <button class="profile-tab" data-tab="achievements" type="button">
-                <i class="fas fa-trophy"></i><span>Achievements</span>
+            <button class="profile-tab" data-tab="badges" type="button" style="--tab:#f59e0b" role="tab" id="tab-badges" aria-controls="panel-badges" aria-selected="false" tabindex="-1" aria-label="Achievements">
+                <i class="fas fa-trophy" aria-hidden="true"></i><span>Achievements</span>
             </button>
+            <button class="profile-tab" data-tab="leaders" type="button" style="--tab:#8b5cf6" role="tab" id="tab-leaders" aria-controls="panel-leaders" aria-selected="false" tabindex="-1" aria-label="Leaderboard">
+                <i class="fas fa-ranking-star" aria-hidden="true"></i><span>Leaderboard</span>
+            </button>
+            {% else %}
+            <button class="profile-tab active" data-tab="uploads" type="button" style="--tab:#14b8a6" role="tab" id="tab-uploads" aria-controls="panel-uploads" aria-selected="true" tabindex="0" aria-label="Uploads">
+                <i class="fas fa-th" aria-hidden="true"></i><span>Uploads</span>
+            </button>
+            <button class="profile-tab" data-tab="live" type="button" style="--tab:#ef4444" role="tab" id="tab-live" aria-controls="panel-live" aria-selected="false" tabindex="-1" aria-label="Live classes">
+                <i class="fas fa-video" aria-hidden="true"></i><span>Live classes</span>
+            </button>
+            <button class="profile-tab" data-tab="ratings" type="button" style="--tab:#f59e0b" role="tab" id="tab-ratings" aria-controls="panel-ratings" aria-selected="false" tabindex="-1" aria-label="Ratings">
+                <i class="fas fa-star" aria-hidden="true"></i><span>Ratings</span>
+            </button>
+            {% endif %}
         </div>
 
-        <!-- ===== Uploads panel — real resources, fetched client-side ===== -->
-        <div class="tab-panel active" id="panel-uploads">
+        {% if is_learner_profile %}
+        <!-- ===== Progress panel — level, rank, streaks, courses ===== -->
+        <div class="tab-panel active" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+            <div class="posts-loading" id="overviewLoading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Loading progress…</div>
+            </div>
+            <div id="overviewContent" style="display:none;"></div>
+        </div>
+
+        <!-- ===== Career panel (dream career, readiness, subjects, missions, career badge) ===== -->
+        <div class="tab-panel" id="panel-career" role="tabpanel" aria-labelledby="tab-career">
+            <div id="careerContent"><div class="posts-loading"><i class="fas fa-spinner fa-spin"></i><div>Loading career…</div></div></div>
+        </div>
+
+        <!-- ===== Achievements panel ===== -->
+        <div class="tab-panel" id="panel-badges" role="tabpanel" aria-labelledby="tab-badges">
+            <div id="badgesContent"><div class="posts-loading"><i class="fas fa-spinner fa-spin"></i><div>Loading achievements…</div></div></div>
+        </div>
+
+        <!-- ===== Leaderboard panel ===== -->
+        <div class="tab-panel" id="panel-leaders" role="tabpanel" aria-labelledby="tab-leaders">
+            <div class="lb-toolbar">
+                <div class="filter-chips" id="lbScope">
+                    <button type="button" class="filter-chip active" data-scope="all">All learners</button>
+                    <button type="button" class="filter-chip" data-scope="following">You &amp; your friends</button>
+                </div>
+                <a class="lb-hint" href="/leaderboard">Ranked by EP earned this month · Full leaderboard →</a>
+            </div>
+            <div id="leadersContent"><div class="posts-loading"><i class="fas fa-spinner fa-spin"></i><div>Loading leaderboard…</div></div></div>
+        </div>
+        {% endif %}
+
+        <!-- ===== Uploads panel — teachers only (learner profiles have no uploads) ===== -->
+        {% if not is_learner_profile %}
+        <div class="tab-panel active" id="panel-uploads" role="tabpanel" aria-labelledby="tab-uploads">
             <div class="posts-loading" id="postsLoading">
                 <i class="fas fa-spinner fa-spin"></i>
                 <div>Loading uploads…</div>
@@ -1056,30 +2026,45 @@
                 <div>No uploads yet</div>
             </div>
         </div>
+        {% endif %}
 
-        <!-- ===== Strength panel — real course-progress stats ===== -->
-        <div class="tab-panel" id="panel-strength">
-            <div class="posts-loading" id="strengthLoading">
-                <i class="fas fa-spinner fa-spin"></i>
-                <div>Loading strength…</div>
+        {% if not is_learner_profile %}
+        <!-- ===== Live classes panel (teachers): classes this teacher created ===== -->
+        <div class="tab-panel" id="panel-live" role="tabpanel" aria-labelledby="tab-live">
+            <div class="posts-loading" id="liveLoading">
+                <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                <div>Loading live classes…</div>
             </div>
-            <div id="strengthContent" style="display:none;"></div>
+            <div id="liveContent" style="display:none;"></div>
         </div>
 
-        <!-- ===== Achievements panel — same unlock rules as the Progress page ===== -->
-        <div class="tab-panel" id="panel-achievements">
-            <div class="posts-loading" id="achievementsLoading">
-                <i class="fas fa-spinner fa-spin"></i>
-                <div>Loading achievements…</div>
+        <!-- ===== Ratings panel (teachers): stars, average out of ten, reviews ===== -->
+        <div class="tab-panel" id="panel-ratings" role="tabpanel" aria-labelledby="tab-ratings">
+            <div class="posts-loading" id="ratingsLoading">
+                <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                <div>Loading ratings…</div>
             </div>
-            <div id="achievementsContent" style="display:none;"></div>
+            <div id="ratingsContent" style="display:none;"></div>
         </div>
+        {% endif %}
     </div>
 </div>
 
 <!-- Resource preview modal -->
 <div class="rp-modal-overlay" id="rpModalOverlay">
-    <div class="rp-modal-box" id="rpModalBox"></div>
+    <div class="rp-modal-box" id="rpModalBox" role="dialog" aria-modal="true" aria-labelledby="rpTitle"></div>
+</div>
+
+<!-- Friends panel: friend requests, friends, sent requests, teachers you follow -->
+<div class="fr-overlay" id="friendsPanel" hidden>
+    <div class="fr-sheet" role="dialog" aria-modal="true" aria-labelledby="frTitle">
+        <div class="fr-head">
+            <h2 id="frTitle"><i class="fas fa-user-group" aria-hidden="true"></i> {{ 'Friends & teachers' if is_own_profile else (firstname ~ "'s friends") }}</h2>
+            <button type="button" class="fr-x" id="frClose" aria-label="Close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="fr-tabs" id="frTabs" role="tablist"></div>
+        <div class="fr-body" id="frBody"></div>
+    </div>
 </div>
 
 <script>
@@ -1088,676 +2073,1210 @@
 
     const PROFILE_USER_ID = {{ profile_user_id | tojson }};
     const IS_OWN_PROFILE = {{ is_own_profile | tojson }};
-    // Same key format the Progress Tracking page uses — course data lives
-    // in the CURRENT browser's localStorage, keyed by the logged-in
-    // session's email, not by profile_user_id. See the note at the top
-    // of this file for why that means these tabs are only real on your
-    // own profile.
-    const SESSION_EMAIL = {{ session.get('email', 'default_user') | tojson }};
+    // Only teachers create live classes and receive ratings
+    const PROFILE_IS_TEACHER = {{ (profile_role == 'teacher') | tojson }};
+    const PROFILE_NAME = {{ ((firstname or '') ~ ' ' ~ (lastname or '')) | trim | tojson }};
+    const MY_ROLE = {{ (session.get('role') or 'student') | tojson }};
+    const MY_ID = {{ (session.get('user_id') or 0) | tojson }};
+    const TZ = 'Africa/Nairobi';
 
-    // ---------------------------------------------------------------
-    // USER SEARCH — same /messages/search_users?q= endpoint the
-    // messages page uses to find accounts by name. Selecting a result
-    // navigates straight to that person's profile.
-    // ---------------------------------------------------------------
+    /* ---------------------------------------------------------------
+       Small shared helpers
+    --------------------------------------------------------------- */
+    function escapeAttr(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : String(str);
+        return div.innerHTML.replace(/"/g, '&quot;');
+    }
+    // web addresses only: http(s), or a path on this site ("/x", not "//other-site")
+    function safeUrl(url) {
+        url = String(url || '').trim();
+        if (/^\/(?!\/)/.test(url)) return url;
+        return /^https?:\/\//i.test(url) ? url : '';
+    }
+    function internalUrl(url) { url = String(url || '').trim(); return /^\/(?!\/)/.test(url) ? url : ''; }
+    const safeColor = c => (/^#[0-9a-f]{3,8}$/i.test(String(c || '')) ? c : '#64748b');
+    const safeIcon = c => (/^fa-[a-z0-9-]+$/.test(String(c || '')) ? c : 'fa-star');
+    // "2026-11-03 10:00:00" (no zone) is UTC; Safari can't read it as is
+    function parseTime(v) {
+        if (!v) return new Date(NaN);
+        let s = String(v).trim();
+        if (/^\d{4}-\d{2}-\d{2} \d/.test(s)) s = s.replace(' ', 'T');
+        if (/T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s)) s += 'Z';
+        return new Date(s);
+    }
+    async function api(url, opt) {
+        let res;
+        try { res = await fetch(url, Object.assign({ credentials: 'same-origin' }, opt || {})); }
+        catch (e) { throw new Error('Couldn\'t reach Eschool. Check your connection and try again.'); }
+        if (res.status === 401) { window.location.href = '/login'; throw new Error('Please sign in again.'); }
+        let d = {}; try { d = await res.json(); } catch (e) { /* none */ }
+        if (!res.ok || d.success === false) throw Object.assign(new Error(d.message || d.error || 'Something went wrong. Please try again.'), { data: d, status: res.status });
+        return d;
+    }
+    function retryBox(icon, text, attr) {
+        return `<div class="posts-empty"><i class="fas ${icon}" aria-hidden="true"></i><div>${escapeAttr(text)}</div>
+                <button type="button" class="pill-btn" ${attr} style="margin-top:12px"><i class="fas fa-rotate-right" aria-hidden="true"></i> Try again</button></div>`;
+    }
+    // Keep Tab inside an open window; Escape closes it; focus goes back to what opened it
+    function trapFocus(box, e) {
+        if (e.key !== 'Tab') return;
+        const f = Array.from(box.querySelectorAll('button, a[href], input, select, textarea, video, audio, iframe, [tabindex="0"]'))
+            .filter(x => !x.disabled && x.getClientRects().length);
+        if (!f.length) return;
+        if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    }
+
+    /* ---------------------------------------------------------------
+       BACK BUTTON: previous page on this site, else your own home page
+    --------------------------------------------------------------- */
+    const HOME_URL = ({ admin: '/admin-dashboard', teacher: '/teacher-dashboard', parent: '/parent-dashboard' })[MY_ROLE] || '/dashboard';
+    const backBtn = document.getElementById('profileBackBtn');
+    if (backBtn) {
+        backBtn.addEventListener('click', function () {
+            let cameFromThisSite = false;
+            try {
+                cameFromThisSite = !!document.referrer && new URL(document.referrer).origin === window.location.origin &&
+                    document.referrer !== window.location.href;
+            } catch (e) { /* bad referrer */ }
+            if (cameFromThisSite && window.history.length > 1) window.history.back();
+            else window.location.href = HOME_URL;
+        });
+    }
+
+    /* ---------------------------------------------------------------
+       PEOPLE SEARCH (2+ letters; arrow keys, Enter, Escape)
+    --------------------------------------------------------------- */
     const userSearchInput = document.getElementById('profileUserSearchInput');
     const userSearchResults = document.getElementById('profileUserSearchResults');
-    let userSearchDebounceTimer = null;
+    let userSearchTimer = null, userSearchSeq = 0, activeIdx = -1;
 
     function closeUserSearchResults() {
         userSearchResults.classList.remove('show');
         userSearchResults.innerHTML = '';
+        userSearchInput.setAttribute('aria-expanded', 'false');
+        userSearchInput.removeAttribute('aria-activedescendant');
+        activeIdx = -1;
     }
-
-    function renderUserSearchResults(users) {
-        if (!users || users.length === 0) {
-            userSearchResults.innerHTML = `<div class="profile-search-empty">No users found.</div>`;
-            userSearchResults.classList.add('show');
-            return;
-        }
-
-        userSearchResults.innerHTML = users.map(u => `
-            <a class="profile-search-result-item" href="/profile/${u.id}">
-                <div class="profile-search-result-avatar">
-                    ${u.avatar_url
-                        ? `<img src="${u.avatar_url}" alt="${u.name}">`
-                        : (u.avatar || '?')}
-                </div>
-                <span class="profile-search-result-name">${u.name}</span>
-            </a>
-        `).join('');
+    function showResults(html) {
+        userSearchResults.innerHTML = html;
         userSearchResults.classList.add('show');
+        userSearchInput.setAttribute('aria-expanded', 'true');
+        activeIdx = -1;
     }
-
+    function renderUserSearchResults(people) {
+        if (!people || !people.length) { showResults('<div class="profile-search-empty" role="option" aria-disabled="true">No students or teachers found.</div>'); return; }
+        showResults(people.map((t, i) => {
+            const isTeacher = t.role === 'teacher';
+            const av = safeUrl(t.avatar_url);
+            return `
+            <a class="profile-search-result-item" role="option" id="psr-${i}" href="/profile/${encodeURIComponent(t.id)}">
+                <div class="profile-search-result-avatar" aria-hidden="true">${av ? `<img src="${escapeAttr(av)}" alt="">` : escapeAttr(t.initials || Array.from(t.name || '?')[0])}</div>
+                <span class="profile-search-result-name">${escapeAttr(t.name)}</span>
+                <span class="profile-search-role ${isTeacher ? 'teacher' : 'student'}">
+                    <i class="fas ${isTeacher ? 'fa-chalkboard-user' : 'fa-user-graduate'}" aria-hidden="true"></i> ${isTeacher ? 'Teacher' : 'Student'}
+                </span>
+            </a>`;
+        }).join(''));
+    }
     if (userSearchInput) {
         userSearchInput.addEventListener('input', function () {
             const query = this.value.trim();
-            clearTimeout(userSearchDebounceTimer);
-
-            if (query.length === 0) {
-                closeUserSearchResults();
-                return;
-            }
-
-            userSearchDebounceTimer = setTimeout(() => {
-                fetch(`/messages/search_users?q=${encodeURIComponent(query)}`)
-                    .then(res => res.json())
-                    .then(users => renderUserSearchResults(users))
-                    .catch(err => {
-                        console.error('Error searching users:', err);
-                        userSearchResults.innerHTML = `<div class="profile-search-empty">Something went wrong.</div>`;
-                        userSearchResults.classList.add('show');
-                    });
+            clearTimeout(userSearchTimer);
+            if (!query) { userSearchSeq++; closeUserSearchResults(); return; }
+            if (query.length < 2) { userSearchSeq++; showResults('<div class="profile-search-empty" role="option" aria-disabled="true">Type at least 2 letters.</div>'); return; }
+            userSearchTimer = setTimeout(() => {
+                const thisSearch = ++userSearchSeq;   // ignore answers to older searches
+                api(`/api/people?type=all&q=${encodeURIComponent(query)}`)
+                    .then(data => { if (thisSearch === userSearchSeq) renderUserSearchResults(data.people || []); })
+                    .catch(err => { if (thisSearch === userSearchSeq) showResults(`<div class="profile-search-empty">${escapeAttr(err.message)}</div>`); });
             }, 300);
         });
-
+        userSearchInput.addEventListener('keydown', function (e) {
+            const items = Array.from(userSearchResults.querySelectorAll('a[role="option"]'));
+            if (e.key === 'Escape') { closeUserSearchResults(); return; }
+            if (!items.length || !['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) return;
+            if (e.key === 'Enter') { if (activeIdx > -1) { e.preventDefault(); items[activeIdx].click(); } return; }
+            e.preventDefault();
+            activeIdx = e.key === 'ArrowDown' ? (activeIdx + 1) % items.length : (activeIdx + items.length - 1) % items.length;
+            items.forEach((x, i) => { x.classList.toggle('active', i === activeIdx); x.setAttribute('aria-selected', String(i === activeIdx)); });
+            userSearchInput.setAttribute('aria-activedescendant', items[activeIdx].id);
+            items[activeIdx].scrollIntoView({ block: 'nearest' });
+        });
         document.addEventListener('click', function (e) {
-            if (!userSearchInput.contains(e.target) && !userSearchResults.contains(e.target)) {
-                closeUserSearchResults();
-            }
+            if (!userSearchInput.contains(e.target) && !userSearchResults.contains(e.target)) closeUserSearchResults();
         });
     }
 
-    // ---------------------------------------------------------------
-    // TABS — three distinct panels, each with its own load-once fetch.
-    // ---------------------------------------------------------------
-    const tabs = document.querySelectorAll('.profile-tab');
+    /* ---------------------------------------------------------------
+       TABS (arrow keys; the address keeps #tab so links can open one)
+    --------------------------------------------------------------- */
+    const tabs = Array.from(document.querySelectorAll('.profile-tab'));
     const panels = document.querySelectorAll('.tab-panel');
-    let strengthLoaded = false;
-    let achievementsLoaded = false;
+    let liveLoaded = false, ratingsLoaded = false, leadersLoaded = false, careerLoaded = false;
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function () {
-            const target = this.dataset.tab;
-
-            tabs.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-
-            panels.forEach(p => p.classList.toggle('active', p.id === `panel-${target}`));
-
-            if (target === 'strength' && !strengthLoaded) {
-                strengthLoaded = true;
-                renderStrengthPanel();
-            }
-            if (target === 'achievements' && !achievementsLoaded) {
-                achievementsLoaded = true;
-                renderAchievementsPanel();
-            }
+    function showTab(target, opts) {
+        opts = opts || {};
+        const tab = tabs.find(t => t.dataset.tab === target);
+        if (!tab) return;
+        tabs.forEach(t => { const on = t === tab; t.classList.toggle('active', on); t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; });
+        panels.forEach(p => p.classList.toggle('active', p.id === `panel-${target}`));
+        if (opts.focus) tab.focus();
+        if (opts.user) { try { history.replaceState(null, '', location.pathname + location.search + '#' + target); } catch (e) { /* ignore */ } }
+        if (target === 'live' && !liveLoaded) { liveLoaded = true; loadLiveClasses(); }
+        if (target === 'ratings' && !ratingsLoaded) { ratingsLoaded = true; loadRatings(); }
+        if (target === 'leaders' && !leadersLoaded) { leadersLoaded = true; loadLeaderboard(); }
+        if (target === 'career' && !careerLoaded) { careerLoaded = true; loadCareerTab(); }
+    }
+    tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => showTab(tab.dataset.tab, { user: true }));
+        tab.addEventListener('keydown', e => {
+            let j = -1;
+            if (e.key === 'ArrowRight') j = (i + 1) % tabs.length;
+            else if (e.key === 'ArrowLeft') j = (i + tabs.length - 1) % tabs.length;
+            else if (e.key === 'Home') j = 0;
+            else if (e.key === 'End') j = tabs.length - 1;
+            if (j < 0) return;
+            e.preventDefault(); showTab(tabs[j].dataset.tab, { user: true, focus: true });
         });
     });
+    window.addEventListener('hashchange', () => showTab((location.hash || '').slice(1)));
 
-    // ---------------------------------------------------------------
-    // UPLOADS GRID — real data from /api/resources/user/<id>, which
-    // already returns views_count, likes_count, file_category, title,
-    // thumbnail_url, file_url etc. (same shape the resources page uses).
-    // ---------------------------------------------------------------
+    /* ---------------------------------------------------------------
+       UPLOADS GRID (teachers): /api/resources/user/<id>
+    --------------------------------------------------------------- */
     let uploads = [];
+    // a built-in picture instead of an outside image service
+    const DEFAULT_THUMB = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4361ee"/><stop offset="1" stop-color="#7209b7"/></linearGradient></defs><rect width="600" height="600" fill="url(#g)"/><path d="M220 170h120l60 60v200H220z" fill="rgba(255,255,255,.85)"/><path d="M340 170v60h60" fill="rgba(255,255,255,.55)"/></svg>');
 
     async function loadUploads() {
         const loading = document.getElementById('postsLoading');
         const grid = document.getElementById('postsGrid');
         const empty = document.getElementById('postsEmpty');
-
-        loading.style.display = 'block';
-        grid.style.display = 'none';
-        empty.style.display = 'none';
-
-        try {
-            const res = await fetch(`/api/resources/user/${PROFILE_USER_ID}`);
-            if (!res.ok) throw new Error(`Failed to load uploads (${res.status})`);
-            const data = await res.json();
-            uploads = data.resources || [];
-        } catch (err) {
-            console.error('Failed to load uploads:', err);
-            uploads = [];
-        }
-
+        if (!loading || !grid || !empty) return;   // learner profiles have no Uploads tab
+        loading.style.display = 'block'; grid.style.display = 'none'; empty.style.display = 'none';
+        let failed = null;
+        try { uploads = (await api(`/api/resources/user/${PROFILE_USER_ID}`)).resources || []; }
+        catch (err) { failed = err; }
         loading.style.display = 'none';
-
-        const postsCountStat = document.getElementById('postsCountStat');
-        if (postsCountStat) postsCountStat.textContent = uploads.length;
-
-        if (!uploads.length) {
+        if (failed) {   // a failure is not "no uploads"
             empty.style.display = 'block';
+            empty.innerHTML = retryBox('fa-triangle-exclamation', 'Couldn\'t load the uploads. ' + failed.message, 'data-retry-uploads');
             return;
         }
-
+        const postsCountStat = document.getElementById('postsCountStat');
+        if (postsCountStat) postsCountStat.textContent = uploads.length;
+        if (!uploads.length) {
+            empty.style.display = 'block';
+            empty.innerHTML = '<i class="fas fa-folder-open" aria-hidden="true"></i><div>No uploads yet</div>';
+            return;
+        }
         grid.style.display = 'grid';
         grid.innerHTML = uploads.map(renderTile).join('');
     }
-
     function renderTile(r) {
         const views = r.views_count ?? r.views ?? 0;
         const likes = r.likes_count ?? r.likes ?? 0;
-        const thumb = r.thumbnail_url || getDefaultThumbnail();
-
+        const thumb = safeUrl(r.thumbnail_url) || DEFAULT_THUMB;
         return `
-            <button class="post-tile" type="button" onclick="window.__openResourcePreview(${r.id})" title="${escapeAttr(r.title)}">
-                <span class="post-badge">${getFileTypeText(r.file_category)}</span>
-                <img src="${thumb}" alt="${escapeAttr(r.title)}" loading="lazy">
-                <span class="post-overlay">
-                    <span><i class="fas fa-eye"></i> ${formatCount(views)}</span>
+            <button class="post-tile" type="button" data-preview="${Number(r.id)}" aria-label="${escapeAttr(r.title)}: ${getFileTypeText(r.file_category)}, ${formatCount(views)} views, ${formatCount(likes)} likes">
+                <span class="post-badge" aria-hidden="true">${getFileTypeText(r.file_category)}</span>
+                <img src="${escapeAttr(thumb)}" alt="" loading="lazy" data-fallback>
+                <span class="post-overlay" aria-hidden="true">
+                    <span><i class="fas fa-eye"></i> <b data-views="${Number(r.id)}">${formatCount(views)}</b></span>
                     <span><i class="fas fa-heart"></i> ${formatCount(likes)}</span>
                 </span>
-            </button>
-        `;
+            </button>`;
     }
-
-    function escapeAttr(str) {
-        const div = document.createElement('div');
-        div.textContent = str || '';
-        return div.innerHTML.replace(/"/g, '&quot;');
-    }
-
-    function getFileTypeText(type) {
-        return {
-            video: 'Video',
-            pdf: 'Document',
-            doc: 'Document',
-            image: 'Image',
-            audio: 'Audio'
-        }[type] || 'File';
-    }
-
-    function getDefaultThumbnail() {
-        return 'https://source.unsplash.com/600x400/?file';
-    }
-
+    // a thumbnail that fails to load shows the built-in picture
+    document.addEventListener('error', e => { const img = e.target; if (img instanceof HTMLImageElement && img.hasAttribute('data-fallback')) { img.removeAttribute('data-fallback'); img.src = DEFAULT_THUMB; } }, true);
+    function getFileTypeText(type) { return { video: 'Video', pdf: 'Document', doc: 'Document', image: 'Image', audio: 'Audio' }[type] || 'File'; }
     function formatCount(n) {
-        n = n || 0;
+        n = Number(n) || 0;
         if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
         if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-        return n.toString();
+        return String(n);
     }
-
     function resolveCategory(r) {
-        const known = ['video', 'audio', 'image', 'pdf', 'doc'];
-        const raw = (r.file_category || '').toString().toLowerCase().trim();
-        if (known.includes(raw)) return raw;
-        return 'other';
+        const raw = String(r.file_category || '').toLowerCase().trim();
+        return ['video', 'audio', 'image', 'pdf', 'doc'].includes(raw) ? raw : 'other';
     }
+    const postsGrid = document.getElementById('postsGrid');
+    if (postsGrid) postsGrid.addEventListener('click', e => { const t = e.target.closest('[data-preview]'); if (t) openResourcePreview(Number(t.dataset.preview), t); });
+    const postsEmptyEl = document.getElementById('postsEmpty');
+    if (postsEmptyEl) postsEmptyEl.addEventListener('click', e => { if (e.target.closest('[data-retry-uploads]')) loadUploads(); });
 
-    // ---------------------------------------------------------------
-    // PREVIEW MODAL — opens the real file, tracks one view per user
-    // via POST /api/resources/<id>/view (same endpoint the resources
-    // page uses, so a view here and a view there never double-count).
-    // ---------------------------------------------------------------
+    /* ---------------------------------------------------------------
+       PREVIEW WINDOW (one view per person, counted by the server)
+    --------------------------------------------------------------- */
     const rpOverlay = document.getElementById('rpModalOverlay');
     const rpBox = document.getElementById('rpModalBox');
+    let rpFrom = null, rpSeq = 0;
 
-    window.__openResourcePreview = async function (id) {
-        try {
-            const res = await fetch(`/api/resources/${id}`);
-            if (!res.ok) throw new Error(`Failed to load resource (${res.status})`);
-            const data = await res.json();
-            const r = data.resource;
-            if (!r) return;
-
-            const category = resolveCategory(r);
-            let media;
-
-            if (!r.file_url) {
-                media = `<div class="rp-modal-fallback">This file is missing its URL.</div>`;
-            } else if (category === 'video') {
-                media = `<video controls autoplay><source src="${r.file_url}">Your browser can't play this video.</video>`;
-            } else if (category === 'audio') {
-                media = `<audio controls autoplay><source src="${r.file_url}">Your browser can't play this audio.</audio>`;
-            } else if (category === 'image') {
-                media = `<img src="${r.file_url}" alt="${escapeAttr(r.title)}">`;
-            } else if (category === 'pdf') {
-                media = `<iframe src="${r.file_url}" title="${escapeAttr(r.title)}"></iframe>`;
-            } else {
-                media = `
-                    <div class="rp-modal-fallback">
-                        <p>No inline preview for this file type.</p>
-                        <a href="/api/resources/${r.id}/download"><i class="fas fa-download"></i> Download</a>
-                    </div>`;
-            }
-
-            const views = r.views_count ?? r.views ?? 0;
-            const likes = r.likes_count ?? r.likes ?? 0;
-
-            rpBox.innerHTML = `
-                <div class="rp-modal-header">
-                    <h2>${escapeAttr(r.title)}</h2>
-                    <button type="button" onclick="window.__closeResourcePreview()">✕</button>
-                </div>
-                <div class="rp-modal-body">${media}</div>
-                <div class="rp-modal-footer">
-                    <span><i class="fas fa-eye"></i> ${formatCount(views)} views</span>
-                    <span><i class="fas fa-heart"></i> ${formatCount(likes)} likes</span>
-                </div>
-            `;
-
+    function el(tag, attrs, text) {
+        const n = document.createElement(tag);
+        Object.entries(attrs || {}).forEach(([k, v]) => { if (v != null) n.setAttribute(k, v); });
+        if (text != null) n.textContent = text;
+        return n;
+    }
+    function openRp() {
+        if (!rpOverlay.classList.contains('show')) {
             rpOverlay.classList.add('show');
-            document.body.style.overflow = 'hidden';
-
-            // One view per (resource, user), enforced server-side —
-            // opening the same resource again just returns the same total.
-            fetch(`/api/resources/${id}/view`, { method: 'POST' }).catch(() => {});
-        } catch (err) {
-            console.error('Failed to open resource preview:', err);
+            document.body.classList.add('pf-lock');
         }
-    };
-
-    window.__closeResourcePreview = function () {
-        rpOverlay.querySelectorAll('video, audio').forEach(m => {
-            m.pause();
-            m.currentTime = 0;
-            m.src = '';
-            m.load();
-        });
+    }
+    async function openResourcePreview(id, from) {
+        const seq = ++rpSeq;
+        rpFrom = from || document.activeElement;
+        rpBox.innerHTML = '<div class="posts-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i><div>Opening…</div></div>';
+        openRp();
+        let r;
+        try { r = (await api(`/api/resources/${id}`)).resource; }
+        catch (err) {
+            if (seq !== rpSeq) return;
+            rpBox.innerHTML = '';
+            const head = el('div', { class: 'rp-modal-header' }); head.appendChild(el('h2', { id: 'rpTitle' }, 'Couldn\'t open this file'));
+            const x = el('button', { type: 'button', 'data-rp-close': '', 'aria-label': 'Close preview' }); x.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i>'; head.appendChild(x);
+            const body = el('div', { class: 'rp-modal-body' }); body.appendChild(el('div', { class: 'rp-modal-fallback' }, err.message));
+            rpBox.append(head, body); x.focus();
+            return;
+        }
+        if (seq !== rpSeq || !r) return;
+        // everything is built with createElement, and only web addresses go into src
+        const fileUrl = safeUrl(r.file_url), category = resolveCategory(r);
+        const head = el('div', { class: 'rp-modal-header' });
+        head.appendChild(el('h2', { id: 'rpTitle' }, r.title || 'File'));
+        const x = el('button', { type: 'button', 'data-rp-close': '', 'aria-label': 'Close preview' }); x.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i>';
+        head.appendChild(x);
+        const body = el('div', { class: 'rp-modal-body' });
+        let media;
+        if (!fileUrl) media = el('div', { class: 'rp-modal-fallback' }, 'This file can\'t be opened here.');
+        else if (category === 'video') { media = el('video', { controls: '', preload: 'metadata', playsinline: '' }); media.src = fileUrl; }   // no autoplay: no sudden sound
+        else if (category === 'audio') { media = el('audio', { controls: '', preload: 'metadata' }); media.src = fileUrl; }
+        else if (category === 'image') { media = el('img', { alt: r.title || '' }); media.src = fileUrl; }
+        else if (category === 'pdf') { media = el('iframe', { title: r.title || 'Document', referrerpolicy: 'no-referrer' }); media.src = fileUrl; }
+        else { media = el('div', { class: 'rp-modal-fallback' }); media.appendChild(el('p', null, 'No preview for this kind of file. Download it to open it.')); }
+        body.appendChild(media);
+        const foot = el('div', { class: 'rp-modal-footer' });
+        const views = r.views_count ?? r.views ?? 0, likes = r.likes_count ?? r.likes ?? 0;
+        const v = el('span'); v.innerHTML = '<i class="fas fa-eye" aria-hidden="true"></i> '; v.appendChild(el('span', { 'data-rp-views': '' }, formatCount(views) + ' views'));
+        const l = el('span'); l.innerHTML = '<i class="fas fa-heart" aria-hidden="true"></i> '; l.appendChild(document.createTextNode(formatCount(likes) + ' likes'));
+        foot.append(v, l);
+        if (fileUrl) { const dl = el('a', { href: `/api/resources/${Number(r.id)}/download`, download: '', class: 'rp-dl' }); dl.innerHTML = '<i class="fas fa-download" aria-hidden="true"></i> Download'; foot.appendChild(dl); }
+        rpBox.replaceChildren(head, body, foot);
+        x.focus();
+        // count the view, then update this tile only (no reload of the whole grid)
+        api(`/api/resources/${Number(r.id)}/view`, { method: 'POST' }).then(d => {
+            const n = d.views_count ?? d.views; if (typeof n !== 'number') return;
+            document.querySelectorAll(`[data-views="${Number(r.id)}"]`).forEach(b => { b.textContent = formatCount(n); });
+            const fv = rpBox.querySelector('[data-rp-views]'); if (fv) fv.textContent = formatCount(n) + ' views';
+            const u = uploads.find(u => u.id === r.id); if (u) { u.views_count = u.views = n; }
+        }).catch(() => {});
+    }
+    function closeResourcePreview() {
+        if (!rpOverlay.classList.contains('show')) return;
+        rpSeq++;
+        rpOverlay.querySelectorAll('video, audio').forEach(m => { try { m.pause(); m.removeAttribute('src'); m.load(); } catch (e) { /* ignore */ } });
         rpOverlay.classList.remove('show');
         rpBox.innerHTML = '';
-        document.body.style.overflow = '';
-        // Refresh so any view/like count picked up while the modal was
-        // open is reflected back in the grid.
-        loadUploads();
-    };
-
-    rpOverlay.addEventListener('click', function (e) {
-        if (e.target === rpOverlay) window.__closeResourcePreview();
+        document.body.classList.remove('pf-lock');
+        if (rpFrom && document.contains(rpFrom)) rpFrom.focus();
+    }
+    rpOverlay.addEventListener('click', e => { if (e.target === rpOverlay || e.target.closest('[data-rp-close]')) closeResourcePreview(); });
+    document.addEventListener('keydown', e => {
+        if (!rpOverlay.classList.contains('show')) return;
+        if (e.key === 'Escape') closeResourcePreview(); else trapFocus(rpBox, e);
     });
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && rpOverlay.classList.contains('show')) window.__closeResourcePreview();
-    });
-
     loadUploads();
 
-    // ---------------------------------------------------------------
-    // FOLLOW / UNFOLLOW — same contract and optimistic-update pattern
-    // as the resources page: POST/DELETE /api/users/<id>/follow, with
-    // the server expected to return the up-to-date total, e.g.
-    // { "following": true, "followers_count": 1079 }. The "followers"
-    // stat at the top of the page updates instantly on click and then
-    // reconciles with whatever the server actually returns, so it
-    // can't drift out of sync even if this account was followed or
-    // unfollowed from somewhere else (like the resources page) in
-    // another tab.
-    // ---------------------------------------------------------------
-    const followBtn = document.querySelector('[data-action="follow"]');
-    if (followBtn) {
-        followBtn.addEventListener('click', async function () {
-            const userId = this.getAttribute('data-user-id');
-            const wasFollowing = this.dataset.following === 'true';
-            const newFollowing = !wasFollowing;
-
-            const countEl = document.querySelector(`[data-followers-count="${userId}"]`);
-            const currentCount = countEl ? parseInt(countEl.textContent.replace(/[^\d]/g, ''), 10) || 0 : 0;
-            const optimisticCount = Math.max(0, currentCount + (wasFollowing ? -1 : 1));
-
-            this.disabled = true;
-            applyFollowState(this, newFollowing);
-            updateFollowerCount(userId, optimisticCount, { animate: true });
-
-            let res;
+    /* ---------------------------------------------------------------
+       FRIENDS (learners) and FOLLOWING (teachers):
+       POST/DELETE /api/users/<id>/follow answers with `relationship`
+    --------------------------------------------------------------- */
+    const relBox = document.getElementById('relActions');
+    const relNote = document.getElementById('relNote');
+    function relSay(msg, bad) {
+        if (!relNote) return;
+        relNote.className = 'rel-note' + (msg ? ' show' : '') + (bad ? ' bad' : '');
+        relNote.textContent = msg || '';
+        clearTimeout(relSay._t);
+        if (msg && !bad) relSay._t = setTimeout(() => relSay(''), 5000);
+    }
+    function drawRel() {
+        if (!relBox) return;
+        const st = relBox.dataset.state, following = relBox.dataset.following === 'true';
+        let h = '';
+        if (st === 'teacher') {
+            h = following
+                ? '<button type="button" class="pill-btn" data-rel="unfollow"><i class="fas fa-check" aria-hidden="true"></i> Following</button>'
+                : '<button type="button" class="pill-btn primary" data-rel="follow"><i class="fas fa-user-plus" aria-hidden="true"></i> Follow teacher</button>';
+        } else if (st === 'none') {
+            h = '<button type="button" class="pill-btn primary" data-rel="add"><i class="fas fa-user-plus" aria-hidden="true"></i> Add friend</button>';
+        } else if (st === 'sent') {
+            h = '<span class="pill-btn rel-static"><i class="fas fa-clock" aria-hidden="true"></i> Request sent</span>' +
+                '<button type="button" class="pill-btn" data-rel="cancel">Cancel request</button>';
+        } else if (st === 'received') {
+            h = '<button type="button" class="pill-btn primary" data-rel="accept"><i class="fas fa-check" aria-hidden="true"></i> Accept friend request</button>' +
+                '<button type="button" class="pill-btn" data-rel="decline">Decline</button>';
+        } else if (st === 'friends') {
+            h = '<button type="button" class="pill-btn tint-indigo" data-rel="ask-remove"><i class="fas fa-user-check" aria-hidden="true"></i> Friends</button>';
+        } else if (st === 'confirm-remove') {
+            h = '<span class="rel-ask">Remove from friends?</span>' +
+                '<button type="button" class="pill-btn danger" data-rel="remove">Remove</button>' +
+                '<button type="button" class="pill-btn" data-rel="keep">Keep</button>';
+        }
+        relBox.innerHTML = h;
+    }
+    function setCount(sel, n) {
+        document.querySelectorAll(sel).forEach(el => {
+            el.textContent = n;
+            el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+            const label = el.parentElement && el.parentElement.lastChild;
+            if (label && label.nodeType === 3 && /friend/.test(label.textContent)) label.textContent = n === 1 ? ' friend' : ' friends';
+        });
+    }
+    function relCall(userId, method, url, body) {
+        return api(url || `/api/users/${userId}/follow`, {
+            method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined
+        });
+    }
+    function applyRel(rel, userId) {
+        if (!rel) return;
+        relBox.dataset.state = rel.state;
+        relBox.dataset.requestId = rel.request_id || '';
+        relBox.dataset.following = rel.following ? 'true' : 'false';
+        if (typeof rel.friends_count === 'number') setCount(`[data-friends-count="${userId}"]`, rel.friends_count);
+        if (typeof rel.learners_count === 'number') setCount(`[data-learners-count="${userId}"]`, rel.learners_count);
+        drawRel();
+    }
+    if (relBox) {
+        drawRel();
+        relBox.addEventListener('click', async function (e) {
+            const b = e.target.closest('[data-rel]');
+            if (!b) return;
+            const act = b.dataset.rel, uid = relBox.dataset.userId;
+            if (act === 'ask-remove') { relBox.dataset.state = 'confirm-remove'; drawRel(); relBox.querySelector('[data-rel="keep"]').focus(); return; }
+            if (act === 'keep') { relBox.dataset.state = 'friends'; drawRel(); relBox.querySelector('button').focus(); return; }
+            relBox.querySelectorAll('button').forEach(x => { x.disabled = true; });
             try {
-                res = await fetch(`/api/users/${userId}/follow`, {
-                    method: wasFollowing ? 'DELETE' : 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin'
-                });
-            } catch (networkErr) {
-                // Couldn't reach the server at all — keep the optimistic
-                // state rather than snapping it back.
-                console.warn('[follow] request did not reach the server; keeping local state.', networkErr);
-                this.disabled = false;
-                return;
-            }
-
-            if (res.status === 401) {
-                window.location.href = '/Login';
-                return;
-            }
-
-            if (res.status === 404 || res.status === 405) {
-                // Endpoint not wired up on the backend yet — leave the
-                // optimistic follow state/count as-is instead of
-                // reverting it, same as the resources page.
-                console.warn(`[follow] "/api/users/${userId}/follow" isn't available yet (${res.status}); keeping local state.`);
-                this.disabled = false;
-                return;
-            }
-
-            try {
-                if (!res.ok) throw new Error(`Follow request failed (${res.status})`);
-
-                const data = await res.json();
-                const finalFollowing = typeof data.following === 'boolean' ? data.following : newFollowing;
-                const finalCount = typeof data.followers_count === 'number' ? data.followers_count : optimisticCount;
-
-                applyFollowState(this, finalFollowing);
-                updateFollowerCount(userId, finalCount, { animate: false });
+                let d;
+                if (act === 'accept' || act === 'decline') d = await relCall(uid, 'POST', `/api/friend-requests/${encodeURIComponent(relBox.dataset.requestId)}/respond`, { action: act });
+                else d = await relCall(uid, (act === 'add' || act === 'follow') ? 'POST' : 'DELETE');
+                applyRel(d.relationship, uid);
+                relSay(d.message || 'Done.');
+                const first = relBox.querySelector('button'); if (first) first.focus();
             } catch (err) {
-                // A genuine server-side error — this is the one case
-                // where rolling back is correct.
-                console.error('Failed to toggle follow:', err);
-                applyFollowState(this, wasFollowing);
-                updateFollowerCount(userId, currentCount, { animate: false });
-            } finally {
-                this.disabled = false;
+                if (err.data && err.data.state) relBox.dataset.state = err.data.state;
+                drawRel();
+                relSay(err.message, true);
             }
         });
     }
 
-    function applyFollowState(btn, following) {
-        btn.dataset.following = following;
-        btn.textContent = following ? 'Following' : 'Follow';
-        btn.classList.toggle('primary', !following);
+    /* ---------------------------------------------------------------
+       BLOCK / REPORT (⋯ menu on other people's profiles)
+       Same rules as Messages: a blocked person can't message or call you.
+    --------------------------------------------------------------- */
+    const moreBtn = document.getElementById('pfMoreBtn'), moreMenu = document.getElementById('pfMoreMenu');
+    let blocked = false;
+    function menu(open) {
+        if (!moreMenu) return;
+        moreMenu.hidden = !open; moreBtn.setAttribute('aria-expanded', String(open));
+        if (open) { const f = moreMenu.querySelector('[role="menuitem"]'); if (f) f.focus(); }
+    }
+    if (moreBtn && moreMenu) {
+        api(`/messages/user/${PROFILE_USER_ID}`).then(d => { blocked = !!d.blocked; drawBlock(); }).catch(() => {});
+        const drawBlock = () => { document.getElementById('pfBlock').querySelector('span').textContent = blocked ? 'Unblock' : 'Block'; };
+        moreBtn.addEventListener('click', () => menu(moreMenu.hidden));
+        document.addEventListener('click', e => { if (!moreMenu.hidden && !e.target.closest('.pf-more')) menu(false); });
+        moreMenu.addEventListener('keydown', e => {
+            const items = Array.from(moreMenu.querySelectorAll('[role="menuitem"]')), i = items.indexOf(document.activeElement);
+            if (e.key === 'Escape') { menu(false); moreBtn.focus(); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i + items.length - 1) % items.length].focus(); }
+            else if (e.key === 'Tab') menu(false);
+        });
+        document.getElementById('pfBlock').addEventListener('click', async () => {
+            menu(false);
+            try {
+                const d = await api(`/messages/block/${PROFILE_USER_ID}`, { method: blocked ? 'DELETE' : 'POST' });
+                blocked = !!d.blocked; drawBlock();
+                relSay(blocked ? `${PROFILE_NAME || 'This person'} is blocked. They can't message or call you.` : 'Unblocked.');
+            } catch (err) { relSay(err.message, true); }
+            moreBtn.focus();
+        });
+        const rp = document.getElementById('pfReport');
+        document.getElementById('pfReportBtn').addEventListener('click', () => { menu(false); rp.hidden = false; rp.querySelector('input[type="radio"]').focus(); });
+        rp.addEventListener('click', async e => {
+            if (e.target.closest('[data-rp-cancel]')) { rp.hidden = true; moreBtn.focus(); return; }
+            if (!e.target.closest('[data-rp-send]')) return;
+            const why = rp.querySelector('input[name="pfWhy"]:checked');
+            const msg = rp.querySelector('.pf-report-msg');
+            if (!why) { msg.textContent = 'Choose what happened first.'; return; }
+            const btn = e.target.closest('[data-rp-send]'); btn.disabled = true;
+            try {
+                const d = await api(`/messages/report/${PROFILE_USER_ID}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: 'From their profile: ' + why.value, block: rp.querySelector('#pfAlsoBlock').checked }) });
+                if (d.blocked) { blocked = true; drawBlock(); }
+                rp.hidden = true;
+                relSay('Thank you. Eschool staff will look at this.' + (d.blocked ? ' They are blocked.' : ''));
+                moreBtn.focus();
+            } catch (err) { msg.textContent = err.message; }
+            btn.disabled = false;
+        });
     }
 
-    function updateFollowerCount(userId, count, { animate = false } = {}) {
-        const countEl = document.querySelector(`[data-followers-count="${userId}"]`);
-        if (!countEl) return;
-        countEl.textContent = count;
-        if (animate) {
-            countEl.classList.remove('pop');
-            void countEl.offsetWidth; // force reflow so the class removal registers
-            countEl.classList.add('pop');
-            setTimeout(() => countEl.classList.remove('pop'), 300);
+    /* ---------------- Friends panel (counts, requests, teachers) ---------------- */
+    const frOverlay = document.getElementById('friendsPanel');
+    let frData = null, frTab = 'friends', frFrom = null;
+    function frPerson(p, actions) {
+        const avUrl = safeUrl(p.avatar_url);
+        const av = avUrl ? `<img src="${escapeAttr(avUrl)}" alt="">` : escapeAttr(p.initials || '?');
+        return `<div class="fr-row" data-fr-user="${Number(p.id)}">
+                    <a class="fr-av" href="/profile/${Number(p.id)}" aria-hidden="true" tabindex="-1">${av}</a>
+                    <a class="fr-name" href="/profile/${Number(p.id)}">${escapeAttr(p.name)}</a>
+                    <span class="fr-acts">${actions || ''}</span>
+                </div>`;
+    }
+    function frRender() {
+        const body = document.getElementById('frBody');
+        if (!frData) { body.innerHTML = '<div class="posts-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i><div>Loading…</div></div>'; return; }
+        const list_ = frData.is_me
+            ? [['requests', 'Requests', (frData.incoming || []).length], ['friends', 'Friends', frData.friends.length], ['sent', 'Sent', (frData.sent || []).length], ['teachers', 'Teachers', (frData.teachers || []).length]]
+            : [['friends', 'Friends', frData.friends.length]];
+        if (!list_.some(t => t[0] === frTab)) frTab = 'friends';
+        document.getElementById('frTabs').innerHTML = list_.map(t =>
+            `<button type="button" class="fr-tab" role="tab" data-fr-tab="${t[0]}" aria-selected="${frTab === t[0]}">${t[1]} <span>${t[2]}</span></button>`).join('');
+        let list = [], empty = '';
+        if (frTab === 'requests') {
+            list = (frData.incoming || []).map(p => frPerson(p,
+                `<button type="button" class="pill-btn primary sm" data-fr-accept="${Number(p.request_id)}">Accept</button>` +
+                `<button type="button" class="pill-btn sm" data-fr-decline="${Number(p.request_id)}">Decline</button>`));
+            empty = 'No friend requests right now.';
+        } else if (frTab === 'friends') {
+            list = frData.friends.map(p => frPerson(p, frData.is_me ? `<button type="button" class="pill-btn sm" data-fr-remove="${Number(p.id)}">Remove</button>` : ''));
+            empty = frData.is_me ? 'No friends yet. Open a learner\'s profile and tap Add friend.' : 'No friends to show yet.';
+        } else if (frTab === 'sent') {
+            list = (frData.sent || []).map(p => frPerson(p, `<button type="button" class="pill-btn sm" data-fr-cancel="${Number(p.id)}">Cancel</button>`));
+            empty = 'You have no requests waiting for an answer.';
+        } else {
+            list = (frData.teachers || []).map(p => frPerson(p, `<button type="button" class="pill-btn sm" data-fr-unfollow="${Number(p.id)}">Unfollow</button>`));
+            empty = 'You don\'t follow any teachers yet.';
         }
+        body.innerHTML = list.length ? list.join('') : `<div class="fr-empty">${empty}</div>`;
+    }
+    async function frLoad() {
+        frData = null; frRender();
+        try { frData = await relCall(null, 'GET', `/api/friends?user_id=${encodeURIComponent(PROFILE_USER_ID)}`); }
+        catch (err) { document.getElementById('frBody').innerHTML = `<div class="fr-empty">${escapeAttr(err.message)}</div>`; return; }
+        frRender();
+    }
+    function frSyncCounts() {
+        if (!frData || !frData.is_me) return;
+        setCount(`[data-friends-count="${PROFILE_USER_ID}"]`, frData.friends.length);
+        const t = document.getElementById('teachersCountStat'); if (t) t.textContent = (frData.teachers || []).length;
+        const n = (frData.incoming || []).length, bc = document.getElementById('frBannerCount');
+        if (bc) { bc.textContent = n; if (!n) bc.closest('.fr-banner').remove(); }
+    }
+    function frOpen(tab, from) {
+        frTab = tab || 'friends';
+        frFrom = from || document.activeElement;
+        frOverlay.hidden = false;
+        document.body.classList.add('pf-lock');
+        document.getElementById('frClose').focus();
+        frLoad();
+    }
+    function frClose() {
+        frOverlay.hidden = true; document.body.classList.remove('pf-lock');
+        if (frFrom && document.contains(frFrom)) frFrom.focus();
+    }
+    document.addEventListener('click', function (e) {
+        const o = e.target.closest('[data-open-friends]');
+        if (o) frOpen(o.dataset.openFriends, o);
+    });
+    if (frOverlay) {
+        document.getElementById('frClose').addEventListener('click', frClose);
+        frOverlay.addEventListener('click', async function (e) {
+            if (e.target === frOverlay) { frClose(); return; }
+            const t = e.target.closest('[data-fr-tab]');
+            if (t) { frTab = t.dataset.frTab; frRender(); const nt = document.querySelector(`[data-fr-tab="${frTab}"]`); if (nt) nt.focus(); return; }
+            const b = e.target.closest('[data-fr-accept],[data-fr-decline],[data-fr-remove],[data-fr-cancel],[data-fr-unfollow]');
+            if (!b) return;
+            const row = b.closest('.fr-row');
+            row.querySelectorAll('button').forEach(x => { x.disabled = true; });
+            try {
+                if (b.dataset.frAccept || b.dataset.frDecline) {
+                    const accept = !!b.dataset.frAccept;
+                    await relCall(null, 'POST', `/api/friend-requests/${Number(b.dataset.frAccept || b.dataset.frDecline)}/respond`, { action: accept ? 'accept' : 'decline' });
+                    row.querySelector('.fr-acts').innerHTML = `<span class="fr-done" role="status">${accept ? '<i class="fas fa-check" aria-hidden="true"></i> Friends' : 'Declined'}</span>`;
+                } else if (b.dataset.frRemove && !b.dataset.sure) {
+                    row.querySelectorAll('button').forEach(x => { x.disabled = false; });
+                    b.dataset.sure = '1'; b.textContent = 'Tap again to remove'; b.classList.add('danger'); b.focus();
+                    return;
+                } else {
+                    await relCall(Number(b.dataset.frRemove || b.dataset.frCancel || b.dataset.frUnfollow), 'DELETE');
+                    row.querySelector('.fr-acts').innerHTML = `<span class="fr-done" role="status">${b.dataset.frRemove ? 'Removed' : b.dataset.frCancel ? 'Cancelled' : 'Unfollowed'}</span>`;
+                }
+                const keep = frTab;
+                frData = await relCall(null, 'GET', `/api/friends?user_id=${encodeURIComponent(PROFILE_USER_ID)}`);
+                frSyncCounts();
+                setTimeout(() => { if (!frOverlay.hidden && frTab === keep) { frRender(); document.getElementById('frClose').focus(); } }, 900);
+            } catch (err) {
+                row.querySelector('.fr-acts').innerHTML = `<span class="fr-done bad" role="alert">${escapeAttr(err.message)}</span>`;
+            }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (frOverlay.hidden) return;
+            if (e.key === 'Escape') frClose(); else trapFocus(frOverlay, e);
+        });
     }
 
-    // =================================================================
-    // STRENGTH + ACHIEVEMENTS — mirrors the data model and unlock rules
-    // from the Progress Tracking page so the two pages never disagree.
-    // =================================================================
-
-    // Same course catalog as the Progress page. Kept in sync manually
-    // for now — if you move this to a shared /static/js file or an API
-    // endpoint later, both pages should read from that single source
-    // instead of each keeping their own copy.
-    const courseDefinitions = [
-        { id: 'html', name: 'HTML Tutorial', color: '#e44d26', icon: 'fa-html5', iconType: 'fab',
-          modules: [
-              { exercises: 5, quiz: true }, { exercises: 8, quiz: true }, { exercises: 6, quiz: true },
-              { exercises: 4, quiz: true }, { exercises: 5, quiz: true }, { exercises: 7, quiz: true },
-              { exercises: 6, quiz: true }, { exercises: 4, quiz: true }, { exercises: 3, quiz: true },
-              { exercises: 6, quiz: true }
-          ]},
-        { id: 'css', name: 'CSS Tutorial', color: '#264de4', icon: 'fa-css3-alt', iconType: 'fab',
-          modules: [
-              { exercises: 4, quiz: true }, { exercises: 5, quiz: true }, { exercises: 10, quiz: true },
-              { exercises: 6, quiz: true }, { exercises: 5, quiz: true }, { exercises: 7, quiz: true },
-              { exercises: 5, quiz: true }, { exercises: 5, quiz: true }, { exercises: 8, quiz: true },
-              { exercises: 12, quiz: true }
-          ]},
-        { id: 'javascript', name: 'JavaScript Tutorial', color: '#f7df1e', icon: 'fa-js', iconType: 'fab',
-          modules: [
-              { exercises: 5, quiz: true }, { exercises: 8, quiz: true }, { exercises: 7, quiz: true },
-              { exercises: 10, quiz: true }, { exercises: 9, quiz: true }, { exercises: 8, quiz: true },
-              { exercises: 7, quiz: true }, { exercises: 9, quiz: true }, { exercises: 8, quiz: true },
-              { exercises: 12, quiz: true }
-          ]},
-        { id: 'python', name: 'Python Tutorial', color: '#306998', icon: 'fa-python', iconType: 'fab',
-          modules: [
-              { exercises: 4, quiz: true }, { exercises: 5, quiz: true }, { exercises: 6, quiz: true },
-              { exercises: 8, quiz: true }, { exercises: 7, quiz: true }, { exercises: 5, quiz: true },
-              { exercises: 6, quiz: true }, { exercises: 6, quiz: true }, { exercises: 7, quiz: true },
-              { exercises: 8, quiz: true }
-          ]},
-        { id: 'sql', name: 'SQL Tutorial', color: '#00758f', icon: 'fa-database', iconType: 'fas',
-          modules: [
-              { exercises: 3, quiz: true }, { exercises: 4, quiz: true }, { exercises: 6, quiz: true },
-              { exercises: 5, quiz: true }, { exercises: 4, quiz: true }, { exercises: 4, quiz: true },
-              { exercises: 5, quiz: true }, { exercises: 4, quiz: true }, { exercises: 3, quiz: true },
-              { exercises: 8, quiz: true }
-          ]},
-        { id: 'react', name: 'React Tutorial', color: '#61dafb', icon: 'fa-react', iconType: 'fab',
-          modules: [
-              { exercises: 4, quiz: true }, { exercises: 6, quiz: true }, { exercises: 5, quiz: true },
-              { exercises: 7, quiz: true }, { exercises: 6, quiz: true }, { exercises: 7, quiz: true },
-              { exercises: 8, quiz: true }, { exercises: 6, quiz: true }, { exercises: 7, quiz: true },
-              { exercises: 6, quiz: true }
-          ]}
-    ];
-
-    function getCourse(id) {
-        return courseDefinitions.find(c => c.id === id);
+    /* =================================================================
+       LIVE CLASSES (teachers): GET /api/users/<id>/live-classes
+       Times are East Africa Time, like the rest of Eschool.
+    ================================================================= */
+    let liveClasses = [], liveFilter = 'all';
+    const fmtMonth = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, month: 'short' });
+    const fmtDay = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, day: 'numeric' });
+    const fmtWhen = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    function classWindow(c) {
+        const start = parseTime(c.scheduled_at).getTime();
+        const mins = Number(c.duration_minutes) > 0 ? Number(c.duration_minutes) : 60;
+        return { start: start, end: start + mins * 60000, mins: mins };
     }
-
-    function loadMyCourses() {
-        if (!IS_OWN_PROFILE) return [];
-        const key = `myCoursesData_${SESSION_EMAIL}`;
-        const stored = localStorage.getItem(key);
-        if (!stored) return [];
-        try {
-            const parsed = JSON.parse(stored);
-            return parsed.map(enr => ({
-                ...enr,
-                completed: enr.completed || [],
-                exercisesCompleted: enr.exercisesCompleted || 0,
-                quizzesPassed: enr.quizzesPassed || 0,
-                progress: enr.progress || 0
-            }));
-        } catch (e) {
-            console.warn('Failed to parse stored course data');
-            return [];
-        }
+    // live only while the teacher is broadcasting inside Eschool
+    function classStatus(c) {
+        if (c.state === 'live') return 'live';
+        const w = classWindow(c);
+        if (c.state === 'ended' || (!isNaN(w.end) && Date.now() > w.end)) return 'ended';
+        return 'upcoming';
     }
-
-    function privacyNoticeHTML(label) {
+    function statusLabel(s) { return { live: 'Live now', upcoming: 'Upcoming', ended: 'Ended' }[s]; }
+    function startsIn(ms) {
+        const m = Math.round(ms / 60000);
+        if (m < 60) return `Starts in ${Math.max(1, m)} min`;
+        const h = Math.round(m / 60);
+        return h < 48 ? `Starts in ${h} h` : '';
+    }
+    function renderLiveCard(c) {
+        const status = classStatus(c), w = classWindow(c), d = parseTime(c.scheduled_at), valid = !isNaN(d.getTime());
+        const url = internalUrl(c.join_url);   // classes are taught inside Eschool
+        let action = '';
+        if (status === 'live' && url) action = `<a class="pill-btn primary" href="${escapeAttr(url)}"><i class="fas fa-play" aria-hidden="true"></i> Watch now</a>`;
+        else if (status === 'upcoming' && url) action = `<a class="pill-btn" href="${escapeAttr(url)}"><i class="fas fa-door-open" aria-hidden="true"></i> Open class</a>`;
+        const soon = status === 'upcoming' && valid ? startsIn(w.start - Date.now()) : '';
         return `
-            <div class="posts-empty">
-                <i class="fas fa-lock"></i>
-                <div>${label} is stored on each person's own device and can't be shown on someone else's profile.</div>
+            <div class="lc-card ${status}">
+                <div class="lc-date" aria-hidden="true"><span class="m">${valid ? fmtMonth.format(d) : '--'}</span><span class="d">${valid ? fmtDay.format(d) : '--'}</span></div>
+                <div class="lc-main">
+                    <div class="lc-title">${escapeAttr(c.title || 'Untitled class')}<span class="lc-status ${status}">${statusLabel(status)}</span></div>
+                    ${c.description ? `<div class="lc-desc">${escapeAttr(c.description)}</div>` : ''}
+                    <div class="lc-meta">
+                        <span><i class="far fa-clock" aria-hidden="true"></i> ${valid ? escapeAttr(fmtWhen.format(d)) + ' EAT' : 'Time to be announced'}</span>
+                        <span><i class="fas fa-hourglass-half" aria-hidden="true"></i> ${w.mins} min</span>
+                        ${soon ? `<span class="lc-soon"><i class="fas fa-bell" aria-hidden="true"></i> ${soon}</span>` : ''}
+                    </div>
+                </div>
+                ${action ? `<div class="lc-action">${action}</div>` : ''}
             </div>`;
     }
+    function renderLivePanel() {
+        const content = document.getElementById('liveContent');
+        const counts = { all: liveClasses.length, live: 0, upcoming: 0, ended: 0 };
+        let totalAttendees = 0;
+        liveClasses.forEach(c => { counts[classStatus(c)] += 1; totalAttendees = Math.max(totalAttendees, Number(c.peak_viewers) || 0); });
+        if (!liveClasses.length) {
+            content.innerHTML = `<div class="posts-empty"><i class="fas fa-video" aria-hidden="true"></i><div>${IS_OWN_PROFILE
+                ? 'You haven\'t scheduled a live class yet. Your classes show here for learners.'
+                : 'No live classes yet. Follow this teacher to hear when they schedule one.'}</div></div>`;
+            return;
+        }
+        if (liveFilter !== 'all' && !counts[liveFilter]) liveFilter = 'all';
+        const chip = (key, label) => `<button type="button" class="filter-chip ${liveFilter === key ? 'active' : ''}" data-live-filter="${key}" aria-pressed="${liveFilter === key}">${label}<span>${counts[key]}</span></button>`;
+        const order = { live: 0, upcoming: 1, ended: 2 };
+        const list = liveClasses.filter(c => liveFilter === 'all' || classStatus(c) === liveFilter).slice().sort((a, b) => {
+            const sa = classStatus(a), sb = classStatus(b);
+            if (sa !== sb) return order[sa] - order[sb];
+            const ta = parseTime(a.scheduled_at).getTime() || 0, tb = parseTime(b.scheduled_at).getTime() || 0;
+            return sa === 'ended' ? tb - ta : ta - tb;
+        });
+        content.innerHTML = `
+            <div class="lc-summary">
+                <div class="insight-card" style="--c:#4361ee;"><i class="fas fa-video" aria-hidden="true"></i><div><strong>${counts.all}</strong><span>Classes created</span></div></div>
+                <div class="insight-card" style="--c:#f59e0b;"><i class="far fa-calendar-check" aria-hidden="true"></i><div><strong>${counts.upcoming + counts.live}</strong><span>Upcoming</span></div></div>
+                <div class="insight-card" style="--c:#10b981;"><i class="fas fa-users" aria-hidden="true"></i><div><strong>${formatCount(totalAttendees)}</strong><span>Most learners at once</span></div></div>
+            </div>
+            <div class="uploads-toolbar">
+                <div class="filter-chips" id="liveFilters" role="group" aria-label="Show classes">
+                    ${chip('all', 'All')}${counts.live ? chip('live', 'Live now') : ''}${counts.upcoming ? chip('upcoming', 'Upcoming') : ''}${counts.ended ? chip('ended', 'Past') : ''}
+                </div>
+            </div>
+            <div class="lc-list">${list.map(renderLiveCard).join('')}</div>`;
+    }
+    async function loadLiveClasses() {
+        const loading = document.getElementById('liveLoading'), content = document.getElementById('liveContent');
+        if (!loading || !content) return;
+        loading.style.display = 'block'; content.style.display = 'none';
+        try {
+            liveClasses = (await api(`/api/users/${PROFILE_USER_ID}/live-classes`)).classes || [];
+            loading.style.display = 'none'; content.style.display = 'block';
+            renderLivePanel();
+        } catch (err) {
+            loading.style.display = 'none'; content.style.display = 'block';
+            content.innerHTML = retryBox('fa-triangle-exclamation', 'Couldn\'t load live classes. ' + err.message, 'data-retry-live');
+        }
+    }
+    const liveContentEl = document.getElementById('liveContent');
+    if (liveContentEl) liveContentEl.addEventListener('click', function (e) {
+        if (e.target.closest('[data-retry-live]')) { loadLiveClasses(); return; }
+        const btn = e.target.closest('[data-live-filter]');
+        if (!btn) return;
+        liveFilter = btn.dataset.liveFilter;
+        renderLivePanel();
+        const nb = document.querySelector(`[data-live-filter="${liveFilter}"]`); if (nb) nb.focus();
+    });
+    // keep Live now / Upcoming / Past labels correct while the page stays open
+    setInterval(function () {
+        const p = document.getElementById('panel-live');
+        if (liveLoaded && liveClasses.length && p && p.classList.contains('active') && !p.contains(document.activeElement)) renderLivePanel();
+    }, 60000);
 
-    // ---------- Strength (= grades) ----------
-    // Same formula as the Progress page's Grades tab: exercises are worth
-    // 70% (full credit once any are completed), quizzes are worth 30%
-    // scored as passed ÷ attempted — where "attempted" is inferred from
-    // completed modules that carry a quiz, since that's the only attempt
-    // signal this app stores. Failing quizzes you actually took pulls the
-    // grade down; quizzes you never reached don't count against you.
-    function calculateGrade(exercisesCompleted, quizzesPassed, quizzesAttempted) {
-        const hasExerciseWork = exercisesCompleted > 0;
-        const hasQuizWork = quizzesAttempted > 0;
-
-        if (!hasExerciseWork && !hasQuizWork) return { grade: 'N/A', gradePoint: 0, percentage: 0 };
-
-        const exerciseScore = hasExerciseWork ? 100 : 0;
-        const quizScore = hasQuizWork ? Math.min(100, (quizzesPassed / quizzesAttempted) * 100) : 0;
-
-        let weightedScore;
-        if (hasExerciseWork && hasQuizWork) {
-            weightedScore = (exerciseScore * 0.7) + (quizScore * 0.3);
-        } else if (hasExerciseWork) {
-            weightedScore = exerciseScore;
+    /* =================================================================
+       RATINGS (teachers): GET/POST /api/users/<id>/ratings
+       Stars are 1-5; the average is shown out of ten (stars x 2).
+    ================================================================= */
+    let ratingsData = null, ratingSort = 'newest', pickedStars = 0;
+    function starsHTML(outOfFive, small) {
+        const n = Number(outOfFive) || 0, pct = Math.max(0, Math.min(100, n / 5 * 100));
+        return `<span class="stars ${small ? 'sm' : ''}" role="img" aria-label="${n.toFixed(1)} out of 5 stars">
+            <span class="stars-bg" aria-hidden="true">★★★★★</span><span class="stars-fg" aria-hidden="true" style="width:${pct}%">★★★★★</span></span>`;
+    }
+    function initialsOf(name) { return (Array.from(String(name || '?').trim())[0] || '?').toUpperCase(); }
+    const fmtReviewDate = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: 'short', day: 'numeric' });
+    function renderReview(r) {
+        const stars = Number(r.stars) || 0, d = parseTime(r.created_at);
+        const avUrl = safeUrl(r.reviewer_avatar_url);
+        const avatar = avUrl ? `<img src="${escapeAttr(avUrl)}" alt="">` : escapeAttr(initialsOf(r.reviewer_name));
+        const mine = MY_ID && Number(r.reviewer_id) === Number(MY_ID);
+        return `
+            <div class="rt-review">
+                <div class="rt-avatar" aria-hidden="true">${avatar}</div>
+                <div class="rt-body">
+                    <div class="rt-head">
+                        <span class="rt-name">${escapeAttr(r.reviewer_name || 'Anonymous')}${r.reviewer_role ? ` <small class="rt-role">${escapeAttr(r.reviewer_role)}</small>` : ''}</span>
+                        ${starsHTML(stars, true)}
+                        <span class="rt-score-chip">${stars * 2}/10</span>
+                        <span class="rt-date">${isNaN(d) ? '' : escapeAttr(fmtReviewDate.format(d))}</span>
+                    </div>
+                    ${r.comment ? `<div class="rt-comment">${escapeAttr(r.comment)}</div>` : `<div class="rt-comment muted">No written review.</div>`}
+                    ${r.reply ? `<div class="rt-reply"><b>Teacher's answer:</b> ${escapeAttr(r.reply)}</div>` : ''}
+                    ${r.id && !mine ? `<button type="button" class="rt-report" data-report-review="${Number(r.id)}"><i class="far fa-flag" aria-hidden="true"></i> Report</button>` : ''}
+                </div>
+            </div>`;
+    }
+    function sortedReviews() {
+        const list = (ratingsData.reviews || []).slice();
+        if (ratingSort === 'highest') list.sort((a, b) => (b.stars || 0) - (a.stars || 0));
+        else if (ratingSort === 'lowest') list.sort((a, b) => (a.stars || 0) - (b.stars || 0));
+        else list.sort((a, b) => parseTime(b.created_at) - parseTime(a.created_at));
+        return list;
+    }
+    function renderReviewForm() {
+        if (IS_OWN_PROFILE || !PROFILE_IS_TEACHER) return '';
+        if (ratingsData.can_review === false) {
+            return `<div class="rt-form"><p class="lp-muted" style="margin:0">You can review this teacher after you follow them, join one of their live classes or have lessons with them.</p></div>`;
+        }
+        const mine = ratingsData.my_review;
+        if (mine && !pickedStars) pickedStars = Number(mine.stars) || 0;
+        const picker = [1, 2, 3, 4, 5].map(n =>
+            `<button type="button" role="radio" data-pick="${n}" class="${n <= pickedStars ? 'on' : ''}" aria-checked="${n === pickedStars}" tabindex="${n === (pickedStars || 1) ? 0 : -1}" aria-label="${n} star${n > 1 ? 's' : ''} (${n * 2} out of 10)">★</button>`).join('');
+        return `
+            <div class="rt-form">
+                <h4 id="rtFormTitle">${mine ? 'Update your review' : 'Leave a review'}</h4>
+                <div class="rt-picker" id="rtPicker" role="radiogroup" aria-labelledby="rtFormTitle">${picker}</div>
+                <label class="pf-sr" for="rtComment">Your review (optional)</label>
+                <textarea id="rtComment" maxlength="500" placeholder="Share your experience with this teacher (optional). Don't include phone numbers or links.">${escapeAttr(mine ? mine.comment : '')}</textarea>
+                <div class="rt-form-footer">
+                    <span class="rt-form-msg" id="rtMsg" role="status">${pickedStars ? `${pickedStars * 2}/10` : 'Pick a star rating'}</span>
+                    <button type="button" class="pill-btn primary" id="rtSubmit">${mine ? 'Update review' : 'Submit review'}</button>
+                </div>
+            </div>`;
+    }
+    function renderRatingsPanel() {
+        const content = document.getElementById('ratingsContent');
+        // keep what's being typed in the review box when the list is redrawn (e.g. a new sort)
+        const typing = document.getElementById('rtComment');
+        const draft = typing ? typing.value : null;
+        const count = Number(ratingsData.count) || 0;
+        const avgTen = Number(ratingsData.average_out_of_ten) || 0, avgFive = avgTen / 2;
+        const dist = ratingsData.distribution || {};
+        if (!count) {
+            content.innerHTML = `${renderReviewForm()}<div class="posts-empty"><i class="far fa-star" aria-hidden="true"></i>
+                <div>${IS_OWN_PROFILE ? 'No ratings yet. Reviews from your learners will appear here.' : 'No ratings yet.'}</div></div>`;
         } else {
-            weightedScore = quizScore;
-        }
-
-        let grade, gradePoint;
-        if (weightedScore >= 90) { grade = 'A'; gradePoint = 4.0; }
-        else if (weightedScore >= 85) { grade = 'A-'; gradePoint = 3.7; }
-        else if (weightedScore >= 80) { grade = 'B+'; gradePoint = 3.3; }
-        else if (weightedScore >= 75) { grade = 'B'; gradePoint = 3.0; }
-        else if (weightedScore >= 70) { grade = 'B-'; gradePoint = 2.7; }
-        else if (weightedScore >= 65) { grade = 'C+'; gradePoint = 2.3; }
-        else if (weightedScore >= 60) { grade = 'C'; gradePoint = 2.0; }
-        else if (weightedScore >= 55) { grade = 'C-'; gradePoint = 1.7; }
-        else if (weightedScore >= 50) { grade = 'D+'; gradePoint = 1.3; }
-        else if (weightedScore >= 40) { grade = 'D'; gradePoint = 1.0; }
-        else { grade = 'F'; gradePoint = 0.0; }
-
-        return { grade, gradePoint, percentage: Math.round(weightedScore) };
-    }
-
-    function getGradeClass(grade) {
-        const map = {
-            'A': 'grade-a', 'A-': 'grade-a',
-            'B+': 'grade-b', 'B': 'grade-b', 'B-': 'grade-b',
-            'C+': 'grade-c', 'C': 'grade-c', 'C-': 'grade-c',
-            'D+': 'grade-d', 'D': 'grade-d', 'F': 'grade-f'
-        };
-        return map[grade] || 'grade-c';
-    }
-
-    function renderStrengthPanel() {
-        const loading = document.getElementById('strengthLoading');
-        const content = document.getElementById('strengthContent');
-        loading.style.display = 'none';
-        content.style.display = 'block';
-
-        if (!IS_OWN_PROFILE) {
-            content.innerHTML = privacyNoticeHTML('Grades');
-            return;
-        }
-
-        const enrolled = loadMyCourses();
-        if (!enrolled.length) {
+            const bars = [5, 4, 3, 2, 1].map(n => {
+                const c = Number(dist[n] ?? dist[String(n)]) || 0, pct = Math.round((c / count) * 100);
+                return `<div class="rt-bar-row"><span class="rt-bar-label">${n}<i class="fas fa-star" aria-hidden="true"></i></span>
+                    <div class="rt-bar-track" role="img" aria-label="${n} stars: ${c} review${c === 1 ? '' : 's'}"><div class="rt-bar-fill" style="width:${pct}%"></div></div><span class="rt-bar-count" aria-hidden="true">${c}</span></div>`;
+            }).join('');
             content.innerHTML = `
-                <div class="posts-empty">
-                    <i class="fas fa-bolt"></i>
-                    <div>No grades yet — enroll in a course and complete a module to get your first grade</div>
-                </div>`;
-            return;
+                <div class="rt-summary">
+                    <div class="rt-score">
+                        <div class="rt-score-number">${avgTen.toFixed(1)}<small>/10</small></div>
+                        ${starsHTML(avgFive, false)}
+                        <div class="rt-score-count">${avgFive.toFixed(1)} of 5 stars · ${count} review${count === 1 ? '' : 's'}</div>
+                    </div>
+                    <div class="rt-bars">${bars}</div>
+                </div>
+                ${renderReviewForm()}
+                <div class="uploads-toolbar">
+                    <strong>Reviews (${count})</strong>
+                    <select class="sort-select" id="rtSort" aria-label="Sort reviews">
+                        <option value="newest" ${ratingSort === 'newest' ? 'selected' : ''}>Newest</option>
+                        <option value="highest" ${ratingSort === 'highest' ? 'selected' : ''}>Highest rated</option>
+                        <option value="lowest" ${ratingSort === 'lowest' ? 'selected' : ''}>Lowest rated</option>
+                    </select>
+                </div>
+                <div class="rt-list">${sortedReviews().map(renderReview).join('')}</div>`;
         }
-
-        let totalGradePoints = 0;
-        let totalWeightedCredits = 0;
-
-        const courseGrades = enrolled.map(enr => {
-            const course = getCourse(enr.courseId);
-            if (!course) return null;
-
-            // quizzesAttempted mirrors the Progress page: count of
-            // completed modules that carry a quiz.
-            let quizzesAttempted = 0;
-            (enr.completed || []).forEach(index => {
-                const module = course.modules[index];
-                if (module && module.quiz) quizzesAttempted += 1;
-            });
-
-            const exercisesCompleted = enr.exercisesCompleted || 0;
-            const quizzesPassed = enr.quizzesPassed || 0;
-
-            if (exercisesCompleted === 0 && quizzesAttempted === 0) return null;
-
-            const result = calculateGrade(exercisesCompleted, quizzesPassed, quizzesAttempted);
-
-            totalGradePoints += result.gradePoint * (course.modules.length / 10);
-            totalWeightedCredits += (course.modules.length / 10);
-
-            let detail;
-            if (exercisesCompleted > 0 && quizzesAttempted > 0) {
-                detail = `${exercisesCompleted} exercises • ${quizzesPassed}/${quizzesAttempted} quizzes`;
-            } else if (exercisesCompleted > 0) {
-                detail = `${exercisesCompleted} exercises`;
-            } else {
-                detail = `${quizzesPassed}/${quizzesAttempted} quizzes`;
+        if (draft != null) { const t = document.getElementById('rtComment'); if (t) t.value = draft; }
+    }
+    async function loadRatings(quiet) {
+        const loading = document.getElementById('ratingsLoading'), content = document.getElementById('ratingsContent');
+        if (!loading || !content) return;
+        if (!quiet) { loading.style.display = 'block'; content.style.display = 'none'; }
+        try {
+            ratingsData = await api(`/api/users/${PROFILE_USER_ID}/ratings`);
+            loading.style.display = 'none'; content.style.display = 'block';
+            renderRatingsPanel();
+        } catch (err) {
+            loading.style.display = 'none'; content.style.display = 'block';
+            if (!quiet) content.innerHTML = retryBox('fa-triangle-exclamation', 'Couldn\'t load ratings. ' + err.message, 'data-retry-ratings');
+            throw err;
+        }
+    }
+    async function submitReview() {
+        const msg = document.getElementById('rtMsg'), btn = document.getElementById('rtSubmit');
+        const comment = document.getElementById('rtComment').value.trim();
+        if (!pickedStars) { msg.textContent = 'Please pick a star rating first.'; msg.classList.add('error'); return; }
+        btn.disabled = true; msg.classList.remove('error', 'ok'); msg.textContent = 'Saving…';
+        try {
+            await api(`/api/users/${PROFILE_USER_ID}/ratings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stars: pickedStars, comment: comment }) });
+            const wasUpdate = !!(ratingsData && ratingsData.my_review);
+            pickedStars = 0;
+            document.getElementById('rtComment').value = '';     // the saved text comes back from the server
+            await loadRatings(true);                             // quiet: no spinner, no flicker
+            const done = document.getElementById('rtMsg');
+            if (done) { done.classList.remove('error'); done.classList.add('ok'); done.textContent = wasUpdate ? '✓ Your review was updated' : '✓ Thanks! Your review was posted'; }
+            const form = document.querySelector('.rt-form');
+            if (form) { form.classList.remove('saved'); void form.offsetWidth; form.classList.add('saved'); }
+            const b = document.getElementById('rtSubmit'); if (b) b.focus();
+        } catch (err) {
+            msg.textContent = err.message || 'Couldn\'t save your review.';
+            msg.classList.add('error');
+            btn.disabled = false;
+        }
+    }
+    function pickStar(n, focus) {
+        pickedStars = n;
+        document.querySelectorAll('#rtPicker [data-pick]').forEach(b => {
+            const v = Number(b.dataset.pick);
+            b.classList.toggle('on', v <= n); b.setAttribute('aria-checked', String(v === n)); b.tabIndex = v === n ? 0 : -1;
+            if (focus && v === n) b.focus();
+        });
+        const msg = document.getElementById('rtMsg');
+        if (msg) { msg.classList.remove('error', 'ok'); msg.textContent = `${n * 2}/10`; }
+    }
+    const ratingsContentEl = document.getElementById('ratingsContent');
+    if (ratingsContentEl) {
+        ratingsContentEl.addEventListener('click', async function (e) {
+            if (e.target.closest('[data-retry-ratings]')) { loadRatings().catch(() => {}); return; }
+            const star = e.target.closest('[data-pick]');
+            if (star) { pickStar(Number(star.dataset.pick)); return; }
+            if (e.target.closest('#rtSubmit')) { submitReview(); return; }
+            const rep = e.target.closest('[data-report-review]');
+            if (rep) {
+                if (rep.dataset.sure !== '1') { rep.dataset.sure = '1'; rep.innerHTML = 'Report this review to Eschool? <b>Yes, report</b>'; return; }
+                rep.disabled = true;
+                try { await api(`/api/ratings/${Number(rep.dataset.reportReview)}/report`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); rep.textContent = 'Reported. Thank you.'; }
+                catch (err) { rep.disabled = false; rep.textContent = err.message; }
             }
+        });
+        ratingsContentEl.addEventListener('keydown', function (e) {
+            const s = e.target.closest('[data-pick]');
+            if (!s || !['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+            e.preventDefault();
+            const n = Number(s.dataset.pick) + (e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : -1);
+            pickStar(Math.min(5, Math.max(1, n)), true);
+        });
+        ratingsContentEl.addEventListener('change', function (e) {
+            if (e.target.id === 'rtSort') {
+                ratingSort = e.target.value;
+                const keepStars = pickedStars;
+                renderRatingsPanel();
+                pickedStars = keepStars;
+                document.getElementById('rtSort').focus();
+            }
+        });
+    }
 
-            return {
-                name: course.name.replace(' Tutorial', ''),
-                color: course.color,
-                icon: course.icon,
-                iconType: course.iconType || 'fab',
-                grade: result.grade,
-                gradePoint: result.gradePoint,
-                percentage: result.percentage,
-                detail
-            };
-        }).filter(Boolean).sort((a, b) => b.gradePoint - a.gradePoint);
+    /* =================================================================
+       LEARNER PROFILE: Progress, Achievements, Leaderboard
+       GET /api/users/<id>/learner-profile — the server leaves out what the
+       learner keeps private (Settings > Privacy); the page also checks.
+    ================================================================= */
+    const IS_LEARNER_PROFILE = !!document.getElementById('panel-overview');
+    const COURSE_COLORS = { math: '#7c3aed', csl: '#2e7d32', english: '#0a2e5c', kiswahili: '#16a34a' };
+    let learnerData = null;
+    function ordinalRank(n) { return '#' + n; }
+    const isHidden = (d, part) => (d.hidden || []).indexOf(part) > -1;
 
-        if (!courseGrades.length) {
-            content.innerHTML = `
-                <div class="posts-empty">
-                    <i class="fas fa-pencil-alt"></i>
-                    <div>Start practicing! Complete exercises or quizzes to earn your first grade.</div>
+    /* ---------- bio (own profile) ---------- */
+    (function () {
+        const eb = document.getElementById('bioEditBtn'), ed = document.getElementById('bioEditor');
+        if (!eb || !ed) return;
+        const input = document.getElementById('bioInput'), count = document.getElementById('bioCount'), bmsg = document.getElementById('bioMsg');
+        let saved = input.value;
+        const open = on => { ed.hidden = !on; eb.hidden = on; eb.setAttribute('aria-expanded', String(on)); if (on) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); } };
+        eb.addEventListener('click', () => open(true));
+        document.getElementById('bioCancel').addEventListener('click', () => { input.value = saved; count.textContent = saved.length + ' / 300'; bmsg.textContent = ''; open(false); eb.focus(); });
+        input.addEventListener('input', () => { count.textContent = input.value.length + ' / 300'; });
+        document.getElementById('bioSave').addEventListener('click', async function () {
+            const text = input.value.replace(/\n{3,}/g, '\n\n').trim();
+            this.disabled = true; bmsg.className = 'msg'; bmsg.textContent = 'Saving…';
+            try {
+                await api('/api/profile/details', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bio: text }) });
+                saved = text; input.value = text;
+                const box = document.getElementById('bioText');
+                box.textContent = text || 'No bio yet. Tell people a little about you.';
+                box.classList.toggle('empty', !text);
+                eb.innerHTML = '<i class="fas fa-pen" style="font-size:11px" aria-hidden="true"></i> ' + (text ? 'Edit bio' : 'Add a bio');
+                bmsg.textContent = ''; open(false); eb.focus();
+            } catch (err) {
+                bmsg.className = 'msg bad';
+                bmsg.textContent = (err.data && err.data.errors && err.data.errors.bio) || err.message;
+            } finally { this.disabled = false; }
+        });
+    })();
+
+    function renderChips(d) {
+        const box = document.getElementById('learnerChips');
+        if (!box || !d.has_data) return;
+        const st = d.stats || {};
+        let html = '<span class="lchip role"><i class="fas fa-user-graduate" aria-hidden="true"></i> Learner</span>';
+        if (!isHidden(d, 'progress') && st.level != null) html += `<span class="lchip level"><i class="fas fa-shield-halved" aria-hidden="true"></i> Level ${Number(st.level)}</span>`;
+        if (!isHidden(d, 'rank') && d.rank) html += `<span class="lchip rank"><i class="fas fa-ranking-star" aria-hidden="true"></i> ${ordinalRank(Number(d.rank))} this month</span>`;
+        if (!isHidden(d, 'streak') && st.quiz_streak > 0) html += `<span class="lchip fire"><i class="fas fa-fire" aria-hidden="true"></i> ${Number(st.quiz_streak)}-day streak</span>`;
+        if (d.flair && d.flair.title) html = `<span class="lchip ep-title"><i class="fas fa-award" aria-hidden="true"></i> ${escapeAttr(d.flair.title)}</span>` + html;
+        box.innerHTML = html;
+        // avatar frame bought with Eschool Points (drawn on the round wrapper, see CSS)
+        const av = document.querySelector('.profile-avatar');
+        if (av) {
+            av.classList.remove('ep-frame-gold', 'ep-frame-neon', 'ep-frame-diamond');
+            const f = d.flair && d.flair.frame;
+            if (['gold', 'neon', 'diamond'].includes(f)) av.classList.add('ep-frame-' + f);
+        }
+    }
+    function statTile(icon, color, value, label, sub) {
+        return `
+            <div class="lp-tile" style="--c:${safeColor(color)}">
+                <div class="lp-tile-icon" aria-hidden="true"><i class="fas ${safeIcon(icon)}"></i></div>
+                <div class="lp-tile-body">
+                    <div class="lp-tile-value">${value}</div>
+                    <div class="lp-tile-label">${label}</div>
+                    ${sub ? `<div class="lp-tile-sub">${sub}</div>` : ''}
+                </div>
+            </div>`;
+    }
+    function privateNote(icon, text) { return `<div class="posts-empty"><i class="fas ${icon}" aria-hidden="true"></i><div>${text}</div></div>`; }
+    function renderOverview(d) {
+        const box = document.getElementById('overviewContent');
+        document.getElementById('overviewLoading').style.display = 'none';
+        box.style.display = 'block';
+        if (isHidden(d, 'progress')) { box.innerHTML = privateNote('fa-lock', 'This learner keeps their level and EP private.'); return; }
+        if (!d.has_data) {
+            box.innerHTML = `<div class="posts-empty"><i class="fas fa-chart-pie" aria-hidden="true"></i>
+                <div>${IS_OWN_PROFILE ? 'Your progress appears here after you open your dashboard. Enroll in a course and complete a module to get started.' : 'This learner hasn\'t shared any progress yet.'}</div>
+                ${IS_OWN_PROFILE ? '<a class="pill-btn primary" href="/dashboard"><i class="fas fa-gauge" aria-hidden="true"></i> Go to dashboard</a>' : ''}</div>`;
+            return;
+        }
+        const st = d.stats;
+        const courses = (st.courses || []).slice().sort((a, b) => (b.progress || 0) - (a.progress || 0));
+        const courseRows = courses.length ? courses.map(c => {
+            const pct = Math.max(0, Math.min(100, Number(c.progress) || 0));
+            const color = COURSE_COLORS[c.id] || 'var(--primary-color)';
+            return `
+                <div class="lp-course">
+                    <div class="lp-course-top">
+                        <span class="lp-course-name">${escapeAttr(c.name)}</span>
+                        <span class="lp-course-pct">${pct}%${pct >= 100 ? ' <i class="fas fa-circle-check" style="color:var(--success-color)" aria-label="finished"></i>' : ''}</span>
+                    </div>
+                    <div class="lp-bar" role="progressbar" aria-label="${escapeAttr(c.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div class="lp-bar-fill" style="width:${pct}%; background:${color};"></div></div>
                 </div>`;
+        }).join('') : '<div class="lp-muted">Not enrolled in any courses yet.</div>';
+        const streakHidden = isHidden(d, 'streak'), rankHidden = isHidden(d, 'rank');
+        box.innerHTML = `
+            <div class="lp-hero">
+                <div class="lp-level">
+                    <div class="lp-level-badge" aria-hidden="true"><span>LVL</span><strong>${Number(st.level)}</strong></div>
+                    <div class="lp-level-info">
+                        <div class="lp-level-title">Level ${Number(st.level)} · ${Number(st.ep).toLocaleString()} total EP</div>
+                        <div class="lp-bar lp-bar-lg" role="progressbar" aria-label="Progress to the next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Number(st.level_progress) || 0}"><div class="lp-bar-fill xp" style="width:${Number(st.level_progress) || 0}%"></div></div>
+                        <div class="lp-level-sub">${Number(st.ep_to_next)} EP to Level ${Number(st.level) + 1}</div>
+                    </div>
+                </div>
+                ${rankHidden ? '' : `<div class="lp-rank">
+                    <div class="lp-rank-number">${d.rank ? ordinalRank(Number(d.rank)) : '—'}</div>
+                    <div class="lp-rank-sub">${d.rank ? `of ${Number(d.ranked_total)} learners this month · ${Number(st.ep_month != null ? st.ep_month : st.ep_week).toLocaleString()} EP` : 'No EP earned this month yet'}</div>
+                    ${d.top_percent ? `<div class="lp-rank-pill">Top ${Number(d.top_percent)}%</div>` : ''}
+                </div>`}
+            </div>
+            <div class="lp-tiles">
+                ${streakHidden ? '' : statTile('fa-fire', '#f97316', Number(st.quiz_streak) || 0, 'Quiz streak', `Best: ${Number(st.best_quiz_streak) || 0} day${st.best_quiz_streak === 1 ? '' : 's'}`)}
+                ${streakHidden ? '' : statTile('fa-layer-group', '#7c3aed', Number(st.module_streak) || 0, 'Module streak', `Best: ${Number(st.best_module_streak) || 0}`)}
+                ${statTile('fa-award', '#10b981', escapeAttr(st.score_grade || '—'), 'Overall grade', st.score_grade ? `${Number(st.avg_score)}% average` : (st.score_subjects ? 'Needs more results' : 'No results yet'))}
+                ${statTile('fa-star', '#4361ee', st.total_score != null ? `${Number(st.total_score)}<small class="lp-of"> / ${Number(st.total_possible)}</small>` : '—', 'Total score', st.total_score != null ? `${Number(st.score_subjects)} subject${st.score_subjects === 1 ? '' : 's'} × 100` : 'No results yet')}
+            </div>
+            <div class="lp-section">
+                <div class="lp-section-head"><h3>Course progress</h3><span class="lp-muted">${d.updated ? 'Updated ' + escapeAttr(d.updated) : ''}</span></div>
+                ${courseRows}
+            </div>
+            ${isHidden(d, 'achievements') ? '' : `<div class="lp-section">
+                <div class="lp-section-head"><h3>Recent achievements</h3><button type="button" class="lp-link" data-goto="badges">See all ${Number(d.unlocked_count) || 0} earned</button></div>
+                <div class="lp-mini-badges">${recentBadgesHTML(d)}</div>
+            </div>`}`;
+    }
+// A career badge: rim = level (0 locked, 1 bronze, 2 silver, 3 gold), inside = career colour + its icon
+function careerBadgeHTML(color, icon, level, size, locked) {
+    const rim = locked || !level ? 'locked' : ['', 'bronze', 'silver', 'gold'][level] || 'bronze';
+    const stars = Math.max(1, Math.min(3, level || 1));
+    const cc = /^#[0-9a-f]{3,8}$/i.test(color || '') ? color : '#4361ee';
+    const ic = /^fa-[a-z0-9-]+$/.test(icon || '') ? icon : 'fa-briefcase';
+    return '<span class="cbw ' + rim + (locked ? ' locked' : '') + '" style="--s:' + (size || 64) + 'px;--cc:' + cc + '" aria-hidden="true">' +
+        '<span class="cb"></span><span class="cb-in"><i class="fas ' + ic + '"></i></span><span class="cb-stars">' + '★'.repeat(stars) + '</span>' +
+        (locked ? '<span class="cb-lock"><i class="fas fa-lock"></i></span>' : '') + '</span>';
+}
+
+    // ===== Career tab: GET /api/career/profile/<id> (the learner, friends, linked parents) =====
+    function pcAgo(iso) {
+        if (!iso) return '';
+        const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+        if (isNaN(days)) return '';
+        if (days < 1) return 'today';
+        if (days < 7) return days + ' day' + (days === 1 ? '' : 's') + ' ago';
+        if (days < 60) { const w = Math.floor(days / 7); return w + ' week' + (w === 1 ? '' : 's') + ' ago'; }
+        const m = Math.floor(days / 30); return m + ' month' + (m === 1 ? '' : 's') + ' ago';
+    }
+    async function loadCareerTab() {
+        const box = document.getElementById('careerContent');
+        let d;
+        try { d = await api(`/api/career/profile/${PROFILE_USER_ID}`); }
+        catch (e) { box.innerHTML = privateNote('fa-circle-exclamation', "Couldn't load the career right now."); return; }
+        const first = {{ (firstname or 'This learner') | tojson }};
+        if (!d.career) {
+            box.innerHTML = d.own
+                ? `<div class="posts-empty"><i class="fas fa-bullseye" aria-hidden="true"></i><div>You haven't chosen a dream career yet.</div><a class="pill-btn primary" href="/careerD">Choose my career</a></div>`
+                : privateNote('fa-briefcase', escapeAttr(first) + " hasn't chosen a dream career yet.");
             return;
         }
-
-        const gpa = totalWeightedCredits > 0 ? totalGradePoints / totalWeightedCredits : 0;
-        const overallGrade = gpa >= 3.7 ? 'A' : gpa >= 3.3 ? 'A-' : gpa >= 3.0 ? 'B' :
-            gpa >= 2.7 ? 'B-' : gpa >= 2.3 ? 'C+' : gpa >= 2.0 ? 'C' : gpa > 0 ? 'D' : 'F';
-
-        content.innerHTML = `
-            <div class="grade-overall">
-                <div class="grade-overall-item">
-                    <div class="grade-overall-number">${gpa.toFixed(2)}</div>
-                    <div class="grade-overall-label">GPA</div>
-                </div>
-                <div class="grade-overall-item">
-                    <span class="grade-badge ${getGradeClass(overallGrade)}" style="font-size:18px; padding:6px 16px;">${overallGrade}</span>
-                    <div class="grade-overall-label">Overall Grade</div>
+        const c = d.career;
+        const color = /^#[0-9a-f]{3,8}$/i.test(c.color || '') ? c.color : '#4361ee';
+        const icon = /^fa-[a-z0-9-]+$/.test(c.icon || '') ? c.icon : 'fa-briefcase';
+        const r = c.readiness, circ = 2 * Math.PI * 47, off = circ * (1 - (Number(r) || 0) / 100);
+        const plural = escapeAttr(c.name.toLowerCase()) + 's';
+        const subj = (c.subjects || []).map(x => {
+            if (!x.course) return `<div class="pc-sub"><b>${escapeAttr(x.name)}<small>Needs ${escapeAttr(x.need_letter || '')}</small></b><div class="pc-bar none"></div><span class="pc-g n">No course</span></div>`;
+            const graded = x.score != null;
+            const ok = graded && x.score >= x.target;
+            const cls = !graded ? 'n' : ok ? 'ok' : 'wr';
+            return `<div class="pc-sub"><b>${escapeAttr(x.name)}<small>Needs ${escapeAttr(x.need_letter || '')} · ${Number(x.done_pct) || 0}% done</small></b>
+                <div class="pc-bar"><i style="width:${graded ? Number(x.score) : 0}%;background:${ok ? 'var(--success-color,#059669)' : '#f59e0b'}"></i><u style="left:${Number(x.target)}%"></u></div>
+                <span class="pc-g ${cls}">${graded ? escapeAttr(x.letter || '') : (x.status === 'not_started' ? 'Not started' : 'No tests')}</span></div>`;
+        }).join('') || '<p class="pc-muted">Subjects show after ' + (d.own ? 'you open' : escapeAttr(first) + ' opens') + ' the Career page.</p>';
+        const bar = (label, v, col, bold) => v == null ? '' : `<div class="pc-sr"><span${bold ? ' class="me"' : ''}>${label}</span><div class="pc-bar"><i style="width:${Number(v)}%;background:${col}"></i></div><b>${Number(v)}%</b></div>`;
+        const bd = c.badge, cur = bd.level, nextLv = bd.levels.find(l => !l.earned);
+        const lvRows = bd.levels.map(l => `<div class="pc-lv">${careerBadgeHTML(color, icon, l.level, 46, !l.earned)}<div class="pc-lv-body"><b>${escapeAttr(l.title)}</b>
+            ${l.earned ? '<small class="ok"><i class="fas fa-circle-check" aria-hidden="true"></i> Earned</small>' : (l === nextLv ? '<small>Next badge</small>' : '')}
+            ${l.reqs.map(q => `<div class="pc-req"><div class="pc-bar"><i style="width:${Math.min(100, Math.round(100 * (q.have || 0) / q.need))}%;background:${q.ok ? 'var(--success-color,#059669)' : 'var(--primary-color,#4361ee)'}"></i></div>
+                <span>${escapeAttr(q.label)} ${q.ok ? '<b class="ok">✓</b>' : (q.have == null ? '—' : Number(q.have)) + (q.unit || '') + ' / ' + Number(q.need) + (q.unit || '')}</span></div>`).join('')}</div></div>`).join('');
+        const others = (c.other_badges || []).length ? `<div class="pc-others"><div class="pc-h"><h3>Badges from other careers</h3></div><div class="pc-obadges">${c.other_badges.map(b =>
+            `<div class="pc-ob">${careerBadgeHTML(b.color, b.icon, b.level, 50)}<b>${escapeAttr(b.name)}</b><small>${['', 'Bronze', 'Silver', 'Gold'][b.level] || ''}</small></div>`).join('')}</div></div>` : '';
+        box.innerHTML = `
+            <div class="pc-card pc-head" style="--cc:${color}">
+                <span class="pc-ic"><i class="fas ${icon}" aria-hidden="true"></i></span>
+                <div><div class="pc-kicker">Dream career</div><h2>Future ${escapeAttr(c.name.toLowerCase())}</h2>
+                    <div class="pc-meta"><span>Field: <b>${escapeAttr(c.area_label)}</b></span><span>After school: <b>${escapeAttr(c.training)} · ${escapeAttr(c.years)}</b></span>${c.chosen_at ? `<span>Chosen <b>${pcAgo(c.chosen_at)}</b></span>` : ''}</div>
+                    ${d.own ? '<a class="pc-link" href="/careerD">Open my career page <i class="fas fa-arrow-right" aria-hidden="true"></i></a>' : ''}</div>
+                ${r != null ? `<div class="pc-ring" role="img" aria-label="${Number(r)}% ready"><svg viewBox="0 0 112 112"><circle cx="56" cy="56" r="47" class="bg"/><circle cx="56" cy="56" r="47" class="fg" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg><span>${Number(r)}%<small>ready</small></span></div>` : ''}
+                <div class="pc-kpis">
+                    <div><b>${c.rank ? '#' + Number(c.rank) + ' <small>of ' + Number(c.of) + '</small>' : '—'}</b><span>Future ${plural}, by readiness</span></div>
+                    <div><b>${c.ahead_pct != null ? 'Ahead of ' + Number(c.ahead_pct) + '%' : '—'}</b><span>of learners with this dream</span></div>
+                    <div><b>${Number(c.perfect_weeks)}</b><span>Perfect weeks</span></div>
+                    <div><b>${Number(c.career_ep).toLocaleString()} EP</b><span>Earned from career missions</span></div>
                 </div>
             </div>
-            <div class="strength-list">
-                ${courseGrades.map(s => `
-                    <div class="strength-row">
-                        <div class="strength-icon" style="background:${s.color};">
-                            <i class="${s.iconType} ${s.icon}"></i>
-                        </div>
-                        <div class="strength-details">
-                            <div class="strength-name-row">
-                                <span class="strength-name">${s.name}</span>
-                                <span class="grade-badge ${getGradeClass(s.grade)}">${s.grade}</span>
-                            </div>
-                            <div class="strength-track">
-                                <div class="strength-fill" style="width:${s.percentage}%; background:${s.color};"></div>
-                            </div>
-                            <div class="strength-sub">${s.percentage}% • ${s.detail}</div>
-                        </div>
-                    </div>
-                `).join('')}
+            <div class="pc-grid">
+                <div class="pc-card"><div class="pc-h"><h3>Subjects this career needs</h3><small>│ = grade needed</small></div>${subj}</div>
+                <div class="pc-card"><div class="pc-h"><h3>Among future ${plural}</h3><small>Readiness</small></div>
+                    ${bar(d.own ? 'You' : escapeAttr(first), r, color, true)}${bar('Average', c.avg, '#94a3b8')}${bar('Highest', c.top, '#f59e0b')}
+                    <div class="pc-h" style="margin-top:18px"><h3>Missions</h3><small>This week: ${Number(c.week_done)} of 3</small></div>
+                    <div class="pc-minis"><div><b>${Number(c.missions)}</b><span>completed</span></div><div><b>${c.correct_pct != null ? Number(c.correct_pct) + '%' : '—'}</b><span>answered right</span></div><div><b>${Number(c.perfect_weeks)}</b><span>perfect weeks</span></div></div>
+                </div>
             </div>
-        `;
+            <div class="pc-card" style="--cc:${color}"><div class="pc-h"><h3>${escapeAttr(c.name)} badge</h3><small>Earned over months, not days</small></div>
+                <div class="pc-bwide"><div class="pc-bbig">${careerBadgeHTML(color, icon, cur || 1, 132, !cur)}<b>${cur ? escapeAttr(bd.levels[cur - 1].title) : 'Not earned yet'}</b></div>
+                <div class="pc-lvs">${lvRows}</div></div>${others}</div>`;
     }
 
-    // ---------- Achievements ----------
-    // Identical unlock thresholds to the Progress page's achievement list,
-    // so unlocking one on either page always agrees with the other.
-    function renderAchievementsPanel() {
-        const loading = document.getElementById('achievementsLoading');
-        const content = document.getElementById('achievementsContent');
-        loading.style.display = 'none';
-        content.style.display = 'block';
+    // Recent achievements: the badges themselves. Legendary badges come first (newest first), then the newest other ones.
+    function recentBadgesHTML(d) {
+        const got = (d.achievements || []).filter(a => a.unlocked);
+        const newest = (a, b) => String(b.unlocked_at || '').localeCompare(String(a.unlocked_at || ''));
+        const legends = got.filter(a => a.legendary).sort((a, b) => (a.genesis ? 1 : 0) - (b.genesis ? 1 : 0) || newest(a, b));
+        const others = got.filter(a => !a.legendary).sort(newest);
+        const list = legends.concat(others).slice(0, Math.max(6, legends.length));
+        if (!list.length) return '<div class="lp-muted">No achievements unlocked yet.</div>';
+        return list.map(a => {
+            let art;
+            if (a.legendary) {
+                const theme = /^[a-z]+$/.test(String(a.theme || '')) ? a.theme : 'genesis';
+                const n = a.genesis && a.serial ? '&n=' + encodeURIComponent(a.serial) : '';
+                art = `<div class="lp-mini-art"><img src="/badge-art/${theme}.svg?d=13${n}" alt="" loading="lazy"></div>`;
+            } else {
+                art = `<div class="lp-mini-art"><div class="lp-mini-medal" style="--t:${safeColor(a.tier_color)};--c:${safeColor(a.color)}"><span><i class="fas ${safeIcon(a.icon)}" aria-hidden="true"></i></span></div></div>`;
+            }
+            return `<figure class="lp-mini-badge ${a.legendary ? 'legend' : ''}" title="${escapeAttr(a.description || a.motto || '')}">
+                ${art}
+                <figcaption><div class="lp-mini-name">${escapeAttr(a.title)}</div><div class="lp-mini-tier">${escapeAttr(a.tier_label || '')}</div></figcaption>
+            </figure>`;
+        }).join('');
+    }
 
-        if (!IS_OWN_PROFILE) {
-            content.innerHTML = privacyNoticeHTML('Achievements');
+    function renderBadges(d) {
+        const box = document.getElementById('badgesContent');
+        if (isHidden(d, 'achievements')) { box.innerHTML = privateNote('fa-lock', 'This learner keeps their achievements and badges private.'); return; }
+        const list = d.achievements || [];
+        const tierOrder = { diamond: 0, platinum: 1, gold: 2, silver: 3, bronze: 4 };
+        const earned = list.filter(a => a.unlocked).sort((a, b) =>
+            ((tierOrder[a.tier] ?? 9) - (tierOrder[b.tier] ?? 9)) || String(b.unlocked_at || '').localeCompare(String(a.unlocked_at || '')));
+        const badges = earned.filter(a => a.badge).length;
+        const fmtDate = iso => { const t = parseTime(iso); return !isNaN(t) ? t.toLocaleDateString('en-GB', { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' }) : ''; };
+        box.innerHTML = `
+            <div class="ach-summary">
+                <div><div class="ach-count">${earned.length}</div>
+                    <div class="lp-muted">achievement${earned.length === 1 ? '' : 's'} earned${badges ? ` · ${badges} badge${badges === 1 ? '' : 's'}` : ''}</div></div>
+                <a class="lp-link" style="text-decoration:none; margin-left:auto;" href="/achievements?user=${encodeURIComponent(PROFILE_USER_ID)}">Open achievements &amp; badges →</a>
+            </div>
+            ${earned.length ? `<div class="ach-grid">${earned.map(a => `
+                <div class="ach-card unlocked" style="--c:${safeColor(a.color)}">
+                    <div class="ach-icon" aria-hidden="true"><i class="fas ${safeIcon(a.icon)}"></i></div>
+                    <div class="ach-body">
+                        <div class="ach-title">${escapeAttr(a.title)}${a.badge ? ` <span class="ach-badge-tag" style="--t:${safeColor(a.tier_color)}"><i class="fas fa-medal" aria-hidden="true"></i> ${escapeAttr(a.tier_label)}</span>` : ''}</div>
+                        <div class="ach-desc">${escapeAttr(a.description)}</div>
+                        <div class="ach-status"><i class="fas fa-circle-check" aria-hidden="true"></i> Earned${a.unlocked_at ? ' · ' + fmtDate(a.unlocked_at) : ''}</div>
+                    </div>
+                </div>`).join('')}</div>` : '<div class="lp-muted" style="padding:20px 4px;">No achievements earned yet.</div>'}`;
+    }
+    async function loadLearnerProfile() {
+        if (!IS_LEARNER_PROFILE) return;
+        try { learnerData = await api(`/api/users/${PROFILE_USER_ID}/learner-profile`); }
+        catch (err) {
+            const msg = retryBox('fa-triangle-exclamation', 'Couldn\'t load progress. ' + err.message, 'data-retry-learner');
+            document.getElementById('overviewLoading').style.display = 'none';
+            const box = document.getElementById('overviewContent');
+            box.style.display = 'block'; box.innerHTML = msg;
+            document.getElementById('badgesContent').innerHTML = msg;
             return;
         }
-
-        const enrolled = loadMyCourses();
-        const totalModules = enrolled.reduce((sum, enr) => sum + (enr.completed ? enr.completed.length : 0), 0);
-        const totalExercises = enrolled.reduce((sum, enr) => sum + (enr.exercisesCompleted || 0), 0);
-        const totalQuizzes = enrolled.reduce((sum, enr) => sum + (enr.quizzesPassed || 0), 0);
-
-        const achievements = [
-            { title: 'First Steps', desc: 'Complete your first module', icon: 'fa-flag', color: '#4361ee', unlocked: totalModules >= 1 },
-            { title: 'Quick Learner', desc: 'Complete 5 modules', icon: 'fa-bolt', color: '#feca57', unlocked: totalModules >= 5 },
-            { title: 'Dedicated Student', desc: 'Complete 10 modules', icon: 'fa-star', color: '#ffd700', unlocked: totalModules >= 10 },
-            { title: 'Practice Makes Perfect', desc: 'Complete 20 exercises', icon: 'fa-pencil', color: '#10b981', unlocked: totalExercises >= 20 },
-            { title: 'Exercise Master', desc: 'Complete 50 exercises', icon: 'fa-trophy', color: '#ff6b6b', unlocked: totalExercises >= 50 },
-            { title: 'Quiz Champion', desc: 'Pass 3 quizzes', icon: 'fa-brain', color: '#3a0ca3', unlocked: totalQuizzes >= 3 },
-            { title: 'Multi-Course Learner', desc: 'Enroll in 3 courses', icon: 'fa-book', color: '#1dd1a1', unlocked: enrolled.length >= 3 },
-            { title: 'Course Master', desc: 'Complete an entire course', icon: 'fa-graduation-cap', color: '#feca57', unlocked: enrolled.some(e => e.progress >= 100) }
-        ];
-
-        const unlockedCount = achievements.filter(a => a.unlocked).length;
-
-        content.innerHTML = `
-            <div class="achievements-summary">${unlockedCount}/${achievements.length} Unlocked</div>
-            <div class="achievements-dark-grid">
-                ${achievements.map(a => `
-                    <div class="achv-card ${a.unlocked ? '' : 'locked'}">
-                        <div class="achv-icon" style="background:${a.color};">
-                            <i class="fas ${a.icon}"></i>
-                        </div>
-                        <div class="achv-info">
-                            <div class="achv-title">${a.title}</div>
-                            <div class="achv-desc">${a.desc}</div>
-                            <div class="achv-status">${a.unlocked ? '✅ Unlocked' : '🔒 Locked'}</div>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
+        const achStat = document.getElementById('achCountStat');
+        if (achStat) achStat.textContent = learnerData.unlocked_count != null ? learnerData.unlocked_count : (learnerData.achievements || []).filter(a => a.unlocked).length;
+        renderChips(learnerData);
+        renderOverview(learnerData);
+        renderBadges(learnerData);
     }
+    document.addEventListener('click', e => {
+        if (e.target.closest('[data-retry-learner]')) {
+            document.getElementById('overviewLoading').style.display = 'block';
+            document.getElementById('overviewContent').style.display = 'none';
+            loadLearnerProfile();
+        }
+    });
+
+    /* ---------- Leaderboard ---------- */
+    let lbScope = 'all';
+    function lbRow(e) {
+        const medal = !e.rank ? '<span class="lb-rank" title="No EP this month yet">–</span>'
+            : e.rank <= 3 ? `<span class="lb-medal m${Number(e.rank)}">${Number(e.rank)}</span>` : `<span class="lb-rank">${Number(e.rank)}</span>`;
+        const avUrl = safeUrl(e.avatar_url);
+        const avatar = avUrl ? `<img src="${escapeAttr(avUrl)}" alt="">` : escapeAttr(e.initials);
+        const frame = ['gold', 'neon', 'diamond'].includes(e.frame) ? 'ep-frame-' + e.frame : '';
+        return `
+            <a class="lb-row ${e.is_focus ? 'focus' : ''} ${e.is_me ? 'me' : ''}" href="/profile/${encodeURIComponent(e.id)}">
+                <div class="lb-pos">${medal}</div>
+                <div class="lb-avatar ${frame}" aria-hidden="true">${avatar}</div>
+                <div class="lb-name">
+                    <span>${escapeAttr(e.name)}${e.is_me ? ' <em>(you)</em>' : ''}</span>
+                    <small>Level ${Number(e.level)}${e.title ? ` · <span class="ep-title-chip">${escapeAttr(e.title)}</span>` : ''}${e.quiz_streak ? ` · <i class="fas fa-fire" style="color:#f97316" aria-hidden="true"></i> ${Number(e.quiz_streak)}` : ''}</small>
+                </div>
+                <div class="lb-gpa">${Number(e.ep_total || 0).toLocaleString()}</div>
+                <div class="lb-xp">${Number(e.ep).toLocaleString()}<small>EP</small></div>
+            </a>`;
+    }
+    // the EP rules come from the server, so this can't drift from the real ones
+    function rulesText() {
+        const r = (learnerData && learnerData.ep_rules) || {};
+        const parts = [];
+        if (r.module) parts.push(`module test passed +${Number(r.module)}`);
+        if (r.quiz) parts.push(`quiz passed +${Number(r.quiz)}`);
+        if (r.course) parts.push(`course finished +${Number(r.course)}`);
+        if (r.module_streak) parts.push(`every 10 modules in a row +${Number(r.module_streak)}`);
+        if (r.quiz_streak) parts.push(`every 10 quiz days in a row +${Number(r.quiz_streak)}`);
+        if (r.legendary) parts.push(`Legendary badge +${Number(r.legendary)}`);
+        return parts.length ? ' EP: ' + parts.join(' · ') : '';
+    }
+    async function loadLeaderboard() {
+        const box = document.getElementById('leadersContent');
+        box.innerHTML = '<div class="posts-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i><div>Loading leaderboard…</div></div>';
+        try {
+            const d = await api(`/api/leaderboard?scope=${encodeURIComponent(lbScope)}&focus=${encodeURIComponent(PROFILE_USER_ID)}`);
+            if (!d.top || !d.top.length) {
+                box.innerHTML = `<div class="posts-empty"><i class="fas fa-ranking-star" aria-hidden="true"></i><div>${lbScope === 'following' ? 'Add other learners as friends to compare your progress with theirs.' : 'No learners on the leaderboard yet.'}</div></div>`;
+                return;
+            }
+            box.innerHTML = `
+                <div class="lb-list">
+                    <div class="lb-head" aria-hidden="true"><span>#</span><span></span><span>Learner</span><span>Total EP</span><span>Month EP</span></div>
+                    ${d.top.map(lbRow).join('')}
+                    ${d.extra && d.extra.length ? '<div class="lb-gap" aria-hidden="true">• • •</div>' + d.extra.map(lbRow).join('') : ''}
+                </div>
+                <div class="lb-foot"><i class="fas fa-circle-info" aria-hidden="true"></i> Ranked by EP earned this month.${rulesText()}</div>`;
+        } catch (err) {
+            box.innerHTML = retryBox('fa-triangle-exclamation', 'Couldn\'t load the leaderboard. ' + err.message, 'data-retry-lb');
+        }
+    }
+    const lbScopeEl = document.getElementById('lbScope');
+    if (lbScopeEl) {
+        lbScopeEl.addEventListener('click', function (e) {
+            const btn = e.target.closest('[data-scope]');
+            if (!btn) return;
+            lbScope = btn.dataset.scope;
+            lbScopeEl.querySelectorAll('[data-scope]').forEach(b => { b.classList.toggle('active', b === btn); b.setAttribute('aria-pressed', String(b === btn)); });
+            loadLeaderboard();
+        });
+    }
+    document.addEventListener('click', e => { if (e.target.closest('[data-retry-lb]')) loadLeaderboard(); });
+
+    // "See all" link inside the Progress tab
+    document.addEventListener('click', function (e) {
+        const go = e.target.closest('[data-goto]');
+        if (go) showTab(go.dataset.goto, { user: true, focus: true });
+    });
+
+    loadLearnerProfile();
+    // open the tab named in the address (#badges, #ratings …), e.g. from a notification
+    (function () { const h = (location.hash || '').slice(1); if (h && tabs.some(t => t.dataset.tab === h)) showTab(h); })();
 })();
 </script>
 {% endblock %}

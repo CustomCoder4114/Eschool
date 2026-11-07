@@ -1,0 +1,1026 @@
+{% extends "Parent/parent-body.html" %}
+
+{% block allcontent %}
+{#
+    PARENT PAGE - My Children  (templates/Parent/parent-children.html)
+    Filled by the /parent-children route in backen.py with real data:
+    one card per child whose link to this parent is ACTIVE.
+
+    children = [{ id, link_id, name, first_name, avatar_url, relationship, linked_at,
+                  permissions, can_see_grades, has_summary, updated,
+                  gpa, overall_grade, avg_progress, courses: [{name, level, progress}],
+                  modules_completed, assessments, quiz_streak, module_streak,
+                  quizzes_passed, courses_completed,
+                  rank, ranked_total, ep_total, ep_week, ep_month, level,
+                  grade, teachers: [names], plan: {key, name, time_left, expires_on, ...} }]
+    pending_count   = link requests still waiting for approval
+    payment_options = plans, prices and M-Pesa details (PLAN_PRICES / PAYMENT_SETTINGS in backen.py)
+#}
+<style>
+/* ======================================================================
+   MY CHILDREN
+   Scoped to .mc so nothing leaks into the rest of the site. Own light and
+   dark colours (data-no-theme); the main colour follows Settings >
+   Appearance through --primary-color. No pop-ups: every message is
+   written on the page next to what it is about.
+   ====================================================================== */
+.mc {
+    --mc-accent: var(--primary-color, #4361ee);
+    --mc-accent-2: var(--secondary-color, #3a0ca3);
+    --mc-accent-dark: var(--primary-dark, #2a44c7);
+    --mc-accent-soft: color-mix(in srgb, var(--mc-accent) 11%, transparent);
+    --mc-accent-line: color-mix(in srgb, var(--mc-accent) 35%, transparent);
+    --mc-accent-text: var(--mc-accent);
+    --mc-surface: #ffffff;
+    --mc-surface-2: #f8fafc;
+    --mc-hover: #f1f5f9;
+    --mc-border: #e5e7eb;
+    --mc-track: #e8edf3;
+    --mc-text: #0f172a;
+    --mc-text-2: #475569;
+    --mc-text-3: #64748b;
+    --mc-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06);
+    --mc-shadow-hover: 0 10px 28px rgba(15, 23, 42, .12);
+    --mc-ok: #059669;   --mc-ok-soft: #ecfdf5;
+    --mc-warn: #b45309; --mc-warn-soft: #fffbeb;
+    --mc-bad: #dc2626;  --mc-bad-soft: #fef2f2;
+    --mc-info: #2563eb; --mc-info-soft: #eff6ff;
+    --mc-gold: #d99a00; --mc-gold-soft: #fff7db;
+    --mc-basic: #0891b2; --mc-basic-soft: #ecfeff;
+    --mc-pro: #7c3aed;  --mc-pro-soft: #f5f3ff;
+    --mc-fire: #ea580c; --mc-violet: #7c3aed;
+    --mc-radius: 16px;
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 6px 0 28px;
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--mc-text);
+}
+body.dark-mode .mc {
+    --mc-accent-soft: color-mix(in srgb, var(--mc-accent) 20%, transparent);
+    --mc-accent-line: color-mix(in srgb, var(--mc-accent) 45%, transparent);
+    --mc-accent-text: color-mix(in srgb, var(--mc-accent) 55%, #ffffff);
+    --mc-surface: #111827;
+    --mc-surface-2: #0f172a;
+    --mc-hover: #1e293b;
+    --mc-border: #263244;
+    --mc-track: #263244;
+    --mc-text: #e5e7eb;
+    --mc-text-2: #cbd5e1;
+    --mc-text-3: #94a3b8;
+    --mc-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25);
+    --mc-shadow-hover: 0 12px 30px rgba(0, 0, 0, .45);
+    --mc-ok: #34d399;   --mc-ok-soft: rgba(16, 185, 129, .14);
+    --mc-warn: #fbbf24; --mc-warn-soft: rgba(245, 158, 11, .14);
+    --mc-bad: #f87171;  --mc-bad-soft: rgba(239, 68, 68, .14);
+    --mc-info: #60a5fa; --mc-info-soft: rgba(59, 130, 246, .14);
+    --mc-gold: #fbbf24; --mc-gold-soft: rgba(251, 191, 36, .12);
+    --mc-basic: #22d3ee; --mc-basic-soft: rgba(34, 211, 238, .12);
+    --mc-pro: #a78bfa;  --mc-pro-soft: rgba(167, 139, 250, .14);
+    --mc-fire: #fb923c; --mc-violet: #a78bfa;
+}
+.mc *, .mc *::before, .mc *::after { box-sizing: border-box; }
+.mc h1, .mc h2, .mc h3, .mc h4, .mc p { margin: 0; }
+.mc button, .mc input, .mc select { font-family: inherit; }
+.mc :focus-visible { outline: 3px solid var(--mc-accent-line); outline-offset: 2px; }
+.mc [hidden] { display: none !important; }
+
+/* ---------- header ---------- */
+.mc-hero {
+    position: relative; overflow: hidden; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    padding: 24px 26px; margin-bottom: 18px; border-radius: var(--mc-radius); color: #fff;
+    background: linear-gradient(135deg, var(--mc-accent), var(--mc-accent-2)); box-shadow: var(--mc-shadow);
+}
+.mc-hero::after { content: ""; position: absolute; right: -70px; top: -90px; width: 280px; height: 280px; border-radius: 50%; background: rgba(255, 255, 255, .08); pointer-events: none; }
+.mc-hero-text { flex: 1; min-width: 260px; position: relative; z-index: 1; }
+.mc-hero h1 { font-family: 'Poppins', sans-serif; font-size: 1.65rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 12px; }
+.mc-hero p { margin-top: 6px; opacity: .93; font-size: .94rem; line-height: 1.55; color: #fff; max-width: 600px; }
+.mc-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.mc-hero-btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 11px; font-weight: 600; font-size: .88rem;
+    text-decoration: none; cursor: pointer; border: 1px solid rgba(255, 255, 255, .35); color: #fff; background: rgba(255, 255, 255, .14);
+}
+.mc-hero-btn:hover { background: rgba(255, 255, 255, .24); color: #fff; }
+.mc-hero-btn.solid { background: #fff; color: var(--mc-accent-dark); border-color: #fff; }
+.mc-hero-btn.solid:hover { background: #f1f5ff; color: var(--mc-accent-dark); }
+.mc-hero-stats { display: grid; grid-template-columns: repeat(4, minmax(96px, 1fr)); gap: 10px; position: relative; z-index: 1; }
+.mc-hero-stat { background: rgba(255, 255, 255, .15); border: 1px solid rgba(255, 255, 255, .25); border-radius: 12px; padding: 10px 12px; text-align: center; color: #fff; }
+.mc-hero-stat strong { display: block; font-family: 'Poppins', sans-serif; font-size: 1.3rem; line-height: 1.25; }
+.mc-hero-stat span { font-size: .74rem; opacity: .9; }
+
+/* ---------- notices ---------- */
+.mc-notice {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; margin-bottom: 12px;
+    border-radius: 12px; border: 1px solid var(--mc-border); border-left: 4px solid var(--mc-info);
+    background: var(--mc-surface); color: var(--mc-text); font-size: .9rem; box-shadow: var(--mc-shadow);
+}
+.mc-notice > i { color: var(--mc-info); }
+.mc-notice.warn { border-left-color: var(--mc-warn); } .mc-notice.warn > i { color: var(--mc-warn); }
+.mc-notice.bad { border-left-color: var(--mc-bad); } .mc-notice.bad > i { color: var(--mc-bad); }
+.mc-notice .mc-btn { margin-left: auto; }
+.mc-notices { margin-bottom: 18px; }
+.mc-notices .mc-notice:last-child { margin-bottom: 0; }
+
+/* ---------- generic ---------- */
+.mc-card { background: var(--mc-surface); border: 1px solid var(--mc-border); border-radius: var(--mc-radius); box-shadow: var(--mc-shadow); padding: 20px; margin-bottom: 18px; min-width: 0; }
+.mc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.mc-card-title { display: flex; align-items: center; gap: 10px; font-family: 'Poppins', sans-serif; font-size: 1.08rem; font-weight: 600; color: var(--mc-text); }
+.mc-card-title .ic { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--mc-accent-soft); color: var(--mc-accent-text); font-size: .92rem; }
+.mc-sub { font-size: .84rem; color: var(--mc-text-3); line-height: 1.5; }
+.mc-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 14px; border-radius: 10px;
+    border: 1px solid transparent; cursor: pointer; font-size: .85rem; font-weight: 600; text-decoration: none; line-height: 1.2;
+    transition: background-color .15s, border-color .15s, color .15s;
+}
+.mc-btn-primary { background: var(--mc-accent); color: #fff; }
+.mc-btn-primary:hover { background: var(--mc-accent-dark); color: #fff; }
+.mc-btn-ghost { background: var(--mc-surface); color: var(--mc-text-2); border-color: var(--mc-border); }
+.mc-btn-ghost:hover { background: var(--mc-hover); color: var(--mc-text); border-color: var(--mc-accent-line); }
+.mc-btn-danger { background: var(--mc-surface); color: var(--mc-bad); border-color: color-mix(in srgb, var(--mc-bad) 35%, transparent); }
+.mc-btn-danger:hover { background: var(--mc-bad-soft); }
+.mc-btn-danger.solid { background: var(--mc-bad); color: #fff; border-color: var(--mc-bad); }
+.mc-btn-danger.solid:hover { background: #b91c1c; }
+.mc-btn:disabled { opacity: .55; cursor: default; }
+.mc-btn-sm { padding: 7px 11px; font-size: .8rem; }
+.mc-note { font-size: .82rem; line-height: 1.45; }
+.mc-note:empty { display: none; }
+.mc-note.ok { color: var(--mc-ok); } .mc-note.bad { color: var(--mc-bad); } .mc-note.info { color: var(--mc-text-2); }
+.mc-bar { height: 8px; border-radius: 99px; background: var(--mc-track); overflow: hidden; }
+.mc-bar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--mc-accent), var(--mc-accent-2)); }
+.mc-bar.ok > i { background: var(--mc-ok); } .mc-bar.warn > i { background: var(--mc-warn); } .mc-bar.bad > i { background: var(--mc-bad); }
+.mc-bar.basic > i { background: var(--mc-basic); } .mc-bar.pro > i { background: linear-gradient(90deg, var(--mc-pro), var(--mc-accent)); }
+.mc-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700; }
+.mc-pill.free { background: var(--mc-hover); color: var(--mc-text-3); }
+.mc-pill.basic { background: var(--mc-basic-soft); color: var(--mc-basic); }
+.mc-pill.pro { background: var(--mc-pro-soft); color: var(--mc-pro); }
+.mc-pill.pending { background: var(--mc-warn-soft); color: var(--mc-warn); }
+.mc-pill.confirmed { background: var(--mc-ok-soft); color: var(--mc-ok); }
+.mc-pill.rejected, .mc-pill.declined, .mc-pill.expired { background: var(--mc-bad-soft); color: var(--mc-bad); }
+.mc-pill.cancelled { background: var(--mc-hover); color: var(--mc-text-3); }
+.mc-empty { text-align: center; padding: 36px 16px; color: var(--mc-text-3); }
+.mc-empty > i { display: block; font-size: 2.2rem; opacity: .5; margin-bottom: 12px; }
+.mc-empty h3 { font-family: 'Poppins', sans-serif; color: var(--mc-text); font-size: 1.15rem; margin-bottom: 6px; }
+.mc-empty p { max-width: 460px; margin: 0 auto 16px; line-height: 1.6; }
+
+/* ---------- toolbar ---------- */
+.mc-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.mc-search { position: relative; flex: 1; min-width: 220px; }
+.mc-search i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--mc-text-3); font-size: .85rem; }
+.mc-input, .mc-select {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--mc-border);
+    background: var(--mc-surface); color: var(--mc-text); font-size: .9rem;
+}
+.mc-search .mc-input { padding-left: 36px; }
+.mc-select { width: auto; cursor: pointer; }
+.mc-input::placeholder { color: var(--mc-text-3); }
+.mc-input:focus, .mc-select:focus { outline: none; border-color: var(--mc-accent); box-shadow: 0 0 0 3px var(--mc-accent-soft); }
+.mc-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.mc-chips::-webkit-scrollbar { display: none; }
+.mc-chip { flex-shrink: 0; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--mc-border); background: var(--mc-surface); color: var(--mc-text-2); font-size: .8rem; font-weight: 600; cursor: pointer; }
+.mc-chip:hover { background: var(--mc-hover); color: var(--mc-text); }
+.mc-chip[aria-pressed="true"] { background: var(--mc-accent); border-color: var(--mc-accent); color: #fff; }
+.mc-chip b { opacity: .75; font-weight: 600; margin-left: 3px; }
+
+/* ---------- child cards ---------- */
+.mc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(460px, 100%), 1fr)); gap: 18px; margin-bottom: 18px; }
+.mc-child {
+    display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: var(--mc-radius);
+    background: var(--mc-surface); border: 1px solid var(--mc-border); box-shadow: var(--mc-shadow);
+    transition: border-color .15s, box-shadow .15s; min-width: 0;
+}
+.mc-child:hover { border-color: var(--mc-accent-line); box-shadow: var(--mc-shadow-hover); }
+.mc-child-head { display: flex; align-items: center; gap: 14px; }
+.mc-avatar {
+    width: 58px; height: 58px; border-radius: 50%; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--mc-accent), var(--mc-accent-2)); color: #fff; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.2rem;
+}
+.mc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.mc-avatar.sm { width: 40px; height: 40px; font-size: .9rem; }
+.mc-name { font-family: 'Poppins', sans-serif; font-size: 1.12rem; font-weight: 600; color: var(--mc-text); line-height: 1.25; }
+.mc-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: .78rem; color: var(--mc-text-3); }
+.mc-meta i { margin-right: 3px; }
+.mc-child-head .mc-pill { margin-left: auto; align-self: flex-start; }
+
+.mc-plan { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 12px; background: var(--mc-surface-2); border: 1px solid var(--mc-border); }
+.mc-plan.ending { border-color: color-mix(in srgb, var(--mc-bad) 45%, transparent); background: var(--mc-bad-soft); }
+.mc-plan-ic { width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--mc-hover); color: var(--mc-text-3); }
+.mc-plan.basic .mc-plan-ic { background: var(--mc-basic-soft); color: var(--mc-basic); }
+.mc-plan.pro .mc-plan-ic { background: var(--mc-pro-soft); color: var(--mc-pro); }
+.mc-plan-body { flex: 1; min-width: 0; }
+.mc-plan-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .82rem; color: var(--mc-text-3); margin-bottom: 4px; }
+.mc-plan-top strong { color: var(--mc-text); font-size: .95rem; }
+.mc-plan.ending .mc-plan-top strong { color: var(--mc-bad); }
+.mc-plan .mc-bar { height: 6px; }
+.mc-plan-wait { font-size: .78rem; color: var(--mc-warn); margin-top: 6px; display: flex; gap: 6px; align-items: center; }
+
+.mc-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.mc-stat { padding: 10px 6px; border-radius: 11px; background: var(--mc-surface-2); border: 1px solid var(--mc-border); text-align: center; min-width: 0; }
+.mc-stat strong { display: block; font-family: 'Poppins', sans-serif; font-size: 1.12rem; color: var(--mc-text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-stat span { font-size: .68rem; color: var(--mc-text-3); }
+.mc-stat.gold strong { color: var(--mc-gold); }
+.mc-stat .fire { color: var(--mc-fire); } .mc-stat .vio { color: var(--mc-violet); }
+.g-excellent { color: var(--mc-ok) !important; } .g-good { color: var(--mc-info) !important; }
+.g-average { color: var(--mc-warn) !important; } .g-poor { color: var(--mc-bad) !important; }
+
+.mc-sec-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--mc-text-3); margin-bottom: 8px; display: flex; justify-content: space-between; gap: 8px; }
+.mc-courses { display: flex; flex-direction: column; gap: 9px; }
+.mc-course-top { display: flex; justify-content: space-between; gap: 8px; font-size: .84rem; color: var(--mc-text-2); margin-bottom: 4px; }
+.mc-course-top span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-course-top strong { color: var(--mc-text); }
+.mc-locked { font-size: .84rem; color: var(--mc-text-2); padding: 11px 12px; border-radius: 10px; border: 1px dashed var(--mc-border); background: var(--mc-surface-2); line-height: 1.5; }
+.mc-locked i { margin-right: 6px; color: var(--mc-text-3); }
+.mc-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mc-fact { font-size: .84rem; color: var(--mc-text); min-width: 0; }
+.mc-fact small { display: block; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--mc-text-3); margin-bottom: 4px; }
+.mc-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.mc-tag { font-size: .76rem; padding: 3px 9px; border-radius: 999px; background: var(--mc-accent-soft); color: var(--mc-accent-text); font-weight: 600; }
+.mc-muted { color: var(--mc-text-3); }
+.mc-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--mc-border); margin-top: auto; }
+.mc-actions .mc-btn-danger { margin-left: auto; }
+.mc-foot { font-size: .76rem; color: var(--mc-text-3); display: flex; align-items: center; gap: 6px; }
+
+/* access switches */
+.mc-perms { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px; background: var(--mc-surface-2); border: 1px solid var(--mc-border); }
+.mc-perm { display: flex; align-items: center; gap: 12px; }
+.mc-perm > i { width: 32px; height: 32px; border-radius: 9px; background: var(--mc-accent-soft); color: var(--mc-accent-text); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: .82rem; }
+.mc-perm-text { flex: 1; min-width: 0; }
+.mc-perm-text strong { display: block; font-size: .86rem; color: var(--mc-text); }
+.mc-perm-text span { font-size: .76rem; color: var(--mc-text-3); }
+.mc-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.mc-switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 1; }
+.mc-slider { position: absolute; inset: 0; background: var(--mc-track); border-radius: 24px; transition: background-color .15s; }
+.mc-slider::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .15s; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
+.mc-switch input:checked + .mc-slider { background: var(--mc-accent); }
+.mc-switch input:checked + .mc-slider::before { transform: translateX(20px); }
+.mc-switch input:focus-visible + .mc-slider { outline: 3px solid var(--mc-accent-line); outline-offset: 2px; }
+.mc-switch input:disabled + .mc-slider { opacity: .5; }
+
+/* ---------- payments + requests ---------- */
+.mc-list { display: flex; flex-direction: column; gap: 10px; }
+.mc-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--mc-border); background: var(--mc-surface-2); border-left: 4px solid var(--mc-border); }
+.mc-row.pending { border-left-color: var(--mc-warn); }
+.mc-row.confirmed { border-left-color: var(--mc-ok); }
+.mc-row.rejected, .mc-row.declined, .mc-row.expired { border-left-color: var(--mc-bad); }
+.mc-row-info { flex: 1; min-width: 180px; }
+.mc-row-info h4 { font-size: .94rem; color: var(--mc-text); font-weight: 600; }
+.mc-row-info p { font-size: .8rem; color: var(--mc-text-3); margin-top: 2px; line-height: 1.45; }
+.mc-row-amount { font-family: 'Poppins', sans-serif; font-weight: 700; color: var(--mc-text); }
+.mc-row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.mc-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; }
+
+/* ---------- windows ---------- */
+.mc-modal { position: fixed; inset: 0; z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, .55); }
+.mc-modal.open { display: flex; }
+.mc-dialog {
+    width: min(640px, 100%); max-height: calc(100vh - 40px); overflow: auto; border-radius: 18px; background: var(--mc-surface); color: var(--mc-text);
+    border: 1px solid var(--mc-border); box-shadow: 0 24px 60px rgba(0, 0, 0, .3); animation: mcIn .18s ease-out;
+}
+.mc-dialog.sm { width: min(440px, 100%); }
+@keyframes mcIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.mc-dialog-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: var(--mc-surface); border-bottom: 1px solid var(--mc-border); }
+.mc-dialog-head h2 { font-family: 'Poppins', sans-serif; font-size: 1.12rem; color: var(--mc-text); }
+.mc-dialog-head p { font-size: .8rem; color: var(--mc-text-3); margin-top: 2px; }
+.mc-x { margin-left: auto; width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--mc-border); background: var(--mc-surface); color: var(--mc-text-2); cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.mc-x:hover { background: var(--mc-hover); color: var(--mc-text); }
+.mc-dialog-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 18px; }
+.mc-dialog-foot { display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap; padding: 0 20px 20px; }
+.mc-dialog-foot .mc-note { margin-right: auto; }
+.mc-steps { display: flex; gap: 6px; }
+.mc-steps i { width: 26px; height: 5px; border-radius: 99px; background: var(--mc-track); display: block; }
+.mc-steps i.on { background: var(--mc-accent); }
+.mc-field { display: flex; flex-direction: column; gap: 6px; }
+.mc-field > label, .mc-field > .lbl { font-size: .8rem; font-weight: 700; color: var(--mc-text-2); }
+.mc-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mc-opt { position: relative; display: block; cursor: pointer; }
+.mc-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.mc-opt-box { display: block; height: 100%; padding: 14px; border-radius: 13px; border: 2px solid var(--mc-border); background: var(--mc-surface); transition: border-color .15s, background-color .15s; }
+.mc-opt:hover .mc-opt-box { border-color: var(--mc-accent-line); }
+.mc-opt input:checked + .mc-opt-box { border-color: var(--mc-accent); background: var(--mc-accent-soft); }
+.mc-opt input:focus-visible + .mc-opt-box { outline: 3px solid var(--mc-accent-line); outline-offset: 2px; }
+.mc-opt input:disabled + .mc-opt-box { opacity: .5; cursor: not-allowed; }
+.mc-opt-title { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--mc-text); }
+.mc-opt-title i { color: var(--mc-accent-text); }
+.mc-opt-sub { font-size: .78rem; color: var(--mc-text-3); margin-top: 3px; }
+.mc-opt ul { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.mc-opt li { font-size: .78rem; color: var(--mc-text-2); display: flex; gap: 7px; }
+.mc-opt li::before { content: "\2713"; color: var(--mc-ok); font-weight: 700; }
+.mc-lengths { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mc-lengths .mc-opt-box { text-align: center; padding: 11px 8px; }
+.mc-len-name { display: block; font-weight: 700; color: var(--mc-text); font-size: .9rem; }
+.mc-len-price { display: block; font-family: 'Poppins', sans-serif; color: var(--mc-accent-text); font-weight: 700; margin-top: 3px; }
+.mc-len-per { display: block; font-size: .7rem; color: var(--mc-text-3); }
+.mc-total { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-radius: 12px; background: var(--mc-surface-2); border: 1px solid var(--mc-border); }
+.mc-total span { font-size: .84rem; color: var(--mc-text-2); }
+.mc-total strong { font-family: 'Poppins', sans-serif; font-size: 1.35rem; color: var(--mc-text); }
+.mc-howto { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 10px; }
+.mc-howto li { counter-increment: s; display: flex; gap: 12px; font-size: .88rem; color: var(--mc-text); line-height: 1.5; }
+.mc-howto li::before { content: counter(s); width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--mc-accent); color: #fff; font-size: .75rem; font-weight: 700; margin-top: 1px; }
+.mc-paybox { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mc-payval { padding: 10px 12px; border-radius: 11px; border: 1px solid var(--mc-border); background: var(--mc-surface-2); min-width: 0; }
+.mc-payval small { display: block; font-size: .7rem; color: var(--mc-text-3); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.mc-payval b { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-family: 'Poppins', sans-serif; font-size: 1rem; color: var(--mc-text); margin-top: 2px; word-break: break-all; }
+.mc-copy { border: 0; background: transparent; color: var(--mc-accent-text); cursor: pointer; font-size: .82rem; padding: 2px 4px; border-radius: 6px; flex-shrink: 0; }
+.mc-copy:hover { background: var(--mc-accent-soft); }
+.mc-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mc-done { text-align: center; padding: 10px 6px; }
+.mc-done > i { font-size: 2.6rem; color: var(--mc-ok); margin-bottom: 10px; display: block; }
+.mc-done h3 { font-family: 'Poppins', sans-serif; color: var(--mc-text); margin-bottom: 6px; }
+.mc-done p { color: var(--mc-text-2); line-height: 1.6; font-size: .9rem; }
+body.mc-lock { overflow: hidden; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1000px) { .mc-hero-stats { width: 100%; } }
+@media (max-width: 640px) {
+    .mc-hero { padding: 18px 16px; }
+    .mc-hero h1 { font-size: 1.35rem; }
+    .mc-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .mc-hero-actions .mc-hero-btn { flex: 1; justify-content: center; }
+    .mc-card, .mc-child { padding: 16px; }
+    .mc-stats { grid-template-columns: repeat(2, 1fr); }
+    .mc-facts, .mc-two, .mc-plans { grid-template-columns: 1fr; }
+    .mc-paybox { grid-template-columns: 1fr; }
+    .mc-toolbar .mc-select { flex: 1; }
+    .mc-child-head .mc-pill { display: none; }
+    .mc-actions .mc-btn { flex: 1; }
+    .mc-actions .mc-btn-danger { margin-left: 0; }
+    .mc-modal { padding: 0; align-items: flex-end; }
+    .mc-dialog, .mc-dialog.sm { width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0; animation-name: mcUp; }
+    @keyframes mcUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+}
+@media (prefers-reduced-motion: reduce) { .mc *, .mc *::before, .mc *::after { animation: none !important; transition: none !important; } }
+</style>
+
+{% set kids = children or [] %}
+{% set paid = kids|selectattr('plan.key', 'ne', 'free')|list %}
+{% set ending = paid|selectattr('plan.ending_soon')|list %}
+{% set opts = payment_options or {} %}
+
+<div class="mc" data-no-theme>
+
+    <!-- ===== Header ===== -->
+    <section class="mc-hero" aria-labelledby="mcTitle">
+        <div class="mc-hero-text">
+            <h1 id="mcTitle"><i class="fas fa-children" aria-hidden="true"></i> My children</h1>
+            <p>Follow each child's plan, grades, course progress, streaks and teachers, choose what you can see, and pay for their eSchool plan.</p>
+            <div class="mc-hero-actions">
+                {% if kids %}<button type="button" class="mc-hero-btn solid" data-pay><i class="fas fa-crown"></i> Pay for a plan</button>{% endif %}
+                <a href="/parent-link" class="mc-hero-btn"><i class="fas fa-user-plus"></i> Link a child</a>
+            </div>
+        </div>
+        <div class="mc-hero-stats">
+            <div class="mc-hero-stat"><strong>{{ kids|length }}</strong><span>Linked</span></div>
+            <div class="mc-hero-stat"><strong>{{ paid|length }}</strong><span>On Basic or Pro</span></div>
+            <div class="mc-hero-stat"><strong id="mcAvg">-</strong><span>Avg progress</span></div>
+            <div class="mc-hero-stat"><strong>{{ ending|length }}</strong><span>Plans ending soon</span></div>
+        </div>
+    </section>
+
+    <!-- ===== Notices ===== -->
+    <div class="mc-notices" id="mcNotices">
+        {% for c in ending %}
+        <div class="mc-notice bad">
+            <i class="fas fa-hourglass-end"></i>
+            <span><strong>{{ c.first_name }}'s {{ c.plan.name }} plan ends {{ c.plan.expires_on }}</strong> ({{ c.plan.time_left }}). Renew it to keep their access.</span>
+            <button type="button" class="mc-btn mc-btn-primary mc-btn-sm" data-pay data-child="{{ c.id }}" data-plan="{{ c.plan.key }}"><i class="fas fa-rotate-right"></i> Renew</button>
+        </div>
+        {% endfor %}
+        {% if pending_count %}
+        <div class="mc-notice warn">
+            <i class="fas fa-hourglass-half"></i>
+            <span>{{ pending_count }} link request{{ 's' if pending_count != 1 }} still waiting for your child's approval.</span>
+            <a class="mc-btn mc-btn-ghost mc-btn-sm" href="#mcRequests">View requests</a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if kids %}
+    <!-- ===== Toolbar ===== -->
+    <div class="mc-toolbar">
+        <div class="mc-search">
+            <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+            <input type="search" id="mcSearch" class="mc-input" placeholder="Search by name or teacher" aria-label="Search children">
+        </div>
+        <div class="mc-chips" role="group" aria-label="Filter by plan">
+            <button type="button" class="mc-chip" data-filter="all" aria-pressed="true">All<b>{{ kids|length }}</b></button>
+            <button type="button" class="mc-chip" data-filter="paid" aria-pressed="false">Paid<b>{{ paid|length }}</b></button>
+            <button type="button" class="mc-chip" data-filter="free" aria-pressed="false">Free<b>{{ kids|length - paid|length }}</b></button>
+            <button type="button" class="mc-chip" data-filter="ending" aria-pressed="false">Ending soon<b>{{ ending|length }}</b></button>
+        </div>
+        <select id="mcSort" class="mc-select" aria-label="Sort children">
+            <option value="name">Sort: Name</option>
+            <option value="progress">Sort: Most progress</option>
+            <option value="rank">Sort: Best monthly rank</option>
+            <option value="plan">Sort: Plan ending soonest</option>
+        </select>
+    </div>
+
+    <!-- ===== Children ===== -->
+    <section class="mc-grid" id="mcGrid" aria-label="Linked children">
+        {% for c in kids %}
+        {% set plan = c.plan %}
+        <article class="mc-child" id="child-{{ c.id }}"
+                 data-id="{{ c.id }}" data-link-id="{{ c.link_id }}"
+                 data-name="{{ c.name|lower }}" data-teachers="{{ (c.teachers or [])|join(' ')|lower }}"
+                 data-plan="{{ plan.key }}" data-ending="{{ 1 if plan.ending_soon else 0 }}"
+                 data-days="{{ plan.days_left if plan.days_left is not none else '' }}"
+                 data-progress="{{ c.avg_progress if (c.can_see_grades and c.avg_progress is not none) else '' }}"
+                 data-rank="{{ c.rank or '' }}">
+            <div class="mc-child-head">
+                <div class="mc-avatar">{% if c.avatar_url %}<img src="{{ c.avatar_url }}" alt="">{% else %}{{ c.name[:1]|upper }}{% endif %}</div>
+                <div style="min-width:0;">
+                    <h2 class="mc-name">{{ c.name }}</h2>
+                    <div class="mc-meta">
+                        <span><i class="fas fa-link"></i>{% if c.relationship %}{{ c.relationship }} · {% endif %}linked{% if c.linked_at %} {{ c.linked_at }}{% endif %}</span>
+                        <span><i class="fas fa-graduation-cap"></i>{{ c.grade or 'Grade not known yet' }}</span>
+                    </div>
+                </div>
+                <span class="mc-pill {{ plan.key }}">{% if plan.key == 'pro' %}<i class="fas fa-gem"></i>{% elif plan.key == 'basic' %}<i class="fas fa-crown"></i>{% endif %} {{ plan.name }}</span>
+            </div>
+
+            <!-- Plan + pay shortcut -->
+            <div class="mc-plan {{ plan.key }}{% if plan.ending_soon %} ending{% endif %}">
+                <div class="mc-plan-ic"><i class="fas {% if plan.key == 'pro' %}fa-gem{% elif plan.key == 'basic' %}fa-crown{% else %}fa-seedling{% endif %}"></i></div>
+                <div class="mc-plan-body">
+                    {% if plan.key == 'free' %}
+                    <div class="mc-plan-top"><strong>Free plan</strong>{% if plan.expired_plan %}<span>{{ plan.expired_plan }} has ended</span>{% endif %}</div>
+                    <div class="mc-sub">Upgrade to Basic or Pro to unlock more of eSchool.</div>
+                    {% else %}
+                    <div class="mc-plan-top"><strong>{{ plan.name }} · {{ plan.time_left }}</strong><span>Ends {{ plan.expires_on }}</span></div>
+                    {% if plan.percent_left is not none %}<div class="mc-bar {{ 'bad' if plan.ending_soon else plan.key }}"><i style="width: {{ plan.percent_left }}%"></i></div>{% endif %}
+                    {% endif %}
+                    <div class="mc-plan-wait" data-wait="{{ c.id }}" hidden><i class="fas fa-clock"></i><span></span></div>
+                </div>
+                <button type="button" class="mc-btn {{ 'mc-btn-primary' if (plan.key == 'free' or plan.ending_soon) else 'mc-btn-ghost' }} mc-btn-sm" data-pay data-child="{{ c.id }}" data-plan="{{ plan.key if plan.key != 'free' else 'basic' }}">
+                    {% if plan.key == 'free' %}<i class="fas fa-arrow-up"></i> Upgrade{% else %}<i class="fas fa-rotate-right"></i> Renew{% endif %}
+                </button>
+            </div>
+
+            <!-- Numbers -->
+            <div class="mc-stats">
+                <div class="mc-stat{% if c.rank and c.rank <= 3 %} gold{% endif %}"><strong>{% if c.rank %}#{{ c.rank }}{% else %}-{% endif %}</strong><span>Monthly rank</span></div>
+                <div class="mc-stat"><strong>{{ '{:,}'.format(c.ep_total or 0) }}</strong><span>Total EP · Lv {{ c.level or 1 }}</span></div>
+                {% if c.can_see_grades and c.has_summary and c.overall_grade %}
+                {% set g = c.gpa or 0 %}
+                <div class="mc-stat"><strong class="{{ 'g-excellent' if g >= 3.7 else 'g-good' if g >= 3.0 else 'g-average' if g >= 2.0 else 'g-poor' }}">{{ c.overall_grade }}</strong><span>GPA {{ '%.2f'|format(g) }}</span></div>
+                {% else %}
+                <div class="mc-stat"><strong class="mc-muted">{% if not c.can_see_grades %}<i class="fas fa-lock"></i>{% else %}-{% endif %}</strong><span>Grade</span></div>
+                {% endif %}
+                <div class="mc-stat"><strong><i class="fas fa-fire fire"></i> {{ c.quiz_streak or 0 }}</strong><span>Quiz streak</span></div>
+            </div>
+
+            <!-- Courses -->
+            {% if c.can_see_grades %}
+            <div>
+                <div class="mc-sec-label"><span>Courses{% if c.courses %} · {{ c.courses|length }}{% endif %}</span>{% if c.has_summary and c.courses %}<span>{{ c.avg_progress or 0 }}% overall</span>{% endif %}</div>
+                {% if c.courses %}
+                <div class="mc-courses">
+                    {% for co in c.courses %}
+                    <div>
+                        <div class="mc-course-top"><span>{{ co.name }}</span><strong>{{ co.progress }}%</strong></div>
+                        <div class="mc-bar {{ 'ok' if co.progress >= 100 else ('warn' if co.progress < 25 else '') }}"><i style="width: {{ co.progress }}%"></i></div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% elif c.has_summary %}
+                <p class="mc-locked"><i class="fas fa-book"></i>{{ c.first_name }} hasn't joined a course yet.</p>
+                {% else %}
+                <p class="mc-locked"><i class="fas fa-hourglass-half"></i>Progress shows up the next time {{ c.first_name }} opens their eSchool dashboard.</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <p class="mc-locked"><i class="fas fa-lock"></i>Grades and course progress are hidden. Turn on <strong>Grades &amp; GPA</strong> under Manage access to see them.</p>
+            {% endif %}
+
+            <!-- Facts -->
+            <div class="mc-facts">
+                <div class="mc-fact"><small>Achievements</small>
+                    {{ c.modules_completed or 0 }} module{{ 's' if c.modules_completed != 1 }} · {{ c.quizzes_passed or 0 }} quiz{{ 'zes' if c.quizzes_passed != 1 }} · {{ c.courses_completed or 0 }} course{{ 's' if c.courses_completed != 1 }} done
+                    <div class="mc-muted" style="font-size:.78rem; margin-top:2px;">Module streak {{ c.module_streak or 0 }} · {{ c.ep_month or 0 }} EP this month</div>
+                </div>
+                <div class="mc-fact"><small>Teachers followed</small>
+                    {% if c.teachers %}<div class="mc-tags">{% for t in c.teachers[:6] %}<span class="mc-tag">{{ t }}</span>{% endfor %}{% if c.teachers|length > 6 %}<span class="mc-tag">+{{ c.teachers|length - 6 }}</span>{% endif %}</div>
+                    {% else %}<span class="mc-muted">None yet</span>{% endif %}
+                </div>
+            </div>
+
+            <!-- Access -->
+            <div class="mc-perms" id="perm-{{ c.link_id }}" hidden>
+                <div class="mc-sec-label" style="margin-bottom:2px;"><span>What you can see</span></div>
+            </div>
+
+            <div class="mc-note" id="note-{{ c.link_id }}" aria-live="polite"></div>
+
+            <div class="mc-actions">
+                <a class="mc-btn mc-btn-ghost mc-btn-sm" href="{{ url_for('view_profile', user_id=c.id) }}"><i class="fas fa-user"></i> Profile</a>
+                <a class="mc-btn mc-btn-ghost mc-btn-sm" href="/messages"><i class="fas fa-comments"></i> Message</a>
+                <button type="button" class="mc-btn mc-btn-ghost mc-btn-sm" data-access="{{ c.link_id }}" aria-expanded="false" aria-controls="perm-{{ c.link_id }}"><i class="fas fa-sliders"></i> <span>Manage access</span></button>
+                <button type="button" class="mc-btn mc-btn-danger mc-btn-sm" data-unlink="{{ c.link_id }}" data-name="{{ c.name }}"><i class="fas fa-link-slash"></i> Unlink</button>
+            </div>
+
+            <div class="mc-foot"><i class="fas fa-rotate"></i>
+                {% if c.has_summary %}Progress updated {{ c.updated }}{% else %}No progress shared yet{% endif %}
+            </div>
+        </article>
+        {% endfor %}
+    </section>
+
+    <div class="mc-card" id="mcNoMatch" hidden>
+        <div class="mc-empty"><i class="fas fa-magnifying-glass"></i><h3>No matches</h3><p>No child matches this search or filter.</p>
+            <button type="button" class="mc-btn mc-btn-ghost" id="mcClear">Clear search and filter</button></div>
+    </div>
+
+    {% else %}
+    <div class="mc-card">
+        <div class="mc-empty">
+            <i class="fas fa-user-plus"></i>
+            <h3>No children linked yet</h3>
+            <p>Link your child's eSchool account to follow their grades, progress and plan, and to pay for Basic or Pro for them.</p>
+            <a href="/parent-link" class="mc-btn mc-btn-primary"><i class="fas fa-user-plus"></i> Link a child</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== Payments ===== -->
+    {% if kids %}
+    <section class="mc-card" id="mcPayments" aria-labelledby="mcPayTitle">
+        <div class="mc-card-head">
+            <h2 class="mc-card-title" id="mcPayTitle"><span class="ic"><i class="fas fa-receipt"></i></span>Plan payments</h2>
+            <button type="button" class="mc-btn mc-btn-primary mc-btn-sm" data-pay><i class="fas fa-plus"></i> New payment</button>
+        </div>
+        <div class="mc-note" id="payListNote" aria-live="polite"></div>
+        <div class="mc-list" id="payList"><p class="mc-sub">Loading payments...</p></div>
+    </section>
+    {% endif %}
+
+    <!-- ===== Link requests ===== -->
+    <section class="mc-card" id="mcRequests" aria-labelledby="mcReqTitle" hidden>
+        <div class="mc-card-head">
+            <h2 class="mc-card-title" id="mcReqTitle"><span class="ic"><i class="fas fa-envelope-open-text"></i></span>Link requests</h2>
+            <a class="mc-btn mc-btn-ghost mc-btn-sm" href="/parent-link"><i class="fas fa-user-plus"></i> New request</a>
+        </div>
+        <p class="mc-sub" style="margin-bottom:12px;">Requests that are waiting, declined or expired.</p>
+        <div class="mc-note" id="reqNote" aria-live="polite"></div>
+        <div class="mc-list" id="reqList"></div>
+    </section>
+
+    <!-- ===== Pay window ===== -->
+    <div class="mc-modal" id="payModal" aria-hidden="true">
+        <div class="mc-dialog" role="dialog" aria-modal="true" aria-labelledby="payTitle">
+            <div class="mc-dialog-head">
+                <div>
+                    <h2 id="payTitle">Pay for a plan</h2>
+                    <p id="paySub">Step 1 of 2 · Choose the plan</p>
+                </div>
+                <div class="mc-steps" aria-hidden="true" style="margin-left:auto;"><i class="on" data-dot="1"></i><i data-dot="2"></i><i data-dot="3"></i></div>
+                <button type="button" class="mc-x" data-close aria-label="Close" style="margin-left:6px;"><i class="fas fa-xmark"></i></button>
+            </div>
+
+            <!-- step 1 -->
+            <div class="mc-dialog-body" data-step="1">
+                <div class="mc-field">
+                    <label for="payChild">Child</label>
+                    <select id="payChild" class="mc-input">
+                        {% for c in kids %}<option value="{{ c.id }}">{{ c.name }} · now on {{ c.plan.name }}{% if c.plan.key != 'free' %} ({{ c.plan.time_left }}){% endif %}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mc-field">
+                    <span class="lbl" id="payPlanLbl">Plan</span>
+                    <div class="mc-plans" role="radiogroup" aria-labelledby="payPlanLbl" id="payPlans"></div>
+                    <div class="mc-note info" id="payPlanNote"></div>
+                </div>
+                <div class="mc-field">
+                    <span class="lbl" id="payLenLbl">How long</span>
+                    <div class="mc-lengths" role="radiogroup" aria-labelledby="payLenLbl" id="payLengths"></div>
+                </div>
+                <div class="mc-total"><span id="paySummary">-</span><strong id="payTotal">-</strong></div>
+            </div>
+
+            <!-- step 2 -->
+            <div class="mc-dialog-body" data-step="2" hidden>
+                <div class="mc-total"><span id="paySummary2">-</span><strong id="payTotal2">-</strong></div>
+                <div id="payReady">
+                    <div class="mc-sec-label"><span>Pay with M-Pesa</span></div>
+                    <ol class="mc-howto" id="payHow"></ol>
+                    <div class="mc-paybox" id="payBox" style="margin-top:12px;"></div>
+                </div>
+                <div class="mc-notice warn" id="payNotReady" hidden style="box-shadow:none; margin:0;">
+                    <i class="fas fa-circle-info"></i><span>Online payments are not set up yet. Please contact the school to pay for a plan.</span>
+                </div>
+                <div class="mc-two">
+                    <div class="mc-field">
+                        <label for="payCode">M-Pesa code</label>
+                        <input id="payCode" class="mc-input mc-code" maxlength="12" autocomplete="off" placeholder="e.g. SJK3H7XQ2P" style="text-transform:uppercase;">
+                    </div>
+                    <div class="mc-field">
+                        <label for="payPhone">Phone that paid <span class="mc-muted" style="font-weight:500;">(optional)</span></label>
+                        <input id="payPhone" class="mc-input" type="tel" inputmode="tel" autocomplete="tel" placeholder="07XX XXX XXX">
+                    </div>
+                </div>
+                <p class="mc-sub">eSchool checks the code against the M-Pesa statement, usually {{ opts.confirm_time or 'within 24 hours' }}. The plan starts as soon as it is confirmed, and you both get a notification.</p>
+            </div>
+
+            <!-- step 3 -->
+            <div class="mc-dialog-body" data-step="3" hidden>
+                <div class="mc-done">
+                    <i class="fas fa-circle-check"></i>
+                    <h3>Payment sent for checking</h3>
+                    <p id="payDoneText"></p>
+                </div>
+            </div>
+
+            <div class="mc-dialog-foot">
+                <span class="mc-note" id="payNote" aria-live="polite"></span>
+                <button type="button" class="mc-btn mc-btn-ghost" id="payBack" hidden><i class="fas fa-arrow-left"></i> Back</button>
+                <button type="button" class="mc-btn mc-btn-primary" id="payNext">Continue <i class="fas fa-arrow-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Confirm window (unlink / cancel / withdraw) ===== -->
+    <div class="mc-modal" id="confirmModal" aria-hidden="true">
+        <div class="mc-dialog sm" role="dialog" aria-modal="true" aria-labelledby="confirmHeading" aria-describedby="confirmText">
+            <div class="mc-dialog-head">
+                <h2 id="confirmHeading">Are you sure?</h2>
+                <button type="button" class="mc-x" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="mc-dialog-body"><p class="mc-sub" id="confirmText" style="font-size:.92rem;"></p></div>
+            <div class="mc-dialog-foot">
+                <span class="mc-note bad" id="confirmNote" aria-live="polite"></span>
+                <button type="button" class="mc-btn mc-btn-ghost" data-close>Keep</button>
+                <button type="button" class="mc-btn mc-btn-danger solid" id="confirmOk"><span id="confirmOkLabel">Unlink</span></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var CHILDREN = {{ kids|tojson }};
+    var OPTIONS = {{ opts|tojson }};
+    var PERMISSIONS = [
+        { key: 'grades',        icon: 'fa-chart-line',     title: 'Grades & GPA',      desc: 'Results, GPA and course progress' },
+        { key: 'schedule',      icon: 'fa-calendar-alt',   title: 'Schedule',          desc: 'Classes, assignments and exam dates' },
+        { key: 'attendance',    icon: 'fa-clipboard-user', title: 'Attendance',        desc: 'Presence, lateness and absences' },
+        { key: 'resources',     icon: 'fa-book-open',      title: 'Learning activity', desc: 'Resources viewed and teacher requests' },
+        { key: 'notifications', icon: 'fa-bell',           title: 'Notifications',     desc: 'Alerts about deadlines and missed events' },
+        { key: 'messages',      icon: 'fa-comments',       title: 'Messages',          desc: 'Read their conversations on Parental controls (your child is told)' }
+    ];
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function say(el, msg, type) { if (!el) return; el.className = 'mc-note ' + (type || 'info'); el.textContent = msg || ''; }
+    function money(n) { return 'KES ' + Number(n || 0).toLocaleString('en-KE'); }
+    function lengthName(d) { return d === 30 ? '1 month' : d === 90 ? '3 months' : d === 365 ? '12 months' : d + ' days'; }
+    function niceDate(iso) { if (!iso) return ''; var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }); }
+    function childById(id) { return CHILDREN.filter(function (c) { return String(c.id) === String(id); })[0]; }
+    async function api(url, options) {
+        var res = await fetch(url, Object.assign({ credentials: 'same-origin' }, options || {}));
+        if (res.status === 401) { window.location.href = '/Login'; throw new Error('Please sign in again.'); }
+        var data = null;
+        try { data = await res.json(); } catch (e) { /* no body */ }
+        if (!res.ok || (data && data.success === false)) {
+            var err = new Error((data && (data.message || data.error)) || ('Something went wrong (' + res.status + ').'));
+            err.status = res.status; throw err;
+        }
+        return data || {};
+    }
+
+    /* ---------- dialogs: Esc, focus trap, return focus ---------- */
+    var openModal = null, lastFocus = null;
+    function showModal(m) {
+        lastFocus = document.activeElement; openModal = m;
+        m.classList.add('open'); m.setAttribute('aria-hidden', 'false'); document.body.classList.add('mc-lock');
+        var f = m.querySelector('select, input, button:not([data-close])') || m.querySelector('button');
+        if (f) setTimeout(function () { f.focus(); }, 30);
+    }
+    function hideModal(m) {
+        m = m || openModal; if (!m) return;
+        m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); document.body.classList.remove('mc-lock');
+        openModal = null; if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+    document.querySelectorAll('.mc-modal').forEach(function (m) {
+        m.addEventListener('click', function (e) { if (e.target === m || e.target.closest('[data-close]')) hideModal(m); });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (!openModal) return;
+        if (e.key === 'Escape') { hideModal(); return; }
+        if (e.key !== 'Tab') return;
+        var f = Array.prototype.filter.call(openModal.querySelectorAll('button, a[href], input, select'), function (el) { return !el.disabled && el.offsetParent !== null; });
+        if (!f.length) return;
+        if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    });
+
+    /* ---------- confirm window ---------- */
+    var confirmFn = null;
+    function askConfirm(heading, text, okLabel, fn) {
+        $('confirmHeading').textContent = heading; $('confirmText').textContent = text;
+        $('confirmOkLabel').textContent = okLabel; say($('confirmNote'), '');
+        confirmFn = fn; $('confirmOk').disabled = false;
+        showModal($('confirmModal'));
+    }
+    $('confirmOk').addEventListener('click', async function () {
+        if (!confirmFn) return;
+        this.disabled = true;
+        try { await confirmFn(); hideModal($('confirmModal')); }
+        catch (err) { say($('confirmNote'), err.message, 'bad'); this.disabled = false; }
+    });
+
+    /* ---------- average progress ---------- */
+    (function () {
+        var vals = CHILDREN.filter(function (c) { return c.can_see_grades && c.avg_progress != null; }).map(function (c) { return c.avg_progress; });
+        if ($('mcAvg')) $('mcAvg').textContent = vals.length ? Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length) + '%' : '-';
+    })();
+
+    /* ---------- search, filter, sort ---------- */
+    var grid = $('mcGrid'), filter = 'all';
+    function applyFilters() {
+        if (!grid) return;
+        var q = ($('mcSearch').value || '').trim().toLowerCase(), shown = 0;
+        Array.prototype.forEach.call(grid.children, function (card) {
+            var d = card.dataset;
+            var okQ = !q || d.name.indexOf(q) > -1 || d.teachers.indexOf(q) > -1;
+            var okF = filter === 'all' || (filter === 'paid' && d.plan !== 'free') || (filter === 'free' && d.plan === 'free') || (filter === 'ending' && d.ending === '1');
+            card.hidden = !(okQ && okF); if (!card.hidden) shown++;
+        });
+        $('mcNoMatch').hidden = shown > 0;
+    }
+    function applySort() {
+        if (!grid) return;
+        var by = $('mcSort').value;
+        function n(v, empty) { var x = parseFloat(v); return isNaN(x) ? empty : x; }
+        Array.prototype.slice.call(grid.children).sort(function (a, b) {
+            if (by === 'progress') return n(b.dataset.progress, -1) - n(a.dataset.progress, -1);
+            if (by === 'rank') return n(a.dataset.rank, 1e9) - n(b.dataset.rank, 1e9);
+            if (by === 'plan') return n(a.dataset.days, 1e9) - n(b.dataset.days, 1e9);
+            return a.dataset.name.localeCompare(b.dataset.name);
+        }).forEach(function (c) { grid.appendChild(c); });
+    }
+    if (grid) {
+        $('mcSearch').addEventListener('input', applyFilters);
+        $('mcSort').addEventListener('change', applySort);
+        document.querySelectorAll('[data-filter]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                filter = b.dataset.filter;
+                document.querySelectorAll('[data-filter]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+                applyFilters();
+            });
+        });
+        $('mcClear').addEventListener('click', function () { $('mcSearch').value = ''; document.querySelector('[data-filter="all"]').click(); });
+    }
+
+    /* ---------- manage access ---------- */
+    function permsOf(linkId) { var c = CHILDREN.filter(function (x) { return String(x.link_id) === String(linkId); })[0]; return c ? (c.permissions || {}) : {}; }
+    document.querySelectorAll('[data-access]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.dataset.access, panel = $('perm-' + id);
+            if (!panel.querySelector('.mc-perm')) {
+                var p = permsOf(id);
+                panel.insertAdjacentHTML('beforeend', PERMISSIONS.map(function (x) {
+                    return '<div class="mc-perm"><i class="fas ' + x.icon + '"></i><div class="mc-perm-text"><strong>' + esc(x.title) + '</strong><span>' + esc(x.desc) + '</span></div>' +
+                           '<label class="mc-switch"><input type="checkbox" role="switch" aria-label="' + esc(x.title) + '" data-perm="' + x.key + '"' + (p[x.key] ? ' checked' : '') + '><span class="mc-slider"></span></label></div>';
+                }).join(''));
+                panel.addEventListener('change', function (e) { if (e.target.dataset.perm) savePerm(id, e.target); });
+            }
+            panel.hidden = !panel.hidden;
+            btn.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+            btn.querySelector('span').textContent = panel.hidden ? 'Manage access' : 'Hide access';
+        });
+    });
+    async function savePerm(linkId, input) {
+        var c = CHILDREN.filter(function (x) { return String(x.link_id) === String(linkId); })[0];
+        var next = Object.assign({}, c.permissions || {}); next[input.dataset.perm] = input.checked;
+        input.disabled = true;
+        try {
+            await api('/api/parent/links/' + linkId + '/permissions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions: next }) });
+            c.permissions = next;
+            if (input.dataset.perm === 'grades') { say($('note-' + linkId), 'Saved. Reloading to update what you can see...', 'ok'); setTimeout(function () { location.reload(); }, 700); }
+            else say($('note-' + linkId), 'Access saved.', 'ok');
+        } catch (err) {
+            input.checked = !input.checked; say($('note-' + linkId), err.message, 'bad');
+        } finally { input.disabled = false; }
+    }
+
+    /* ---------- unlink ---------- */
+    document.querySelectorAll('[data-unlink]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.dataset.unlink, name = btn.dataset.name;
+            askConfirm('Unlink ' + name + '?',
+                "You will immediately lose access to " + name + "'s grades, progress and plan. Paid plans keep running. To reconnect you'll need a new code or approval.",
+                'Unlink', async function () {
+                    await api('/api/parent/links/' + id, { method: 'DELETE' });
+                    say($('note-' + id), name + ' was unlinked. Updating the page...', 'ok');
+                    setTimeout(function () { location.reload(); }, 800);
+                });
+        });
+    });
+
+    /* ---------- link requests ---------- */
+    async function loadRequests() {
+        var section = $('mcRequests'), links = [];
+        try { links = (await api('/api/parent/links')).links || []; }
+        catch (e) { section.hidden = false; say($('reqNote'), "Couldn't load link requests. " + e.message, 'bad'); return; }
+        var items = links.filter(function (l) { return l.status !== 'active'; });
+        section.hidden = !items.length;
+        $('reqList').innerHTML = items.map(function (l) {
+            var name = l.student_name || 'Student';
+            var rel = l.relationship ? esc(l.relationship.charAt(0).toUpperCase() + l.relationship.slice(1)) + ' · ' : '';
+            var line = l.status === 'pending' ? 'Requested ' + esc(niceDate(l.requested_at)) + (l.expires_at ? ' · expires ' + esc(niceDate(l.expires_at)) : '')
+                     : l.status === 'declined' ? 'Your child declined this request' : 'This request expired';
+            var actions = l.status === 'pending'
+                ? '<button type="button" class="mc-btn mc-btn-ghost mc-btn-sm" data-resend="' + l.id + '"><i class="fas fa-rotate-right"></i> Resend</button>' +
+                  '<button type="button" class="mc-btn mc-btn-danger mc-btn-sm" data-cancel="' + l.id + '"><i class="fas fa-xmark"></i> Cancel</button>'
+                : '<a class="mc-btn mc-btn-ghost mc-btn-sm" href="/parent-link"><i class="fas fa-rotate-right"></i> Request again</a>' +
+                  '<button type="button" class="mc-btn mc-btn-danger mc-btn-sm" data-cancel="' + l.id + '"><i class="fas fa-trash"></i> Remove</button>';
+            var av = l.student_avatar_url ? '<img src="' + esc(l.student_avatar_url) + '" alt="">' : esc(name.charAt(0).toUpperCase());
+            return '<div class="mc-row ' + esc(l.status) + '"><div class="mc-avatar sm">' + av + '</div>' +
+                   '<div class="mc-row-info"><h4>' + esc(name) + '</h4><p>' + esc(l.student_email_masked || '') + '</p><p>' + rel + line + '</p></div>' +
+                   '<span class="mc-pill ' + esc(l.status) + '">' + esc(l.status) + '</span><div class="mc-row-actions">' + actions + '</div></div>';
+        }).join('');
+    }
+    $('reqList').addEventListener('click', async function (e) {
+        var r = e.target.closest('[data-resend]'), c = e.target.closest('[data-cancel]');
+        if (r) {
+            r.disabled = true;
+            try { await api('/api/parent/links/' + r.dataset.resend + '/resend', { method: 'POST' }); say($('reqNote'), 'Request sent again.', 'ok'); loadRequests(); }
+            catch (err) { say($('reqNote'), err.status === 429 ? 'You can resend a request once every 24 hours.' : err.message, 'bad'); r.disabled = false; }
+        } else if (c) {
+            askConfirm('Cancel this request?', 'Your child will no longer be able to approve it. You can send a new request at any time.', 'Cancel request', async function () {
+                await api('/api/parent/links/' + c.dataset.cancel, { method: 'DELETE' });
+                say($('reqNote'), 'Request removed.', 'ok'); loadRequests();
+            });
+        }
+    });
+    loadRequests();
+
+    /* ---------- payments list ---------- */
+    var PAYMENTS = [];
+    async function loadPayments() {
+        if (!$('payList')) return;
+        try {
+            var data = await api('/api/parent/payments');
+            PAYMENTS = data.payments || [];
+            if (data.options) OPTIONS = data.options;
+        } catch (e) { $('payList').innerHTML = ''; say($('payListNote'), "Couldn't load payments. " + e.message, 'bad'); return; }
+        renderPayments();
+    }
+    function renderPayments() {
+        // pending payment shown on each child's plan box
+        document.querySelectorAll('[data-wait]').forEach(function (el) { el.hidden = true; });
+        PAYMENTS.filter(function (p) { return p.status === 'pending'; }).forEach(function (p) {
+            var el = document.querySelector('[data-wait="' + p.student_id + '"]');
+            if (el) { el.hidden = false; el.querySelector('span').textContent = p.plan_name + ' for ' + lengthName(p.days) + ' paid, waiting to be confirmed'; }
+        });
+        if (!PAYMENTS.length) {
+            $('payList').innerHTML = '<div class="mc-empty" style="padding:18px 10px;"><i class="fas fa-receipt"></i><p style="margin-bottom:0;">No payments yet. Use <strong>Pay for a plan</strong> to upgrade or renew a child\'s plan.</p></div>';
+            return;
+        }
+        var label = { pending: 'Waiting to be checked', confirmed: 'Confirmed', rejected: 'Not confirmed', cancelled: 'Withdrawn' };
+        $('payList').innerHTML = PAYMENTS.map(function (p) {
+            var extra = p.status === 'rejected' && p.note ? ' · ' + esc(p.note) : '';
+            var act = p.status === 'pending' ? '<button type="button" class="mc-btn mc-btn-danger mc-btn-sm" data-withdraw="' + p.id + '"><i class="fas fa-xmark"></i> Withdraw</button>' : '';
+            return '<div class="mc-row ' + esc(p.status) + '"><div class="mc-row-info"><h4>' + esc(p.student_name) + ' · ' + esc(p.plan_name) + ' for ' + esc(lengthName(p.days)) + '</h4>' +
+                   '<p>M-Pesa code <span class="mc-code">' + esc(p.reference) + '</span> · ' + esc(niceDate(p.created_at)) + extra + '</p></div>' +
+                   '<span class="mc-row-amount">' + money(p.amount) + '</span><span class="mc-pill ' + esc(p.status) + '">' + esc(label[p.status] || p.status) + '</span>' +
+                   (act ? '<div class="mc-row-actions">' + act + '</div>' : '') + '</div>';
+        }).join('');
+    }
+    if ($('payList')) {
+        $('payList').addEventListener('click', function (e) {
+            var w = e.target.closest('[data-withdraw]'); if (!w) return;
+            askConfirm('Withdraw this payment?', "Do this if you typed the wrong M-Pesa code. eSchool won't check it, and you can send the right code as a new payment.", 'Withdraw', async function () {
+                await api('/api/parent/payments/' + w.dataset.withdraw, { method: 'DELETE' });
+                say($('payListNote'), 'Payment withdrawn.', 'ok'); loadPayments();
+            });
+        });
+        loadPayments();
+    }
+
+    /* ---------- pay window ---------- */
+    var pay = { step: 1, child: null, plan: 'basic', days: 30 };
+    function planOf(key) { return (OPTIONS.plans || []).filter(function (p) { return p.key === key; })[0]; }
+    function priceOf(plan, days) { var p = planOf(plan); var x = p && p.prices.filter(function (r) { return r.days === days; })[0]; return x ? x.amount : 0; }
+    function blockedPlan(child, key) { return child && child.plan && child.plan.key !== 'free' && child.plan.key !== key ? child.plan : null; }
+    function renderPlans() {
+        var child = childById(pay.child);
+        $('payPlans').innerHTML = (OPTIONS.plans || []).map(function (p) {
+            var blocked = blockedPlan(child, p.key);
+            return '<label class="mc-opt"><input type="radio" name="payPlan" value="' + p.key + '"' + (pay.plan === p.key ? ' checked' : '') + (blocked ? ' disabled' : '') + '>' +
+                   '<span class="mc-opt-box"><span class="mc-opt-title"><i class="fas ' + (p.key === 'pro' ? 'fa-gem' : 'fa-crown') + '"></i>' + esc(p.name) + '</span>' +
+                   '<span class="mc-opt-sub">' + esc(p.tagline) + ' · from ' + money(p.prices[0] && p.prices[0].amount) + '</span>' +
+                   '<ul>' + p.features.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></span></label>';
+        }).join('');
+        var b = (OPTIONS.plans || []).map(function (p) { return blockedPlan(child, p.key); }).filter(Boolean)[0];
+        say($('payPlanNote'), b ? child.first_name + ' is on ' + b.name + ' until ' + b.expires_on + '. You can renew ' + b.name + ' now, or switch after it ends.' :
+            (child && child.plan.key !== 'free' ? 'Paying for the same plan adds the time to the end of the current one.' : ''), 'info');
+    }
+    function renderLengths() {
+        var p = planOf(pay.plan); if (!p) return;
+        if (!p.prices.some(function (r) { return r.days === pay.days; })) pay.days = p.prices[0].days;
+        var monthly = p.prices[0].amount / (p.prices[0].days / 30);
+        $('payLengths').innerHTML = p.prices.map(function (r) {
+            var months = r.days / 30, per = r.amount / months, save = Math.round((1 - per / monthly) * 100);
+            return '<label class="mc-opt"><input type="radio" name="payLen" value="' + r.days + '"' + (pay.days === r.days ? ' checked' : '') + '>' +
+                   '<span class="mc-opt-box"><span class="mc-len-name">' + esc(lengthName(r.days)) + '</span><span class="mc-len-price">' + money(r.amount) + '</span>' +
+                   '<span class="mc-len-per">' + (save > 0 ? 'Save ' + save + '%' : money(Math.round(per)) + ' a month') + '</span></span></label>';
+        }).join('');
+        updateTotal();
+    }
+    function updateTotal() {
+        var child = childById(pay.child), p = planOf(pay.plan), amount = priceOf(pay.plan, pay.days);
+        var text = (child ? child.first_name : '') + ' · ' + (p ? p.name : '') + ' for ' + lengthName(pay.days);
+        $('paySummary').textContent = text; $('paySummary2').textContent = text;
+        $('payTotal').textContent = money(amount); $('payTotal2').textContent = money(amount);
+    }
+    function copyBtn(v) { return '<button type="button" class="mc-copy" data-copy="' + esc(v) + '" aria-label="Copy ' + esc(v) + '"><i class="fas fa-copy"></i></button>'; }
+    function renderHow() {
+        var child = childById(pay.child), amount = priceOf(pay.plan, pay.days);
+        var account = 'ES' + pay.child;
+        var steps = [], box = [];
+        if (OPTIONS.paybill) {
+            steps = ['On your phone open <strong>M-Pesa</strong> and choose <strong>Lipa na M-Pesa</strong>, then <strong>Pay Bill</strong>.',
+                     'Enter business number <strong>' + esc(OPTIONS.paybill) + '</strong> and account number <strong>' + esc(account) + '</strong> (this is ' + esc(child.first_name) + '\'s eSchool number).',
+                     'Pay exactly <strong>' + money(amount) + '</strong>, then type the M-Pesa code from the confirmation SMS below.'];
+            box = [['Business no.', OPTIONS.paybill], ['Account no.', account], ['Amount', String(amount)]];
+        } else {
+            steps = ['On your phone open <strong>M-Pesa</strong> and choose <strong>Lipa na M-Pesa</strong>, then <strong>Buy Goods and Services</strong>.',
+                     'Enter till number <strong>' + esc(OPTIONS.till) + '</strong> (' + esc(OPTIONS.account_name) + ').',
+                     'Pay exactly <strong>' + money(amount) + '</strong>, then type the M-Pesa code from the confirmation SMS below.'];
+            box = [['Till no.', OPTIONS.till], ['Pay to', OPTIONS.account_name], ['Amount', String(amount)]];
+        }
+        $('payHow').innerHTML = steps.map(function (s) { return '<li><span>' + s + '</span></li>'; }).join('');
+        $('payBox').innerHTML = box.map(function (b) { return '<div class="mc-payval"><small>' + esc(b[0]) + '</small><b><span>' + esc(b[0] === 'Amount' ? money(b[1]) : b[1]) + '</span>' + (b[0] === 'Pay to' ? '' : copyBtn(b[1])) + '</b></div>'; }).join('');
+    }
+    function goStep(n) {
+        pay.step = n;
+        document.querySelectorAll('#payModal [data-step]').forEach(function (el) { el.hidden = el.dataset.step !== String(n); });
+        document.querySelectorAll('#payModal [data-dot]').forEach(function (d) { d.classList.toggle('on', Number(d.dataset.dot) <= n); });
+        $('paySub').textContent = n === 1 ? 'Step 1 of 2 · Choose the plan' : n === 2 ? 'Step 2 of 2 · Pay and enter the code' : 'Done';
+        $('payBack').hidden = n !== 2;
+        $('payNext').hidden = false;
+        $('payNext').disabled = false;
+        if (n === 1) $('payNext').innerHTML = 'Continue <i class="fas fa-arrow-right"></i>';
+        if (n === 2) {
+            $('payReady').hidden = !OPTIONS.ready; $('payNotReady').hidden = !!OPTIONS.ready;
+            if (OPTIONS.ready) renderHow();
+            $('payCode').disabled = $('payPhone').disabled = !OPTIONS.ready;
+            $('payNext').innerHTML = '<i class="fas fa-paper-plane"></i> Send for checking';
+            $('payNext').disabled = !OPTIONS.ready;
+            if (OPTIONS.ready) setTimeout(function () { $('payCode').focus(); }, 30);
+        }
+        if (n === 3) $('payNext').innerHTML = 'Done';
+        say($('payNote'), '');
+    }
+    function openPay(childId, plan) {
+        if (!CHILDREN.length) return;
+        pay.child = childId || CHILDREN[0].id;
+        var child = childById(pay.child);
+        pay.plan = plan || (child.plan.key !== 'free' ? child.plan.key : 'basic');
+        pay.days = 30;
+        $('payChild').value = String(pay.child);
+        $('payCode').value = ''; $('payPhone').value = '';
+        renderPlans(); renderLengths(); goStep(1);
+        showModal($('payModal'));
+    }
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-pay]'); if (b) { openPay(b.dataset.child, b.dataset.plan); return; }
+        var cp = e.target.closest('[data-copy]');
+        if (cp) {
+            var v = cp.dataset.copy, done = function () { say($('payNote'), 'Copied ' + v + '.', 'ok'); };
+            if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(v).then(done, function () { say($('payNote'), 'Copy it by hand: ' + v, 'info'); });
+            else say($('payNote'), 'Copy it by hand: ' + v, 'info');
+        }
+    });
+    if ($('payChild')) {
+        $('payChild').addEventListener('change', function () {
+            pay.child = this.value; var c = childById(pay.child);
+            if (blockedPlan(c, pay.plan)) pay.plan = c.plan.key;
+            renderPlans(); renderLengths();
+        });
+        $('payPlans').addEventListener('change', function (e) { if (e.target.name === 'payPlan') { pay.plan = e.target.value; renderLengths(); } });
+        $('payLengths').addEventListener('change', function (e) { if (e.target.name === 'payLen') { pay.days = Number(e.target.value); updateTotal(); } });
+        $('payBack').addEventListener('click', function () { goStep(1); });
+        $('payCode').addEventListener('input', function () { this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10); });
+        $('payNext').addEventListener('click', async function () {
+            if (pay.step === 1) {
+                if (blockedPlan(childById(pay.child), pay.plan)) { say($('payNote'), 'Choose the plan your child is already on.', 'bad'); return; }
+                goStep(2); return;
+            }
+            if (pay.step === 3) { hideModal($('payModal')); return; }
+            var code = $('payCode').value.trim();
+            if (!/^[A-Z0-9]{10}$/.test(code)) { say($('payNote'), 'The M-Pesa code has 10 letters and numbers, like SJK3H7XQ2P.', 'bad'); $('payCode').focus(); return; }
+            var btn = this; btn.disabled = true; say($('payNote'), 'Sending...', 'info');
+            try {
+                await api('/api/parent/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ student_id: Number(pay.child), plan: pay.plan, days: pay.days, reference: code, phone: $('payPhone').value.trim() }) });
+                var child = childById(pay.child), p = planOf(pay.plan);
+                $('payDoneText').textContent = money(priceOf(pay.plan, pay.days)) + ' for ' + child.first_name + "'s " + p.name + ' plan (' + lengthName(pay.days) + ') was sent with code ' + code +
+                    '. It will be checked ' + (OPTIONS.confirm_time || 'soon') + ', and the plan starts as soon as it is confirmed. You will get a notification.';
+                goStep(3); loadPayments();
+            } catch (err) { say($('payNote'), err.message, 'bad'); btn.disabled = false; }
+        });
+    }
+    // open straight from a link like /parent-children#pay
+    if (location.hash === '#pay' && CHILDREN.length) openPay();
+})();
+</script>
+{% endblock %}

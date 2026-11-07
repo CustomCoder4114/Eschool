@@ -1,0 +1,597 @@
+{% extends "Parent/parent-body.html" %}
+
+{% block allcontent %}
+{#
+    PARENT PAGE - Learner Progress  (templates/Parent/parent-progress.html)
+    A full progress report for each linked child, from what eSchool records:
+      GET /api/parent/children                         linked children + what each allows
+      GET /api/parent/children/<id>/progress?range=    summary, courses, results, activity,
+                                                       private lessons, teacher notes, achievements
+    (see "PARENT: LEARNER PROGRESS" in backen.py). Parts the child hasn't shared show a lock.
+#}
+<style>
+/* ======================================================================
+   LEARNER PROGRESS
+   Scoped to .pp so nothing leaks into the rest of the site. Own light and
+   dark colours (data-no-theme); the main colour follows Settings >
+   Appearance through --primary-color. No pop-ups.
+   ====================================================================== */
+.pp {
+    --pp-accent: var(--primary-color, #4361ee);
+    --pp-accent-2: var(--secondary-color, #3a0ca3);
+    --pp-accent-dark: var(--primary-dark, #2a44c7);
+    --pp-accent-soft: color-mix(in srgb, var(--pp-accent) 11%, transparent);
+    --pp-accent-line: color-mix(in srgb, var(--pp-accent) 35%, transparent);
+    --pp-accent-text: var(--pp-accent);
+    --pp-surface: #ffffff; --pp-surface-2: #f8fafc; --pp-hover: #f1f5f9;
+    --pp-border: #e5e7eb; --pp-track: #e8edf3;
+    --pp-text: #0f172a; --pp-text-2: #475569; --pp-text-3: #64748b;
+    --pp-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06);
+    --pp-ok: #059669;   --pp-ok-soft: #ecfdf5;
+    --pp-warn: #b45309; --pp-warn-soft: #fffbeb;
+    --pp-bad: #dc2626;  --pp-bad-soft: #fef2f2;
+    --pp-info: #2563eb; --pp-info-soft: #eff6ff;
+    --pp-gold: #d99a00; --pp-fire: #ea580c;
+    --pp-radius: 16px;
+    max-width: 1360px; margin: 0 auto; padding: 6px 0 28px;
+    font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--pp-text);
+}
+body.dark-mode .pp {
+    --pp-accent-soft: color-mix(in srgb, var(--pp-accent) 20%, transparent);
+    --pp-accent-line: color-mix(in srgb, var(--pp-accent) 45%, transparent);
+    --pp-accent-text: color-mix(in srgb, var(--pp-accent) 55%, #ffffff);
+    --pp-surface: #111827; --pp-surface-2: #0f172a; --pp-hover: #1e293b;
+    --pp-border: #263244; --pp-track: #263244;
+    --pp-text: #e5e7eb; --pp-text-2: #cbd5e1; --pp-text-3: #94a3b8;
+    --pp-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25);
+    --pp-ok: #34d399;   --pp-ok-soft: rgba(16, 185, 129, .14);
+    --pp-warn: #fbbf24; --pp-warn-soft: rgba(245, 158, 11, .14);
+    --pp-bad: #f87171;  --pp-bad-soft: rgba(239, 68, 68, .14);
+    --pp-info: #60a5fa; --pp-info-soft: rgba(59, 130, 246, .14);
+    --pp-gold: #fbbf24; --pp-fire: #fb923c;
+}
+.pp *, .pp *::before, .pp *::after { box-sizing: border-box; }
+.pp h1, .pp h2, .pp h3, .pp h4, .pp p { margin: 0; }
+.pp button, .pp input, .pp select { font-family: inherit; }
+.pp :focus-visible { outline: 3px solid var(--pp-accent-line); outline-offset: 2px; }
+.pp [hidden] { display: none !important; }
+
+/* header */
+.pp-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 22px 26px; margin-bottom: 14px;
+    border-radius: var(--pp-radius); color: #fff; background: linear-gradient(135deg, var(--pp-accent), var(--pp-accent-2)); box-shadow: var(--pp-shadow); }
+.pp-hero::after { content: ""; position: absolute; right: -70px; top: -90px; width: 280px; height: 280px; border-radius: 50%; background: rgba(255, 255, 255, .08); pointer-events: none; }
+.pp-hero-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: rgba(255, 255, 255, .18); border: 1px solid rgba(255, 255, 255, .28); position: relative; z-index: 1; flex-shrink: 0; }
+.pp-hero-text { flex: 1; min-width: 240px; position: relative; z-index: 1; }
+.pp-hero h1 { font-family: 'Poppins', sans-serif; font-size: 1.6rem; font-weight: 700; color: #fff; }
+.pp-hero p { margin-top: 5px; opacity: .93; font-size: .93rem; line-height: 1.55; color: #fff; max-width: 660px; }
+
+/* toolbar */
+.pp-toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 12px 14px; margin-bottom: 14px;
+    background: var(--pp-surface); border: 1px solid var(--pp-border); border-radius: var(--pp-radius); box-shadow: var(--pp-shadow); }
+.pp-kids { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.pp-kids::-webkit-scrollbar { display: none; }
+.pp-kid { flex-shrink: 0; display: flex; align-items: center; gap: 9px; padding: 5px 14px 5px 5px; border: 1px solid var(--pp-border); background: var(--pp-surface); border-radius: 99px;
+    cursor: pointer; font-size: .88rem; font-weight: 600; color: var(--pp-text-2); text-align: left; }
+.pp-kid small { display: block; font-weight: 500; color: var(--pp-text-3); font-size: .7rem; }
+.pp-kid:hover { background: var(--pp-hover); color: var(--pp-text); }
+.pp-kid[aria-pressed="true"] { background: var(--pp-accent); border-color: var(--pp-accent); color: #fff; }
+.pp-kid[aria-pressed="true"] small { color: rgba(255, 255, 255, .85); }
+.pp-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pp-select, .pp-input { padding: 9px 12px; border: 1px solid var(--pp-border); border-radius: 10px; font-size: .88rem; background: var(--pp-surface); color: var(--pp-text); }
+.pp-select { cursor: pointer; }
+.pp-input::placeholder { color: var(--pp-text-3); }
+.pp-select:focus, .pp-input:focus { outline: none; border-color: var(--pp-accent); box-shadow: 0 0 0 3px var(--pp-accent-soft); }
+.pp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 14px; border-radius: 10px; border: 1px solid transparent; cursor: pointer;
+    font-weight: 600; font-size: .85rem; text-decoration: none; line-height: 1.2; transition: background-color .15s, border-color .15s, color .15s; }
+.pp-btn-primary { background: var(--pp-accent); color: #fff; }
+.pp-btn-primary:hover { background: var(--pp-accent-dark); color: #fff; }
+.pp-btn-ghost { background: var(--pp-surface); color: var(--pp-text-2); border-color: var(--pp-border); }
+.pp-btn-ghost:hover { background: var(--pp-hover); color: var(--pp-text); border-color: var(--pp-accent-line); }
+.pp-note { font-size: .84rem; margin: -4px 0 12px; }
+.pp-note:empty { display: none; }
+.pp-note.ok { color: var(--pp-ok); } .pp-note.bad { color: var(--pp-bad); }
+
+/* banner */
+.pp-banner { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 18px 20px; margin-bottom: 14px; background: var(--pp-surface);
+    border: 1px solid var(--pp-border); border-left: 5px solid var(--pp-accent); border-radius: var(--pp-radius); box-shadow: var(--pp-shadow); }
+.pp-avatar { width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--pp-accent), var(--pp-accent-2)); color: #fff; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.3rem; }
+.pp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.pp-avatar.sm { width: 30px; height: 30px; font-size: .72rem; }
+.pp-banner h2 { font-family: 'Poppins', sans-serif; font-size: 1.35rem; color: var(--pp-text); }
+.pp-banner-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .82rem; color: var(--pp-text-3); margin-top: 4px; }
+.pp-banner-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font-size: .78rem; color: var(--pp-text-3); }
+.pp-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; font-size: .76rem; font-weight: 700; white-space: nowrap; }
+.pp-pill.good { background: var(--pp-ok-soft); color: var(--pp-ok); }
+.pp-pill.watch { background: var(--pp-warn-soft); color: var(--pp-warn); }
+.pp-pill.risk { background: var(--pp-bad-soft); color: var(--pp-bad); }
+.pp-pill.plan { background: var(--pp-accent-soft); color: var(--pp-accent-text); }
+.pp-pill.muted { background: var(--pp-hover); color: var(--pp-text-3); }
+
+/* insights */
+.pp-insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 10px; margin-bottom: 14px; }
+.pp-insight { display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; font-size: .87rem; line-height: 1.5; align-items: flex-start; color: var(--pp-text);
+    background: var(--pp-surface); border: 1px solid var(--pp-border); border-left: 4px solid var(--pp-info); }
+.pp-insight > i { margin-top: 3px; color: var(--pp-info); width: 16px; text-align: center; }
+.pp-insight.good { border-left-color: var(--pp-ok); } .pp-insight.good > i { color: var(--pp-ok); }
+.pp-insight.warn { border-left-color: var(--pp-warn); } .pp-insight.warn > i { color: var(--pp-warn); }
+.pp-insight.bad { border-left-color: var(--pp-bad); } .pp-insight.bad > i { color: var(--pp-bad); }
+
+/* KPIs */
+.pp-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.pp-kpi { position: relative; overflow: hidden; display: flex; gap: 14px; align-items: center; padding: 16px; background: var(--pp-surface); border: 1px solid var(--pp-border); border-radius: var(--pp-radius); box-shadow: var(--pp-shadow); min-width: 0; }
+.pp-kpi-ic { width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    color: var(--k); background: color-mix(in srgb, var(--k) 14%, transparent); }
+.pp-kpi-v { font-family: 'Poppins', sans-serif; font-size: 1.45rem; font-weight: 700; line-height: 1.15; color: var(--pp-text); white-space: nowrap; }
+.pp-kpi-l { font-size: .78rem; color: var(--pp-text-3); }
+.pp-kpi-t { font-size: .74rem; font-weight: 600; color: var(--pp-text-3); margin-top: 3px; }
+.pp-kpi-t.up { color: var(--pp-ok); } .pp-kpi-t.down { color: var(--pp-bad); }
+.pp-kpi .pp-bar { margin-top: 6px; height: 5px; }
+
+/* tabs */
+.pp-tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; padding: 4px; border-radius: 14px; background: var(--pp-surface); border: 1px solid var(--pp-border); box-shadow: var(--pp-shadow); }
+.pp-tabs::-webkit-scrollbar { display: none; }
+.pp-tab { flex: 1 1 0; min-width: max-content; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 0; border-radius: 10px;
+    background: transparent; color: var(--pp-text-2); font-weight: 600; font-size: .88rem; cursor: pointer; white-space: nowrap; }
+.pp-tab:hover { background: var(--pp-hover); color: var(--pp-text); }
+.pp-tab[aria-selected="true"] { background: var(--pp-accent); color: #fff; }
+
+/* cards */
+.pp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
+.pp-card { background: var(--pp-surface); border: 1px solid var(--pp-border); border-radius: var(--pp-radius); box-shadow: var(--pp-shadow); padding: 20px; min-width: 0; }
+.pp-card + .pp-card { margin-top: 14px; }
+.pp-grid .pp-card + .pp-card { margin-top: 0; }
+.pp-card-title { display: flex; align-items: center; gap: 10px; font-family: 'Poppins', sans-serif; font-size: 1.04rem; font-weight: 600; color: var(--pp-text); margin-bottom: 4px; }
+.pp-card-title .ic { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--pp-accent-soft); color: var(--pp-accent-text); font-size: .85rem; }
+.pp-card-title .right { margin-left: auto; font-size: .8rem; font-weight: 500; color: var(--pp-text-3); font-family: 'Inter', sans-serif; }
+.pp-sub { font-size: .84rem; color: var(--pp-text-3); line-height: 1.5; margin-bottom: 16px; }
+.pp-bar { height: 8px; border-radius: 99px; background: var(--pp-track); overflow: hidden; }
+.pp-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--c, linear-gradient(90deg, var(--pp-accent), var(--pp-accent-2))); }
+.pp-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.pp-row:last-child { margin-bottom: 0; }
+.pp-row-name { width: 38%; min-width: 120px; font-size: .86rem; font-weight: 600; color: var(--pp-text); display: flex; gap: 8px; align-items: center; overflow: hidden; }
+.pp-row-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-row .pp-bar { flex: 1; height: 12px; }
+.pp-row-v { width: 44px; text-align: right; font-weight: 700; font-size: .86rem; color: var(--pp-text); }
+.pp-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pp-mini.four { grid-template-columns: repeat(4, 1fr); }
+.pp-mini-c { padding: 12px 8px; border-radius: 12px; background: var(--pp-surface-2); border: 1px solid var(--pp-border); text-align: center; min-width: 0; }
+.pp-mini-c strong { display: block; font-family: 'Poppins', sans-serif; font-size: 1.4rem; color: var(--pp-text); line-height: 1.2; }
+.pp-mini-c span { font-size: .72rem; color: var(--pp-text-3); }
+.pp-empty { text-align: center; padding: 30px 14px; color: var(--pp-text-3); font-size: .9rem; }
+.pp-empty > i { display: block; font-size: 2rem; opacity: .5; margin-bottom: 10px; }
+.pp-empty h3 { font-family: 'Poppins', sans-serif; font-size: 1.08rem; color: var(--pp-text); margin-bottom: 6px; }
+.pp-empty p { max-width: 460px; margin: 0 auto 12px; line-height: 1.6; }
+.pp-loading { padding: 40px; text-align: center; color: var(--pp-text-3); }
+
+/* chart */
+.pp-chart { width: 100%; height: auto; display: block; }
+.pp-chart .axis { font-size: 11px; fill: var(--pp-text-3); }
+.pp-chart .grid { stroke: var(--pp-border); stroke-width: 1; }
+.pp-chart .line { fill: none; stroke: var(--pp-accent); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.pp-chart .dot { fill: var(--pp-surface); stroke: var(--pp-accent); stroke-width: 3; }
+.pp-chart .val { font-size: 11px; font-weight: 700; fill: var(--pp-text); }
+
+/* activity heat */
+.pp-heat { display: grid; grid-template-columns: repeat(15, 1fr); gap: 5px; }
+.pp-cell { aspect-ratio: 1; border-radius: 6px; background: var(--pp-track); position: relative; }
+.pp-cell.l1 { background: color-mix(in srgb, var(--pp-ok) 35%, var(--pp-track)); }
+.pp-cell.l2 { background: color-mix(in srgb, var(--pp-ok) 65%, var(--pp-track)); }
+.pp-cell.l3 { background: var(--pp-ok); }
+.pp-cell.today { outline: 2px solid var(--pp-accent); outline-offset: 1px; }
+.pp-heat-legend { display: flex; gap: 6px; align-items: center; justify-content: flex-end; font-size: .72rem; color: var(--pp-text-3); margin-top: 10px; }
+.pp-heat-legend .pp-cell { width: 12px; aspect-ratio: 1; }
+
+/* courses */
+.pp-courses { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); gap: 14px; }
+.pp-course { padding: 18px; border-radius: var(--pp-radius); background: var(--pp-surface); border: 1px solid var(--pp-border); box-shadow: var(--pp-shadow); border-top: 4px solid var(--c); display: flex; flex-direction: column; gap: 14px; }
+.pp-course-head { display: flex; gap: 12px; align-items: center; }
+.pp-course-ic { width: 46px; height: 46px; border-radius: 13px; display: flex; align-items: center; justify-content: center; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); font-size: 1.15rem; flex-shrink: 0; }
+.pp-course-head h3 { font-size: .98rem; font-weight: 700; color: var(--pp-text); line-height: 1.3; }
+.pp-course-head p { font-size: .78rem; color: var(--pp-text-3); margin-top: 2px; }
+.pp-course-head .pp-pill { margin-left: auto; align-self: flex-start; }
+.pp-prog { display: flex; justify-content: space-between; align-items: baseline; font-size: .84rem; color: var(--pp-text-2); margin-bottom: 6px; }
+.pp-prog strong { font-family: 'Poppins', sans-serif; font-size: 1.25rem; color: var(--pp-text); }
+.pp-course-foot { font-size: .78rem; color: var(--pp-text-3); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--pp-border); }
+
+/* results */
+.pp-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.pp-filters .pp-input { flex: 1 1 220px; }
+.pp-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--pp-border); background: var(--pp-surface); }
+.pp-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.pp-table th { padding: 12px 14px; text-align: left; font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--pp-text-3); background: var(--pp-surface-2); border-bottom: 1px solid var(--pp-border); }
+.pp-table td { padding: 12px 14px; border-bottom: 1px solid var(--pp-border); font-size: .88rem; color: var(--pp-text); }
+.pp-table tr:last-child td { border-bottom: 0; }
+.pp-table tbody tr:hover { background: var(--pp-hover); }
+.pp-score { display: inline-block; min-width: 54px; text-align: center; padding: 3px 10px; border-radius: 99px; font-weight: 700; font-size: .8rem; }
+.pp-score.s1 { background: var(--pp-ok-soft); color: var(--pp-ok); }
+.pp-score.s2 { background: var(--pp-info-soft); color: var(--pp-info); }
+.pp-score.s3 { background: var(--pp-warn-soft); color: var(--pp-warn); }
+.pp-score.s0 { background: var(--pp-hover); color: var(--pp-text-3); }
+.pp-type { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 600; color: var(--pp-text-2); }
+.pp-type i { color: var(--pp-accent-text); }
+
+/* lessons */
+.pp-donut-wrap { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.pp-donut { width: 150px; height: 150px; border-radius: 50%; position: relative; flex-shrink: 0; }
+.pp-donut::after { content: ""; position: absolute; inset: 20px; background: var(--pp-surface); border-radius: 50%; }
+.pp-donut-c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
+.pp-donut-c b { font-family: 'Poppins', sans-serif; font-size: 1.7rem; color: var(--pp-text); }
+.pp-donut-c span { font-size: .72rem; color: var(--pp-text-3); }
+.pp-legend { display: flex; flex-direction: column; gap: 8px; font-size: .88rem; color: var(--pp-text-2); }
+.pp-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+.pp-list { display: flex; flex-direction: column; }
+.pp-li { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--pp-border); font-size: .86rem; }
+.pp-li:last-child { border-bottom: 0; }
+.pp-li-ic { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--pp-accent-soft); color: var(--pp-accent-text); }
+.pp-li-ic.ok { background: var(--pp-ok-soft); color: var(--pp-ok); } .pp-li-ic.bad { background: var(--pp-bad-soft); color: var(--pp-bad); }
+.pp-li b { color: var(--pp-text); font-weight: 600; }
+.pp-li small { display: block; color: var(--pp-text-3); font-size: .76rem; margin-top: 1px; }
+.pp-note-item { padding: 14px 0; border-bottom: 1px solid var(--pp-border); }
+.pp-note-item:last-child { border-bottom: 0; }
+.pp-note-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: .84rem; margin-bottom: 6px; }
+.pp-note-head b { color: var(--pp-text); }
+.pp-note-head span { color: var(--pp-text-3); }
+.pp-tag { font-size: .72rem; font-weight: 700; padding: 2px 9px; border-radius: 99px; background: var(--pp-accent-soft); color: var(--pp-accent-text); }
+.pp-note-item p { font-size: .88rem; color: var(--pp-text-2); line-height: 1.6; }
+
+/* achievements */
+.pp-ach { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(270px, 100%), 1fr)); gap: 10px; }
+.pp-badge { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: var(--pp-surface-2); border: 1px solid var(--pp-border); }
+.pp-badge.off { opacity: .7; }
+.pp-badge.off .pp-badge-ic { filter: grayscale(1); opacity: .6; }
+.pp-badge-ic { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #fff; background: var(--c); font-size: 1.05rem; }
+.pp-badge b { display: block; font-size: .9rem; color: var(--pp-text); }
+.pp-badge small { display: block; font-size: .76rem; color: var(--pp-text-3); line-height: 1.4; }
+.pp-badge .pp-bar { height: 5px; margin-top: 6px; }
+.pp-tier { font-size: .66rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--t); }
+
+/* locked */
+.pp-locked { text-align: center; padding: 36px 16px; border: 1px dashed var(--pp-border); border-radius: var(--pp-radius); background: var(--pp-surface-2); color: var(--pp-text-3); }
+.pp-locked > i { font-size: 1.8rem; display: block; margin-bottom: 10px; opacity: .6; }
+.pp-locked h3 { font-family: 'Poppins', sans-serif; font-size: 1.05rem; color: var(--pp-text); margin-bottom: 6px; }
+.pp-locked p { max-width: 460px; margin: 0 auto 12px; line-height: 1.6; font-size: .88rem; }
+
+@media (max-width: 1100px) { .pp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pp-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+    .pp-hero { padding: 18px 16px; }
+    .pp-hero h1 { font-size: 1.3rem; }
+    .pp-hero-icon { width: 46px; height: 46px; font-size: 1.15rem; }
+    .pp-card { padding: 15px; }
+    .pp-kpi { padding: 12px; gap: 10px; }
+    .pp-kpi-ic { width: 38px; height: 38px; font-size: .95rem; }
+    .pp-kpi-v { font-size: 1.15rem; }
+    .pp-banner-right { margin-left: 0; align-items: flex-start; width: 100%; }
+    .pp-tools { width: 100%; }
+    .pp-tools .pp-select { flex: 1; }
+    .pp-mini.four { grid-template-columns: repeat(2, 1fr); }
+    .pp-row-name { width: 42%; min-width: 0; }
+    .pp-heat { grid-template-columns: repeat(10, 1fr); }
+}
+@media print {
+    .pp-toolbar, .pp-tabs, .pp-btn, .pp-filters, .pp-note { display: none !important; }
+    .pp [role="tabpanel"] { display: block !important; margin-bottom: 18px; }
+    .pp-card, .pp-kpi, .pp-course, .pp-banner, .pp-table-wrap, .pp-insight { box-shadow: none !important; break-inside: avoid; }
+    .pp-hero, .pp-bar > i, .pp-cell, .pp-donut, .pp-badge-ic, .pp-score, .pp-pill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+@media (prefers-reduced-motion: reduce) { .pp *, .pp *::before, .pp *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="pp" data-no-theme>
+    <header class="pp-hero">
+        <div class="pp-hero-icon" aria-hidden="true"><i class="fas fa-chart-line"></i></div>
+        <div class="pp-hero-text">
+            <h1>Learner progress</h1>
+            <p>A full report for each child: course progress, test results, study activity, private lessons, teacher feedback and achievements.</p>
+        </div>
+    </header>
+
+    <div class="pp-toolbar" id="ppToolbar">
+        <div class="pp-kids" id="ppKids" role="group" aria-label="Choose a child"></div>
+        <div class="pp-tools">
+            <select id="ppRange" class="pp-select" aria-label="Time range">
+                <option value="30d">Last 30 days</option>
+                <option value="term" selected>This term (3 months)</option>
+                <option value="year">This year</option>
+                <option value="all">All time</option>
+            </select>
+            <button type="button" class="pp-btn pp-btn-ghost" id="ppCsv"><i class="fas fa-file-csv"></i> Results CSV</button>
+            <button type="button" class="pp-btn pp-btn-primary" id="ppPrint"><i class="fas fa-print"></i> Print report</button>
+        </div>
+    </div>
+    <div class="pp-note" id="ppNote" role="status" aria-live="polite"></div>
+
+    <div id="ppContent"><div class="pp-loading">Loading...</div></div>
+</div>
+
+<script>
+(function () {
+    var S = { children: [], active: null, d: null, tab: 'overview', q: '', type: 'all', achFilter: 'all' };
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function say(msg, type) { var n = $('ppNote'); n.className = 'pp-note ' + (type || ''); n.textContent = msg || ''; if (msg) setTimeout(function () { if (n.textContent === msg) n.textContent = ''; }, 6000); }
+    function avatar(name, url, cls) { return '<div class="pp-avatar ' + (cls || '') + '">' + (url ? '<img src="' + esc(url) + '" alt="">' : esc(String(name || '?').split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase())) + '</div>'; }
+    function fmtDate(iso, opts) { if (!iso) return ''; var d = new Date(String(iso).length === 10 ? iso + 'T12:00:00' : iso); return isNaN(d) ? '' : d.toLocaleDateString([], opts || { day: 'numeric', month: 'short', year: 'numeric' }); }
+    function rel(iso) { if (!iso) return 'not yet'; var s = (Date.now() - new Date(iso)) / 1000; if (isNaN(s)) return ''; if (s < 120) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago'; var d = Math.floor(s / 86400); return d === 1 ? 'yesterday' : d < 30 ? d + ' days ago' : fmtDate(iso); }
+    function clamp(n) { return Math.max(0, Math.min(100, Number(n) || 0)); }
+    function scoreCls(p) { return p == null ? 's0' : p >= 80 ? 's1' : p >= 60 ? 's2' : 's3'; }
+    function scoreWord(p) { return p == null ? '' : p >= 80 ? 'Excellent' : p >= 70 ? 'Good' : p >= 60 ? 'Fair' : 'Needs work'; }
+    async function api(url) {
+        var r = await fetch(url, { credentials: 'same-origin' });
+        if (r.status === 401) { location.href = '/Login'; throw new Error('Please sign in again.'); }
+        var d = null; try { d = await r.json(); } catch (e) { /* none */ }
+        if (!r.ok) throw new Error((d && (d.message || d.error)) || ('Something went wrong (' + r.status + ').'));
+        return d || {};
+    }
+    function child() { return S.children.filter(function (c) { return c.id === S.active; })[0]; }
+    function locked(title, what) {
+        return '<div class="pp-locked"><i class="fas fa-lock"></i><h3>' + esc(title) + ' not shared</h3><p>' + esc(child().first_name) + ' hasn\'t shared ' + esc(what) + ' with you. You can turn it on under <strong>Manage access</strong> on My Children.</p>' +
+               '<a class="pp-btn pp-btn-ghost" href="/parent-children"><i class="fas fa-sliders"></i> Manage access</a></div>';
+    }
+    function empty(icon, title, text, extra) { return '<div class="pp-empty"><i class="fas ' + icon + '"></i><h3>' + esc(title) + '</h3><p>' + esc(text) + '</p>' + (extra || '') + '</div>'; }
+
+    /* ---------- load ---------- */
+    async function init() {
+        try { S.children = (await api('/api/parent/children')).children || []; }
+        catch (e) { $('ppContent').innerHTML = '<div class="pp-card">' + empty('fa-triangle-exclamation', "Couldn't load your children", e.message) + '</div>'; return; }
+        if (!S.children.length) {
+            $('ppToolbar').hidden = true;
+            $('ppContent').innerHTML = '<div class="pp-card">' + empty('fa-user-plus', 'No linked children yet', "Link your child's eSchool account to see their progress here.", '<a class="pp-btn pp-btn-primary" href="/parent-link"><i class="fas fa-link"></i> Link a child</a>') + '</div>';
+            return;
+        }
+        var saved = null; try { saved = Number(sessionStorage.getItem('pp_child')); } catch (e) { /* ignore */ }
+        S.active = S.children.some(function (c) { return c.id === saved; }) ? saved : S.children[0].id;
+        var h = (location.hash || '').slice(1); if (TABS.some(function (t) { return t[0] === h; })) S.tab = h;
+        renderKids(); load();
+    }
+    function renderKids() {
+        $('ppKids').innerHTML = S.children.map(function (c) {
+            return '<button type="button" class="pp-kid" data-kid="' + c.id + '" aria-pressed="' + (c.id === S.active) + '">' + avatar(c.name, c.avatar_url, 'sm') + '<span>' + esc(c.name) + '<small>' + esc(c.grade || 'Learner') + '</small></span></button>';
+        }).join('');
+    }
+    $('ppKids').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-kid]'); if (!b) return;
+        S.active = Number(b.dataset.kid); try { sessionStorage.setItem('pp_child', S.active); } catch (err) { /* ignore */ }
+        renderKids(); load();
+    });
+    $('ppRange').addEventListener('change', load);
+    async function load() {
+        $('ppContent').innerHTML = '<div class="pp-loading">Loading ' + esc(child().first_name) + '\'s progress...</div>';
+        try { S.d = await api('/api/parent/children/' + S.active + '/progress?range=' + encodeURIComponent($('ppRange').value)); }
+        catch (e) { S.d = null; $('ppContent').innerHTML = '<div class="pp-card">' + empty('fa-triangle-exclamation', "Couldn't load progress", e.message) + '</div>'; return; }
+        render();
+    }
+
+    /* ---------- page ---------- */
+    var TABS = [['overview', 'fa-chart-pie', 'Overview'], ['courses', 'fa-book-open', 'Courses'], ['results', 'fa-clipboard-check', 'Results'],
+                ['activity', 'fa-calendar-days', 'Activity'], ['lessons', 'fa-chalkboard-user', 'Lessons'], ['achievements', 'fa-trophy', 'Achievements']];
+    function rangeName() { return { '30d': 'the last 30 days', term: 'this term', year: 'this year', all: 'all time' }[S.d.range]; }
+    function status(d) {
+        var s = d.summary; if (!s) return { cls: 'muted', label: 'No data yet' };
+        var risk = 0;
+        if (s.avg_score != null) risk += s.avg_score < 50 ? 2 : s.avg_score < 65 ? 1 : 0;
+        if ((s.overall_progress || 0) < 25 && s.courses_enrolled) risk += 1;
+        if (!s.done_in_period) risk += 1;
+        if (s.avg_score_change != null && s.avg_score_change <= -10) risk += 1;
+        return risk >= 3 ? { cls: 'risk', label: 'Needs support' } : risk >= 1 ? { cls: 'watch', label: 'Keep an eye on it' } : { cls: 'good', label: 'On track' };
+    }
+    function render() {
+        var d = S.d, c = child(), st = status(d);
+        var plan = d.plan || { key: 'free', name: 'Free' };
+        var h = '<section class="pp-banner">' + avatar(c.name, c.avatar_url) + '<div><h2>' + esc(c.name) + '</h2><div class="pp-banner-meta">' +
+            (c.grade ? '<span><i class="fas fa-graduation-cap"></i> ' + esc(c.grade) + '</span>' : '') +
+            (d.child.relationship ? '<span><i class="fas fa-link"></i> ' + esc(d.child.relationship) + (d.child.linked_since ? ', linked ' + esc(d.child.linked_since) : '') + '</span>' : '') +
+            '<span><i class="fas fa-crown"></i> ' + esc(plan.name) + (plan.time_left ? ' · ' + esc(plan.time_left) : '') + '</span></div></div>' +
+            '<div class="pp-banner-right"><span class="pp-pill ' + st.cls + '">' + esc(st.label) + '</span><span>' + esc(d.updated_at ? 'Progress updated ' + rel(d.updated_at) : 'No work recorded yet') + '</span></div></section>';
+        h += '<section class="pp-insights">' + insights(d) + '</section>';
+        h += '<section class="pp-kpis">' + kpis(d) + '</section>';
+        h += '<div class="pp-tabs" role="tablist" aria-label="Progress sections">' + TABS.map(function (t) { return '<button type="button" class="pp-tab" role="tab" id="pptab-' + t[0] + '" aria-controls="pppanel-' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '" tabindex="' + (S.tab === t[0] ? 0 : -1) + '" data-tab="' + t[0] + '"><i class="fas ' + t[1] + '"></i> ' + t[2] + '</button>'; }).join('') + '</div>';
+        h += TABS.map(function (t) { return '<section role="tabpanel" id="pppanel-' + t[0] + '" aria-labelledby="pptab-' + t[0] + '"' + (S.tab === t[0] ? '' : ' hidden') + '>' + PANELS[t[0]](d) + '</section>'; }).join('');
+        $('ppContent').innerHTML = h;
+        bindPanels();
+    }
+    function showTab(t, focus) {
+        S.tab = t;
+        TABS.forEach(function (x) { var b = $('pptab-' + x[0]); b.setAttribute('aria-selected', x[0] === t); b.tabIndex = x[0] === t ? 0 : -1; $('pppanel-' + x[0]).hidden = x[0] !== t; });
+        if (focus) $('pptab-' + t).focus();
+        try { history.replaceState(null, '', '#' + t); } catch (e) { /* ignore */ }
+    }
+    $('ppContent').addEventListener('click', function (e) { var b = e.target.closest('.pp-tab'); if (b) showTab(b.dataset.tab); });
+    $('ppContent').addEventListener('keydown', function (e) {
+        var b = e.target.closest('.pp-tab'); if (!b || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+        e.preventDefault(); var i = TABS.findIndex(function (t) { return t[0] === b.dataset.tab; });
+        showTab(TABS[(i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length][0], true);
+    });
+
+    function insights(d) {
+        var out = [], s = d.summary, c = child().first_name;
+        if (!d.permissions.grades) out.push(['info', 'fa-lock', c + " hasn't shared grades and progress with you, so most of this report is hidden."]);
+        else if (!d.has_summary && !(s && s.done_in_period)) out.push(['info', 'fa-hourglass-half', c + " hasn't passed a module test or quiz yet. This report fills in the moment they do."]);
+        if (s) {
+            if (s.avg_score_change != null && s.avg_score_change >= 5) out.push(['good', 'fa-arrow-trend-up', 'Average test score is up ' + s.avg_score_change + ' points compared with the period before.']);
+            if (s.avg_score_change != null && s.avg_score_change <= -5) out.push(['bad', 'fa-arrow-trend-down', 'Average test score dropped ' + Math.abs(s.avg_score_change) + ' points compared with the period before. A chat could help.']);
+            var low = (d.courses || []).filter(function (x) { return x.progress < 30 && !x.finished; });
+            if (low.length) out.push(['warn', 'fa-triangle-exclamation', 'Low progress in ' + low.slice(0, 2).map(function (x) { return x.name + ' (' + x.progress + '%)'; }).join(', ') + '.']);
+            var strong = (d.courses || []).filter(function (x) { return x.avg_score != null && x.avg_score >= 80; });
+            if (strong.length) out.push(['good', 'fa-star', 'Scoring well in ' + strong.slice(0, 2).map(function (x) { return x.name + ' (' + x.avg_score + '% average)'; }).join(', ') + '.']);
+            var last7 = (d.daily || []).slice(-7).reduce(function (a, x) { return a + x.count; }, 0);
+            if (d.daily && !last7) out.push(['warn', 'fa-moon', 'No completed work in the last 7 days.']);
+            else if (s.quiz_streak >= 3) out.push(['good', 'fa-fire', c + ' is on a ' + s.quiz_streak + '-day quiz streak.']);
+        }
+        if (d.lessons && d.lessons.rate != null && d.lessons.rate < 80) out.push(['warn', 'fa-chalkboard-user', 'Attended ' + d.lessons.rate + '% of private lessons.']);
+        if (d.plan && d.plan.ending_soon) out.push(['warn', 'fa-hourglass-end', 'The ' + d.plan.name + ' plan ends ' + d.plan.expires_on + '. Renew it on My Children.']);
+        if (!out.length) out.push(['good', 'fa-circle-check', 'No concerns right now. ' + c + ' is making steady progress.']);
+        return out.slice(0, 4).map(function (x) { return '<div class="pp-insight ' + x[0] + '"><i class="fas ' + x[1] + '"></i><div>' + esc(x[2]) + '</div></div>'; }).join('');
+    }
+    function kpis(d) {
+        var s = d.summary, p = d.points || {}, lock = '<span class="pp-kpi-t"><i class="fas fa-lock"></i> Not shared</span>';
+        var k = function (color, icon, v, l, t) { return '<div class="pp-kpi" style="--k:' + color + ';"><div class="pp-kpi-ic"><i class="fas ' + icon + '"></i></div><div style="min-width:0;flex:1;"><div class="pp-kpi-v">' + v + '</div><div class="pp-kpi-l">' + l + '</div>' + t + '</div></div>'; };
+        var ch = s && s.avg_score_change != null ? '<div class="pp-kpi-t ' + (s.avg_score_change > 0 ? 'up' : s.avg_score_change < 0 ? 'down' : '') + '"><i class="fas fa-arrow-' + (s.avg_score_change >= 0 ? 'up' : 'down') + '"></i> ' + Math.abs(s.avg_score_change) + ' pts vs before</div>' : '<div class="pp-kpi-t">In ' + rangeName() + '</div>';
+        var goal = p.weekly_goal ? Math.min(100, Math.round(p.ep_week / p.weekly_goal * 100)) : null;
+        return [
+            k('#4361ee', 'fa-gauge-high', s ? clamp(s.overall_progress) + '%' : '-', 'Course progress', s ? '<div class="pp-bar"><i style="width:' + clamp(s.overall_progress) + '%"></i></div>' : lock),
+            k('#10b981', 'fa-graduation-cap', s ? (s.gpa != null ? Number(s.gpa).toFixed(2) : '-') : '-', 'GPA' + (s && s.overall_grade ? ' · grade ' + esc(s.overall_grade) : ''), s ? '<div class="pp-kpi-t">' + s.assessments + ' assessments</div>' : lock),
+            k('#7c3aed', 'fa-bullseye', s && s.avg_score != null ? s.avg_score + '%' : '-', 'Average test score', s ? ch : lock),
+            k('#ea580c', 'fa-fire', s ? s.quiz_streak + '<small style="font-size:.8rem;font-weight:600;"> days</small>' : '-', 'Quiz streak', s ? '<div class="pp-kpi-t">Best ' + s.best_quiz_streak + ' · module streak ' + s.module_streak + '</div>' : lock),
+            k('#0891b2', 'fa-layer-group', s ? s.modules_completed + (s.modules_total ? '<small style="font-size:.8rem;font-weight:600;"> / ' + s.modules_total + '</small>' : '') : '-', 'Modules passed', s ? '<div class="pp-kpi-t">' + s.quizzes_passed + ' quizzes · ' + s.courses_completed + ' courses finished</div>' : lock),
+            k('#d97706', 'fa-ranking-star', p.rank ? '#' + p.rank : '-', 'Monthly rank', '<div class="pp-kpi-t">' + (p.ranked_total ? 'of ' + p.ranked_total + ' learners · ' : '') + (p.ep_month != null ? p.ep_month : p.ep_week) + ' EP this month</div>'),
+            k('#f59e0b', 'fa-coins', Number(p.ep_total || 0).toLocaleString(), 'Total EP · level ' + (p.level || 1), '<div class="pp-bar"><i style="width:' + (p.level_progress || 0) + '%"></i></div><div class="pp-kpi-t">' + (p.ep_to_next || 0) + ' EP to level ' + ((p.level || 1) + 1) + '</div>'),
+            k('#16a34a', 'fa-calendar-check', s ? s.active_days_in_period : '-', 'Active days', s ? '<div class="pp-kpi-t">' + s.done_in_period + ' items done in ' + rangeName() + '</div>' : lock)
+        ].join('') + (goal != null ? '' : '');
+    }
+
+    /* ---------- panels ---------- */
+    var PANELS = {
+        overview: function (d) {
+            if (!d.permissions.grades) return locked('Grades and progress', 'grades and course progress');
+            var cs = d.courses || [], s = d.summary, p = d.points;
+            var bars = cs.length ? cs.map(function (c) { return '<div class="pp-row"><div class="pp-row-name"><i class="fas ' + esc(c.icon) + '" style="color:' + esc(c.color) + ';"></i><span>' + esc(c.name) + '</span></div><div class="pp-bar" style="--c:' + esc(c.color) + ';"><i style="width:' + clamp(c.progress) + '%"></i></div><div class="pp-row-v">' + clamp(c.progress) + '%</div></div>'; }).join('')
+                : empty('fa-book-open', 'No courses yet', child().first_name + " hasn't joined a course yet.");
+            var done = cs.filter(function (c) { return c.finished; }).length, going = cs.filter(function (c) { return !c.finished && c.progress > 0; }).length;
+            var goal = p.weekly_goal;
+            return '<div class="pp-grid">' +
+                '<div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-chart-bar"></i></span>Progress by course</h3><p class="pp-sub">How far ' + esc(child().first_name) + ' is through each course.</p>' + bars + '</div>' +
+                '<div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-chart-line"></i></span>Average test score</h3><p class="pp-sub">Module tests and quizzes, ' + esc(rangeName()) + '.</p>' + trendSvg(d.score_trend || []) + '</div>' +
+                '</div><div class="pp-grid">' +
+                '<div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-list-check"></i></span>Course status</h3><p class="pp-sub">Finished, in progress and not started.</p><div class="pp-mini">' +
+                    '<div class="pp-mini-c"><strong style="color:var(--pp-ok);">' + done + '</strong><span>Finished</span></div><div class="pp-mini-c"><strong style="color:var(--pp-warn);">' + going + '</strong><span>In progress</span></div><div class="pp-mini-c"><strong style="color:var(--pp-text-3);">' + (cs.length - done - going) + '</strong><span>Not started</span></div></div></div>' +
+                '<div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-bullseye"></i></span>Weekly EP goal</h3><p class="pp-sub">' + (goal ? esc(child().first_name) + ' set a goal of ' + goal + ' EP a week.' : esc(child().first_name) + " hasn't set a weekly goal yet (they can on their Progress page).") + '</p>' +
+                    (goal ? '<div class="pp-prog"><span>' + p.ep_week + ' of ' + goal + ' EP</span><strong>' + Math.min(100, Math.round(p.ep_week / goal * 100)) + '%</strong></div><div class="pp-bar" style="height:12px;"><i style="width:' + Math.min(100, Math.round(p.ep_week / goal * 100)) + '%"></i></div>'
+                          : '<div class="pp-mini"><div class="pp-mini-c"><strong>' + p.ep_week + '</strong><span>EP this week</span></div><div class="pp-mini-c"><strong>' + (s.ep_in_period || 0) + '</strong><span>EP in period</span></div><div class="pp-mini-c"><strong>' + (p.level || 1) + '</strong><span>Level</span></div></div>') + '</div>' +
+                '</div>';
+        },
+        courses: function (d) {
+            if (!d.permissions.grades) return locked('Courses', 'course progress');
+            var cs = d.courses || [];
+            if (!cs.length) return '<div class="pp-card">' + empty('fa-book-open', 'No courses yet', 'Courses appear here once ' + child().first_name + ' joins one.') + '</div>';
+            return '<div class="pp-courses">' + cs.map(function (c) {
+                var st = c.finished ? ['good', 'Finished'] : c.progress > 0 ? ['watch', 'In progress'] : ['muted', 'Not started'];
+                return '<article class="pp-course" style="--c:' + esc(c.color) + ';"><div class="pp-course-head"><div class="pp-course-ic"><i class="fas ' + esc(c.icon) + '"></i></div><div><h3>' + esc(c.name) + '</h3><p>' + esc(c.level || '') + '</p></div><span class="pp-pill ' + st[0] + '">' + st[1] + '</span></div>' +
+                    '<div><div class="pp-prog"><span>Course progress</span><strong>' + clamp(c.progress) + '%</strong></div><div class="pp-bar" style="--c:' + esc(c.color) + ';height:10px;"><i style="width:' + clamp(c.progress) + '%"></i></div></div>' +
+                    '<div class="pp-mini"><div class="pp-mini-c"><strong>' + c.modules_completed + (c.modules_total ? '<small style="font-size:.75rem;">/' + c.modules_total + '</small>' : '') + '</strong><span>Modules</span></div>' +
+                        '<div class="pp-mini-c"><strong>' + c.quizzes_passed + '</strong><span>Quizzes</span></div>' +
+                        '<div class="pp-mini-c"><strong>' + (c.avg_score != null ? c.avg_score + '%' : '-') + '</strong><span>Avg score</span></div></div>' +
+                    '<div class="pp-course-foot"><span>' + (c.best_score != null ? 'Best score ' + c.best_score + '%' : 'No scored tests yet') + '</span><span>Last active ' + esc(rel(c.last_activity)) + '</span></div></article>';
+            }).join('') + '</div>';
+        },
+        results: function (d) {
+            if (!d.permissions.grades) return locked('Results', 'test results');
+            var g = d.grades || [], scored = g.filter(function (x) { return x.percentage != null; });
+            var avg = scored.length ? Math.round(scored.reduce(function (a, x) { return a + x.percentage; }, 0) / scored.length) : null;
+            var best = scored.length ? Math.max.apply(null, scored.map(function (x) { return x.percentage; })) : null;
+            return '<div class="pp-card" style="margin-bottom:14px;"><div class="pp-mini four">' +
+                '<div class="pp-mini-c"><strong>' + g.filter(function (x) { return x.type === 'module'; }).length + '</strong><span>Module tests passed</span></div>' +
+                '<div class="pp-mini-c"><strong>' + g.filter(function (x) { return x.type === 'quiz' || x.type === 'daily'; }).length + '</strong><span>Quizzes passed</span></div>' +
+                '<div class="pp-mini-c"><strong>' + (avg != null ? avg + '%' : '-') + '</strong><span>Average score</span></div>' +
+                '<div class="pp-mini-c"><strong>' + (best != null ? best + '%' : '-') + '</strong><span>Best score</span></div></div></div>' +
+                '<div class="pp-filters"><input type="search" class="pp-input" id="ppQ" placeholder="Search by course or test" aria-label="Search results" value="' + esc(S.q) + '">' +
+                '<select class="pp-select" id="ppType" aria-label="Type"><option value="all">All types</option><option value="module">Module tests</option><option value="quiz">Course quizzes</option><option value="daily">Daily Quiz</option><option value="course">Courses finished</option></select></div>' +
+                '<div class="pp-table-wrap"><table class="pp-table"><thead><tr><th>Date</th><th>Course</th><th>Test</th><th>Score</th><th>Result</th><th>EP</th></tr></thead><tbody id="ppRows"></tbody></table></div>' +
+                '<p class="pp-sub" style="margin:10px 0 0;">eSchool records a test when it is passed (60% or more). Scores show for tests taken since scores began to be saved.</p>';
+        },
+        activity: function (d) {
+            if (!d.permissions.grades) return locked('Activity', 'learning activity');
+            var days = d.daily || [], s = d.summary, last = days.length - 1;
+            var max = Math.max.apply(null, days.map(function (x) { return x.count; }).concat([1]));
+            var cells = days.map(function (x, i) {
+                var lvl = !x.count ? '' : x.count / max > .66 ? 'l3' : x.count / max > .33 ? 'l2' : 'l1';
+                return '<div class="pp-cell ' + lvl + (i === last ? ' today' : '') + '" role="img" aria-label="' + esc(fmtDate(x.date, { weekday: 'short', day: 'numeric', month: 'short' })) + ': ' + x.count + ' done, ' + x.ep + ' EP"></div>';
+            }).join('');
+            var active = days.filter(function (x) { return x.count; }).length;
+            var week = function (a, b) { return days.slice(a, b).reduce(function (t, x) { return t + x.count; }, 0); };
+            return '<div class="pp-grid">' +
+                '<div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-calendar-days"></i></span>Last 30 days<span class="right">' + active + ' active days</span></h3><p class="pp-sub">Each square is a day. Darker means more modules and quizzes finished.</p><div class="pp-heat">' + cells + '</div>' +
+                    '<div class="pp-heat-legend">Less <span class="pp-cell"></span><span class="pp-cell l1"></span><span class="pp-cell l2"></span><span class="pp-cell l3"></span> More</div></div>' +
+                '<div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-bolt"></i></span>Study habits</h3><p class="pp-sub">How regularly ' + esc(child().first_name) + ' finishes work.</p><div class="pp-mini">' +
+                    '<div class="pp-mini-c"><strong>' + week(23, 30) + '</strong><span>Done this week</span></div><div class="pp-mini-c"><strong>' + week(16, 23) + '</strong><span>Week before</span></div><div class="pp-mini-c"><strong>' + s.active_days + '</strong><span>Active days ever</span></div>' +
+                    '<div class="pp-mini-c"><strong>' + s.quiz_streak + '</strong><span>Quiz streak</span></div><div class="pp-mini-c"><strong>' + s.best_quiz_streak + '</strong><span>Best quiz streak</span></div><div class="pp-mini-c"><strong>' + s.best_module_streak + '</strong><span>Best module streak</span></div></div></div>' +
+                '</div>';
+        },
+        lessons: function (d) {
+            var L = d.lessons;
+            if (!L) return '<div class="pp-card">' + empty('fa-chalkboard-user', 'No private lessons yet', 'When you hire a teacher for ' + child().first_name + ', their attendance, the teacher\'s notes and homework show up here.', '<a class="pp-btn pp-btn-primary" href="/parent-teacher"><i class="fas fa-magnifying-glass"></i> Find a teacher</a>') + '</div>';
+            var rate = L.rate == null ? 0 : L.rate, g = 'conic-gradient(var(--pp-ok) 0 ' + rate + '%, var(--pp-bad) ' + rate + '% 100%)';
+            var notes = (d.teacher_notes || []).map(function (n) { return '<div class="pp-note-item"><div class="pp-note-head"><b>' + esc(n.teacher) + '</b><span class="pp-tag">' + esc(n.course) + '</span><span>' + esc(rel(n.created_at)) + '</span></div>' + (n.text ? '<p>' + esc(n.text) + '</p>' : '') + (n.homework ? '<p><strong>Homework:</strong> ' + esc(n.homework) + '</p>' : '') + '</div>'; }).join('');
+            return '<div class="pp-grid">' +
+                '<div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-clipboard-user"></i></span>Lesson attendance</h3><p class="pp-sub">' + L.held + ' private lesson' + (L.held === 1 ? '' : 's') + ' held so far.</p>' +
+                    (L.held ? '<div class="pp-donut-wrap"><div class="pp-donut" style="background:' + g + ';"><div class="pp-donut-c"><b>' + rate + '%</b><span>attended</span></div></div><div class="pp-legend"><div><i style="background:var(--pp-ok)"></i>Attended: <b>' + L.attended + '</b></div><div><i style="background:var(--pp-bad)"></i>Missed: <b>' + L.missed + '</b></div></div></div>' : '<p class="pp-sub">No lessons have taken place yet.</p>') + '</div>' +
+                '<div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-calendar-check"></i></span>Coming up</h3><p class="pp-sub">Booked lessons.</p><div class="pp-list">' +
+                    (L.upcoming.length ? L.upcoming.map(function (u) { return '<div class="pp-li"><div class="pp-li-ic"><i class="fas fa-video"></i></div><div><b>' + esc(u.subject) + (u.topic ? ': ' + esc(u.topic) : '') + '</b><small>' + esc(fmtDate(u.starts_at, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + ' · ' + u.minutes + ' min · ' + esc(u.teacher) + '</small></div></div>'; }).join('') : '<p class="pp-sub" style="margin:0;">Nothing booked.</p>') + '</div></div>' +
+                '</div>' +
+                '<div class="pp-grid"><div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-clock-rotate-left"></i></span>Recent lessons</h3><div class="pp-list" style="margin-top:8px;">' +
+                    (L.recent.length ? L.recent.map(function (r) { return '<div class="pp-li"><div class="pp-li-ic ' + (r.status === 'attended' ? 'ok' : 'bad') + '"><i class="fas fa-' + (r.status === 'attended' ? 'check' : 'xmark') + '"></i></div><div><b>' + esc(r.subject) + '</b><small>' + esc(fmtDate(r.starts_at)) + ' · ' + esc(r.teacher) + ' · ' + (r.status === 'attended' ? 'Attended' : 'Missed') + '</small></div></div>'; }).join('') : '<p class="pp-sub" style="margin:0;">None yet.</p>') + '</div></div>' +
+                '<div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-comments"></i></span>Teacher feedback</h3><p class="pp-sub">Notes and homework from teachers you hired.</p>' + (notes || '<p class="pp-sub" style="margin:0;">No notes yet.</p>') + '</div></div>';
+        },
+        achievements: function (d) {
+            if (!d.permissions.grades) return locked('Achievements', 'achievements');
+            var a = d.achievements || [];
+            if (!a.length) return '<div class="pp-card">' + empty('fa-trophy', 'No achievements yet', 'Achievements unlock as ' + child().first_name + ' learns.') + '</div>';
+            var on = a.filter(function (x) { return x.unlocked; }).length;
+            var list = a.filter(function (x) { return S.achFilter === 'all' || (S.achFilter === 'on' ? x.unlocked : !x.unlocked); })
+                        .sort(function (x, y) { return (y.unlocked - x.unlocked) || String(y.unlocked_at || '').localeCompare(String(x.unlocked_at || '')) || y.percent - x.percent; });
+            return '<div class="pp-card"><h3 class="pp-card-title"><span class="ic"><i class="fas fa-trophy"></i></span>Achievements<span class="right">' + on + ' of ' + a.length + ' unlocked</span></h3>' +
+                '<div class="pp-bar" style="margin:8px 0 14px;height:10px;"><i style="width:' + Math.round(on / a.length * 100) + '%"></i></div>' +
+                '<div class="pp-filters"><select class="pp-select" id="ppAch" aria-label="Show"><option value="all"' + (S.achFilter === 'all' ? ' selected' : '') + '>All</option><option value="on"' + (S.achFilter === 'on' ? ' selected' : '') + '>Unlocked</option><option value="off"' + (S.achFilter === 'off' ? ' selected' : '') + '>Still to unlock</option></select></div>' +
+                '<div class="pp-ach">' + list.map(function (x) {
+                    return '<div class="pp-badge' + (x.unlocked ? '' : ' off') + '" style="--c:' + esc(x.color) + ';--t:' + esc(x.tier_color) + ';"><div class="pp-badge-ic"><i class="fas ' + esc(x.icon) + '"></i></div><div style="min-width:0;flex:1;"><span class="pp-tier">' + esc(x.tier_label) + '</span><b>' + esc(x.title) + '</b><small>' + esc(x.description) + '</small>' +
+                        (x.unlocked ? '<small style="color:var(--pp-ok);margin-top:3px;"><i class="fas fa-check"></i> Unlocked ' + esc(fmtDate(x.unlocked_at)) + '</small>' : '<div class="pp-bar"><i style="width:' + x.percent + '%"></i></div><small style="margin-top:3px;">' + x.progress + ' / ' + x.target + '</small>') + '</div></div>';
+                }).join('') + '</div></div>';
+        }
+    };
+
+    function trendSvg(pts) {
+        var have = pts.filter(function (p) { return p.avg != null; });
+        if (!have.length) return empty('fa-chart-line', 'No scores yet', 'Scores show once tests are taken in this period.');
+        var W = 600, H = 220, L = 38, R = 14, T = 18, B = 30, iw = W - L - R, ih = H - T - B;
+        var x = function (i) { return L + (pts.length === 1 ? iw / 2 : i / (pts.length - 1) * iw); }, y = function (v) { return T + ih - v / 100 * ih; };
+        var grid = [0, 25, 50, 75, 100].map(function (v) { return '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text class="axis" x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '%</text>'; }).join('');
+        var path = '', started = false;
+        pts.forEach(function (p, i) { if (p.avg == null) return; path += (started ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(p.avg).toFixed(1) + ' '; started = true; });
+        var dots = pts.map(function (p, i) {
+            return '<text class="axis" x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(p.label) + '</text>' + (p.avg == null ? '' :
+                '<circle class="dot" cx="' + x(i).toFixed(1) + '" cy="' + y(p.avg).toFixed(1) + '" r="5"><title>' + esc(p.label) + ': ' + p.avg + '% (' + p.count + ' tests)</title></circle><text class="val" x="' + x(i).toFixed(1) + '" y="' + (y(p.avg) - 10).toFixed(1) + '" text-anchor="middle">' + p.avg + '%</text>');
+        }).join('');
+        return '<svg class="pp-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Average test score over time">' + grid + '<path class="line" d="' + path + '"/>' + dots + '</svg>';
+    }
+
+    function filteredRows() {
+        var q = S.q.trim().toLowerCase();
+        return (S.d.grades || []).filter(function (g) { return (S.type === 'all' || g.type === S.type) && (!q || (g.course + ' ' + g.assignment).toLowerCase().indexOf(q) > -1); });
+    }
+    function renderRows() {
+        var tb = $('ppRows'); if (!tb) return;
+        var icon = { module: 'fa-layer-group', quiz: 'fa-clipboard-check', daily: 'fa-calendar-day', course: 'fa-award' };
+        var rows = filteredRows();
+        tb.innerHTML = rows.length ? rows.map(function (g) {
+            return '<tr><td>' + esc(g.date ? fmtDate(g.date) : 'Earlier') + '</td><td><strong>' + esc(g.course || '-') + '</strong></td><td><span class="pp-type"><i class="fas ' + icon[g.type] + '"></i>' + esc(g.assignment) + '</span></td>' +
+                   '<td><span class="pp-score ' + scoreCls(g.percentage) + '">' + (g.percentage != null ? g.percentage + '%' : (g.type === 'course' ? 'Done' : 'Passed')) + '</span></td><td>' + esc(scoreWord(g.percentage) || (g.type === 'course' ? 'Course finished' : 'Passed')) + '</td><td>+' + g.ep + '</td></tr>';
+        }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--pp-text-3);padding:28px;">No results ' + (S.q || S.type !== 'all' ? 'match this search' : 'in ' + rangeName()) + '.</td></tr>';
+    }
+    function bindPanels() {
+        renderRows();
+        if ($('ppQ')) { $('ppType').value = S.type; $('ppQ').addEventListener('input', function () { S.q = this.value; renderRows(); }); $('ppType').addEventListener('change', function () { S.type = this.value; renderRows(); }); }
+        if ($('ppAch')) $('ppAch').addEventListener('change', function () { S.achFilter = this.value; $('pppanel-achievements').innerHTML = PANELS.achievements(S.d); bindPanels(); });
+    }
+
+    /* ---------- export + print ---------- */
+    $('ppCsv').addEventListener('click', function () {
+        if (!S.d) return;
+        if (!S.d.permissions.grades) { say(child().first_name + " hasn't shared results, so there's nothing to download.", 'bad'); return; }
+        var rows = filteredRows();
+        if (!rows.length) { say('There are no results to download for ' + rangeName() + '.', 'bad'); return; }
+        var cell = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+        var lines = [['Date', 'Course', 'Test', 'Type', 'Score %', 'Result', 'EP'].map(cell).join(',')].concat(rows.map(function (g) {
+            return [g.date || '', g.course, g.assignment, g.type, g.percentage != null ? g.percentage : '', scoreWord(g.percentage) || 'Passed', g.ep].map(cell).join(',');
+        }));
+        var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = child().name.replace(/[^a-z0-9]+/gi, '_') + '_results_' + new Date().toISOString().slice(0, 10) + '.csv';
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+        say('Downloaded ' + rows.length + ' result' + (rows.length === 1 ? '' : 's') + '.', 'ok');
+    });
+    $('ppPrint').addEventListener('click', function () { window.print(); });
+
+    init();
+})();
+</script>
+{% endblock %}

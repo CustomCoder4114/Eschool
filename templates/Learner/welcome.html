@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome to Eschool</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ======================================================================
+   WELCOME (new learners, straight after sign-up)
+   Step 1 grade · Step 2 dream career · Step 3 your badge picture.
+   Each step saves to the profile (POST /api/profile/details); every step
+   can be skipped and changed later in Settings.
+   ====================================================================== */
+:root { --a: #4361ee; --a2: #7209b7; --t: #0f172a; --t2: #475569; --t3: #64748b; --b: #e5e7eb; --bg: #f1f5f9; --ok: #059669; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 10% 0%, #e0e7ff, transparent 40%), radial-gradient(circle at 100% 100%, #f3e8ff, transparent 45%), var(--bg);
+       font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--t); display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+h1, h2, p { margin: 0; }
+.wl { width: 100%; max-width: 760px; background: #fff; border-radius: 26px; box-shadow: 0 30px 70px -25px rgba(15,23,42,.3); overflow: hidden; }
+.wl-top { padding: 22px 28px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wl-brand { font-family: Poppins, sans-serif; font-weight: 700; font-size: 1.3rem; background: linear-gradient(90deg, #4361ee, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.wl-steps { display: flex; gap: 6px; }
+.wl-steps i { width: 34px; height: 6px; border-radius: 99px; background: var(--b); transition: background .3s; }
+.wl-steps i.on { background: linear-gradient(90deg, var(--a), var(--a2)); }
+.wl-body { padding: 26px 28px 8px; min-height: 380px; }
+.wl-kick { font-size: .75rem; font-weight: 800; letter-spacing: .08em; color: var(--a); text-transform: uppercase; }
+.wl-body h1 { font-family: Poppins, sans-serif; font-size: 1.7rem; margin: 6px 0 8px; letter-spacing: -.01em; }
+.wl-body > p, .wl-step > p { color: var(--t2); line-height: 1.55; font-size: .95rem; }
+.wl-step[hidden] { display: none; }
+.wl-grades { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 20px; }
+.wl-opt { border: 1.5px solid var(--b); background: #fff; border-radius: 14px; padding: 14px 10px; font: inherit; font-weight: 600; color: var(--t); cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+.wl-opt:hover { border-color: var(--a); transform: translateY(-1px); }
+.wl-opt[aria-pressed="true"] { border-color: var(--a); background: #eef2ff; color: #3730a3; box-shadow: 0 0 0 3px rgba(67,97,238,.15); }
+.wl-careers { margin-top: 18px; max-height: 330px; overflow-y: auto; padding-right: 4px; }
+.wl-group { font-size: .72rem; font-weight: 700; color: var(--t3); letter-spacing: .06em; text-transform: uppercase; margin: 14px 0 8px; }
+.wl-group:first-child { margin-top: 0; }
+.wl-cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 8px; }
+.wl-career { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; }
+.wl-career .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; color: var(--cc); background: color-mix(in srgb, var(--cc) 13%, #fff); }
+.wl-badge { display: grid; grid-template-columns: auto 1fr; gap: 26px; align-items: center; margin-top: 18px; }
+.wl-badge img { width: 170px; height: auto; filter: drop-shadow(0 16px 26px rgba(15,23,42,.25)); }
+.wl-list { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.wl-list li { display: flex; gap: 10px; align-items: flex-start; font-size: .92rem; color: var(--t2); line-height: 1.5; }
+.wl-list li i { color: var(--a); margin-top: 4px; width: 16px; text-align: center; }
+.wl-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 28px 24px; border-top: 1px solid #f1f5f9; flex-wrap: wrap; }
+.wl-skip { background: none; border: 0; color: var(--t3); font: inherit; font-weight: 600; cursor: pointer; padding: 8px 4px; }
+.wl-skip:hover { color: var(--t); }
+.wl-btn { border: 0; border-radius: 12px; padding: 12px 22px; font: inherit; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+.wl-btn.p { background: linear-gradient(90deg, var(--a), #5b6ef5); color: #fff; box-shadow: 0 12px 24px -10px rgba(67,97,238,.6); }
+.wl-btn.p:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+.wl-btn.o { background: #fff; color: var(--a); border: 1.5px solid var(--a); }
+.wl-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+.wl-err { color: #dc2626; font-size: .85rem; min-height: 1.2em; margin-top: 10px; }
+.wl-note { margin-top: 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 10px 12px; font-size: .86rem; color: #78350f; }
+:focus-visible { outline: 3px solid rgba(67,97,238,.45); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .wl-top, .wl-body, .wl-foot { padding-left: 18px; padding-right: 18px; }
+  .wl-body h1 { font-size: 1.4rem; }
+  .wl-badge { grid-template-columns: 1fr; justify-items: center; text-align: left; }
+  .wl-badge img { width: 140px; }
+  .wl-careers { max-height: 50vh; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="wl" aria-labelledby="wlTitle">
+  <div class="wl-top">
+    <span class="wl-brand">Eschool</span>
+    <div class="wl-steps" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+  </div>
+
+  <div class="wl-body">
+    <!-- step 1 -->
+    <section class="wl-step" id="step1">
+      <div class="wl-kick">Step 1 of 3</div>
+      <h1 id="wlTitle">Welcome to Eschool, {{ firstname }}!</h1>
+      <p>Which class are you in? We'll use it to show you the right courses.</p>
+      <div class="wl-grades" role="group" aria-label="Your grade">
+        {% for g in grades %}<button type="button" class="wl-opt" data-grade="{{ g }}" aria-pressed="false">{{ g }}</button>{% endfor %}
+      </div>
+      {% if country_name and not courses_ready %}
+      <div class="wl-note"><i class="fas fa-circle-info"></i> Courses for {{ country_name }} are still being made. You can explore everything else on Eschool while you wait.</div>
+      {% endif %}
+    </section>
+
+    <!-- step 2 -->
+    <section class="wl-step" id="step2" hidden>
+      <div class="wl-kick">Step 2 of 3</div>
+      <h1>What do you want to be?</h1>
+      <p>Pick a dream career. Eschool will show the subjects it needs, how ready you are, and give you weekly career missions.</p>
+      <div class="wl-careers" id="wlCareers"></div>
+      <button type="button" class="wl-opt" id="wlNotSure" data-career="" aria-pressed="false" style="margin-top:12px"><i class="fas fa-compass"></i> I'm not sure yet</button>
+    </section>
+
+    <!-- step 3 -->
+    <section class="wl-step" id="step3" hidden>
+      <div class="wl-kick">Step 3 of 3</div>
+      <h1>This is your Eschool badge</h1>
+      <div class="wl-badge">
+        {% if badge_url %}<img src="{{ badge_url }}" alt="Your Eschool Genesis badge">{% endif %}
+        <div>
+          <p>On Eschool, your profile picture is a badge you earn, not a photo. Everyone starts with <b>Eschool Genesis</b>. Earn rarer badges and they become your picture.</p>
+          <ul class="wl-list">
+            <li><i class="fas fa-book-open"></i><span>Pass module tests and quizzes to earn <b>EP</b> and climb the monthly leaderboard.</span></li>
+            <li><i class="fas fa-user-group"></i><span>Add friends to compare progress and chat.</span></li>
+            <li><i class="fas fa-pen"></i><span>Use the <b>Notes</b> button in the corner to write short notes while you learn.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+    <div class="wl-err" id="wlErr" role="alert"></div>
+  </div>
+
+  <div class="wl-foot">
+    <button type="button" class="wl-skip" id="wlSkip">Skip for now</button>
+    <div class="wl-acts" id="wlActs">
+      <button type="button" class="wl-btn p" id="wlNext" disabled>Next <i class="fas fa-arrow-right"></i></button>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  const CAREERS = {{ careers | tojson }};
+  const COURSES_READY = {{ courses_ready | tojson }};
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let step = 1, grade = '', career = null;   // career: null = not chosen, '' = not sure
+
+  // careers grouped by field
+  const groups = {};
+  CAREERS.forEach(c => { (groups[c.area_label] = groups[c.area_label] || []).push(c); });
+  $('wlCareers').innerHTML = Object.keys(groups).map(g => '<div class="wl-group">' + esc(g) + '</div><div class="wl-cgrid">' +
+    groups[g].map(c => '<button type="button" class="wl-opt wl-career" data-career="' + esc(c.key) + '" aria-pressed="false" style="--cc:' + esc(c.color) + '">' +
+      '<span class="ic"><i class="fas ' + esc(c.icon) + '" aria-hidden="true"></i></span>' + esc(c.name) + '</button>').join('') + '</div>').join('');
+
+  function show(n) {
+    step = n;
+    [1, 2, 3].forEach(i => { $('step' + i).hidden = i !== n; });
+    document.querySelectorAll('.wl-steps i').forEach((el, i) => el.classList.toggle('on', i < n));
+    $('wlErr').textContent = '';
+    if (n === 3) {
+      $('wlSkip').hidden = true;
+      $('wlActs').innerHTML = (COURSES_READY ? '<a class="wl-btn o" href="/courses"><i class="fas fa-book-open"></i> Start my first course</a>' : '') +
+        '<a class="wl-btn p" href="/dashboard">Go to my dashboard <i class="fas fa-arrow-right"></i></a>';
+    } else {
+      $('wlNext').disabled = n === 1 ? !grade : career === null;
+    }
+    const h = $('step' + n).querySelector('h1'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+  }
+
+  async function save(data) {
+    const r = await fetch('/api/profile/details', { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    let d = null; try { d = await r.json(); } catch (e) {}
+    if (!r.ok || !d || d.success === false) {
+      const errs = d && d.errors ? Object.values(d.errors).join(' ') : '';
+      throw new Error(errs || (d && d.message) || 'Could not save. Please try again.');
+    }
+  }
+
+  document.addEventListener('click', async e => {
+    const g = e.target.closest('[data-grade]');
+    if (g) {
+      grade = g.dataset.grade;
+      document.querySelectorAll('[data-grade]').forEach(b => b.setAttribute('aria-pressed', String(b === g)));
+      $('wlNext').disabled = false; return;
+    }
+    const c = e.target.closest('[data-career]');
+    if (c) {
+      career = c.dataset.career;
+      document.querySelectorAll('[data-career]').forEach(b => b.setAttribute('aria-pressed', String(b === c)));
+      $('wlNext').disabled = false; return;
+    }
+  });
+
+  $('wlNext').addEventListener('click', async () => {
+    const btn = $('wlNext'); btn.disabled = true;
+    try {
+      if (step === 1) { await save({ grade_level: grade }); show(2); }
+      else if (step === 2) {
+        const c = CAREERS.find(x => x.key === career);
+        await save(c ? { dream_career: c.name, career_area: c.area } : { career_area: 'not_sure' });
+        show(3);
+      }
+    } catch (err) { $('wlErr').textContent = err.message; btn.disabled = false; }
+  });
+  $('wlSkip').addEventListener('click', () => { if (step < 3) show(step + 1); });
+})();
+</script>
+</body>
+</html>
