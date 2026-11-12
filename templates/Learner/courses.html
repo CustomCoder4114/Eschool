@@ -1431,6 +1431,9 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(buildEPPayload()),
                 keepalive: true // still sends if the learner leaves the page
+            }).then(r => r.ok ? r.json() : null).then(d => {
+                // sent too soon after the last one: send it again, so the newest result is never lost
+                if (d && d.throttled) { clearTimeout(_epSyncTimer); _epSyncTimer = setTimeout(queueEPSync, Math.max(1, Number(d.retry_in) || 4) * 1000); }
             }).catch(() => { /* offline: the next save or the Progress page sends it again */ });
         }, 600);
     }
@@ -1962,17 +1965,83 @@
         };
     }
 
-    // Same 5 questions all day (seeded by today's Nairobi date), new mix tomorrow.
+    // ===== Smart automatic Daily Quiz (used when Eschool hasn't planned today's quiz) =====
+    // Built for this learner from the courses they take:
+    //   1 question they got wrong before (until they get it right),
+    //   2 from lessons they have studied, the rest from their courses (their grade first).
+    // Questions from the last 7 days are left out. The pick is kept for the whole day.
+    const DQ_EMAIL = {{ session.get('email', 'default_user') | tojson }};
+    const dqKey = n => `dq${n}_${DQ_EMAIL}`;
+    const dqRead = (n, fb) => { try { const v = JSON.parse(localStorage.getItem(dqKey(n)) || 'null'); return v == null ? fb : v; } catch (e) { return fb; } };
+    const dqWrite = (n, v) => { try { localStorage.setItem(dqKey(n), JSON.stringify(v)); } catch (e) { /* storage full or blocked */ } };
+    let DQ_WHY = '';
+    function dqBank() {
+        const out = [];
+        courses.forEach(c => {
+            const add = (q, mi, lesson) => { if (q && q.question && Array.isArray(q.options) && typeof q.correct === 'number' && q.options[q.correct] != null) out.push({ q, course: c.id, level: c.level || '', mi, lesson }); };
+            (c.modules || []).forEach((m, mi) => (m.mcQuestions || []).forEach(q => add(q, mi, m.name)));
+            (c.quizQuestions || []).forEach(q => add(q, -1, 'Course quiz'));
+        });
+        return out;
+    }
+    function dqGrade() { try { const g = (String(MY_GRADE || '').match(/grade\s*(\d+)/i) || [])[1]; return g ? 'grade-' + g : ''; } catch (e) { return ''; } }
+    function buildSmartDaily() {
+        const today = getLocalDateKey();
+        const bank = dqBank();
+        const byText = {}; bank.forEach(b => { byText[b.q.question] = b; });
+        const kept = dqRead('Today', null);
+        if (kept && kept.date === today && Array.isArray(kept.texts)) {
+            const qs = kept.texts.map(t => byText[t]).filter(Boolean).map(b => b.q);
+            if (qs.length) { DQ_WHY = kept.why || ''; return qs; }
+        }
+        const rand = seededRandom(hashString(today + DQ_EMAIL));
+        const mix = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+        const seen = {}; Object.entries(dqRead('Seen', {})).forEach(([d, texts]) => { if (daysBetweenDateKeys(d, today) <= 7 && d !== today) (texts || []).forEach(t => { seen[t] = 1; }); });
+        const picked = [], used = {};
+        const take = (list, k) => { let n = 0; for (const b of mix(list)) { if (n >= k || picked.length >= DAILY_QUIZ_SIZE) break; if (!used[b.q.question] && !seen[b.q.question]) { used[b.q.question] = 1; picked.push(b); n++; } } return n; };
+        // what this learner is taking, and how far they got in each course
+        const mine = {}; (myCourses || []).forEach(e => { const done = (e.completed || []).map(Number).filter(n => n >= 0); mine[e.courseId] = done.length ? Math.max.apply(null, done) + 1 : 0; });
+        const myIds = Object.keys(mine).filter(id => courses.some(c => c.id === id));
+        const grade = dqGrade();
+        const missed = dqRead('Missed', []).map(m => byText[m.q]).filter(Boolean);
+        const nMiss = take(missed, 1);
+        const studied = bank.filter(b => b.course in mine && b.mi >= 0 && b.mi < mine[b.course]);
+        const nStudied = take(studied, 2);
+        const current = bank.filter(b => b.course in mine && (b.mi === mine[b.course] || b.mi === -1));
+        take(current, DAILY_QUIZ_SIZE);
+        const sameGrade = bank.filter(b => (!grade || b.level === grade) && (myIds.length ? myIds.indexOf(b.course) > -1 : true));
+        take(sameGrade, DAILY_QUIZ_SIZE);
+        take(bank.filter(b => !grade || b.level === grade), DAILY_QUIZ_SIZE);
+        if (picked.length < DAILY_QUIZ_SIZE) { Object.keys(seen).forEach(t => { delete seen[t]; }); take(bank, DAILY_QUIZ_SIZE); }
+        const parts = [];
+        if (nMiss) parts.push('1 you got wrong before');
+        if (nStudied) parts.push(nStudied + ' from lessons you studied');
+        const rest = picked.length - nMiss - nStudied;
+        if (rest > 0) parts.push(rest + (myIds.length ? ' from your courses' : ' from your subjects'));
+        DQ_WHY = parts.length ? 'Picked for you: ' + parts.join(', ') + '.' : '';
+        const order = mix(picked);
+        dqWrite('Today', { date: today, texts: order.map(b => b.q.question), why: DQ_WHY });
+        return order.map(b => b.q);
+    }
+    // After a Daily Quiz: remember wrong answers (asked again later) and what was asked (not repeated for a week)
+    function dqAfterQuiz(questions, answered) {
+        const today = getLocalDateKey();
+        let missed = dqRead('Missed', []);
+        questions.forEach((q, i) => {
+            const right = answered[i] === q.correct;
+            missed = missed.filter(m => m.q !== q.question);
+            if (!right) missed.unshift({ q: q.question, d: today });
+        });
+        dqWrite('Missed', missed.slice(0, 40));
+        const seen = dqRead('Seen', {}); seen[today] = questions.map(q => q.question);
+        Object.keys(seen).forEach(d => { if (daysBetweenDateKeys(d, today) > 8) delete seen[d]; });
+        dqWrite('Seen', seen);
+    }
+
+    // Same questions all day; a new pick tomorrow.
     function buildDailyQuizQuestions() {
         if (SERVER_DAILY) return SERVER_DAILY.quiz.questions.map(q => ({ question: q.question, options: q.options, correct: q.correct }));
-        const pool = [];
-        courses.forEach(c => (c.quizQuestions || []).forEach(q => pool.push(q)));
-        const rand = seededRandom(hashString(getLocalDateKey()));
-        for (let i = pool.length - 1; i > 0; i--) {
-            const j = Math.floor(rand() * (i + 1));
-            [pool[i], pool[j]] = [pool[j], pool[i]];
-        }
-        return pool.slice(0, DAILY_QUIZ_SIZE);
+        return buildSmartDaily();
     }
 
     function createDailyQuizCard() {
@@ -2003,7 +2072,7 @@
                 <div class="course-header" style="--cc:#f59e0b;">
                     <div class="course-icon" style="background:#f59e0b;"><i class="fas fa-fire"></i></div>
                     <h3>${planned && planned.title && planned.title !== 'Daily Quiz' ? dqEsc(planned.title) : 'Daily Quiz Test'}</h3>
-                    <span class="course-code">${planned ? 'Today’s Daily Quiz Test' : 'Mixed • All Subjects'}</span>
+                    <span class="course-code">${planned ? 'Today’s Daily Quiz Test' : 'Made for you • Your courses'}</span>
                     <div class="course-badge"><i class="fas fa-fire"></i> ${streak.currentStreak}-day streak</div>
                 </div>
                 <div class="course-content">
@@ -2011,7 +2080,7 @@
                         <span class="quiz-badge"><i class="fas fa-question-circle"></i> ${count} questions</span>
                         ${resultBadge}
                     </div>
-                    <p>${planned ? 'Today’s quiz, set by Eschool.' : 'A fresh mix of questions from all your subjects every day.'} Finish it to keep your quiz streak alive — it's the only quiz that counts toward your streak.</p>
+                    <p>${planned ? 'Today’s quiz, set by Eschool.' : (DQ_WHY || 'Made for you from your courses every day.')} Finish it to keep your quiz streak alive — it's the only quiz that counts toward your streak.</p>
                     ${planned && planned.strategy ? `<p style="font-size:.85rem;"><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> <b>Today’s study strategy: ${dqEsc(planned.strategy.name)}.</b> ${dqEsc(planned.strategy.tip)}</p>` : ''}
                     <div class="course-stats">
                         <span class="stat-tag"><i class="fas fa-fire"></i> Best streak: ${streak.bestStreak || 0} days</span>
@@ -2079,6 +2148,7 @@
                 .catch(() => { /* the local result stays */ });
         }
 
+        dqAfterQuiz(questions, quizState.answered);
         if (!quizState.streakRecorded) {
             quizState.streakRecorded = true;
             recordQuizCompletionForStreak(); // the only place a streak is earned

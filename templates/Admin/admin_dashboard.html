@@ -35,7 +35,6 @@ body.dark-mode .ad {
 .ad button, .ad input { font: inherit; color: inherit; }
 .ad-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
 .ad-sub { color: var(--ad-text-3); margin-top: 4px; }
-.ad-quote { color: var(--ad-text-3); font-size: .82rem; font-style: italic; margin-top: 4px; max-width: 720px; }
 .ad-btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .ad-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--ad-line); background: var(--ad-card); font-weight: 600; font-size: .85rem; cursor: pointer; text-decoration: none; white-space: nowrap; }
 .ad-btn:hover { border-color: var(--ad-accent); color: var(--ad-accent); }
@@ -170,7 +169,6 @@ body.dark-mode .ad {
         <div>
             <h1 id="greet">Welcome back, {{ firstname }}</h1>
             <p class="ad-sub"><span id="today"></span> · everything on Eschool at a glance</p>
-            {% if quote_text %}<p class="ad-quote">“{{ quote_text }}”{% if quote_author %} — {{ quote_author }}{% endif %}</p>{% endif %}
         </div>
         <div class="ad-btns">
             <a class="ad-btn" href="/admin-announcements"><i class="fas fa-bullhorn" aria-hidden="true"></i> Announcement</a>
@@ -287,7 +285,7 @@ function ago(d) {
     return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 function dayLabel(iso) { var t = Date.parse(iso + "T00:00:00Z"); return t ? new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" }) : iso; }
-function money(cur, n) { try { return new Intl.NumberFormat(undefined, { style: "currency", currency: cur || "KES", maximumFractionDigits: 0 }).format(num(n)); } catch (e) { return (cur || "") + " " + fmt(n); } }
+function money(cur, n) { try { return new Intl.NumberFormat(undefined, { style: "currency", currency: cur || "{{ CURRENCY }}", maximumFractionDigits: 0 }).format(num(n)); } catch (e) { return (cur || "") + " " + fmt(n); } }
 function change(now, before, unit) {
     now = num(now); before = num(before);
     if (!before) return now ? '<span class="gain">+' + fmt(now) + "</span> " + unit : "none " + unit;
@@ -479,7 +477,7 @@ function renderLive() {
 }
 function renderPayments() {
     var p = data.payments; if (!p) return na($("payments"));
-    var cur = p.currency || "KES";
+    var cur = p.currency || "{{ CURRENCY }}";
     var plans = Object.keys(p.by_plan || {}).map(function (k) { return k + " " + fmt(p.by_plan[k]); }).join(" · ");
     $("payments").innerHTML = row("Confirmed (" + DAYS + " d)", esc(money(cur, p.confirmed))) +
         '<div class="ad-kn" style="margin:-2px 0 4px">' + fmt(p.confirmed_n) + " plan payment" + (p.confirmed_n === 1 ? "" : "s") + (plans ? " · " + esc(plans) : "") + (num(p.confirmed_before) ? " · " + change(p.confirmed, p.confirmed_before, "") : "") + "</div>" +

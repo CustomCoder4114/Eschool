@@ -1319,6 +1319,19 @@
     body.dark-mode .pv-parent-top strong { color: #f1f5f9; }
     .pv-parent-top small { color: #64748b; font-size: 13px; }
     .pv-perms { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pv-shares { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 4px 18px; }
+    .pv-share { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 13.5px; border-bottom: 1px dashed #e2e8f0; cursor: pointer; }
+    body.dark-mode .pv-share { border-color: #263244; }
+    .toggle-switch.sm { transform: scale(.82); transform-origin: right center; flex: none; }
+    .pv-ask { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 10px 12px; margin: 6px 0 10px; font-size: 13.5px; color: #78350f; }
+    body.dark-mode .pv-ask { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.35); color: #fde68a; }
+    .pv-ask-btns { display: flex; gap: 8px; }
+    .pv-hist { margin-top: 10px; font-size: 13px; }
+    .pv-hist summary { cursor: pointer; color: var(--accent-color, #4361ee); font-weight: 600; }
+    .pv-hist ul { list-style: none; padding: 0; margin: 6px 0 0; }
+    .pv-hist li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; color: #475569; }
+    body.dark-mode .pv-hist li { color: #cbd5e1; }
+    .pv-hist small { color: #94a3b8; white-space: nowrap; }
     .pv-perm { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
     .pv-perm.yes { background: #ecfdf5; color: #047857; }
     .pv-perm.no { background: #f1f5f9; color: #64748b; text-decoration: line-through; }
@@ -2085,6 +2098,27 @@
                 </div>
             </div>
 
+            <!-- Notes button -->
+            <div class="settings-card ap-card-wide" id="apNotesCard" hidden>
+                <div class="card-header ap-header">
+                    <i class="fas fa-pen"></i>
+                    <div>
+                        <h3>Notes button</h3>
+                        <p class="ap-sub">The Notes button sits in the corner of every page so you can write short notes while you learn.</p>
+                    </div>
+                </div>
+                <div class="toggle-group">
+                    <div class="toggle-label" id="apNotesLabel">
+                        <span class="label-text">Show the Notes button</span>
+                        <span class="label-desc">Turn it off to hide it on every page. Your notes are kept, and they come back when you turn it on again. Saved on this device.</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="apNotesToggle" aria-labelledby="apNotesLabel" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
             <!-- Reset -->
             <div class="settings-card ap-card-wide ap-reset-card">
                 <div class="ap-reset-text">
@@ -2802,6 +2836,21 @@
     });
     applyFontSize(fontSizeInput.value, false);
 
+    /* Notes button on / off (only learners have it) */
+    (function setupNotesToggle() {
+        // the Notes code is at the end of the page, so wait for it
+        if (typeof window.esNotesButton !== 'function' && document.readyState !== 'complete') { window.addEventListener('load', setupNotesToggle, { once: true }); return; }
+        const card = document.getElementById('apNotesCard'), box = document.getElementById('apNotesToggle');
+        if (!card || !box || typeof window.esNotesButton !== 'function') return;
+        card.hidden = false;
+        box.checked = window.esNotesShown();
+        box.addEventListener('change', function () {
+            window.esNotesButton(this.checked);
+            showToast(this.checked ? 'The Notes button is back' : 'The Notes button is hidden. Your notes are kept.', 'success', this);
+        });
+        window.addEventListener('storage', e => { if (e.key && e.key.indexOf('settings.notesButton.') === 0) box.checked = window.esNotesShown(); });
+    })();
+
     const apReset = document.getElementById('apReset');
     if (apReset) apReset.addEventListener('click', function () {
         const blue = document.querySelector('.theme-option[data-color="blue"]');
@@ -3391,7 +3440,8 @@
         return `<div class="cr-snap"><span class="cr-snap-icon"><i class="fas fa-user-astronaut"></i></span>
                 <div style="flex:1;min-width:0"><strong>${escapeHtml(title)} 🚀</strong>${line ? `<span>${escapeHtml(line)}</span>` : ''}</div>
                 <a href="/careerD">Explore careers →</a></div>
-                ${tips.length ? `<div class="cr-tip"><i class="fas fa-lightbulb" style="color:#10b981"></i> ${tips.map(escapeHtml).join(' ')}</div>` : ''}`;
+                ${tips.length ? `<div class="cr-tip"><i class="fas fa-lightbulb" style="color:#10b981"></i> ${tips.map(escapeHtml).join(' ')}</div>` : ''}
+                ${d.career_change_after ? `<div class="cr-tip"><i class="fas fa-lock" style="color:#f59e0b"></i> You can change your dream career once a week. You can choose a new one on ${escapeHtml(new Date(d.career_change_after).toLocaleString([], { weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}.</div>` : ''}`;
     }
 
     function piViewHTML(card) {
@@ -3655,7 +3705,24 @@
     }
     function pvParentHTML(p, pending) {
         const initials = (p.name || 'P').split(' ').map(w => Array.from(w)[0] || '').join('').slice(0, 2).toUpperCase();
-        const perms = p.permissions.map(x => `<span class="pv-perm ${x.allowed ? 'yes' : 'no'}"><i class="fas ${x.allowed ? 'fa-check' : 'fa-xmark'}"></i> ${escapeHtml(x.label)}</span>`).join('');
+        // pending link requests show what would be shared; linked parents get a switch per item (you decide)
+        const perms = pending
+            ? p.permissions.map(x => `<span class="pv-perm ${x.allowed ? 'yes' : 'no'}"><i class="fas ${x.allowed ? 'fa-check' : 'fa-xmark'}"></i> ${escapeHtml(x.label)}</span>`).join('')
+            : p.permissions.map(x => `
+                <label class="pv-share">
+                    <span>${escapeHtml(x.label)}</span>
+                    <span class="toggle-switch sm"><input type="checkbox" data-pv-share="${escapeHtml(x.key)}" data-link="${Number(p.link_id)}" ${x.allowed ? 'checked' : ''} aria-label="Share ${escapeHtml(x.label)} with ${escapeHtml(p.name)}"><span class="toggle-slider"></span></span>
+                </label>`).join('');
+        const asks = !pending && (p.pending || []).length ? `
+            <div class="pv-ask">
+                <div><i class="fas fa-hand" aria-hidden="true"></i> <strong>${escapeHtml(p.name.split(' ')[0])} is asking to see:</strong> ${p.pending.map(x => escapeHtml(x.label)).join(', ')}</div>
+                <div class="pv-ask-btns">
+                    <button type="button" class="pi-btn cancel" data-pv-access="decline" data-link="${Number(p.link_id)}">Say no</button>
+                    <button type="button" class="pi-btn save" data-pv-access="approve" data-link="${Number(p.link_id)}"><i class="fas fa-check" aria-hidden="true"></i> Allow</button>
+                </div>
+            </div>` : '';
+        const hist = !pending && (p.history || []).length ? `
+            <details class="pv-hist"><summary>Access history</summary><ul>${p.history.map(h => `<li><span>${escapeHtml(h.text)}</span><small>${escapeHtml(h.on || '')}</small></li>`).join('')}</ul></details>` : '';
         return `
             <div class="pv-parent ${pending ? 'pv-req' : ''}">
                 <div class="pv-parent-top">
@@ -3669,8 +3736,10 @@
                         <button type="button" class="pi-btn save" data-pv-respond="accept" data-link="${Number(p.link_id)}"><i class="fas fa-check" aria-hidden="true"></i> Accept</button>
                     </div>` : `<button type="button" class="pi-btn cancel pv-unlink" data-pv-unlink="${Number(p.link_id)}" data-name="${escapeHtml(p.name)}"><i class="fas fa-link-slash" aria-hidden="true"></i> Unlink</button>`}
                 </div>
-                <div class="pv-sub" style="margin:4px 0 8px">${pending ? 'If you accept, they will be able to see:' : 'What they can see:'}</div>
-                <div class="pv-perms">${perms}</div>
+                ${asks}
+                <div class="pv-sub" style="margin:4px 0 8px">${pending ? 'If you accept, they will be able to see:' : 'What you share with them (you decide):'}</div>
+                <div class="${pending ? 'pv-perms' : 'pv-shares'}">${perms}</div>
+                ${hist}
             </div>`;
     }
 
@@ -3753,7 +3822,37 @@
         }
     }, true);
 
+    // sharing with a linked parent: switches, and answering their requests
+    document.getElementById('privacy').addEventListener('change', async function (e) {
+        const sw = e.target.closest('[data-pv-share]');
+        if (!sw) return;
+        sw.disabled = true;
+        const card = sw.closest('.settings-card');
+        try {
+            await apiRequest(`/api/student/parent-access/${Number(sw.dataset.link)}`, 'POST', { action: 'set', key: sw.dataset.pvShare, on: sw.checked });
+            showToast(sw.checked ? 'Shared. They have been told.' : 'Stopped sharing. They have been told.', 'success', card);
+            loadPrivacy();
+        } catch (err) { sw.checked = !sw.checked; sw.disabled = false; showToast(err.message || 'Could not save.', 'error', card); }
+    });
+
     document.getElementById('privacy').addEventListener('click', function (e) {
+        const acc = e.target.closest('[data-pv-access]');
+        if (acc) {
+            const allow = acc.dataset.pvAccess === 'approve';
+            const run = async function (b, close) {
+                if (b) b.disabled = true;
+                const card = acc.closest('.settings-card');
+                try {
+                    await apiRequest(`/api/student/parent-access/${Number(acc.dataset.link)}`, 'POST', { action: allow ? 'approve' : 'decline' });
+                    if (close) close();
+                    showToast(allow ? 'Allowed. They have been told.' : 'You said no. They have been told.', 'success', card);
+                    loadPrivacy();
+                } catch (err) { if (close) close(); showToast(err.message || 'Could not answer.', 'error', card); }
+            };
+            if (allow) confirmModal({ anchor: acc, title: 'Allow this?', body: 'They will be able to see what they asked for. You can switch any of it off here at any time.', confirmText: 'Allow', onConfirm: run });
+            else { acc.disabled = true; run(null, null); }
+            return;
+        }
         const btn = e.target.closest('[data-pv-respond]');
         if (btn) {
             const accept = btn.dataset.pvRespond === 'accept';

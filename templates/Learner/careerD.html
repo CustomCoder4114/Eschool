@@ -514,11 +514,33 @@ body.cg-lock { overflow: hidden; }
 .cg .mc-pgroup:first-child .mc-sub-h { margin-top: 0; }
 .cg .mc-pick button { flex-direction: row; justify-content: flex-start; text-align: left; padding: 10px 12px; gap: 10px; }
 .cg .mc-pick button .mc-ctile { width: 34px; height: 34px; font-size: .9rem; }
+.cg .mc-cw { display: block; }
+.cg .mc-cw-hd { display: flex; gap: 18px; align-items: center; }
+.cg .mc-cw .mc-cow-ic { width: 76px; height: 76px; font-size: 2rem; border-radius: 22px; flex: none; }
+.cg .mc-cw h2 { margin: 2px 0 2px; }
+.cg .mc-cw-sub { font-size: .84rem; color: var(--cg-text-3); }
+.cg .mc-cw p.mc-cw-intro { margin-top: 16px; font-size: .98rem; line-height: 1.65; color: var(--cg-text); max-width: none; }
+.cg .mc-cw-g { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0 12px; }
+.cg .mc-cw-b { background: var(--cg-surface); border: 1px solid color-mix(in srgb, var(--cc) 18%, var(--cg-border)); border-radius: 14px; padding: 13px 15px; min-width: 0; }
+.cg .mc-cw-b h4 { font-size: .86rem; color: var(--cg-text); margin: 0 0 6px; display: flex; gap: 8px; align-items: center; }
+.cg .mc-cw-b h4 i { color: var(--cc); }
+.cg .mc-cw-b p { font-size: .86rem; max-width: none; }
+.cg .mc-cw-b ul { margin: 0; padding-left: 18px; color: var(--cg-text-2); font-size: .86rem; line-height: 1.6; }
+.cg .mc-cw-b .mc-chips { margin-top: 2px; }
+.cg .mc-cw-steps { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .83rem; }
+.cg .mc-cw-steps .st { background: color-mix(in srgb, var(--cc) 8%, var(--cg-surface)); border-radius: 9px; padding: 6px 10px; font-weight: 600; color: var(--cg-text); }
+.cg .mc-cw-steps .ar { color: var(--cc); font-size: .75rem; }
+.cg .mc-cw .mc-cow-note { margin-top: 12px; max-width: none; background: var(--cg-surface); border-left: 4px solid var(--cc); border-radius: 10px; padding: 10px 14px; font-size: .88rem; }
+.cg .mc-cw .mc-cow-note b { color: var(--cg-text); }
+.cg .mc-cw .mc-acts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.cg .mc-cw-next { font-size: .85rem; color: var(--cg-text-2); display: inline-flex; gap: 6px; align-items: center; }
+.cg .mc-cw-next i { color: var(--cc); }
+@media (max-width: 700px) { .cg .mc-cw-g { grid-template-columns: 1fr; } .cg .mc-cw .mc-cow-ic { width: 58px; height: 58px; font-size: 1.5rem; } }
 @media (max-width: 900px) { .cg .mc-cow { grid-template-columns: 1fr; } .cg .mc-cow-side { grid-template-columns: repeat(3, 1fr); min-width: 0; } }
 @media (max-width: 640px) {
     .cg .mc-cow { padding: 18px; } .cg .mc-cow-ic { width: 70px; height: 70px; font-size: 1.9rem; border-radius: 20px; }
-    .cg .mc-cow-side { grid-template-columns: 1fr; } .cg .mc-kpis { grid-template-columns: 1fr 1fr 1fr; gap: 6px; } .cg .mc-kpi b { font-size: 1.05rem; }
-    .cg .mc-pr { grid-template-columns: 16px 110px 1fr 26px; }
+    .cg .mc-cow-side { grid-template-columns: 1fr; } .cg .mc-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .cg .mc-kpi { min-width: 0; padding: 8px; } .cg .mc-kpi b { font-size: 1.05rem; } .cg .mc-kpi span { overflow-wrap: anywhere; }
+    .cg .mc-pr { grid-template-columns: 16px 88px minmax(0, 1fr) auto; gap: 6px; }
 }
 /* ===== Career badge (shield: rim = level, inside = career colour, its own icon) ===== */
 .cbw { --s: 64px; position: relative; display: inline-block; width: var(--s); height: calc(var(--s) * 1.18); flex: none; vertical-align: middle; }
@@ -2749,18 +2771,28 @@ function mcCompareCard() {
         '<div class="mc-sub-h">Most chosen careers on Eschool</div>' + pop + nudge + '</div>';
 }
 function mcCareerOfWeek() {
-    const f = mc.featured, fc = f.career, fm = f.mission, c = mc.career;
-    const btn = fm ? (fm.state === 'open' ? '<button class="mc-btn p" data-mc="featured">' + mcIcon('fa-bolt') + ' Try the ' + esc(fc.name) + ' mission · +' + fm.ep + ' EP</button>'
-        : '<span class="mc-done">' + mcIcon(fm.state === 'right' ? 'fa-circle-check' : 'fa-check') + ' ' + (fm.state === 'right' ? 'Mission completed' : 'Mission attempted') + '</span>') : '';
-    const shared = c ? (f.shared.length ? f.shared.length + ' of ' + f.mine_of : '0 of ' + f.mine_of) : '—';
-    return '<section class="mc-cow" style="--cc:' + esc(fc.color) + '"><div class="mc-cow-ic">' + mcIcon(fc.icon) + '</div>' +
-        '<div class="mc-cow-main"><div class="mc-kicker">Career of the week</div><h2>' + esc(fc.name) + '</h2><p>' + esc(fc.fact) + ' After school: ' + esc(fc.training.toLowerCase()) + ' (' + esc(fc.years) + ').</p>' +
+    // Career of the week: an explanation of the career (written by Eschool), no question.
+    const f = mc.featured, fc = f.career, c = mc.career, inf = f.info || {};
+    const box = (icon, title, body) => '<div class="mc-cw-b"><h4>' + mcIcon(icon) + ' ' + esc(title) + '</h4>' + body + '</div>';
+    const skills = (inf.skills || []).length ? '<ul>' + inf.skills.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '';
+    const steps = (inf.steps || []).length ? inf.steps : ['After school: ' + fc.training + ' (' + fc.years + ')'];
+    const grid = [
+        inf.day ? box('fa-clock', 'A day at work', '<p>' + esc(inf.day) + '</p>') : '',
+        skills ? box('fa-dumbbell', 'Skills that matter', skills) : '',
+        box('fa-book', 'School subjects', '<div class="mc-chips">' + fc.subjects.map(s => '<span class="mc-schip">' + mcIcon(s.icon) + ' ' + esc(s.name) + ' ' + s.target + '%</span>').join('') + '</div>'),
+        inf.where ? box('fa-building', 'Where they work', '<p>' + esc(inf.where) + '</p>') : ''
+    ].join('');
+    return '<section class="mc-cow mc-cw" style="--cc:' + esc(fc.color) + '">' +
+        '<div class="mc-cw-hd"><div class="mc-cow-ic">' + mcIcon(fc.icon) + '</div><div><div class="mc-kicker">Career of the week</div><h2>' + esc(fc.name) + '</h2>' +
+        '<div class="mc-cw-sub">' + esc(fc.area_label) + ' · ' + f.learners + ' learner' + (f.learners === 1 ? '' : 's') + ' chose this career' +
+        (c ? ' · ' + (f.shared.length ? f.shared.length : 0) + ' of ' + f.mine_of + ' subjects in common with ' + esc(c.name) : '') + '</div></div></div>' +
+        (inf.does ? '<p class="mc-cw-intro">' + esc(inf.does) + '</p>' : '') +
+        '<div class="mc-cw-g">' + grid + '</div>' +
+        box('fa-graduation-cap', 'How to become one', '<div class="mc-cw-steps">' + steps.map((x, i) => (i ? '<span class="ar">' + mcIcon('fa-arrow-right') + '</span>' : '') + '<span class="st">' + esc(x) + '</span>').join('') + '</div>') +
+        (fc.fact ? '<p class="mc-cow-note"><b>Did you know?</b> ' + esc(fc.fact) + '</p>' : '') +
         (f.note ? '<p class="mc-cow-note"><b>From Eschool:</b> ' + esc(f.note) + '</p>' : '') +
-        '<div class="mc-chips">' + fc.subjects.map(s => '<span class="mc-schip">' + mcIcon(s.icon) + ' ' + esc(s.name) + ' ' + s.target + '%</span>').join('') + '</div>' +
-        '<div class="mc-acts">' + btn + (c && c.key !== fc.key ? '<button class="mc-btn o" data-mc="compare" data-with="' + esc(fc.key) + '">' + mcIcon('fa-scale-balanced') + ' Compare with ' + esc(c.name) + '</button>' : '') + '</div></div>' +
-        '<div class="mc-cow-side"><div class="mc-mini"><b>' + f.learners + '</b>learner' + (f.learners === 1 ? '' : 's') + ' chose this career</div>' +
-        '<div class="mc-mini"><b>' + shared + '</b>subjects in common with ' + (c ? esc(c.name) : 'your career') + '</div>' +
-        '<div class="mc-mini"><b>' + mcIcon(f.next.icon) + ' ' + esc(f.next.name) + '</b>next week</div></div></section>';
+        '<div class="mc-acts">' + (c && c.key !== fc.key ? '<button class="mc-btn o" data-mc="compare" data-with="' + esc(fc.key) + '">' + mcIcon('fa-scale-balanced') + ' Compare with ' + esc(c.name) + '</button>' : '') +
+        '<span class="mc-cw-next">' + mcIcon(f.next.icon) + ' Next week: <b>' + esc(f.next.name) + '</b></span></div></section>';
 }
 function mcRenderCareer() {
     const box = $('mcCareerArea'); if (!box || !mc) return;
@@ -2799,11 +2831,6 @@ function mcRenderMissionsTab() {
     const parts = [];
     if (mc.career) parts.push(mcMissionsBlock());
     else parts.push('<div class="mc-card mc-empty"><h2>Choose a dream career to unlock missions</h2><p>Each week you get 3 short real-world problems from your chosen career. Correct answers earn EP, and completing all 3 earns a weekly career badge.</p><button class="mc-btn p" data-mc="change">' + mcIcon('fa-bullseye') + ' Choose my career</button></div>');
-    const fm = mc.featured.mission, fc = mc.featured.career;
-    if (fm && !(mc.missions || []).some(m => m.id === fm.id)) {
-        parts.push('<div class="mc-card" id="mcFeaturedCard"><div class="mc-h"><h2>Career of the week mission: ' + esc(fc.name) + '</h2><small>Open to everyone this week</small></div>' +
-            '<div class="mc-mis one">' + mcMissionCard(fm) + '</div></div>');
-    }
     if (mc.career) parts.push(mcBadgeCard(mc.career, mc.badge));
     if ((mc.other_badges || []).length) parts.push('<div class="mc-card"><div class="mc-h"><h2>Badges from other careers</h2><small>Kept forever</small></div><div class="mc-badges">' +
         mc.other_badges.map(b => '<div class="mc-bdg">' + careerBadgeHTML(b.color, b.icon, b.level, 60) + '<b>' + esc(b.name) + '</b><small>' + esc(['', 'Bronze', 'Silver', 'Gold'][b.level]) + '</small></div>').join('') + '</div></div>');

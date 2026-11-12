@@ -3,7 +3,7 @@
 {% block allcontent %}
 {#
     ADMIN - Activity log  (templates/Admin/admin_activity.html)   Route: /admin-activity
-    GET /api/admin/log?type=user|payment|live|review|announcement&q=
+    GET /api/admin/log?type=user|payment|live|content|community|support &q= &admin=<id> &days=1|7|30 &views=1 &offset=
     Every change an admin makes is recorded here and can't be edited or deleted from the app.
 #}
 <div class="ad-page-h">
@@ -11,15 +11,13 @@
     <div class="ad-actions"><button type="button" class="ad-btn" id="gCsv" disabled><i class="fas fa-file-csv"></i> Export</button></div>
 </div>
 <div class="ad-card">
-    <div class="ad-tabs" role="group" aria-label="Type" id="gTabs">
-        <button type="button" class="ad-tab" data-t="" aria-pressed="true">Everything</button>
-        <button type="button" class="ad-tab" data-t="user" aria-pressed="false"><i class="fas fa-users"></i> Accounts</button>
-        <button type="button" class="ad-tab" data-t="payment" aria-pressed="false"><i class="fas fa-receipt"></i> Payments</button>
-        <button type="button" class="ad-tab" data-t="live" aria-pressed="false"><i class="fas fa-tower-broadcast"></i> Live classes</button>
-        <button type="button" class="ad-tab" data-t="review" aria-pressed="false"><i class="fas fa-star"></i> Reviews</button>
-        <button type="button" class="ad-tab" data-t="announcement" aria-pressed="false"><i class="fas fa-bullhorn"></i> Announcements</button>
+    <div class="ad-tabs" role="group" aria-label="Type" id="gTabs"></div>
+    <div class="ad-toolbar">
+        <input type="search" class="ad-input" id="gQ" placeholder="Search what happened, or an admin's name" aria-label="Search the log">
+        <select class="ad-select" id="gAdmin" aria-label="Admin"><option value="">All admins</option></select>
+        <select class="ad-select" id="gDays" aria-label="When"><option value="">Any time</option><option value="1">Last 24 hours</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select>
+        <label class="ad-muted" style="display:inline-flex;gap:6px;align-items:center;cursor:pointer;white-space:nowrap"><input type="checkbox" id="gViews"> Show "viewed" entries</label>
     </div>
-    <div class="ad-toolbar"><input type="search" class="ad-input" id="gQ" placeholder="Search what happened, or an admin's name" aria-label="Search the log"></div>
     <div class="ad-note" id="gNote" role="status"></div>
     <div class="ad-tbl-wrap"><table class="ad-tbl" id="gTbl" style="min-width:640px"><thead><tr><th>When</th><th>Admin</th><th>What happened</th><th>Details</th></tr></thead><tbody><tr><td colspan="4"><div class="ad-skel"></div><div class="ad-skel"></div></td></tr></tbody></table></div>
     <div class="ad-pager" id="gPager"></div>
@@ -28,35 +26,82 @@
 (function () {
     'use strict';
     var A = window.AD, $ = function (id) { return document.getElementById(id); };
-    var ICON = { user: 'fa-user', payment: 'fa-receipt', live: 'fa-tower-broadcast', review: 'fa-star', announcement: 'fa-bullhorn' };
-    var LINK = { user: '/admin-users?id=', payment: '/admin-payments', live: '/admin-live', review: '/admin-reviews', announcement: '/admin-announcements' };
-    var S = { type: '', q: '', log: [] };
-    async function load() {
-        document.querySelectorAll('#gTabs [data-t]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === S.type)); });
-        try { S.log = (await A.api('/api/admin/log?' + new URLSearchParams({ type: S.type, q: S.q }))).log; render(); $('gCsv').disabled = !S.log.length; }
-        catch (e) { A.note('gNote', e.message, 'bad'); }
+    var TABS = [['', 'Everything', ''], ['user', 'Accounts', 'fa-users'], ['payment', 'Payments', 'fa-receipt'], ['live', 'Live classes', 'fa-tower-broadcast'],
+                ['content', 'Content', 'fa-folder-open'], ['community', 'Reviews & community', 'fa-star'], ['support', 'Support', 'fa-headset']];
+    var ICON = { user: 'fa-user', payment: 'fa-receipt', refund: 'fa-rotate-left', live: 'fa-tower-broadcast', recording: 'fa-video', lesson: 'fa-chalkboard-user',
+                 resource: 'fa-folder-open', planner: 'fa-calendar-days', announcement: 'fa-bullhorn', review: 'fa-star', opinion: 'fa-comments',
+                 moderation: 'fa-spell-check', ticket: 'fa-headset' };
+    function link(l) {
+        var id = Number(l.target_id) || 0;
+        switch (l.type) {
+            case 'user': return id ? '/admin-users?id=' + id : null;
+            case 'payment': case 'refund': return '/admin-payments';
+            case 'live': case 'recording': case 'lesson': return '/admin-live';
+            case 'resource': return '/admin_resources';
+            case 'planner': return '/admin-planner';
+            case 'announcement': return '/admin-announcements';
+            case 'review': case 'opinion': case 'moderation': return '/admin-reviews';
+            case 'ticket': return id ? '/admin_support?t=' + id : '/admin_support';
+            default: return null;
+        }
+    }
+    var S = { type: '', q: '', admin: '', days: '', views: false, log: [], total: 0, more: false, counts: {}, admins: null };
+    function params(offset) { return new URLSearchParams({ type: S.type, q: S.q, admin: S.admin, days: S.days, views: S.views ? '1' : '', offset: offset || 0 }); }
+
+    async function load(more) {
+        try {
+            var d = await A.api('/api/admin/log?' + params(more ? S.log.length : 0));
+            S.log = more ? S.log.concat(d.log) : d.log; S.total = d.total; S.more = d.more; S.counts = d.counts || {};
+            if (!S.admins) {
+                S.admins = d.admins || [];
+                $('gAdmin').innerHTML = '<option value="">All admins</option>' + S.admins.map(function (a) { return '<option value="' + Number(a.id) + '">' + A.esc(a.name) + '</option>'; }).join('');
+            }
+            render(); $('gCsv').disabled = !S.total;
+        } catch (e) { A.note('gNote', e.message, 'bad'); }
+    }
+    function drawTabs() {
+        $('gTabs').innerHTML = TABS.map(function (t) {
+            return '<button type="button" class="ad-tab" data-t="' + t[0] + '" aria-pressed="' + (S.type === t[0]) + '">' + (t[2] ? '<i class="fas ' + t[2] + '"></i> ' : '') + A.esc(t[1]) +
+                (S.counts[t[0]] != null ? ' <em>' + S.counts[t[0]] + '</em>' : '') + '</button>';
+        }).join('');
     }
     function render() {
+        drawTabs();
         var day = '';
         $('gTbl').querySelector('tbody').innerHTML = S.log.length ? S.log.map(function (l) {
             var d = A.when(l.at), head = d !== day ? '<tr><td colspan="4" style="background:var(--ab-surface-2);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ab-text-3);padding:7px 10px">' + A.esc(d) + '</td></tr>' : '';
             day = d;
-            var link = LINK[l.type] ? (l.type === 'user' ? LINK.user + l.target_id : LINK[l.type]) : null;
-            return head + '<tr><td class="ad-muted" style="white-space:nowrap">' + A.esc(new Date(l.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + '</td><td><b>' + A.esc(l.admin) + '</b></td>' +
+            var t = new Date(String(l.at || '').replace(' ', 'T')), href = link(l);
+            return head + '<tr><td class="ad-muted" style="white-space:nowrap">' + A.esc(isNaN(t) ? '' : t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + '</td><td><b>' + A.esc(l.admin) + '</b></td>' +
                 '<td><span style="display:inline-flex;align-items:center;gap:8px"><i class="fas ' + (ICON[l.type] || 'fa-circle-dot') + '" style="color:var(--ab-text-3);width:16px;text-align:center"></i>' + A.esc(l.action) + '</span></td>' +
-                '<td style="max-width:420px;overflow-wrap:anywhere">' + A.esc(l.detail) + (link && l.action.indexOf('Deleted') !== 0 ? ' <a href="' + link + '" style="color:var(--ab-accent-text);text-decoration:none;white-space:nowrap">Open <i class="fas fa-arrow-right" style="font-size:.7rem"></i></a>' : '') + '</td></tr>';
-        }).join('') : '<tr><td colspan="4"><div class="ad-empty"><i class="fas fa-clock-rotate-left"></i><b>Nothing recorded' + (S.q || S.type ? ' that matches' : ' yet') + '</b>Confirming payments, suspending accounts, removing content and sending announcements are all recorded here.</div></td></tr>';
-        $('gPager').innerHTML = '<span>' + S.log.length + ' entr' + (S.log.length === 1 ? 'y' : 'ies') + (S.log.length >= 400 ? ' (newest 400)' : '') + '</span>';
+                '<td style="max-width:460px;overflow-wrap:anywhere">' + A.esc(l.detail) + (href && l.action.indexOf('Deleted') !== 0 ? ' <a href="' + href + '" style="color:var(--ab-accent-text);text-decoration:none;white-space:nowrap">Open <i class="fas fa-arrow-right" style="font-size:.7rem"></i></a>' : '') + '</td></tr>';
+        }).join('') : '<tr><td colspan="4"><div class="ad-empty"><i class="fas fa-clock-rotate-left"></i><b>Nothing recorded' + (S.q || S.type || S.admin || S.days ? ' that matches' : ' yet') + '</b>Confirming payments, suspending accounts, removing content, answering tickets and sending announcements are all recorded here.</div></td></tr>';
+        $('gPager').innerHTML = '<span>Showing ' + S.log.length + ' of ' + S.total + ' entr' + (S.total === 1 ? 'y' : 'ies') + '</span>' +
+            (S.more ? '<button type="button" class="ad-btn sm" id="gMore"><i class="fas fa-angles-down"></i> Show older</button>' : '');
     }
+
     $('gTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-t]'); if (b) { S.type = b.dataset.t; load(); } });
     var qt; $('gQ').addEventListener('input', function () { clearTimeout(qt); var v = this.value.trim(); qt = setTimeout(function () { S.q = v; load(); }, 250); });
-    $('gCsv').addEventListener('click', function () {
-        var rows = [['When (UTC)', 'Admin', 'What happened', 'Type', 'Target ID', 'Details']].concat(S.log.map(function (l) { return [l.at, l.admin, l.action, l.type, l.target_id, l.detail]; }));
-        var csv = rows.map(function (r) { return r.map(function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','); }).join('\r\n');
-        var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = 'eschool-admin-log.csv';
-        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    $('gAdmin').addEventListener('change', function () { S.admin = this.value; load(); });
+    $('gDays').addEventListener('change', function () { S.days = this.value; load(); });
+    $('gViews').addEventListener('change', function () { S.views = this.checked; load(); });
+    $('gPager').addEventListener('click', function (e) { var b = e.target.closest('#gMore'); if (b) { b.disabled = true; load(true); } });
+
+    // Export everything that matches the filters (not only what's on screen)
+    $('gCsv').addEventListener('click', async function () {
+        var btn = this; btn.disabled = true; A.note('gNote', 'Preparing the file...', 'info', true);
+        try {
+            var all = [], off = 0, d;
+            do { d = await A.api('/api/admin/log?' + params(off)); all = all.concat(d.log); off = all.length; } while (d.more && all.length < 20000);
+            var rows = [['When (UTC)', 'Admin', 'What happened', 'Type', 'Target ID', 'Details']].concat(all.map(function (l) { return [l.at, l.admin, l.action, l.type, l.target_id, l.detail]; }));
+            var csv = rows.map(function (r) { return r.map(function (v) { v = v == null ? '' : String(v); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','); }).join('\r\n');
+            var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = 'eschool-admin-log.csv';
+            document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+            A.note('gNote', 'Exported ' + all.length + ' entries.', 'ok');
+        } catch (e) { A.note('gNote', e.message, 'bad'); }
+        btn.disabled = false;
     });
-    load();
+    drawTabs(); load();
 })();
 </script>
 {% endblock %}

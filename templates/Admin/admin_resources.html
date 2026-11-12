@@ -1,7 +1,6 @@
 {% extends "Admin/admin_body.html" %}
 
 {% block allcontent %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
 /* ======================================================================
    ADMIN RESOURCES: upload + analytics + management on one page.
@@ -96,6 +95,9 @@ body.dark-mode .ar-dlg { background: #111a2e; color: #e8ecf5; }
 .ar-btn.sm { height: 32px; padding: 0 10px; font-size: .8rem; }
 .ar-btn.big { height: 46px; padding: 0 20px; font-size: .95rem; }
 .ar-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ar-btn[hidden] { display: none; }
+.ar-btn.ic { width: 34px; padding: 0; }
+.ar-btn.dl { color: var(--ar-accent); border-color: color-mix(in srgb, var(--ar-accent) 35%, transparent); }
 .ar-btn:focus-visible, .ar-chip:focus-visible, .ar-tab:focus-visible, .ar-in:focus-visible, .ar-att button:focus-visible, .ar-drop:focus-visible { outline: 3px solid color-mix(in srgb, var(--ar-accent) 45%, transparent); outline-offset: 2px; }
 .ar-in { width: 100%; height: 40px; border: 1px solid var(--ar-line); border-radius: 10px; padding: 0 11px; background: var(--ar-card); }
 textarea.ar-in { height: 96px; padding: 10px 11px; resize: vertical; }
@@ -163,7 +165,7 @@ textarea.ar-in { height: 96px; padding: 10px 11px; resize: vertical; }
 .ar-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .ar-submit { position: sticky; bottom: 12px; z-index: 3; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--ar-card); border: 1px solid var(--ar-line); border-radius: 14px; padding: 12px 14px; box-shadow: 0 8px 24px rgba(20, 30, 60, .1); flex-wrap: wrap; }
 .ar-submit b { display: block; }
-.ar-submit span { font-size: .82rem; color: var(--ar-text-3); }
+.ar-submit > div > span { font-size: .82rem; color: var(--ar-text-3); }
 .ar-total { height: 6px; background: var(--ar-line-2); border-radius: 999px; overflow: hidden; margin-top: 6px; width: min(320px, 60vw); }
 .ar-total div { height: 100%; width: 0; background: var(--ar-accent); transition: width .2s; }
 .ar-note { display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; padding: 10px 12px; font-size: .85rem; }
@@ -229,11 +231,11 @@ textarea.ar-in { height: 96px; padding: 10px 11px; resize: vertical; }
 .ar-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700; }
 .ar-pill.public { background: var(--ar-ok-bg); color: var(--ar-ok); }
 .ar-pill.private { background: var(--ar-bad-bg); color: var(--ar-bad); }
-.ar-acts { display: flex; gap: 6px; justify-content: flex-end; }
+.ar-acts { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: nowrap; }
 .ar-pager { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; font-size: .85rem; color: var(--ar-text-3); flex-wrap: wrap; }
 
 /* dialog */
-.ar-dlg { border: 0; border-radius: 16px; padding: 0; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 40px); box-shadow: 0 24px 60px rgba(15, 20, 40, .3); color: var(--ar-text); font-family: Inter, system-ui, sans-serif; }
+.ar-dlg { margin: auto; border: 0; border-radius: 16px; padding: 0; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 40px); box-shadow: 0 24px 60px rgba(15, 20, 40, .3); color: var(--ar-text); font-family: Inter, system-ui, sans-serif; }
 .ar-dlg.wide { width: min(860px, calc(100vw - 32px)); }
 .ar-dlg::backdrop { background: rgba(15, 20, 35, .55); }
 .ar-dlg-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--ar-line); }
@@ -437,6 +439,7 @@ textarea.ar-in { height: 96px; padding: 10px 11px; resize: vertical; }
                 <section class="ar-card">
                     <h3><i class="fas fa-circle-info" aria-hidden="true"></i> Good to know</h3>
                     <ul class="ar-rules">
+                        <li><i class="fas fa-lock"></i><span>Learners watch and read resources inside Eschool; they can’t download them. Zip and other files that can’t be shown won’t open for learners, so upload PDFs, videos, pictures or slides.</span></li>
                         <li><i class="fas fa-play"></i><span>MP4 and WebM videos play everywhere. AVI, MKV and MOV may not play in every browser.</span></li>
                         <li><i class="fas fa-magnifying-glass"></i><span>Learners search by title, subject, grade and description, so be specific: “Grade 9 Algebra: linear equations” beats “Notes”.</span></li>
                         <li><i class="fas fa-bell"></i><span>Learners are told once per upload, never once per file, and never twice about the same resource.</span></li>
@@ -1095,7 +1098,7 @@ function rowHTML(r) {
         <td><div class="ar-acts">
             <button type="button" class="ar-btn sm" data-act="stats"><i class="fas fa-chart-simple" aria-hidden="true"></i> Stats</button>
             <button type="button" class="ar-btn sm" data-act="edit"><i class="fas fa-pen" aria-hidden="true"></i> Edit</button>
-            <button type="button" class="ar-btn sm danger" data-act="delete" aria-label="Delete ${esc(r.title)}"><i class="fas fa-trash-can" aria-hidden="true"></i> Delete</button>
+            <button type="button" class="ar-btn sm ic danger" data-act="delete" title="Delete" aria-label="Delete ${esc(r.title)}"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
         </div></td></tr>`;
 }
 function renderRows(total) {
@@ -1155,13 +1158,13 @@ function openPreview(r) {
     const u = safeUrl(r.url), k = r.file_category;
     let body;
     if (!u) body = '<div class="ar-note bad"><i class="fas fa-file-circle-xmark"></i><div>This resource has no file.</div></div>';
-    else if (!r.preview) body = `<div class="ar-note info"><i class="fas fa-circle-info" aria-hidden="true"></i><div>${esc(KIND[kindKey(k)][0])} files can’t be shown here. Download it to open it on your device.</div></div>`;
+    else if (!r.preview) body = `<div class="ar-note info"><i class="fas fa-circle-info" aria-hidden="true"></i><div>${esc(KIND[kindKey(k)][0])} files can’t be shown here, and learners can’t open them either because Eschool resources can’t be downloaded. Upload it as a PDF instead.</div></div>`;
     else if (k === "video") body = `<video src="${esc(u)}" controls preload="metadata" ${safeUrl(r.thumb) ? `poster="${esc(safeUrl(r.thumb))}"` : ""}></video>`;
     else if (k === "audio") body = `<audio src="${esc(u)}" controls preload="metadata"></audio>`;
     else if (k === "image") body = `<img src="${esc(u)}" alt="${esc(r.title)}">`;
     else body = `<iframe src="${esc(u)}" title="${esc(r.title)}"></iframe>`;
     body += `<p class="ar-kn" style="margin-top:10px">${esc(r.description || "No description.")}</p>`;
-    openDlg(r.title, body, `<a class="ar-btn" href="/api/resources/${num(r.id)}/download"><i class="fas fa-download" aria-hidden="true"></i> Download</a><button type="button" class="ar-btn" data-x="stats">Stats</button><button type="button" class="ar-btn primary" data-x="edit">Edit</button>`, true);
+    openDlg(r.title, body, `<button type="button" class="ar-btn" data-x="stats">Stats</button><button type="button" class="ar-btn primary" data-x="edit">Edit</button>`, true);
     $("dlgFoot").querySelector('[data-x="stats"]').addEventListener("click", () => openStats(r));
     $("dlgFoot").querySelector('[data-x="edit"]').addEventListener("click", () => { closeDlg(); openEdit(r); });
 }

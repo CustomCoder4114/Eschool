@@ -666,6 +666,7 @@ body.ms-lock { overflow: hidden; }
         $('chatUserName').textContent = p.name;
         $('chatUserStatus').textContent = p.blocked ? 'You blocked this person' : p.muted ? 'Notifications muted' : 'Only the two of you can read this chat (and Eschool staff if it is reported)';
         $('menuProfile').href = '/profile/' + Number(p.id);
+        $('menuProfile').hidden = p.role === 'parent';      // parents have no profile on Eschool
         $('menuMute').querySelector('span').textContent = p.muted ? 'Unmute notifications' : 'Mute notifications';
         $('menuBlock').querySelector('span').textContent = p.blocked ? 'Unblock' : 'Block';
         $('moreBtn').disabled = false;

@@ -69,6 +69,16 @@ body.dark-mode .pl {
 .pl-pill.warn { background: var(--pl-warn-bg); color: var(--pl-warn); } .pl-pill.info { background: var(--pl-soft); color: var(--pl-info); } .pl-pill.grey { background: var(--pl-line-2); color: var(--pl-text-3); }
 .pl-note { border-radius: 10px; padding: 9px 12px; font-size: .86rem; margin: 8px 0; }
 .pl-note[hidden] { display: none; }
+.pl-warnbar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; background: var(--pl-warn-bg); color: var(--pl-warn); border: 1px solid var(--pl-warn-line); border-radius: 12px; padding: 10px 14px; margin: 8px 0; font-size: .86rem; }
+.pl-warnbar[hidden] { display: none; }
+.pl-warnbar > span { flex: 1; min-width: 220px; }
+.pl-plan { max-height: 340px; overflow-y: auto; border: 1px solid var(--pl-line); border-radius: 10px; margin-top: 10px; }
+.pl-plan div { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--pl-line-2); font-size: .82rem; }
+.pl-plan div:last-child { border-bottom: 0; }
+.pl-plan b { font-weight: 600; }
+.pl-seg { display: inline-flex; border: 1px solid var(--pl-line); border-radius: 9px; overflow: hidden; }
+.pl-seg button { border: 0; background: transparent; padding: 6px 10px; font-size: .8rem; font-weight: 600; cursor: pointer; color: var(--pl-text-2); }
+.pl-seg button[aria-pressed="true"] { background: var(--pl-accent); color: #fff; }
 .pl-note.ok { background: var(--pl-ok-bg); color: var(--pl-ok); } .pl-note.bad { background: var(--pl-bad-bg); color: var(--pl-bad); } .pl-note.info { background: var(--pl-soft); color: var(--pl-info); }
 .pl-skel { display: block; height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--pl-line-2), var(--pl-line), var(--pl-line-2)); background-size: 200% 100%; animation: plS 1.2s infinite; margin: 8px 0; }
 @keyframes plS { to { background-position: -200% 0; } }
@@ -172,6 +182,7 @@ textarea.pl-in { height: auto; min-height: 70px; padding: 9px 10px; resize: vert
         </div>
     </div>
     <div class="pl-note" id="note" role="status" hidden></div>
+    <div class="pl-warnbar" id="drafts" hidden></div>
 
     <div class="pl-lbl">Is everything ready?</div>
     <div class="pl-grid g6" id="kpis">
@@ -185,7 +196,7 @@ textarea.pl-in { height: auto; min-height: 70px; padding: 9px 10px; resize: vert
             <div class="pl-ch"><h3 id="calT">Month</h3>
                 <div class="pl-btns"><button type="button" class="pl-btn sm" id="prevM" aria-label="Previous month"><i class="fas fa-chevron-left" aria-hidden="true"></i></button><button type="button" class="pl-btn sm" id="todayM">Today</button><button type="button" class="pl-btn sm" id="nextM" aria-label="Next month"><i class="fas fa-chevron-right" aria-hidden="true"></i></button></div></div>
             <div class="pl-cal" id="cal"></div>
-            <p class="pl-m" style="margin-top:10px"><span class="pl-pill ok">Ready</span> planned by an admin · <span class="pl-pill warn">Draft</span> not shown to learners yet · <span class="pl-pill grey">Auto</span> made from course questions automatically · <span class="pl-pill bad">Gap</span> nothing planned yet. A day with nothing planned is never empty: learners still get a quiz made from course questions. Planned days always come first.</p>
+            <p class="pl-m" style="margin-top:10px"><span class="pl-pill ok">Ready</span> planned by an admin · <span class="pl-pill warn">Draft</span> not shown to learners yet · <span class="pl-pill grey">Auto</span> automatic · <span class="pl-pill bad">Gap</span> nothing planned yet. A day with nothing planned is never empty: each learner gets their own automatic quiz from the courses they are taking, with questions they got wrong before. A Ready planned quiz always comes first.</p>
         </section>
         <section class="pl-card pl-f" id="editor" aria-live="polite"><span class="pl-skel"></span><span class="pl-skel"></span></section>
     </div>
@@ -273,8 +284,28 @@ function render() {
         ["Question bank", fmt(BANK.length + ADMINQ.length), fmt(COURSES.length) + " courses · " + fmt(ADMINQ.length) + " written by admins"]
     ];
     $("kpis").innerHTML = cards.map(function (c) { return '<div class="pl-card ' + (c[3] || "") + '"><div class="pl-kl">' + esc(c[0]) + '</div><div class="pl-kv" title="' + esc(c[1]) + '">' + esc(c[1]) + '</div><div class="pl-kn">' + esc(c[2]) + "</div></div>"; }).join("");
-    drawCal(); drawQueue(); drawWeek(); drawLib(); drawBars(); drawRem(); drawCov();
+    drawCal(); drawQueue(); drawWeek(); drawLib(); drawBars(); drawRem(); drawCov(); drawDrafts();
 }
+function draftDays() { return Object.keys(O.planned_days || {}).filter(function (d) { return d >= O.today && O.planned_days[d].status === "draft"; }).sort(); }
+function drawDrafts() {
+    var dd = draftDays(), b = $("drafts");
+    b.hidden = !dd.length;
+    if (!dd.length) return;
+    var todayDraft = dd[0] === O.today;
+    b.innerHTML = '<i class="fas fa-triangle-exclamation" aria-hidden="true"></i><span><b>' + dd.length + " planned day" + (dd.length === 1 ? " is a draft" : "s are drafts") + "</b>, so learners don’t get " + (dd.length === 1 ? "it" : "them") +
+        (todayDraft ? " — <b>including today</b>" : "") + ". They get the automatic quiz instead until you make them ready.</span>" +
+        '<button type="button" class="pl-btn sm" id="dFirst">Check ' + esc(nice(dd[0])) + '</button><button type="button" class="pl-btn sm primary" id="dAll">Make all ' + dd.length + " ready</button>";
+}
+$("drafts").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    if (b.id === "dFirst") { var d = draftDays()[0]; if (d.slice(0, 7) !== O.month) { month = d.slice(0, 7); selDay = d; load().then(function () { openDay(d); }); } else { selDay = d; drawCal(); openDay(d); } $("editor").scrollIntoView({ behavior: "smooth" }); }
+    if (b.id === "dAll") {
+        if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tap again: learners will get them"; return; }
+        b.disabled = true;
+        api("/api/admin/planner/publish", { method: "POST", body: {} }).then(function (r) { toast(r.ready + " day" + (r.ready === 1 ? " is" : "s are") + " ready. Learners get them on the day."); return load().then(function () { openDay(selDay); }); })
+            .catch(function (er) { note(er.message, "bad"); b.disabled = false; });
+    }
+});
 function dayCell(x) {
     var q = x.quiz, gap = !q && !x.past && x.day <= addDays(O.today, 29);
     var tag = q ? (q.status === "draft" ? '<span class="pl-pill warn">Draft</span>' : '<span class="pl-pill ok">Ready</span>') : x.past || x.today ? '<span class="pl-pill grey">Auto</span>' : gap ? '<span class="pl-pill bad">Gap</span>' : "";
@@ -326,14 +357,15 @@ function opt(list, cur, blank) { return (blank ? '<option value="">' + esc(blank
 function gradesAll() { var s = {}; COURSES.forEach(function (c) { if (c.grade) s[c.grade] = 1; }); for (var i = 1; i <= 12; i++) s["grade-" + i] = s["grade-" + i] || 0; return Object.keys(s).sort(function (a, b) { return parseInt(a.slice(6)) - parseInt(b.slice(6)); }); }
 function drawEditor() {
     var q = E.q, lock = E.locked, h = "";
-    h += '<div class="pl-ch"><h3>Daily Quiz · ' + esc(nice(E.day, { year: "numeric" })) + "</h3>" + (lock ? '<span class="pl-pill grey">' + (E.day < O.today ? "Past day: read only" : "Learners have started it: read only") + "</span>" : E.exists ? (q.status === "draft" ? '<span class="pl-pill warn">Draft</span>' : '<span class="pl-pill ok">Ready</span>') : '<span class="pl-pill bad">Not planned: learners get an automatic quiz</span>') + "</div>";
+    h += '<div class="pl-ch"><h3>Daily Quiz · ' + esc(nice(E.day, { year: "numeric" })) + "</h3>" + (lock ? '<span class="pl-pill grey">' + (E.day < O.today ? "Past day: read only" : "Learners have started it: read only") + "</span>" : E.exists ? (q.status === "draft" ? '<span class="pl-pill warn">Draft</span>' : '<span class="pl-pill ok">Ready</span>') : '<span class="pl-pill bad">Not planned: each learner gets their automatic quiz</span>') + "</div>";
     h += '<div class="pl-tabs" role="tablist">' + [["questions", "Questions (" + q.questions.length + ")"], ["settings", "Settings"], ["preview", "Preview"], ["results", "Results"]].map(function (t) {
         return '<button type="button" class="pl-tab" role="tab" data-et="' + t[0] + '" aria-selected="' + (etab === t[0]) + '">' + t[1] + "</button>";
     }).join("") + "</div>";
+    if (!lock && E.exists && q.status === "draft") h += '<div class="pl-warnbar" style="margin:4px 0 8px"><span><b>Draft:</b> learners don’t get this quiz' + (E.day === O.today ? " today" : "") + '. Press <b>Save – learners get it</b> when it’s ready.</span></div>';
     if (etab === "questions") {
         h += '<label for="eTitle">Title learners see</label><input class="pl-in" id="eTitle" maxlength="80" placeholder="e.g. Algebra warm-up" value="' + esc(q.title) + '"' + (lock ? " disabled" : "") + ">";
         h += '<div id="qList">' + (q.questions.length ? q.questions.map(qCard).join("") : '<p class="pl-m" style="margin-top:10px">No questions yet. Pick some from the question bank or write your own.</p>') + "</div>";
-        if (!lock) h += '<div class="pl-btns" style="margin-top:10px"><button type="button" class="pl-btn sm" id="pickBtn"><i class="fas fa-layer-group" aria-hidden="true"></i> Pick from the bank</button><button type="button" class="pl-btn sm" id="writeBtn"><i class="fas fa-pen" aria-hidden="true"></i> Write a question</button><button type="button" class="pl-btn sm" id="quickBtn"><i class="fas fa-shuffle" aria-hidden="true"></i> Fill with 5 random</button></div>';
+        if (!lock) h += '<div class="pl-btns" style="margin-top:10px"><button type="button" class="pl-btn sm" id="pickBtn"><i class="fas fa-layer-group" aria-hidden="true"></i> Pick from the bank</button><button type="button" class="pl-btn sm" id="writeBtn"><i class="fas fa-pen" aria-hidden="true"></i> Write a question</button><button type="button" class="pl-btn sm" id="quickBtn"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> Smart fill</button></div>';
     } else if (etab === "settings") {
         h += '<label>Courses it covers</label><div class="pl-chips" id="eCourses">' + COURSES.map(function (c) { return '<button type="button" class="pl-chip" data-c="' + esc(c.id) + '" aria-pressed="' + (q.courses.indexOf(c.id) > -1) + '"' + (lock ? " disabled" : "") + ">" + esc(O.course_names[c.id] || c.name) + "</button>"; }).join("") + "</div>";
         h += '<label>Grades</label><div class="pl-chips" id="eGrades">' + gradesAll().map(function (g) { return '<button type="button" class="pl-chip" data-g="' + g + '" aria-pressed="' + (q.grades.indexOf(g) > -1) + '"' + (lock ? " disabled" : "") + ">Grade " + g.slice(6) + "</button>"; }).join("") + "</div>";
@@ -344,7 +376,6 @@ function drawEditor() {
         h += '<div class="pl-row2"><div><label for="eCareer">Career link (shown after the quiz)</label><select class="pl-in" id="eCareer"' + (lock ? " disabled" : "") + ">" + opt(O.careers.map(function (c) { return [c.key, c.emoji + " " + c.name]; }), q.career_key, "None") + "</select></div>" +
             '<div><label for="eNote">Why it matters for that career</label><input class="pl-in" id="eNote" maxlength="200" placeholder="e.g. Doctors use ratios to work out doses" value="' + esc(q.career_note) + '"' + (lock ? " disabled" : "") + "></div></div>";
         if (O.countries.length > 1) h += '<label>Show to learners in</label><div class="pl-chips" id="eCountries">' + O.countries.map(function (c) { return '<button type="button" class="pl-chip" data-k="' + esc(c.code) + '" aria-pressed="' + (q.countries.indexOf(c.code) > -1) + '"' + (lock ? " disabled" : "") + ">" + esc(c.name) + "</button>"; }).join("") + '</div><p class="pl-m">None chosen = every country.</p>';
-        h += '<label for="eStatus">Status</label><select class="pl-in" id="eStatus"' + (lock ? " disabled" : "") + ">" + opt([["ready", "Ready: learners get it on the day"], ["draft", "Draft: not shown (the automatic quiz is used)"]], q.status) + "</select>";
     } else if (etab === "preview") {
         h += previewHTML();
     } else {
@@ -352,7 +383,7 @@ function drawEditor() {
     }
     h += '<div class="pl-err" id="eErr"></div>';
     if (!lock) h += '<div class="pl-foot"><span class="pl-m">' + q.questions.length + " question" + (q.questions.length === 1 ? "" : "s") + " · pass mark " + q.pass_pct + "% · 5 EP</span><span class=\"pl-btns\">" +
-        (E.exists ? '<button type="button" class="pl-btn sm danger" id="delDay">Remove</button>' : "") + '<button type="button" class="pl-btn sm" id="copyDay"' + (q.questions.length ? "" : " disabled") + '>Copy to other days</button><button type="button" class="pl-btn sm primary" id="saveDay"><i class="fas fa-check" aria-hidden="true"></i> Save day</button></span></div>';
+        (E.exists ? '<button type="button" class="pl-btn sm danger" id="delDay">Remove</button>' : "") + '<button type="button" class="pl-btn sm" id="copyDay"' + (q.questions.length ? "" : " disabled") + '>Copy to other days</button><button type="button" class="pl-btn sm" id="saveDraft">Save as draft</button><button type="button" class="pl-btn sm primary" id="saveDay"><i class="fas fa-check" aria-hidden="true"></i> Save – learners get it</button></span></div>';
     $("editor").innerHTML = h;
 }
 function qCard(x, i) {
@@ -384,7 +415,7 @@ function resultsHTML() {
 function collect() {
     var q = E.q;
     if ($("eTitle")) q.title = $("eTitle").value.trim();
-    if ($("eStrat")) { q.strategy_id = $("eStrat").value ? Number($("eStrat").value) : null; q.pass_pct = Number($("ePass").value); q.career_key = $("eCareer").value || null; q.career_note = $("eNote").value.trim(); q.status = $("eStatus").value; }
+    if ($("eStrat")) { q.strategy_id = $("eStrat").value ? Number($("eStrat").value) : null; q.pass_pct = Number($("ePass").value); q.career_key = $("eCareer").value || null; q.career_note = $("eNote").value.trim(); }
 }
 $("editor").addEventListener("click", function (e) {
     var t = e.target.closest("[data-et]"); if (t) { collect(); etab = t.getAttribute("data-et"); drawEditor(); return; }
@@ -397,8 +428,9 @@ $("editor").addEventListener("click", function (e) {
     var id = e.target.closest("button") && e.target.closest("button").id;
     if (id === "pickBtn") { collect(); pickDialog(); }
     else if (id === "writeBtn") { collect(); writeDialog(); }
-    else if (id === "quickBtn") { collect(); E.q.questions = randomSet(E.day, 5, E.q.courses); autoCourses(); drawEditor(); }
-    else if (id === "saveDay") saveDay();
+    else if (id === "quickBtn") { collect(); smartFillDay(); }
+    else if (id === "saveDay") saveDay("ready");
+    else if (id === "saveDraft") saveDay("draft");
     else if (id === "delDay") delDay();
     else if (id === "copyDay") { collect(); copyDialog(); }
 });
@@ -407,14 +439,23 @@ function tog(a, v) { var i = a.indexOf(v); if (i > -1) a.splice(i, 1); else a.pu
 function autoCourses() { var s = {}; E.q.questions.forEach(function (x) { if (x.course && O.course_names[x.course]) s[x.course] = 1; }); E.q.courses = Object.keys(s); }
 function strip(x) { return { question: x.question, options: x.options, correct: x.correct, why: x.why || "", course: x.course || "", module: x.module || "", source: x.source === "admin" ? "admin" : "bank" }; }
 function payload(q) { return { title: q.title, courses: q.courses, grades: q.grades, countries: q.countries, strategy_id: q.strategy_id, career_key: q.career_key, career_note: q.career_note, questions: q.questions.map(strip), pass_pct: q.pass_pct, status: q.status }; }
-function saveDay() {
+function saveDay(status) {
     collect(); $("eErr").textContent = "";
     if (!E.q.questions.length) { $("eErr").textContent = "Add at least one question."; return; }
     if (!E.q.courses.length) autoCourses();
-    var b = $("saveDay"); b.disabled = true;
+    E.q.status = status === "draft" ? "draft" : "ready";
+    var b = $(status === "draft" ? "saveDraft" : "saveDay"); b.disabled = true;
     api("/api/admin/planner/day/" + E.day, { method: "PUT", body: payload(E.q) }).then(function () {
-        toast("Saved the Daily Quiz for " + nice(E.day) + "."); return load().then(function () { openDay(E.day); });
+        toast(E.q.status === "draft" ? "Saved as a draft. Learners don’t get it until you make it ready." : "Saved. Learners get this quiz on " + nice(E.day) + ".");
+        return load().then(function () { openDay(E.day); });
     }).catch(function (e) { $("eErr").textContent = e.message; b.disabled = false; });
+}
+/* Smart fill for one day: the next lessons of the chosen (or least-covered) course, plus review */
+function smartFillDay() {
+    var used = usedSet(E.day), plan = smartPlan([E.day], { n: 5, used: used, focus: E.q.courses.length === 1 ? E.q.courses[0] : null })[0];
+    if (!plan || !plan.questions.length) { toast("No course questions were found."); return; }
+    E.q.questions = plan.questions; E.q.title = E.q.title || plan.title; if (!E.q.strategy_id) E.q.strategy_id = plan.strategy_id; autoCourses(); drawEditor();
+    toast("Filled with " + plan.questions.length + " questions: " + plan.why + ".");
 }
 function delDay() {
     var b = $("delDay"); if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tap again to remove"; return; }
@@ -515,35 +556,87 @@ function copyDialog() {
             .catch(function (e) { $("cpErr").textContent = e.message; });
     });
 }
-/* Auto-fill: every day in the next 30 with nothing planned gets 5 questions from a focus course, with a strategy and the week's career */
+/* ---------------- Smart auto-fill ----------------
+   Each course is walked lesson by lesson (module order), so over a month learners revise the course in order.
+   Weekdays: 3 questions from the focus course's next lesson + 2 review questions from other courses.
+   Saturday: "Week review" asks again the questions of that week (spaced repetition).
+   Sunday: a fresh mix of every course. No question is reused from the 30 days around it. */
+function usedSet() { var u = {}; (O.used_questions || []).forEach(function (q) { u[q] = 1; }); if (E && E.q) E.q.questions.forEach(function (q) { delete u[q.question]; }); return u; }
+function moduleOrder(cid) { var c = (window.ESCHOOL_COURSES || []).filter(function (x) { return x.id === cid; })[0]; return c ? (c.modules || []).map(function (m) { return m.name; }) : []; }
+function nextModuleIndex(cid) {
+    // start after the last lesson of this course already planned
+    var mods = moduleOrder(cid), last = -1;
+    Object.keys(O.planned_days || {}).forEach(function (d) { (O.planned_days[d].modules || []).forEach(function (k) { var p = k.split("|"); if (p[0] === cid) last = Math.max(last, mods.indexOf(p[1])); }); });
+    return mods.length ? (last + 1) % mods.length : 0;
+}
+function smartPlan(days, o) {
+    var n = o.n || 5, used = o.used || {}, cids = COURSES.map(function (c) { return c.id; }).filter(function (id) { return allBank().some(function (x) { return x.course === id; }); });
+    var strats = O.strategies.map(function (s) { return s.id; }), ptr = {}, out = [], weekQs = {};
+    cids.forEach(function (c) { ptr[c] = nextModuleIndex(c); });
+    // the course planned least in the coming days goes first
+    var cov = O.coverage.courses || {}; cids.sort(function (a, b) { return (cov[a] || 0) - (cov[b] || 0); });
+    var focusN = 0;
+    function take(pool, k, seed) { var got = []; shuffle(pool.slice(), seed).forEach(function (x) { if (got.length < k && !used[x.question]) { got.push(strip(x)); used[x.question] = 1; } }); return got; }
+    function seedOf(str) { var v = 0; for (var i = 0; i < str.length; i++) v = (v * 31 + str.charCodeAt(i)) % 233280; return v || 7; }
+    days.forEach(function (d, i) {
+        var dow = (D(d).getUTCDay() + 6) % 7, wk = addDays(d, -dow), qs = [], title = "", why = "";
+        if (dow === 5 && (weekQs[wk] || []).length >= 3 && days.length > 1) {
+            qs = shuffle(weekQs[wk].slice(), seedOf(d)).slice(0, n); if (qs.length < n) qs = qs.concat(take(allBank(), n - qs.length, seedOf(d) + 3)); title = "Week review"; why = "questions from this week asked again";
+        } else if (dow === 6 || !cids.length) {
+            var per = Math.max(1, Math.ceil(n / Math.max(1, cids.length)));
+            cids.forEach(function (c, k) { qs = qs.concat(take(allBank().filter(function (x) { return x.course === c; }), per, seedOf(d) + k)); });
+            qs = shuffle(qs, seedOf(d)).slice(0, n); title = "Mixed review"; why = "a mix of every course";
+        } else {
+            var focus = o.focus && cids.indexOf(o.focus) > -1 ? o.focus : cids[focusN++ % cids.length], mods = moduleOrder(focus), mi = ptr[focus] || 0, lesson = mods[mi] || "";
+            var main = Math.min(n, Math.max(1, Math.round(n * 0.6)));
+            // this lesson first, then the next lessons until there are enough
+            for (var step = 0; step < Math.max(1, mods.length) && qs.length < main; step++) {
+                var mname = mods[(mi + step) % Math.max(1, mods.length)];
+                qs = qs.concat(take(allBank().filter(function (x) { return x.course === focus && (!mods.length || x.module === mname); }), main - qs.length, seedOf(d) + step));
+            }
+            if (qs.length < main) qs = qs.concat(take(allBank().filter(function (x) { return x.course === focus; }), main - qs.length, seedOf(d) + 99));
+            if (qs.length) { var mi2 = mods.indexOf(qs[0].module); if (mi2 > -1) { mi = mi2; lesson = mods[mi2]; } }   // the lesson the questions really came from
+            ptr[focus] = mods.length ? (mi + 1) % mods.length : 0;
+            qs = qs.concat(take(allBank().filter(function (x) { return x.course !== focus; }), n - qs.length, seedOf(d) + 5));
+            if (qs.length < n) qs = qs.concat(take(allBank(), n - qs.length, seedOf(d) + 11));
+            var cname = O.course_names[focus] || focus;
+            title = cname + (lesson ? ": " + lesson.replace(/^\s*\d+[.)]\s*/, "") : "");
+            title = title.length > 80 ? title.slice(0, 77) + "…" : title;
+            why = (lesson ? "the next lesson of " + cname + " (" + lesson + ")" : cname) + " and " + Math.max(0, qs.length - main) + " review questions";
+        }
+        (weekQs[wk] = weekQs[wk] || []).push.apply(weekQs[wk], qs.slice(0, 3));
+        out.push({ day: d, title: title, why: why, questions: qs, courses: Array.from(new Set(qs.map(function (x) { return x.course; }).filter(Boolean))),
+                   strategy_id: strats.length ? strats[(seedOf(d) + i) % strats.length] : null });
+    });
+    return out;
+}
 $("autoBtn").addEventListener("click", function () {
-    var gaps = []; for (var i = 1; i <= 30; i++) { var d = addDays(O.today, i); if (!O.days.some(function (x) { return x.day === d && x.quiz; })) gaps.push(d); }
-    // the overview only holds this month's grid: ask the server per month we need
-    var months = {}; gaps.forEach(function (d) { months[d.slice(0, 7)] = 1; });
-    Promise.all(Object.keys(months).map(function (m) { return m === O.month ? Promise.resolve(O) : api("/api/admin/planner/overview?month=" + m); })).then(function (all) {
-        var plannedAll = {}, weekCareer = {};
-        all.forEach(function (o) { o.days.forEach(function (x) { if (x.quiz) plannedAll[x.day] = 1; }); o.weeks.forEach(function (w) { weekCareer[w.week] = w.career; }); });
-        var todo = gaps.filter(function (d) { return !plannedAll[d]; });
-        if (!todo.length) { toast("The next 30 days are already planned."); return; }
-        if (!BANK.length && !ADMINQ.length) { toast("No course questions were found to build quizzes from."); return; }
-        openDlg("Auto-fill " + todo.length + " day" + (todo.length === 1 ? "" : "s"), '<p>Each empty day in the next 30 gets 5 questions, rotating a focus course, a study strategy to practise, and that week’s Career of the week as its career link. They are saved as <b>Draft</b> so you can check them, or as <b>Ready</b> to go straight to learners.</p><div class="pl-err" id="afErr"></div>',
-            '<button type="button" class="pl-btn" id="afNo">Cancel</button><button type="button" class="pl-btn" id="afDraft">Save as drafts</button><button type="button" class="pl-btn primary" id="afReady">Save as ready</button>');
-        $("afNo").addEventListener("click", closeDlg);
-        var run = function (status) {
-            var cids = COURSES.map(function (c) { return c.id; }), strats = O.strategies.map(function (s) { return s.id; });
-            var items = todo.map(function (d, i) {
-                var focus = cids.length ? cids[i % cids.length] : null, wk = (function () { var x = D(d); var dow = (x.getUTCDay() + 6) % 7; x.setUTCDate(x.getUTCDate() - dow); return iso(x); })();
-                var qs = randomSet(d, 3, focus ? [focus] : null).concat(randomSet(d + "m", 5, null)).filter(function (x, k, arr) { return arr.findIndex(function (y) { return y.question === x.question; }) === k; }).slice(0, 5);
-                var car = weekCareer[wk];
-                return { day: d, title: (focus && D(d).getUTCDay() % 6 ? (O.course_names[focus] || focus) + " focus" : "Mixed review"), questions: qs, courses: Array.from(new Set(qs.map(function (x) { return x.course; }).filter(Boolean))),
-                         strategy_id: strats[i % strats.length] || null, career_key: car ? car.key : null, career_note: "", pass_pct: 60, status: status };
-            });
-            api("/api/admin/planner/bulk", { method: "POST", body: { items: items } }).then(function (r) { closeDlg(); toast("Planned " + r.saved.length + " days" + (status === "draft" ? " as drafts" : "") + "."); load(); })
-                .catch(function (e) { $("afErr").textContent = e.message; });
-        };
-        $("afDraft").addEventListener("click", function () { run("draft"); });
-        $("afReady").addEventListener("click", function () { run("ready"); });
-    }).catch(function (e) { note(e.message, "bad"); });
+    var gaps = []; for (var i = 0; i <= 30; i++) { var d = addDays(O.today, i); if (!(O.planned_days || {})[d]) gaps.push(d); }
+    if (!gaps.length) { toast("The next 30 days are already planned."); return; }
+    if (!BANK.length && !ADMINQ.length) { toast("No course questions were found to build quizzes from."); return; }
+    var weekCareer = {}; O.weeks.forEach(function (w) { weekCareer[w.week] = w.career; }); O.queue.forEach(function (q) { weekCareer[q.week] = q.career; });
+    var n = 5, plan;
+    function build() { plan = smartPlan(gaps, { n: n, used: usedSet() }); }
+    function body() {
+        return '<p>Every empty day in the next 30 gets a quiz built from your courses:</p><ul style="margin:6px 0 0 18px;line-height:1.6;font-size:.86rem"><li><b>Weekdays:</b> the next lesson of one course (courses take turns, lesson by lesson) plus review questions from the others.</li><li><b>Saturday:</b> the week’s questions asked again, so they stick.</li><li><b>Sunday:</b> a mix of every course.</li><li>No question repeats one already planned this month. Each day gets a study strategy and that week’s career.</li></ul>' +
+            '<div style="display:flex;gap:10px;align-items:center;margin-top:12px"><span class="pl-m">Questions a day</span><span class="pl-seg" id="afN">' + [5, 8, 10].map(function (k) { return '<button type="button" data-n="' + k + '" aria-pressed="' + (k === n) + '">' + k + "</button>"; }).join("") + "</span></div>" +
+            '<div class="pl-plan">' + plan.map(function (p) { return "<div><span>" + esc(nice(p.day)) + "</span><span><b>" + esc(p.title) + '</b> <span class="pl-m">· ' + p.questions.length + " questions</span></span></div>"; }).join("") + '</div><div class="pl-err" id="afErr"></div>';
+    }
+    build();
+    openDlg("Auto-fill " + gaps.length + " empty day" + (gaps.length === 1 ? "" : "s"), body(),
+        '<button type="button" class="pl-btn" id="afNo">Cancel</button><button type="button" class="pl-btn" id="afDraft">Save as drafts</button><button type="button" class="pl-btn primary" id="afReady">Save – learners get them</button>', true);
+    $("dB").addEventListener("click", function (e) { var b = e.target.closest("[data-n]"); if (!b) return; n = Number(b.getAttribute("data-n")); build(); $("dB").innerHTML = body(); });
+    $("afNo").addEventListener("click", closeDlg);
+    var run = function (status) {
+        var items = plan.map(function (p) {
+            var car = weekCareer[addDays(p.day, -((D(p.day).getUTCDay() + 6) % 7))];
+            return { day: p.day, title: p.title, questions: p.questions, courses: p.courses, strategy_id: p.strategy_id, career_key: car ? car.key : null, career_note: "", pass_pct: 60, status: status };
+        }).filter(function (p) { return p.questions.length; });
+        api("/api/admin/planner/bulk", { method: "POST", body: { items: items } }).then(function (r) { closeDlg(); toast("Planned " + r.saved.length + " day" + (r.saved.length === 1 ? "" : "s") + (status === "draft" ? " as drafts" : ": learners get them on the day") + (r.skipped.length ? " (" + r.skipped.length + " skipped)" : "") + "."); load(); })
+            .catch(function (e) { $("afErr").textContent = e.message; });
+    };
+    $("afDraft").addEventListener("click", function () { run("draft"); });
+    $("afReady").addEventListener("click", function () { run("ready"); });
 });
 $("newBtn").addEventListener("click", function () {
     var d = O.kpis.next_gap || addDays(O.today, 1);
@@ -638,15 +731,37 @@ function openWeek(week) {
         }).join("");
         openDlg("Plan the week of " + nice(w.week, { weekday: undefined, year: "numeric" }), (w.started && !past ? '<div class="pl-note info">This week has started. You can still change the career and note; missions can only change if no learner has answered one yet.</div>' : "") + (past ? '<div class="pl-note info">This week is over and can’t be changed.</div>' : "") +
             '<div class="pl-f"><div class="pl-row2"><div><label for="wkC">Career of the week</label><select class="pl-in" id="wkC">' + opt(careerOpts, w.career_planned ? cur.key : "", "Automatic (" + cur.emoji + " " + cur.name + ")") + '</select></div>' +
-            '<div><label for="wkF">Featured mission (from the career’s area)</label><select class="pl-in" id="wkF"></select></div></div>' +
-            '<label for="wkN">Note learners see with the career (optional)</label><input class="pl-in" id="wkN" maxlength="300" placeholder="e.g. This week, ask a nurse or doctor what they studied at school." value="' + esc(notes) + '">' +
-            '<h4 style="margin:16px 0 8px;font-size:.95rem">Missions for each career area (3 each)</h4>' + areaBlocks + '<div class="pl-err" id="wkErr"></div></div>',
+            '<div><label for="wkN">Note learners see (optional)</label><input class="pl-in" id="wkN" maxlength="300" placeholder="e.g. This week, ask a nurse what they studied at school." value="' + esc(notes) + '"></div></div>' +
+            '<h4 style="margin:18px 0 2px;font-size:.95rem">The explanation learners read</h4><p class="pl-m" id="ciInfo">Loading…</p>' +
+            '<label for="ciDoes">What they do</label><textarea class="pl-in" id="ciDoes" maxlength="700" style="min-height:70px"></textarea>' +
+            '<div class="pl-row2"><div><label for="ciDay">A day at work</label><textarea class="pl-in" id="ciDay" maxlength="600" style="min-height:90px"></textarea></div>' +
+            '<div><label for="ciSkills">Skills that matter (one per line)</label><textarea class="pl-in" id="ciSkills" style="min-height:90px"></textarea></div></div>' +
+            '<div class="pl-row2"><div><label for="ciWhere">Where they work</label><textarea class="pl-in" id="ciWhere" maxlength="300" style="min-height:96px"></textarea></div>' +
+            '<div><label for="ciSteps">How to become one (one step per line)</label><textarea class="pl-in" id="ciSteps" style="min-height:96px"></textarea></div></div>' +
+            '<p class="pl-m" style="margin-top:6px">School subjects, training and the “Did you know?” fact are added automatically. Your text is kept for this career and used every time it’s the Career of the week. <button type="button" class="pl-btn xs" id="ciReset" hidden>Use the starter text again</button></p>' +
+            '<h4 style="margin:18px 0 8px;font-size:.95rem">Weekly career missions (3 questions per career area)</h4>' + areaBlocks + '<div class="pl-err" id="wkErr"></div></div>',
             past ? "" : '<button type="button" class="pl-btn danger" id="wkReset" style="margin-right:auto">Reset to automatic</button><button type="button" class="pl-btn" id="wkNo">Cancel</button><button type="button" class="pl-btn primary" id="wkYes">Save week</button>', true);
-        function feat() {
-            var key = $("wkC").value || cur.key, c = O.careers.filter(function (x) { return x.key === key; })[0], area = c ? c.area : cur.area;
-            $("wkF").innerHTML = opt(MIS.missions.filter(function (m) { return m.area === area; }).map(function (m) { return [m.id, m.emoji + " " + m.title]; }), w.featured_mission, "Automatic");
+        // the explanation of the chosen career
+        var ciKey = null, ciOrig = "";
+        function ciVals() { return { does: $("ciDoes").value.trim(), day: $("ciDay").value.trim(), skills: $("ciSkills").value.split("\n").map(function (x) { return x.trim(); }).filter(Boolean),
+                                     where: $("ciWhere").value.trim(), steps: $("ciSteps").value.split("\n").map(function (x) { return x.trim(); }).filter(Boolean) }; }
+        function ciFill(inf) {
+            $("ciDoes").value = inf.does || ""; $("ciDay").value = inf.day || ""; $("ciSkills").value = (inf.skills || []).join("\n");
+            $("ciWhere").value = inf.where || ""; $("ciSteps").value = (inf.steps || []).join("\n"); ciOrig = JSON.stringify(ciVals());
+            var c = O.careers.filter(function (x) { return x.key === ciKey; })[0];
+            $("ciInfo").textContent = (c ? c.emoji + " " + c.name + ": " : "") + (inf.edited ? "edited by an admin." : "starter text written by Eschool. Change anything you like.");
+            $("ciReset").hidden = !inf.edited || past;
         }
-        $("wkC").addEventListener("change", feat); feat();
+        function ciLoad() {
+            ciKey = $("wkC").value || cur.key; $("ciInfo").textContent = "Loading…";
+            api("/api/admin/planner/career/" + encodeURIComponent(ciKey)).then(function (d) { ciFill(d.info); }).catch(function (e) { $("ciInfo").textContent = e.message; });
+        }
+        $("wkC").addEventListener("change", function () {
+            if (ciKey && JSON.stringify(ciVals()) !== ciOrig && !$("wkC").dataset.sure) { $("wkC").dataset.sure = "1"; $("wkErr").textContent = "You changed the explanation of the previous career. Save the week first, or pick the career again to drop those changes."; return; }
+            $("wkC").dataset.sure = ""; $("wkErr").textContent = ""; ciLoad();
+        });
+        $("ciReset").addEventListener("click", function () { api("/api/admin/planner/career/" + encodeURIComponent(ciKey), { method: "DELETE" }).then(function (d) { ciFill(d.info); toast("Back to the starter text."); }).catch(function (e) { $("wkErr").textContent = e.message; }); });
+        ciLoad();
         $("dB").addEventListener("change", function (e) { var a = e.target.getAttribute && e.target.getAttribute("data-auto"); if (a) $("dB").querySelectorAll('[data-area="' + a + '"] select').forEach(function (s) { s.disabled = e.target.checked; }); });
         if (past) { $("dB").querySelectorAll("input, select").forEach(function (x) { x.disabled = true; }); return; }
         $("wkNo").addEventListener("click", closeDlg);
@@ -657,8 +772,10 @@ function openWeek(week) {
                 var auto = $("dB").querySelector('[data-auto="' + a.key + '"]').checked;
                 missions[a.key] = auto ? [] : Array.prototype.map.call($("dB").querySelectorAll('[data-area="' + a.key + '"] select'), function (s) { return s.value; });
             });
-            api("/api/admin/planner/week/" + w.week, { method: "PUT", body: { career_key: $("wkC").value || null, featured_mission: $("wkF").value || null, note: $("wkN").value.trim(), missions: missions } })
-                .then(function () { closeDlg(); toast("Week saved."); load(); }).catch(function (e) { $("wkErr").textContent = e.message; });
+            var changed = ciKey && JSON.stringify(ciVals()) !== ciOrig;
+            (changed ? api("/api/admin/planner/career/" + encodeURIComponent(ciKey), { method: "PUT", body: ciVals() }) : Promise.resolve())
+                .then(function () { return api("/api/admin/planner/week/" + w.week, { method: "PUT", body: { career_key: $("wkC").value || null, featured_mission: null, note: $("wkN").value.trim(), missions: missions } }); })
+                .then(function () { closeDlg(); toast("Week saved" + (changed ? ", with your explanation of the career" : "") + "."); load(); }).catch(function (e) { $("wkErr").textContent = e.message; });
         });
     }).catch(function (e) { toast(e.message); });
 }

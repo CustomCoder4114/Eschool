@@ -2786,7 +2786,7 @@
     function renderReviewForm() {
         if (IS_OWN_PROFILE || !PROFILE_IS_TEACHER) return '';
         if (ratingsData.can_review === false) {
-            return `<div class="rt-form"><p class="lp-muted" style="margin:0">You can review this teacher after you follow them, join one of their live classes or have lessons with them.</p></div>`;
+            return `<div class="rt-form"><p class="lp-muted" style="margin:0">You can review this teacher after a lesson or a live class with them.</p></div>`;
         }
         const mine = ratingsData.my_review;
         if (mine && !pickedStars) pickedStars = Number(mine.stars) || 0;
@@ -3036,7 +3036,7 @@
             <div class="lp-tiles">
                 ${streakHidden ? '' : statTile('fa-fire', '#f97316', Number(st.quiz_streak) || 0, 'Quiz streak', `Best: ${Number(st.best_quiz_streak) || 0} day${st.best_quiz_streak === 1 ? '' : 's'}`)}
                 ${streakHidden ? '' : statTile('fa-layer-group', '#7c3aed', Number(st.module_streak) || 0, 'Module streak', `Best: ${Number(st.best_module_streak) || 0}`)}
-                ${statTile('fa-award', '#10b981', escapeAttr(st.score_grade || '—'), 'Overall grade', st.score_grade ? `${Number(st.avg_score)}% average` : (st.score_subjects ? 'Needs more results' : 'No results yet'))}
+                ${statTile('fa-award', '#10b981', escapeAttr(st.score_grade || '—'), 'Overall grade', st.score_grade ? (st.avg_score != null ? `${Number(st.avg_score)}% average` : (st.grade_note || 'From your results')) : (st.score_subjects ? 'Needs more results' : 'No results yet'))}
                 ${statTile('fa-star', '#4361ee', st.total_score != null ? `${Number(st.total_score)}<small class="lp-of"> / ${Number(st.total_possible)}</small>` : '—', 'Total score', st.total_score != null ? `${Number(st.score_subjects)} subject${st.score_subjects === 1 ? '' : 's'} × 100` : 'No results yet')}
             </div>
             <div class="lp-section">

@@ -1147,6 +1147,8 @@
             background-color: #f9fafb;
         }
         
+        .nf-go { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 2px; padding: 6px 12px; border-radius: 8px; background: var(--primary-color, #4361ee); color: #fff !important; font-size: 12px; font-weight: 700; text-decoration: none; }
+        .nf-go:hover { filter: brightness(1.08); }
         .nf-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
         .nf-btn { padding: 5px 12px; border-radius: 999px; border: 1px solid #cbd5e1; background: transparent; color: #334155; font-size: 12px; font-weight: 600; cursor: pointer; }
         .nf-btn:hover { background: #f1f5f9; }
@@ -2375,6 +2377,7 @@ window.esToast = esToast;
                         <div class="notification-content">
                             <div class="notification-title">${escapeHtml(n.title)}</div>
                             <div class="notification-message">${escapeHtml(n.message)}</div>
+                            ${n.link && /^\/[^\/]/.test(n.link) ? `<a class="nf-go" href="${escapeHtml(n.link)}" data-nf-go="${escapeHtml(n.id)}">${escapeHtml(n.link_label || 'Open')} <i class="fas fa-arrow-right" aria-hidden="true"></i></a>` : ''}
                             ${friendRequestActions(n)}
                             <div class="notification-time">${formatNotifTime(n.time)}</div>
                         </div>
@@ -2412,6 +2415,10 @@ window.esToast = esToast;
                 });
             });
             notificationsList.querySelectorAll('.nf-link').forEach(a => a.addEventListener('click', e => e.stopPropagation()));
+            notificationsList.querySelectorAll('[data-nf-go]').forEach(a => a.addEventListener('click', e => {
+                e.stopPropagation();          // mark it read on the way to the page
+                try { fetch('/notifications/' + encodeURIComponent(a.dataset.nfGo) + '/read', { method: 'POST', credentials: 'same-origin', keepalive: true }); } catch (x) { /* ignore */ }
+            }));
 
             notificationsList.querySelectorAll('.notification-item').forEach(item => {
                 item.addEventListener('click', function() {
@@ -3037,6 +3044,10 @@ window.esToast = esToast;
             .nt-edit { max-height: 34vh; }
         }
         @media print { #esNotes { display: none; } }
+        #esNotes[hidden] { display: none !important; }
+        /* a resource is open: sit above its like / save bar */
+        body:has(#previewModal.show) .nt-fab { bottom: 92px; }
+        @media (max-width: 640px) { body:has(#previewModal.show) .nt-fab { bottom: 120px; } }
         /* a lesson, quiz or activity is open full screen: sit above its Exit button */
         body:has(.fullscreen-modal.active) .nt-fab, body:has(.quiz-modal.active) .nt-fab, body:has(#actModal:not([hidden])) .nt-fab { bottom: 84px; }
         @media (max-width: 640px) { body:has(.fullscreen-modal.active) .nt-fab, body:has(.quiz-modal.active) .nt-fab, body:has(#actModal:not([hidden])) .nt-fab { bottom: 72px; } }
@@ -3065,7 +3076,18 @@ window.esToast = esToast;
     (function () {
         'use strict';
         const ME = {{ session.get('email', 'me') | tojson }};
-        const POS_KEY = 'notes.pos.' + ME, OPEN_KEY = 'notes.open.' + ME;
+        const POS_KEY = 'notes.pos.' + ME, OPEN_KEY = 'notes.open.' + ME, SHOW_KEY = 'settings.notesButton.' + ME;
+        // Settings > Appearance > "Notes button": off hides the button and panel on every page (notes are kept)
+        function notesWanted() { try { return localStorage.getItem(SHOW_KEY) !== 'off'; } catch (e) { return true; } }
+        function applyWanted() {
+            const box = document.getElementById('esNotes'); if (!box) return;
+            const on = notesWanted();
+            if (!on && !document.getElementById('ntPanel').hidden) { try { closePanel(); } catch (e) { /* not ready yet */ } }
+            box.hidden = !on;
+        }
+        window.addEventListener('storage', e => { if (e.key === SHOW_KEY) applyWanted(); });
+        window.esNotesShown = notesWanted;
+        window.esNotesButton = function (on) { try { localStorage.setItem(SHOW_KEY, on ? 'on' : 'off'); } catch (e) {} applyWanted(); };
         const $ = id => document.getElementById(id);
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         let notes = [], loaded = false, tab = 'page', currentId = null, saveTimer = null, saving = false, query = '';
@@ -3195,8 +3217,15 @@ window.esToast = esToast;
             if (!sub) { sub = document.createElement('div'); sub.className = 'nt-sub'; body.appendChild(sub); list = document.createElement('div'); list.className = 'nt-list'; body.appendChild(list); }
             sub.textContent = 'Notes here (' + mine.length + ')';
             list.innerHTML = mine.map(itemHTML).join('');
+            // the first save of a new note adds the pin / delete buttons: redraw only the bottom bar,
+            // so the note being typed keeps the cursor
             const acts = $('ntFoot').querySelector('.nt-acts');
-            if (acts && currentId && !acts.querySelector('[data-nt="delete"]')) render();
+            if (acts && currentId && !acts.querySelector('[data-nt="delete"]')) {
+                const cur = notes.find(n => n.id === currentId);
+                acts.innerHTML = '<button type="button" class="nt-btn ghost" data-nt="pin" title="Pin">' + (cur && cur.pinned ? '<i class="fas fa-star" style="color:#f59e0b"></i>' : '<i class="far fa-star"></i>') + '</button>' +
+                    '<button type="button" class="nt-btn ghost" data-nt="delete" title="Delete note"><i class="far fa-trash-can"></i></button>' +
+                    '<button type="button" class="nt-btn" data-nt="new"><i class="fas fa-plus" aria-hidden="true"></i> New note</button>';
+            }
         }
 
         // ---- open / close / move ----
@@ -3313,8 +3342,9 @@ window.esToast = esToast;
         }
 
         // count on the button straight away; reopen if it was open on the last page
+        applyWanted();
         load();
-        try { if (localStorage.getItem(OPEN_KEY) === '1' && window.innerWidth > 640) openPanel(false); } catch (e) {}
+        try { if (notesWanted() && localStorage.getItem(OPEN_KEY) === '1' && window.innerWidth > 640) openPanel(false); } catch (e) {}
     })();
     </script>
     {% endif %}

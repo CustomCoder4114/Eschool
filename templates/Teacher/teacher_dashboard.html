@@ -5,435 +5,250 @@
 <style>
 /* ======================================================================
    TEACHER DASHBOARD
-   Everything is real: GET /api/teacher/dashboard (refreshed every minute)
-   and /api/teacher/todos. Scoped to .td with its own light/dark colours
-   (data-no-theme) so hovers stay readable in dark mode; the main colour
-   follows Settings > Appearance through --primary-color. No pop-ups.
+   Data: GET /api/teacher/dashboard (refreshed every minute) and /api/teacher/todos.
+   Scoped to .td with its own light/dark colours (data-no-theme); the main
+   colour follows Settings > Appearance through --primary-color.
    ====================================================================== */
 .td {
     --td-accent: var(--primary-color, #4361ee);
     --td-accent-2: var(--secondary-color, #7209b7);
-    --td-accent-soft: color-mix(in srgb, var(--td-accent) 11%, transparent);
-    --td-accent-line: color-mix(in srgb, var(--td-accent) 35%, transparent);
+    --td-accent-soft: color-mix(in srgb, var(--td-accent) 10%, transparent);
     --td-surface: #ffffff;
     --td-surface-2: #f8fafc;
     --td-hover: #f1f5f9;
-    --td-border: #e5e7eb;
+    --td-border: #eef1f5;
+    --td-line: #e2e8f0;
     --td-text: #0f172a;
-    --td-text-2: #475569;
+    --td-text-2: #334155;
     --td-text-3: #64748b;
-    --td-shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 6px 18px rgba(15, 23, 42, .06);
-    --td-ok: #059669; --td-ok-soft: #ecfdf5;
+    --td-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+    --td-ok: #15803d; --td-ok-soft: #dcfce7;
     --td-bad: #dc2626; --td-bad-soft: #fef2f2;
-    --td-warn: #b45309; --td-warn-soft: #fffbeb;
+    --td-warn: #b45309; --td-warn-soft: #fef3c7;
     max-width: 1320px; margin: 0 auto; color: var(--td-text);
     font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 body.dark-mode .td {
     --td-accent-soft: color-mix(in srgb, var(--td-accent) 22%, transparent);
-    --td-accent-line: color-mix(in srgb, var(--td-accent) 50%, transparent);
     --td-surface: #111827;
     --td-surface-2: #0f172a;
     --td-hover: #1e293b;
-    --td-border: #263244;
+    --td-border: #1f2a3b;
+    --td-line: #263244;
     --td-text: #e5e7eb;
     --td-text-2: #cbd5e1;
     --td-text-3: #94a3b8;
-    --td-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
-    --td-ok: #34d399; --td-ok-soft: rgba(16, 185, 129, .14);
+    --td-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+    --td-ok: #4ade80; --td-ok-soft: rgba(34, 197, 94, .15);
     --td-bad: #f87171; --td-bad-soft: rgba(239, 68, 68, .14);
-    --td-warn: #fbbf24; --td-warn-soft: rgba(245, 158, 11, .14);
+    --td-warn: #fbbf24; --td-warn-soft: rgba(245, 158, 11, .15);
 }
 .td *, .td *::before, .td *::after { box-sizing: border-box; }
 .td button, .td input, .td select, .td textarea { font-family: inherit; }
-.td :focus-visible { outline: 3px solid var(--td-accent-line); outline-offset: 2px; }
+.td :focus-visible { outline: 3px solid var(--td-accent-soft); outline-offset: 2px; }
 .td a { color: inherit; }
+.td h1, .td h2 { font-family: 'Poppins', 'Inter', sans-serif; }
 
 /* ---------- hero ---------- */
 .td-hero {
-    position: relative; overflow: hidden; padding: 26px 28px; margin-bottom: 18px; border-radius: 20px; color: #fff;
-    background: linear-gradient(135deg, var(--td-accent), var(--td-accent-2));
-    box-shadow: 0 12px 30px color-mix(in srgb, var(--td-accent) 28%, transparent);
+    display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+    padding: 24px 28px; margin-bottom: 20px; border-radius: 16px; color: #fff;
+    background: linear-gradient(110deg, var(--td-accent), var(--td-accent-2));
 }
-.td-hero::after { content: ''; position: absolute; right: -70px; top: -90px; width: 260px; height: 260px; border-radius: 50%; background: rgba(255, 255, 255, .08); }
-.td-hero-top { position: relative; z-index: 1; display: flex; gap: 20px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
-.td-hello { font-size: .92rem; opacity: .9; }
-.td-hero h1 { margin: 4px 0 8px; font: 800 1.85rem/1.2 'Poppins', sans-serif; color: #fff; }
-.td-summary { margin: 0; font-size: .95rem; opacity: .95; line-height: 1.5; max-width: 640px; }
-.td-clock { text-align: right; }
-.td-clock b { display: block; font: 700 1.6rem 'Poppins', sans-serif; letter-spacing: .5px; font-variant-numeric: tabular-nums; }
-.td-clock span { font-size: .88rem; opacity: .9; }
-.td-actions { position: relative; z-index: 1; display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
-.td-hbtn {
-    display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 12px; text-decoration: none;
-    font-weight: 700; font-size: .88rem; border: 1px solid rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .14); color: #fff;
-    transition: background .15s;
-}
-.td-hbtn:hover { background: rgba(255, 255, 255, .26); }
-.td-hbtn.solid { background: #fff; color: var(--td-accent); border-color: #fff; }
-.td-hbtn.solid:hover { background: #eef2ff; }
-.td-hbtn .td-pill { background: #ef4444; color: #fff; border-radius: 999px; padding: 1px 7px; font-size: .72rem; }
+.td-date { font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
+.td-hero h1 { margin: 4px 0 6px; font-size: 1.75rem; font-weight: 700; color: #fff; }
+.td-hero > div:first-child { flex: 1 1 340px; min-width: 0; }
+.td-hero p { margin: 0; opacity: .92; font-size: .95rem; line-height: 1.5; }
+.td-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+.td-stat { min-width: 112px; padding: 12px 18px; border-radius: 12px; text-align: center; text-decoration: none;
+    background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .3); color: #fff !important; transition: background .15s; }
+a.td-stat:hover { background: rgba(255, 255, 255, .22); }
+.td-stat b { display: block; font: 700 1.35rem 'Poppins', sans-serif; font-variant-numeric: tabular-nums; }
+.td-stat b small { font-size: .8rem; font-weight: 600; opacity: .85; }
+.td-stat span { font-size: .75rem; opacity: .9; }
 
-/* ---------- numbers ---------- */
-.td-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
-.td-kpi {
-    display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 16px; text-decoration: none;
-    background: var(--td-surface); border: 1px solid var(--td-border); box-shadow: var(--td-shadow); transition: border-color .15s, background .15s;
-}
-a.td-kpi:hover { border-color: var(--td-accent-line); background: var(--td-hover); }
-.td-kpi-top { display: flex; align-items: center; gap: 10px; }
-.td-kpi-ic { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); flex-shrink: 0; }
-.td-kpi-lbl { font-size: .8rem; font-weight: 600; color: var(--td-text-3); line-height: 1.25; }
-.td-kpi-num { font: 800 1.65rem/1.1 'Poppins', sans-serif; color: var(--td-text); font-variant-numeric: tabular-nums; }
-.td-kpi-num small { font: 600 .85rem 'Inter', sans-serif; color: var(--td-text-3); }
-.td-kpi-sub { font-size: .78rem; color: var(--td-text-3); line-height: 1.35; }
-.td-up { color: var(--td-ok); font-weight: 700; }
-.td-down { color: var(--td-bad); font-weight: 700; }
-
-/* ---------- panels ---------- */
-.td-row { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 22px; margin-bottom: 22px; align-items: stretch; }
-/* Same-size cards: cards side by side are the same height; when one has more inside
-   than fits, it scrolls on its own and its title stays at the top. */
-.td-row > .td-panel { height: 540px; overflow-y: auto; }
-.td-panel#teaching, .td-panel#tdAttWrap, .td-panel[aria-labelledby="tdFeedH"] { max-height: 620px; overflow-y: auto; }
-.td-row > .td-panel, .td-panel#teaching, .td-panel#tdAttWrap, .td-panel[aria-labelledby="tdFeedH"] { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
-.td-row > .td-panel::-webkit-scrollbar, .td-panel#teaching::-webkit-scrollbar, .td-panel#tdAttWrap::-webkit-scrollbar, .td-panel[aria-labelledby="tdFeedH"]::-webkit-scrollbar { display: block; width: 6px; }
-.td-row > .td-panel::-webkit-scrollbar-thumb, .td-panel#teaching::-webkit-scrollbar-thumb, .td-panel#tdAttWrap::-webkit-scrollbar-thumb, .td-panel[aria-labelledby="tdFeedH"]::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-.td-panel > .td-head { position: sticky; top: -20px; z-index: 3; background: var(--td-surface); margin: -20px -20px 14px; padding: 20px 20px 12px; border-radius: 18px 18px 0 0; }
-.td-panel { min-width: 0; padding: 20px; border-radius: 18px; background: var(--td-surface); border: 1px solid var(--td-border); box-shadow: var(--td-shadow); }
-.td-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-.td-head h2 { margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--td-text); display: flex; align-items: center; gap: 9px; }
-.td-head h2 i { color: var(--td-accent); }
+/* ---------- cards ---------- */
+.td-row { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; margin-bottom: 20px; align-items: stretch; }
+.td-card { min-width: 0; padding: 22px 24px; border-radius: 16px; background: var(--td-surface); box-shadow: var(--td-shadow); border: 1px solid var(--td-border); }
+.td-card + .td-card, .td-full { margin-bottom: 20px; }
+.td-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.td-head h2 { margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--td-text); }
 .td-head .td-sub { font-size: .8rem; color: var(--td-text-3); }
-.td-head .td-right { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.td-seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--td-surface-2); border: 1px solid var(--td-border); }
-.td-seg button { border: 0; background: transparent; color: var(--td-text-2); padding: 6px 11px; border-radius: 8px; font-size: .8rem; font-weight: 600; cursor: pointer; }
-.td-seg button:hover { color: var(--td-text); background: var(--td-hover); }
-.td-seg button[aria-pressed="true"] { background: var(--td-accent); color: #fff; }
-.td-link { font-size: .82rem; font-weight: 600; color: var(--td-accent) !important; text-decoration: none; }
+.td-link { font-size: .82rem; font-weight: 600; color: var(--td-accent) !important; text-decoration: none; white-space: nowrap; }
 .td-link:hover { text-decoration: underline; }
-.td-empty { padding: 26px 10px; text-align: center; color: var(--td-text-3); font-size: .88rem; line-height: 1.5; }
-.td-empty i { display: block; font-size: 1.6rem; margin-bottom: 8px; color: var(--td-accent); opacity: .45; }
-.td-skel { height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--td-hover), var(--td-surface-2), var(--td-hover)); background-size: 200% 100%; animation: tdSk 1.2s infinite; margin: 10px 0; }
+.td-empty { padding: 22px 8px; text-align: center; color: var(--td-text-3); font-size: .88rem; line-height: 1.5; }
+.td-skel { height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--td-hover), var(--td-surface-2), var(--td-hover)); background-size: 200% 100%; animation: tdSk 1.2s infinite; margin: 12px 0; }
 @keyframes tdSk { to { background-position: -200% 0; } }
-.td-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 14px; border-radius: 10px; border: 1px solid transparent; font-weight: 700; font-size: .84rem; cursor: pointer; text-decoration: none; transition: background .15s, border-color .15s, filter .15s; }
-.td-btn.primary { background: var(--td-accent); color: #fff; }
+
+/* ---------- buttons, fields, notes ---------- */
+.td-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border-radius: 8px; border: 1px solid transparent;
+    font-weight: 600; font-size: .82rem; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background .15s, filter .15s; }
+.td-btn.primary { background: var(--td-accent); color: #fff !important; }
 .td-btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
-.td-btn.ghost { background: var(--td-surface); color: var(--td-text); border-color: var(--td-border); }
+.td-btn.ghost { background: var(--td-surface) !important; color: var(--td-text) !important; border-color: var(--td-line); }
 .td-btn.ghost:hover:not(:disabled) { background: var(--td-hover); }
-.td-btn.danger { background: var(--td-surface); color: var(--td-bad); border-color: var(--td-border); }
+.td-btn.danger { background: var(--td-surface); color: var(--td-bad) !important; border-color: var(--td-line); }
 .td-btn.danger:hover:not(:disabled) { background: var(--td-bad-soft); }
 .td-btn:disabled { opacity: .55; cursor: not-allowed; }
-.td-note { display: none; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 9px 12px; border-radius: 10px; font-size: .84rem; background: var(--td-accent-soft); color: var(--td-text); }
-.td-note.show { display: flex; }
+.td-input, .td-select { height: 38px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--td-line); background: var(--td-surface); color: var(--td-text); font-size: .88rem; width: 100%; }
+.td-textarea { width: 100%; min-height: 70px; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--td-line); background: var(--td-surface); color: var(--td-text); font-size: .88rem; resize: vertical; }
+.td-input:focus, .td-select:focus, .td-textarea:focus { outline: none; border-color: var(--td-accent); box-shadow: 0 0 0 3px var(--td-accent-soft); }
+.td-input::placeholder, .td-textarea::placeholder { color: var(--td-text-3); }
+.td-note { display: none; margin-top: 8px; padding: 9px 12px; border-radius: 8px; font-size: .84rem; background: var(--td-accent-soft); color: var(--td-text); }
+.td-note.show { display: block; }
 .td-note.ok { background: var(--td-ok-soft); color: var(--td-ok); }
 .td-note.bad { background: var(--td-bad-soft); color: var(--td-bad); }
-.td-note i { margin-top: 2px; }
-.td-av { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: .85rem; background: linear-gradient(135deg, var(--td-accent), var(--td-accent-2)); }
-.td-av img { width: 100%; height: 100%; object-fit: cover; }
-.td-input, .td-select { height: 38px; padding: 0 11px; border-radius: 10px; border: 1px solid var(--td-border); background: var(--td-surface-2); color: var(--td-text); font-size: .88rem; }
-.td-input:focus, .td-select:focus, .td-textarea:focus { outline: none; border-color: var(--td-accent); box-shadow: 0 0 0 3px var(--td-accent-soft); background: var(--td-surface); }
-.td-textarea { width: 100%; min-height: 70px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--td-border); background: var(--td-surface-2); color: var(--td-text); font-size: .88rem; resize: vertical; }
-.td-input::placeholder, .td-textarea::placeholder { color: var(--td-text-3); }
+#tdFlash { margin: -6px 0 20px; }
 
-/* ---------- needs attention ---------- */
-.td-att { display: flex; flex-direction: column; gap: 10px; }
-.td-att-item { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: var(--td-surface-2); border: 1px solid var(--td-border); }
-.td-att-ic { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); }
-.td-att-body { flex: 1; min-width: 0; }
-.td-att-body b { display: block; font-size: .92rem; color: var(--td-text); }
-.td-att-body span { display: block; font-size: .82rem; color: var(--td-text-3); margin-top: 2px; line-height: 1.45; }
-.td-att-acts { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; align-items: center; }
-.td-accept { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
-.td-accept label { display: flex; flex-direction: column; gap: 4px; font-size: .76rem; font-weight: 600; color: var(--td-text-2); }
-.td-accept .wide { grid-column: 1 / -1; }
+/* ---------- list rows (to do, coming up) ---------- */
+.td-item { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px solid var(--td-border); }
+.td-list > .td-item:first-child, .td-list > .td-wrap:first-child > .td-item { border-top: 0; }
+.td-ic { width: 36px; height: 36px; border-radius: 10px; flex: none; display: grid; place-items: center; font-size: .9rem; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.td-txt { flex: 1; min-width: 0; }
+.td-txt b { display: block; font-weight: 600; font-size: .92rem; color: var(--td-text); overflow-wrap: anywhere; }
+.td-txt span { display: block; font-size: .82rem; color: var(--td-text-3); margin-top: 1px; line-height: 1.45; }
+.td-acts { display: flex; gap: 6px; flex: none; }
+.td-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 0 0 14px 50px; }
+.td-form:empty { display: none; }
+.td-form label { display: flex; flex-direction: column; gap: 4px; font-size: .76rem; font-weight: 600; color: var(--td-text-2); }
+.td-form .wide { grid-column: 1 / -1; }
+.td-form .td-hint { grid-column: 1 / -1; margin: 0; font-size: .78rem; color: var(--td-text-3); }
+.td-quote { grid-column: 1 / -1; padding: 8px 12px; border-left: 3px solid var(--td-accent); background: var(--td-surface-2); border-radius: 0 8px 8px 0; font-size: .84rem; color: var(--td-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.td-wrap .td-note { margin: 0 0 12px 50px; }
 
-/* ---------- schedule ---------- */
-.td-cal-nav { display: flex; align-items: center; gap: 6px; }
-.td-cal-nav b { min-width: 130px; text-align: center; font-size: .9rem; }
-.td-cal-nav button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--td-border); background: var(--td-surface); color: var(--td-text-2); cursor: pointer; }
-.td-cal-nav button:hover { background: var(--td-hover); color: var(--td-text); }
-.td-sched { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; }
-.td-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; align-content: start; }
-.td-dow { font-size: .7rem; font-weight: 700; color: var(--td-text-3); padding: 4px 0; }
-.td-day { position: relative; padding: 8px 0 10px; border-radius: 9px; border: 0; background: transparent; color: var(--td-text); font-size: .84rem; cursor: pointer; }
-.td-day:hover { background: var(--td-hover); }
-.td-day.out { color: var(--td-text-3); opacity: .5; }
-.td-day.today { font-weight: 800; color: var(--td-accent); }
-.td-day.sel { background: var(--td-accent); color: #fff; }
-.td-day i { position: absolute; left: 50%; bottom: 3px; transform: translateX(-50%); display: flex; gap: 2px; }
-.td-day i u { width: 5px; height: 5px; border-radius: 50%; background: var(--d); text-decoration: none; }
-.td-day.sel i u { background: #fff; }
-.td-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; font-size: .76rem; color: var(--td-text-3); }
-.td-legend span::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: var(--d); }
-.td-agenda-h { font-size: .86rem; font-weight: 700; color: var(--td-text-2); margin-bottom: 8px; }
-.td-ev { display: flex; gap: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--td-border); background: var(--td-surface-2); margin-bottom: 8px; border-left: 4px solid var(--d); }
-.td-ev.done { opacity: .62; }
-.td-ev-time { width: 64px; flex-shrink: 0; font-weight: 800; font-size: .9rem; color: var(--td-text); font-variant-numeric: tabular-nums; }
-.td-ev-time small { display: block; font-weight: 600; font-size: .72rem; color: var(--td-text-3); }
-.td-ev-body { flex: 1; min-width: 0; }
-.td-ev-body b { display: block; font-size: .92rem; color: var(--td-text); overflow-wrap: anywhere; }
-.td-ev-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 5px; font-size: .76rem; color: var(--td-text-3); }
-.td-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: .72rem; font-weight: 700; background: var(--td-hover); color: var(--td-text-2); }
-.td-chip.live { background: color-mix(in srgb, #ef4444 14%, transparent); color: #ef4444; }
-.td-chip.lesson { background: color-mix(in srgb, #10b981 15%, transparent); color: var(--td-ok); }
-.td-chip.now { background: #ef4444; color: #fff; }
-.td-chip.next { background: var(--td-accent); color: #fff; }
-.td-ev-acts { display: flex; align-items: center; }
-
-/* ---------- to-do ---------- */
-.td-todo-form { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto; gap: 8px; margin-bottom: 10px; }
-.td-todo-filters { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.td-clear { border: 0; background: none; color: var(--td-text-3); font-size: .78rem; cursor: pointer; text-decoration: underline; }
-.td-clear:hover { color: var(--td-text); }
-.td-todos { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; }
-.td-todo { display: flex; align-items: center; gap: 10px; padding: 9px 6px; border-bottom: 1px solid var(--td-border); border-radius: 8px; }
-.td-todo:hover { background: var(--td-hover); }
-.td-todo input { width: 18px; height: 18px; accent-color: var(--td-accent); flex-shrink: 0; }
-.td-todo span { flex: 1; min-width: 0; font-size: .9rem; overflow-wrap: anywhere; }
-.td-todo.done span { text-decoration: line-through; color: var(--td-text-3); }
-.td-due { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--td-hover); color: var(--td-text-2); white-space: nowrap; }
+/* my tasks */
+.td-lab { display: flex; justify-content: space-between; align-items: center; margin: 16px 0 2px; font-size: .7rem; font-weight: 700; letter-spacing: .08em; color: var(--td-text-3); }
+.td-lab button { border: 0; background: none; color: var(--td-text-3); font-size: .75rem; letter-spacing: 0; font-weight: 600; cursor: pointer; text-decoration: underline; }
+.td-todo { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--td-border); }
+.td-todo input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--td-accent); flex: none; cursor: pointer; }
+.td-todo span:not(.td-due) { flex: 1; min-width: 0; font-size: .9rem; overflow-wrap: anywhere; }
+.td-todo.done span:not(.td-due) { text-decoration: line-through; color: var(--td-text-3); }
+.td-due { font-size: .72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--td-hover); color: var(--td-text-2); white-space: nowrap; }
 .td-due.late { background: var(--td-bad-soft); color: var(--td-bad); }
 .td-due.today { background: var(--td-warn-soft); color: var(--td-warn); }
-.td-x { border: 0; background: none; color: var(--td-text-3); cursor: pointer; width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; }
+.td-x { border: 0; background: none; color: var(--td-text-3); cursor: pointer; width: 28px; height: 28px; border-radius: 8px; flex: none; opacity: .6; }
+.td-todo:hover .td-x { opacity: 1; }
 .td-x:hover { background: var(--td-bad-soft); color: var(--td-bad); }
-.td-bar { height: 8px; border-radius: 999px; background: var(--td-hover); overflow: hidden; margin-top: 12px; }
-.td-bar > i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--td-accent), var(--td-accent-2)); transition: width .3s; }
-.td-bar-txt { margin-top: 6px; font-size: .78rem; color: var(--td-text-3); }
+.td-add { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 8px; margin-top: 10px; }
 
-/* ---------- chart ---------- */
-.td-chart { position: relative; height: 240px; }
-.td-chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
-.td-chart .grid { stroke: var(--td-border); stroke-width: 1; }
-.td-chart .axis { fill: var(--td-text-3); font-size: 11px; }
-.td-chart rect.b { fill: var(--td-accent); opacity: .85; rx: 4; transition: opacity .15s; cursor: pointer; }
-.td-chart rect.b:hover, .td-chart rect.b.on { opacity: 1; fill: var(--td-accent-2); }
-.td-tip { position: absolute; pointer-events: none; padding: 6px 10px; border-radius: 8px; background: #0f172a; color: #fff; font-size: .78rem; white-space: nowrap; transform: translate(-50%, -110%); display: none; z-index: 2; }
-.td-chart-sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--td-border); }
-.td-chart-sum div { font-size: .76rem; color: var(--td-text-3); }
-.td-chart-sum b { display: block; font-size: 1.05rem; color: var(--td-text); margin-top: 2px; }
+/* coming up */
+.td-cal { width: 50px; flex: none; text-align: center; border-radius: 10px; padding: 6px 0; background: var(--td-accent-soft); }
+.td-cal b { display: block; font: 700 1.1rem/1.1 'Poppins', sans-serif; color: var(--td-accent); }
+.td-cal span { font-size: .68rem; font-weight: 600; text-transform: uppercase; color: var(--td-text-3); }
+.td-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; white-space: nowrap; background: var(--td-hover); color: var(--td-text-2); }
+.td-pill.lesson { background: var(--td-ok-soft); color: var(--td-ok); }
+.td-pill.live { background: var(--td-bad-soft); color: var(--td-bad); }
+.td-pill.now { background: #ef4444; color: #fff; }
+.td-pill.warn { background: var(--td-warn-soft); color: var(--td-warn); }
+.td-foot { padding-top: 12px; text-align: center; font-size: .84rem; color: var(--td-text-3); }
+
+/* ---------- learners ---------- */
+.td-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.td-table th { text-align: left; font-size: .75rem; font-weight: 600; color: var(--td-text-3); padding: 0 10px 8px 0; }
+.td-table td { padding: 12px 10px 12px 0; border-top: 1px solid var(--td-border); vertical-align: middle; }
+.td-table td:last-child { text-align: right; padding-right: 0; }
+.td-who { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.td-who small { display: none; font-weight: 400; font-size: .78rem; color: var(--td-text-3); }
+.td-av { width: 32px; height: 32px; border-radius: 50%; overflow: hidden; flex: none; display: grid; place-items: center; color: #fff; font-weight: 600; font-size: .78rem; background: var(--c, var(--td-accent)); }
+.td-av img { width: 100%; height: 100%; object-fit: cover; }
+.td-muted { color: var(--td-text-3); }
+
+/* ---------- earnings ---------- */
+.td-big { font: 700 1.9rem/1.1 'Poppins', sans-serif; color: var(--td-text); font-variant-numeric: tabular-nums; }
+.td-big small { font: 400 .82rem 'Inter', sans-serif; color: var(--td-text-3); }
+.td-bars { display: flex; align-items: flex-end; gap: 12px; height: 120px; margin: 18px 0 6px; }
+.td-bars div { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.td-bars i { display: block; width: 100%; min-height: 3px; border-radius: 6px 6px 0 0; background: color-mix(in srgb, var(--td-accent) 30%, transparent); }
+.td-bars div.cur i { background: var(--td-accent); }
+.td-blab { display: flex; gap: 12px; }
+.td-blab span { flex: 1; text-align: center; font-size: .74rem; color: var(--td-text-3); }
+.td-split { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--td-border); }
+.td-split div { font-size: .78rem; color: var(--td-text-3); }
+.td-split b { display: block; margin-top: 2px; font: 600 1rem 'Poppins', sans-serif; color: var(--td-text); }
 
 /* ---------- ratings ---------- */
-.td-rate-top { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; }
-.td-rate-big { font: 800 2.6rem/1 'Poppins', sans-serif; color: var(--td-text); }
-.td-stars { color: #f59e0b; letter-spacing: 2px; font-size: .95rem; }
-.td-stars .off { color: var(--td-border); }
-.td-dist { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
-.td-dist div { display: grid; grid-template-columns: 34px 1fr 28px; gap: 8px; align-items: center; font-size: .78rem; color: var(--td-text-3); }
-.td-dist em { height: 8px; border-radius: 999px; background: var(--td-hover); overflow: hidden; display: block; }
-.td-dist em i { display: block; height: 100%; background: #f59e0b; border-radius: inherit; }
-.td-review { padding: 10px 0; border-top: 1px solid var(--td-border); }
-.td-review-top { display: flex; align-items: center; gap: 8px; }
-.td-review-top b { font-size: .86rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.td-review-top time { font-size: .74rem; color: var(--td-text-3); }
-.td-review p { margin: 6px 0 0; font-size: .86rem; color: var(--td-text-2); line-height: 1.5; overflow-wrap: anywhere; }
+.td-score { display: flex; align-items: center; gap: 16px; }
+.td-score .td-big small { font-size: .9rem; }
+.td-score p { margin: 0; font-size: .82rem; color: var(--td-text-3); line-height: 1.5; }
+.td-rev { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--td-surface-2); }
+.td-rev-top { display: flex; justify-content: space-between; gap: 8px; font-size: .88rem; }
+.td-rev p { margin: 4px 0 0; font-size: .84rem; color: var(--td-text-2); line-height: 1.5; overflow-wrap: anywhere; }
+.td-rev time { font-size: .75rem; color: var(--td-text-3); }
+.td-stars { color: #f59e0b; letter-spacing: 1px; white-space: nowrap; }
+.td-stars .off { color: var(--td-line); }
 
-/* ---------- tables / lists ---------- */
-.td-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
-.td-table th { text-align: left; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--td-text-3); padding: 0 8px 8px; border-bottom: 1px solid var(--td-border); }
-.td-table td { padding: 10px 8px; border-bottom: 1px solid var(--td-border); vertical-align: middle; }
-.td-table tr:last-child td { border-bottom: 0; }
-.td-table tbody tr:hover td { background: var(--td-hover); }
-.td-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.td-res { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.td-res-ic { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); }
-.td-res b { display: block; font-size: .88rem; color: var(--td-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
-.td-res small { color: var(--td-text-3); font-size: .74rem; }
-.td-people { display: flex; flex-direction: column; }
-.td-person { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-radius: 10px; text-decoration: none; }
-.td-person:hover { background: var(--td-hover); }
-.td-person b { flex: 1; min-width: 0; font-size: .88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.td-person time { font-size: .74rem; color: var(--td-text-3); }
-
-/* ---------- private teaching ---------- */
-.td-tkpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
-.td-tkpi { padding: 12px; border-radius: 12px; background: var(--td-surface-2); border: 1px solid var(--td-border); }
-.td-tkpi b { display: block; font: 800 1.25rem 'Poppins', sans-serif; color: var(--td-text); }
-.td-tkpi span { font-size: .76rem; color: var(--td-text-3); }
-.td-card { padding: 14px; border-radius: 14px; border: 1px solid var(--td-border); background: var(--td-surface-2); margin-bottom: 10px; }
-.td-card-top { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
-.td-card-top > div { flex: 1; min-width: 200px; }
-.td-card-top b { font-size: .94rem; color: var(--td-text); }
-.td-card-top p { margin: 3px 0 0; font-size: .82rem; color: var(--td-text-3); line-height: 1.5; }
-.td-quote { margin-top: 8px; padding: 8px 12px; border-left: 3px solid var(--td-accent); background: var(--td-surface); border-radius: 0 10px 10px 0; font-size: .84rem; color: var(--td-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
-.td-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
-.td-form-grid label { display: flex; flex-direction: column; gap: 4px; font-size: .76rem; font-weight: 600; color: var(--td-text-2); }
-.td-form-grid .wide { grid-column: 1 / -1; }
-.td-check { flex-direction: row !important; align-items: center; gap: 8px !important; font-size: .84rem !important; }
-.td-check input { width: 18px; height: 18px; accent-color: var(--td-accent); }
-
-/* ---------- feed ---------- */
-.td-feed { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
-.td-feed-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--td-border); }
-.td-feed-ic { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); font-size: .85rem; }
-.td-feed-item div { font-size: .86rem; line-height: 1.45; overflow-wrap: anywhere; }
-.td-feed-item time { display: block; font-size: .74rem; color: var(--td-text-3); }
-
-.td-row .td-todos { max-height: none; }
-
-/* ---------- eSchool score ---------- */
-.td-score { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 14px; background: color-mix(in srgb, var(--td-accent) 8%, transparent); margin-bottom: 14px; }
-.td-score-big { font: 800 2rem 'Poppins', sans-serif; color: var(--td-accent); line-height: 1; white-space: nowrap; }
-.td-score-big small { font-size: .9rem; color: var(--td-text-3); font-weight: 600; }
-.td-score b { display: block; font-size: .9rem; }
-.td-score span { font-size: .78rem; color: var(--td-text-3); line-height: 1.45; display: block; }
-.td-parts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-.td-part { display: grid; grid-template-columns: 110px 1fr 44px; gap: 8px; align-items: center; font-size: .8rem; color: var(--td-text-2); }
-.td-part em { height: 8px; border-radius: 999px; background: var(--td-hover); overflow: hidden; display: block; }
-.td-part em i { display: block; height: 100%; border-radius: inherit; background: var(--td-accent); }
-.td-part b { text-align: right; font-size: .8rem; }
-.td-why { font-size: .78rem; color: var(--td-text-3); line-height: 1.5; margin: -4px 0 14px; }
-
-/* ---------- responsive ---------- */
-@media (max-width: 1200px) { .td-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 1000px) {
-    .td-row { grid-template-columns: minmax(0, 1fr); }
-    .td-row > .td-panel { height: auto; max-height: 600px; }
-    .td-sched { grid-template-columns: minmax(0, 1fr); }
-}
+/* ---------- small screens ---------- */
+@media (max-width: 1000px) { .td-row { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) {
-    .td-hero { padding: 18px; border-radius: 16px; }
-    .td-hero h1 { font-size: 1.4rem; }
-    .td-clock { text-align: left; }
-    .td-clock b { font-size: 1.2rem; }
-    .td-hbtn { flex: 1 1 calc(50% - 10px); justify-content: center; }
-    .td-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .td-kpi { padding: 12px; }
-    .td-kpi-num { font-size: 1.35rem; }
-    .td-panel { padding: 16px; border-radius: 16px; }
-    .td-panel > .td-head { top: -16px; margin: -16px -16px 12px; padding: 16px 16px 10px; }
-    .td-att-item { flex-wrap: wrap; }
-    .td-att-acts { width: 100%; }
-    .td-accept, .td-form-grid { grid-template-columns: minmax(0, 1fr); }
-    .td-todo-form { grid-template-columns: minmax(0, 1fr) auto; }
-    .td-todo-form .td-input[type="date"] { grid-column: 1 / -1; grid-row: 2; }
-    .td-chart { height: 200px; }
-    .td-chart-sum, .td-tkpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .td-feed { grid-template-columns: minmax(0, 1fr); }
+    .td-hero { padding: 18px; }
+    .td-hero h1 { font-size: 1.35rem; }
+    .td-stats { width: 100%; }
+    .td-stat { flex: 1; min-width: 0; padding: 10px 8px; }
+    .td-stat b { font-size: 1.1rem; }
+    .td-card { padding: 18px 16px; }
+    .td-item { flex-wrap: wrap; }
+    .td-acts { width: 100%; padding-left: 50px; }
+    .td-form { grid-template-columns: minmax(0, 1fr); padding-left: 0; }
+    .td-wrap .td-note { margin-left: 0; }
+    .td-add { grid-template-columns: minmax(0, 1fr) auto; }
+    .td-add input[type="date"] { grid-column: 1 / -1; grid-row: 2; }
     .td-table .hide-sm { display: none; }
-    .td-res b { max-width: 150px; }
-    .td-ev-time { width: 54px; }
+    .td-who small { display: block; }
 }
 @media (prefers-reduced-motion: reduce) { .td *, .td *::before, .td *::after { animation: none !important; transition: none !important; } }
 </style>
 
 <div class="td" data-no-theme>
-    <!-- hero -->
     <header class="td-hero">
-        <div class="td-hero-top">
-            <div>
-                <div class="td-hello" id="tdHello">Good day</div>
-                <h1 id="tdGreet" data-first="{{ firstname or '' }}">Welcome back, {{ firstname }}</h1>
-                <p class="td-summary" id="tdSummary">Loading your day…</p>
-            </div>
-            <div class="td-clock"><b id="tdTime">--:--</b><span id="tdDate"></span></div>
+        <div>
+            <div class="td-date" id="tdDate"></div>
+            <h1 id="tdGreet" data-first="{{ firstname or '' }}">Hello, {{ firstname }}</h1>
+            <p id="tdSummary">Loading your day…</p>
+        </div>
+        <div class="td-stats">
+            <a class="td-stat" href="/teacher-settings#earnings"><b id="tdStEarn">–</b><span>Earned this month</span></a>
+            <a class="td-stat" href="#tdLearners"><b id="tdStLearners">–</b><span>Learners</span></a>
+            <a class="td-stat" href="#tdRatingsCard"><b id="tdStScore">–</b><span>Eschool score</span></a>
         </div>
     </header>
 
-    <!-- numbers -->
-    <section class="td-kpis" id="tdKpis" aria-label="Your numbers">
-        {% for i in range(6) %}<div class="td-kpi"><div class="td-skel" style="width:60%"></div><div class="td-skel" style="width:40%;height:24px"></div><div class="td-skel" style="width:80%"></div></div>{% endfor %}
-    </section>
-
-    <!-- needs attention -->
-    <section class="td-panel" id="tdAttWrap" style="margin-bottom:18px" hidden>
-        <div class="td-head"><h2><i class="fas fa-bell"></i> Needs your attention</h2><span class="td-sub" id="tdAttCount"></span></div>
-        <div class="td-att" id="tdAtt"></div>
-    </section>
-
-    <!-- schedule + to-do -->
     <div class="td-row">
-        <section class="td-panel" aria-labelledby="tdSchedH">
-            <div class="td-head">
-                <h2 id="tdSchedH"><i class="fas fa-calendar-days"></i> Schedule</h2>
-                <span class="td-sub">Your events, live classes and private lessons · <a href="/teacher-schedule" style="color:inherit;font-weight:700">Open schedule</a></span>
-                <div class="td-right td-cal-nav">
-                    <button type="button" id="tdPrev" aria-label="Previous month"><i class="fas fa-chevron-left"></i></button>
-                    <b id="tdMonth"></b>
-                    <button type="button" id="tdNext" aria-label="Next month"><i class="fas fa-chevron-right"></i></button>
-                </div>
-            </div>
-            <div class="td-sched">
-                <div>
-                    <div class="td-cal" id="tdCal"></div>
-                    <div class="td-legend"><span style="--d:#ef4444">Live class</span><span style="--d:#10b981">Private lesson</span></div>
-                </div>
-                <div>
-                    <div class="td-agenda-h" id="tdAgendaH">Today</div>
-                    <div id="tdAgenda"><div class="td-skel"></div><div class="td-skel" style="width:70%"></div></div>
-                </div>
-            </div>
-        </section>
-
-        <section class="td-panel" aria-labelledby="tdTodoH">
-            <div class="td-head"><h2 id="tdTodoH"><i class="fas fa-list-check"></i> To-do list</h2><span class="td-sub">Saved to your account</span></div>
-            <form class="td-todo-form" id="tdTodoForm" autocomplete="off">
-                <input class="td-input" id="tdTodoText" maxlength="160" placeholder="Add a task, e.g. mark Grade 10 quizzes" aria-label="New task">
+        <section class="td-card" aria-labelledby="tdTodoH">
+            <div class="td-head"><h2 id="tdTodoH">To do</h2><span class="td-sub" id="tdTodoSub"></span></div>
+            <div class="td-list" id="tdJobs"><div class="td-skel"></div><div class="td-skel" style="width:70%"></div></div>
+            <div class="td-lab"><span>MY TASKS</span><button type="button" id="tdTodoClear" hidden>Clear finished</button></div>
+            <div id="tdTodos"></div>
+            <form class="td-add" id="tdTodoForm" autocomplete="off">
+                <input class="td-input" id="tdTodoText" maxlength="160" placeholder="Add a task…" aria-label="New task">
                 <input class="td-input" type="date" id="tdTodoDue" aria-label="Due date (optional)">
-                <button class="td-btn primary" type="submit"><i class="fas fa-plus"></i> Add</button>
+                <button class="td-btn primary" type="submit">Add</button>
             </form>
-            <div class="td-todo-filters">
-                <div class="td-seg" role="group" aria-label="Show tasks" id="tdTodoSeg">
-                    <button type="button" data-f="open" aria-pressed="true">To do</button>
-                    <button type="button" data-f="all" aria-pressed="false">All</button>
-                    <button type="button" data-f="done" aria-pressed="false">Done</button>
-                </div>
-                <button type="button" class="td-clear" id="tdTodoClear">Clear finished</button>
-            </div>
-            <ul class="td-todos" id="tdTodos"></ul>
-            <div class="td-bar"><i id="tdTodoBar"></i></div>
-            <div class="td-bar-txt" id="tdTodoTxt">No tasks yet</div>
             <div class="td-note" id="tdTodoNote" role="status"></div>
         </section>
+
+        <section class="td-card" aria-labelledby="tdUpH">
+            <div class="td-head"><h2 id="tdUpH">Coming up</h2><a class="td-link" href="/teacher-schedule">Open schedule →</a></div>
+            <div class="td-list" id="tdUp"><div class="td-skel"></div><div class="td-skel" style="width:60%"></div></div>
+        </section>
     </div>
 
-    <!-- engagement + ratings -->
+    <span id="tdPrivate"></span>
+    <section class="td-card td-full" id="tdLearners" aria-labelledby="tdLearnH">
+        <div class="td-head"><h2 id="tdLearnH">My learners</h2><a class="td-link" href="/teacher-parent">Lesson requests →</a></div>
+        <div id="tdLearn"><div class="td-skel"></div></div>
+    </section>
+
     <div class="td-row">
-        <section class="td-panel" aria-labelledby="tdChartH">
-            <div class="td-head">
-                <h2 id="tdChartH"><i class="fas fa-chart-column"></i> Your teaching</h2>
-                <div class="td-right">
-                    <div class="td-seg" role="group" aria-label="What to show" id="tdMetric">
-                        <button type="button" data-m="earnings" aria-pressed="true">Earnings</button>
-                        <button type="button" data-m="lessons" aria-pressed="false">Lessons taught</button>
-                        <button type="button" data-m="requests" aria-pressed="false">Requests</button>
-                    </div>
-                    <div class="td-seg" role="group" aria-label="Period" id="tdRange">
-                        <button type="button" data-r="7" aria-pressed="true">7 days</button>
-                        <button type="button" data-r="30" aria-pressed="false">30 days</button>
-                    </div>
-                </div>
-            </div>
-            <div class="td-chart" id="tdChart"><div class="td-tip" id="tdTip"></div></div>
-            <div class="td-chart-sum" id="tdChartSum"></div>
+        <section class="td-card" aria-labelledby="tdEarnH">
+            <div class="td-head"><h2 id="tdEarnH">Earnings</h2><a class="td-link" href="/teacher-settings#earnings">Payouts →</a></div>
+            <div id="tdEarn"><div class="td-skel"></div></div>
         </section>
 
-        <section class="td-panel" aria-labelledby="tdRateH">
-            <div class="td-head"><h2 id="tdRateH"><i class="fas fa-star"></i> Score &amp; ratings</h2><a class="td-link td-right" href="/teacher-profile">See all</a></div>
-            <div id="tdRatings"><div class="td-skel"></div><div class="td-skel"></div></div>
+        <section class="td-card" id="tdRatingsCard" aria-labelledby="tdRateH">
+            <div class="td-head"><h2 id="tdRateH">Ratings</h2><a class="td-link" href="/teacher-profile">See all →</a></div>
+            <div id="tdRate"><div class="td-skel"></div></div>
         </section>
     </div>
-
-    <!-- private teaching -->
-    <section class="td-panel" id="teaching" aria-labelledby="tdTeachH" style="margin-bottom:18px">
-        <div class="td-head">
-            <h2 id="tdTeachH"><i class="fas fa-chalkboard-user"></i> Private teaching</h2>
-            <span class="td-sub" id="tdTeachSub"></span>
-            <div class="td-right td-seg" role="group" aria-label="Private teaching" id="tdTeachSeg">
-                <button type="button" data-t="requests" aria-pressed="true">Requests</button>
-                <button type="button" data-t="students" aria-pressed="false">Students</button>
-                <button type="button" data-t="record" aria-pressed="false">Lesson notes</button>
-            </div>
-        </div>
-        <div class="td-tkpis" id="tdTeachKpis"></div>
-        <div id="tdTeach"><div class="td-skel"></div></div>
-    </section>
-
-    <!-- activity -->
-    <section class="td-panel" aria-labelledby="tdFeedH" style="margin-bottom:18px">
-        <div class="td-head"><h2 id="tdFeedH"><i class="fas fa-clock-rotate-left"></i> Recent activity</h2><span class="td-sub" id="tdUpdated"></span></div>
-        <div class="td-feed" id="tdFeed"><div class="td-skel"></div></div>
-    </section>
 </div>
 
 <script>
@@ -441,64 +256,30 @@ a.td-kpi:hover { border-color: var(--td-accent-line); background: var(--td-hover
     'use strict';
     const $ = id => document.getElementById(id);
     const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const fmt = n => Number(n || 0).toLocaleString();
+    const fmt = n => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    const money = n => '{{ CURRENCY }} ' + fmt(n);
     const TZ = 'Africa/Nairobi';
-    const SUBJECTS = { math: 'Mathematics', mathematics: 'Mathematics', english: 'English', kiswahili: 'Kiswahili', csl: 'CSL', science: 'Science',
-                       programming: 'Physics', arts: 'Chemistry', languages: 'Languages', business: 'Business', general: 'General' };
-    let D = null;                     // last answer from the server
+    const FIRST = ($('tdGreet').dataset.first || '').trim();
+    let D = null;
 
     /* ---------- time ---------- */
-    const dayKey = d => new Date(d).toLocaleDateString('en-CA', { timeZone: TZ });
     const hm = d => new Date(d).toLocaleTimeString('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+    const dayName = (d, o) => new Date(d).toLocaleDateString('en-GB', Object.assign({ timeZone: TZ }, o));
+    const dayKey = d => new Date(d).toLocaleDateString('en-CA', { timeZone: TZ });
     function ago(iso) {
         const d = new Date(iso); if (!iso || isNaN(d)) return '';
         const s = (Date.now() - d) / 1000;
-        if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+        if (s < 3600) return Math.max(1, Math.floor(s / 60)) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago';
         const days = Math.floor(s / 86400); if (days === 1) return 'yesterday'; if (days < 7) return days + ' days ago';
-        return d.toLocaleDateString('en-GB', { timeZone: TZ, day: 'numeric', month: 'short' });
+        return dayName(d, { day: 'numeric', month: 'short' });
     }
-    function clock() {
-        const n = new Date();
-        const h = Number(n.toLocaleString('en-GB', { timeZone: TZ, hour: '2-digit', hour12: false }));
-        $('tdHello').textContent = (h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening');
-        $('tdTime').textContent = n.toLocaleTimeString('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
-        $('tdDate').textContent = n.toLocaleDateString('en-GB', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    function header() {
+        const n = new Date(), h = Number(n.toLocaleString('en-GB', { timeZone: TZ, hour: '2-digit', hour12: false }));
+        $('tdDate').textContent = dayName(n, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const hello = h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 17 ? 'Good afternoon' : h >= 17 && h < 22 ? 'Good evening' : 'Hello';
+        $('tdGreet').textContent = FIRST ? `${hello}, ${FIRST}` : hello;
     }
-    clock(); setInterval(clock, 15000);
-
-    /* ---------- greeting ----------
-       Right after signing in: "Welcome back, Grace". Every other time the page opens
-       or refreshes: a fresh line, picked for the time of day and what's on today. */
-    const FIRST = ($('tdGreet').dataset.first || '').trim() || 'there';
-    const navType = (() => { try { return (performance.getEntriesByType('navigation')[0] || {}).type || ''; } catch (e) { return ''; } })();
-    const fromLogin = navType !== 'reload' && navType !== 'back_forward'
-        && (/\/(login|register)(\/|$|\?)/i.test(document.referrer || '') || (() => { try { return !sessionStorage.getItem('td.seen'); } catch (e) { return false; } })());
-    try { sessionStorage.setItem('td.seen', '1'); } catch (e) { /* private mode */ }
-    function hourNow() { return Number(new Date().toLocaleString('en-GB', { timeZone: TZ, hour: '2-digit', hour12: false })); }
-    function pickLine(lines) {
-        let last = -1; try { last = Number(localStorage.getItem('td.greet') || -1); } catch (e) {}
-        let i = Math.floor(Math.random() * lines.length); if (lines.length > 1 && i === last) i = (i + 1) % lines.length;
-        try { localStorage.setItem('td.greet', i); } catch (e) {}
-        return lines[i];
-    }
-    const h0 = hourNow();
-    const BY_TIME = h0 < 5 ? [`Burning the midnight oil, ${FIRST}?`, `Late-night lesson planning, ${FIRST}?`, `The quiet hours are great for ideas, ${FIRST}.`]
-        : h0 < 12 ? [`Fresh morning, fresh lessons, ${FIRST}.`, `What are we teaching today, ${FIRST}?`, `Coffee ready? Let's plan something great, ${FIRST}.`, `A new day to light up some minds, ${FIRST}.`]
-        : h0 < 17 ? [`What are we working on this afternoon, ${FIRST}?`, `Halfway through the day: how are your learners doing, ${FIRST}?`, `Ready for the next lesson, ${FIRST}?`, `Let's make this afternoon count, ${FIRST}.`]
-        : h0 < 21 ? [`Good evening, ${FIRST}. What's next on the board?`, `Evening lessons hit different, ${FIRST}.`, `Wrapping up the day, or just getting started, ${FIRST}?`, `Someone's homework is easier because of you, ${FIRST}.`]
-        : [`Planning tomorrow's lessons, ${FIRST}?`, `One more idea before bed, ${FIRST}?`, `Tomorrow's learners will thank you, ${FIRST}.`];
-    const ALWAYS = [`Every lesson you teach changes someone's day, ${FIRST}.`, `What are we working on today, ${FIRST}?`, `Great teachers start with great plans, ${FIRST}.`, `Let's turn questions into "aha!" moments, ${FIRST}.`];
-    $('tdGreet').textContent = fromLogin ? `Welcome back, ${FIRST}` : pickLine(BY_TIME.concat(ALWAYS));
-    let greetedWithDay = false;
-    function greetWithDay() {
-        // once the day is known, a refresh can greet with what's actually happening
-        if (fromLogin || greetedWithDay || !D) return;
-        greetedWithDay = true;
-        const next = (D.upcoming || []).find(x => x.day === D.today && new Date(x.start) > new Date());
-        const t = D.tutoring || {};
-        if (next && Math.random() < 0.6) $('tdGreet').textContent = `${next.type === 'live' ? 'Live class' : 'Lesson'} at ${hm(next.start)}. Ready, ${FIRST}?`;
-        else if (t.pending && t.pending.length && Math.random() < 0.6) $('tdGreet').textContent = `Someone wants to learn from you, ${FIRST}.`;
-    }
+    header(); setInterval(header, 60000);
 
     async function api(url, method, body) {
         const r = await fetch(url, { method: method || 'GET', credentials: 'same-origin', cache: 'no-store',
@@ -508,160 +289,86 @@ a.td-kpi:hover { border-color: var(--td-accent-line); background: var(--td-hover
         if (!r.ok || (d && d.success === false)) throw new Error((d && d.message) || `Something went wrong (${r.status}).`);
         return d || {};
     }
-    function note(id, text, kind) {
-        const el = $(id); if (!el) return;
+    function note(el, text, kind) {
+        if (typeof el === 'string') el = $(el);
+        if (!el) return;
         el.className = 'td-note' + (text ? ' show ' + (kind || '') : '');
-        el.innerHTML = text ? `<i class="fas ${kind === 'ok' ? 'fa-circle-check' : kind === 'bad' ? 'fa-circle-exclamation' : 'fa-circle-info'}"></i><span>${esc(text)}</span>` : '';
-        clearTimeout(el._t); if (text && kind !== 'bad') el._t = setTimeout(() => note(id, ''), 6000);
+        el.textContent = text || '';
+        clearTimeout(el._t); if (text && kind !== 'bad') el._t = setTimeout(() => note(el, ''), 6000);
     }
-    const avatar = (p, cls) => p && p.avatar_url
-        ? `<span class="td-av ${cls || ''}"><img src="${esc(p.avatar_url)}" alt="" loading="lazy" onerror="this.parentNode.textContent='${esc(((p.name || '?').trim()[0] || '?').toUpperCase())}'"></span>`
-        : `<span class="td-av ${cls || ''}">${esc(((p && p.name) || '?').trim()[0] || '?').toUpperCase()}</span>`;
-    const stars = n => '★★★★★'.split('').map((s, i) => `<span class="${i < Math.round(n || 0) ? '' : 'off'}">★</span>`).join('');
-    function change(a, b) {
-        if (!b && !a) return '<span>no change</span>';
-        if (!b) return `<span class="td-up">+${fmt(a)}</span> this week`;
-        const p = Math.round((a - b) / b * 100);
-        return `<span class="${p >= 0 ? 'td-up' : 'td-down'}">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}%</span> vs last week`;
+    function flash(text) {
+        let el = $('tdFlash');
+        if (!el) { el = document.createElement('div'); el.id = 'tdFlash'; document.querySelector('.td-hero').after(el); }
+        note(el, text, 'ok');
+    }
+    const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#6366f1'];
+    function avatar(p) {
+        const name = (p && p.name) || '?', init = name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+        const c = COLORS[((p && p.id) || name.length) % COLORS.length];
+        return p && p.avatar_url
+            ? `<span class="td-av" style="--c:${c}"><img src="${esc(p.avatar_url)}" alt="" loading="lazy" onerror="this.parentNode.textContent='${esc(init)}'"></span>`
+            : `<span class="td-av" style="--c:${c}">${esc(init)}</span>`;
+    }
+    const stars = n => [0, 1, 2, 3, 4].map(i => `<span class="${i < Math.round(n || 0) ? '' : 'off'}">★</span>`).join('');
+    const plural = (n, w, ws) => `${n} ${n === 1 ? w : (ws || w + 's')}`;
+    const nextLessonFor = id => (D.upcoming || []).find(x => x.type === 'lesson' && x.tutoring_id === id && !['completed', 'missed'].includes(x.status));
+
+    /* ---------- hero ---------- */
+    function renderHero() {
+        const k = D.kpis, now = Date.now();
+        $('tdStEarn').textContent = money(k.earned.month);
+        $('tdStLearners').textContent = fmt(k.learners.value);
+        $('tdStScore').innerHTML = D.score && D.score.score != null ? `${D.score.score}<small>/10</small>` : '–';
+        const left = D.todays.filter(x => new Date(x.start).getTime() + x.minutes * 60000 > now && !['completed', 'missed'].includes(x.status));
+        const next = (D.upcoming || []).find(x => new Date(x.start).getTime() + x.minutes * 60000 > now);
+        const what = x => x.type === 'live' ? `the live class "${x.title}"` : x.type === 'lesson' ? `${x.subject} with ${x.student}` : x.title;
+        let line;
+        if (left.length) line = `${plural(left.length, 'thing')} left today. Next: ${what(left[0])} at ${hm(left[0].start)}.`;
+        else if (next) line = `Nothing left today. Your next one is ${what(next)} on ${dayName(next.start, { weekday: 'long', day: 'numeric', month: 'short' })} at ${hm(next.start)}.`;
+        else line = 'Nothing is booked yet.';
+        $('tdSummary').textContent = line;
     }
 
-    /* ---------- hero summary + numbers ---------- */
-    function renderTop() {
-        const k = D.kpis, t = D.tutoring;
-        const lives = D.todays.filter(x => x.type === 'live').length, lessons = D.todays.filter(x => x.type === 'lesson').length;
-        const parts = [];
-        parts.push(lives || lessons
-            ? `Today you have ${lives ? `${lives} live class${lives > 1 ? 'es' : ''}` : ''}${lives && lessons ? ' and ' : ''}${lessons ? `${lessons} private lesson${lessons > 1 ? 's' : ''}` : ''}.`
-            : 'Nothing is scheduled for today.');
-        if (t.pending.length) parts.push(`${t.pending.length} private teaching request${t.pending.length > 1 ? 's are' : ' is'} waiting for your answer.`);
-        if (k.unread.value) parts.push(`${k.unread.value} unread message${k.unread.value > 1 ? 's' : ''}.`);
-        if (k.to_book.value) parts.push(`${k.to_book.value} paid lesson${k.to_book.value > 1 ? 's are' : ' is'} waiting for a date.`);
-        if (!t.pending.length && !k.unread.value && !k.to_book.value && k.earned.this) parts.push(`You earned KES ${fmt(k.earned.this)} from lessons this week.`);
-        $('tdSummary').textContent = parts.join(' ');
-        greetWithDay();
-
-        const tiles = [
-            { c: '#16a34a', i: 'fa-coins', l: 'Earned this month', v: `<small>KES</small> ${fmt(k.earned.month)}`, s: `KES ${fmt(k.earned.this)} this week · KES ${fmt(k.earned.total)} all time`, href: '/teacher-progress' },
-            { c: '#0ea5e9', i: 'fa-chalkboard-user', l: 'Lessons taught this week', v: fmt(k.lessons.this), s: k.lessons.this || k.lessons.last ? change(k.lessons.this, k.lessons.last) : `${fmt(k.lessons.month)} this month`, href: '/teacher-progress' },
-            { c: '#8b5cf6', i: 'fa-user-graduate', l: 'Learners', v: fmt(k.learners.value), s: k.learners.requests || k.learners.awaiting_payment ? [k.learners.requests ? `<span class="td-up">${k.learners.requests} new request${k.learners.requests > 1 ? 's' : ''}</span>` : '', k.learners.awaiting_payment ? `${k.learners.awaiting_payment} yet to pay` : ''].filter(Boolean).join(' · ') : 'learning with you now', href: '#teaching' },
-            { c: '#06b6d4', i: 'fa-calendar-plus', l: 'Paid lessons to book', v: fmt(k.to_book.value), s: k.pending.value ? `KES ${fmt(k.pending.value)} being checked by eSchool` : `${fmt(k.to_book.booked)} booked already`, href: '#teaching' },
-            { c: '#f59e0b', i: 'fa-star', l: 'eSchool score', v: D.score && D.score.score != null ? `${D.score.score} <small>/ 10</small>` : '—', s: k.rating.count ? `${fmt(k.rating.count)} review${k.rating.count > 1 ? 's' : ''}${k.rating.new7 ? ` · <span class="td-up">+${k.rating.new7}</span> this week` : ''}` : 'No reviews yet', href: '#tdRateH' },
-            { c: '#10b981', i: 'fa-envelope', l: 'Unread messages', v: fmt(k.unread.value), s: k.unread.value ? `from ${k.unread.people} ${k.unread.people === 1 ? 'person' : 'people'}` : 'You are all caught up', href: '/teacher-messages' }
-        ];
-        $('tdKpis').innerHTML = tiles.map(t => `<a class="td-kpi" href="${t.href}" ${t.href === '#teaching' ? 'data-tab="students"' : ''} style="--c:${t.c}">
-            <span class="td-kpi-top"><span class="td-kpi-ic"><i class="fas ${t.i}"></i></span><span class="td-kpi-lbl">${t.l}</span></span>
-            <span class="td-kpi-num">${t.v}</span><span class="td-kpi-sub">${t.s}</span></a>`).join('');
+    /* ---------- to do: jobs from Eschool + my own tasks ---------- */
+    function jobs() {
+        const t = D.tutoring, k = D.kpis, out = [];
+        t.pending.forEach(r => out.push({ key: 'req-' + r.id, c: '#10b981', i: 'fa-hand', title: `Lesson request: ${r.subject} for ${r.child.name}`,
+            text: `${r.self_paid ? 'The learner is asking and will pay' : 'From ' + r.parent.name} · ${plural(r.sessions_per_week, 'lesson')} a week · ${r.mode_label}`,
+            acts: `<button type="button" class="td-btn primary" data-req-open="${r.id}">Accept…</button><button type="button" class="td-btn danger" data-req-decline="${r.id}">Decline</button>` }));
+        (D.attention || []).filter(a => a.icon === 'fa-video').forEach((a, n) => out.push({ key: 'live-' + n, c: '#ef4444', i: 'fa-video', title: a.title,
+            text: `${a.text}${a.start ? ' · starts ' + hm(a.start) : ''}`, acts: `<a class="td-btn primary" href="${esc(a.href)}">Open studio</a>` }));
+        t.engagements.filter(r => r.status === 'active' && r.sessions_left > 0).forEach(r => out.push({ key: 'book-' + r.id, c: '#0284c7', i: 'fa-calendar-plus',
+            title: `Book ${plural(r.sessions_left, `paid ${r.subject} lesson`)} for ${r.child.name}`,
+            text: 'Already paid. Pick the dates so you can teach and get paid.', acts: `<button type="button" class="td-btn primary" data-book-open="${r.id}">Book</button>` }));
+        t.to_record.forEach(l => out.push({ key: 'rec-' + l.id, c: '#d97706', i: 'fa-clipboard-check', title: `Add notes: ${l.subject} with ${l.student}`,
+            text: `${dayName(l.start, { weekday: 'short', day: 'numeric', month: 'short' })} · ${l.outcome_label || ''}`,
+            acts: `<button type="button" class="td-btn ghost" data-rec-open="${l.id}">Add notes</button>` }));
+        if (k.unread.value) out.push({ key: 'msg', c: '#4361ee', i: 'fa-envelope', title: plural(k.unread.value, 'unread message'),
+            text: `From ${plural(k.unread.people, 'person', 'people')}`, acts: '<a class="td-btn ghost" href="/teacher-messages">Open</a>' });
+        return out;
+    }
+    function renderJobs() {
+        const list = jobs();
+        $('tdTodoSub').textContent = list.length ? `${list.length} from Eschool` : '';
+        $('tdJobs').innerHTML = list.length ? list.map(j => `<div class="td-wrap" data-key="${j.key}">
+                <div class="td-item"><span class="td-ic" style="--c:${j.c}"><i class="fas ${j.i}"></i></span>
+                <div class="td-txt"><b>${esc(j.title)}</b><span>${esc(j.text)}</span></div><div class="td-acts">${j.acts}</div></div>
+                <div class="td-form" id="form-${j.key}"></div><div class="td-note" id="note-${j.key}"></div></div>`).join('')
+            : '<div class="td-empty" style="padding:12px 0 4px">You are all caught up.</div>';
     }
 
-    /* ---------- needs attention (with Accept / Decline for requests) ---------- */
-    function renderAttention() {
-        const list = D.attention || [];
-        $('tdAttWrap').hidden = !list.length;
-        $('tdAttCount').textContent = list.length ? `${list.length} item${list.length > 1 ? 's' : ''}` : '';
-        $('tdAtt').innerHTML = list.map((a, i) => {
-            let acts = '';
-            if (a.kind === 'request') acts = `<button type="button" class="td-btn primary" data-req-open="${a.id}"><i class="fas fa-check"></i> Accept…</button><button type="button" class="td-btn danger" data-req-decline="${a.id}">Decline</button>`;
-            else if (a.href) acts = `<a class="td-btn ghost" href="${esc(a.href)}" ${a.external ? 'target="_blank" rel="noopener"' : ''}>${esc(a.action || 'Open')} <i class="fas fa-arrow-right"></i></a>`;
-            const when = a.start ? ` · starts ${hm(a.start)}` : '';
-            return `<div class="td-att-item" data-att="${i}"><span class="td-att-ic" style="--c:${a.color}"><i class="fas ${a.icon}"></i></span>
-                <div class="td-att-body"><b>${esc(a.title)}</b><span>${esc(a.text)}${when}</span><div id="reqForm-${a.id || 'x' + i}"></div><div class="td-note" id="attNote-${i}"></div></div>
-                <div class="td-att-acts">${acts}</div></div>`;
-        }).join('');
-    }
-    function requestForm(id, box) {
-        const t = D.tutoring.pending.find(x => x.id === id) || {};
-        box.innerHTML = `<div class="td-quote">${esc(t.message || 'No message.')}${t.goals ? '\nGoals: ' + esc(t.goals) : ''}${t.preferred_times ? '\nPreferred times: ' + esc(t.preferred_times) : ''}</div>
-            <div class="td-accept">
-                <label>Price per lesson (KES)<input class="td-input" type="number" min="50" max="100000" step="50" value="${Number(t.rate || (D.tutoring.profile && D.tutoring.profile.rate) || 800)}" data-f="rate"></label>
-                <label>Lesson length<select class="td-select" data-f="minutes">${[30, 45, 60, 90, 120].map(m => `<option value="${m}" ${m === (t.session_minutes || 60) ? 'selected' : ''}>${m} minutes</option>`).join('')}</select></label>
-                <label>&nbsp;<button type="button" class="td-btn primary" data-req-accept="${id}"><i class="fas fa-check"></i> Accept request</button></label>
-                <label class="wide">Note to the family (optional)<input class="td-input" maxlength="400" data-f="note" placeholder="e.g. I can start next Monday at 4 pm."></label>
-            </div>`;
-    }
-
-    /* ---------- schedule (calendar + agenda) ---------- */
-    let view = null, selDay = null;
-    function renderSchedule() {
-        const today = D.today;
-        if (!view) { view = new Date(today + 'T12:00:00'); view.setDate(1); }
-        if (!selDay) selDay = today;
-        const y = view.getFullYear(), m = view.getMonth();
-        $('tdMonth').textContent = view.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-        const byDay = {};
-        D.schedule.forEach(x => { (byDay[x.day] = byDay[x.day] || []).push(x); });
-        let h = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(d => `<span class="td-dow">${d}</span>`).join('');
-        const first = (new Date(y, m, 1).getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
-        for (let i = 0; i < first; i++) h += '<span></span>';
-        for (let d = 1; d <= days; d++) {
-            const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const items = byDay[key] || [];
-            const dots = [...new Set(items.map(x => x.type))].map(t => `<u style="--d:${typeColor({ type: t })}"></u>`).join('');
-            h += `<button type="button" class="td-day ${key === today ? 'today' : ''} ${key === selDay ? 'sel' : ''}" data-day="${key}" aria-label="${d} ${$('tdMonth').textContent}${items.length ? ', ' + items.length + ' item' + (items.length > 1 ? 's' : '') : ''}">${d}${dots ? `<i>${dots}</i>` : ''}</button>`;
-        }
-        $('tdCal').innerHTML = h;
-        renderAgenda(byDay);
-    }
-    // live classes red, private lessons green, the teacher's own events in their kind's colour
-    function typeColor(x) { return x.type === 'live' ? '#ef4444' : x.type === 'lesson' ? '#10b981' : (x.color || '#4361ee'); }
-    function typeChip(x) {
-        return x.type === 'live' ? '<span class="td-chip live"><i class="fas fa-video"></i> Live class</span>'
-            : x.type === 'lesson' ? '<span class="td-chip lesson"><i class="fas fa-chalkboard-user"></i> Private lesson</span>'
-            : `<span class="td-chip" style="background:color-mix(in srgb, ${x.color || '#4361ee'} 14%, transparent);color:${x.color || '#4361ee'}"><i class="fas fa-calendar-day"></i> ${esc(x.kind_label || 'Event')}</span>`;
-    }
-    function renderAgenda(byDay) {
-        const today = D.today;
-        const items = (byDay || {})[selDay] || D.schedule.filter(x => x.day === selDay);
-        const label = selDay === today ? 'Today' : new Date(selDay + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-        $('tdAgendaH').textContent = `${label} · ${items.length ? items.length + ' item' + (items.length > 1 ? 's' : '') : 'nothing scheduled'}`;
-        const now = Date.now();
-        let nextMarked = false;
-        const html = items.map(x => {
-            const st = new Date(x.start), en = st.getTime() + x.minutes * 60000;
-            const closed = ['completed', 'missed', 'done'].includes(x.status);
-            const done = en < now || closed, live = st <= now && now < en && !closed;
-            let status = '';
-            if (live) status = '<span class="td-chip now">Now</span>';
-            else if (!done && !nextMarked && selDay === today) { nextMarked = true; status = '<span class="td-chip next">Up next</span>'; }
-            else if (done) status = `<span class="td-chip">${x.status === 'missed' ? 'Missed' : x.type === 'event' && !x.status ? 'Ended' : 'Done'}</span>`;
-            const meta = x.type === 'event'
-                ? `${typeChip(x)}${x.subject ? `<span>${esc(x.subject)}${x.grade ? ' · ' + esc(x.grade) : ''}</span>` : ''}<span>${x.minutes} min</span>${x.location ? `<span><i class="fas fa-location-dot"></i> ${esc(x.location)}</span>` : ''}`
-                : x.type === 'live'
-                ? `<span class="td-chip live"><i class="fas fa-video"></i> Live class</span><span>${esc(SUBJECTS[x.subject] || x.subject)}${x.grade ? ' · ' + esc(x.grade) : ''}</span><span>${x.minutes} min</span><span><i class="fas fa-bell"></i> ${x.reminders} reminder${x.reminders === 1 ? '' : 's'}</span>${x.platform ? `<span>${esc(x.platform)}</span>` : ''}`
-                : `<span class="td-chip lesson"><i class="fas fa-chalkboard-user"></i> Private lesson</span><span>${esc(x.student)}</span><span>${x.minutes} min</span>${x.topic ? `<span>Topic: ${esc(x.topic)}</span>` : ''}`;
-            const inside = /^\/(?!\/)/.test(x.link || '');   // live classes open the studio inside eSchool
-            const act = x.link && !done ? `<a class="td-btn ${live ? 'primary' : 'ghost'}" href="${esc(x.link)}" ${inside ? '' : 'target="_blank" rel="noopener"'}>${x.type === 'live' ? (live ? 'Open studio' : 'Studio') : live ? 'Join now' : 'Open link'}</a>` : '';
-            return `<div class="td-ev ${done ? 'done' : ''}" style="--d:${typeColor(x)}">
-                <div class="td-ev-time">${hm(x.start)}<small>to ${hm(en)}</small></div>
-                <div class="td-ev-body"><b>${esc(x.title)} ${status}</b><div class="td-ev-meta">${meta}</div></div>
-                <div class="td-ev-acts">${act}</div></div>`;
-        }).join('');
-        const nextUp = D.upcoming.filter(x => x.day > selDay).slice(0, 3);
-        $('tdAgenda').innerHTML = (html || `<div class="td-empty"><i class="far fa-calendar-check"></i>Nothing scheduled for this day.</div>`) +
-            (selDay === today && nextUp.length ? `<div class="td-agenda-h" style="margin-top:14px">Coming up</div>` + nextUp.map(x =>
-                `<div class="td-ev" style="--d:${typeColor(x)}"><div class="td-ev-time">${new Date(x.start).toLocaleDateString('en-GB', { timeZone: TZ, weekday: 'short' })}<small>${hm(x.start)}</small></div>
-                 <div class="td-ev-body"><b>${esc(x.title)}</b><div class="td-ev-meta">${typeChip(x)}${x.student ? `<span>${esc(x.student)}</span>` : ''}<span>${x.minutes} min</span></div></div></div>`).join('') : '');
-    }
-    $('tdCal').addEventListener('click', e => { const b = e.target.closest('[data-day]'); if (b) { selDay = b.dataset.day; renderSchedule(); } });
-    $('tdPrev').addEventListener('click', () => { view.setMonth(view.getMonth() - 1); renderSchedule(); });
-    $('tdNext').addEventListener('click', () => { view.setMonth(view.getMonth() + 1); renderSchedule(); });
-
-    /* ---------- to-do list (server) ---------- */
-    let todos = [], todoFilter = 'open';
+    let todos = [];
     function renderTodos() {
-        const shown = todos.filter(t => todoFilter === 'all' || (todoFilter === 'done' ? t.done : !t.done));
         const today = D ? D.today : dayKey(Date.now());
-        $('tdTodos').innerHTML = shown.length ? shown.map(t => {
+        $('tdTodos').innerHTML = todos.map(t => {
             let due = '';
             if (t.due) {
                 const cls = !t.done && t.due < today ? 'late' : t.due === today ? 'today' : '';
-                const lbl = t.due === today ? 'Today' : new Date(t.due + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-                due = `<span class="td-due ${cls}">${cls === 'late' ? 'Late · ' : ''}${lbl}</span>`;
+                due = `<span class="td-due ${cls}">${cls === 'late' ? 'Late · ' : ''}${t.due === today ? 'Today' : new Date(t.due + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>`;
             }
-            return `<li class="td-todo ${t.done ? 'done' : ''}"><input type="checkbox" data-tdone="${t.id}" ${t.done ? 'checked' : ''} aria-label="Done: ${esc(t.text)}"><span>${esc(t.text)}</span>${due}<button type="button" class="td-x" data-tdel="${t.id}" aria-label="Delete task"><i class="fas fa-trash-can"></i></button></li>`;
-        }).join('') : `<li class="td-empty" style="list-style:none">${todos.length ? 'Nothing in this list.' : 'No tasks yet. Add your first one above.'}</li>`;
-        const done = todos.filter(t => t.done).length, pct = todos.length ? Math.round(done / todos.length * 100) : 0;
-        $('tdTodoBar').style.width = pct + '%';
-        $('tdTodoTxt').textContent = todos.length ? `${done} of ${todos.length} done (${pct}%)` : 'No tasks yet';
+            return `<div class="td-todo ${t.done ? 'done' : ''}"><input type="checkbox" data-tdone="${t.id}" ${t.done ? 'checked' : ''} aria-label="Done: ${esc(t.text)}"><span>${esc(t.text)}</span>${due}<button type="button" class="td-x" data-tdel="${t.id}" aria-label="Delete task"><i class="fas fa-xmark"></i></button></div>`;
+        }).join('');
+        $('tdTodoClear').hidden = !todos.some(t => t.done);
     }
     $('tdTodoForm').addEventListener('submit', async e => {
         e.preventDefault();
@@ -680,210 +387,165 @@ a.td-kpi:hover { border-color: var(--td-accent-line); background: var(--td-hover
         try { todos = (await api('/api/teacher/todos/' + b.dataset.tdel, 'DELETE')).todos; renderTodos(); } catch (err) { note('tdTodoNote', err.message, 'bad'); }
     });
     $('tdTodoClear').addEventListener('click', async () => {
-        if (!todos.some(t => t.done)) { note('tdTodoNote', 'There are no finished tasks to clear.'); return; }
-        try { todos = (await api('/api/teacher/todos/0', 'DELETE')).todos; renderTodos(); note('tdTodoNote', 'Finished tasks cleared.', 'ok'); } catch (err) { note('tdTodoNote', err.message, 'bad'); }
-    });
-    $('tdTodoSeg').addEventListener('click', e => {
-        const b = e.target.closest('[data-f]'); if (!b) return;
-        todoFilter = b.dataset.f; $('tdTodoSeg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderTodos();
+        try { todos = (await api('/api/teacher/todos/0', 'DELETE')).todos; renderTodos(); } catch (err) { note('tdTodoNote', err.message, 'bad'); }
     });
 
-    /* ---------- engagement chart (SVG) ---------- */
-    let metric = 'earnings', range = 7;
-    const METRIC = { earnings: 'KES earned', lessons: 'lessons taught', requests: 'new requests' };
-    const money = () => metric === 'earnings';
-    function renderChart() {
-        const days = D.chart.days.slice(-range), vals = D.chart[metric].slice(-range);
-        const prev = D.chart[metric].slice(-range * 2, -range);
-        const box = $('tdChart'), W = box.clientWidth || 600, H = box.clientHeight || 240, pad = { l: 34, r: 8, t: 12, b: 26 };
-        const max = Math.max(4, ...vals), raw = Math.ceil(max / 4), mag = Math.pow(10, Math.max(0, String(raw).length - 1)), step = Math.ceil(raw / mag) * mag, top = step * 4;
-        const cw = (W - pad.l - pad.r) / vals.length, bw = Math.max(4, Math.min(34, cw * .62));
-        let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(METRIC[metric])} per day, last ${range} days">`;
-        for (let i = 0; i <= 4; i++) {
-            const y = pad.t + (H - pad.t - pad.b) * (1 - i / 4);
-            s += `<line class="grid" x1="${pad.l}" x2="${W - pad.r}" y1="${y}" y2="${y}"/><text class="axis" x="${pad.l - 6}" y="${y + 4}" text-anchor="end">${money() && step * i >= 1000 ? (step * i / 1000) + 'k' : step * i}</text>`;
+    /* ---------- coming up ---------- */
+    function renderUpcoming() {
+        const now = Date.now();
+        const items = (D.upcoming || []).filter(x => !['completed', 'missed'].includes(x.status)).slice(0, 5);
+        const rows = items.map(x => {
+            const st = new Date(x.start).getTime(), live = st <= now && now < st + x.minutes * 60000;
+            const pill = live ? '<span class="td-pill now">Now</span>'
+                : x.type === 'live' ? '<span class="td-pill live">Live class</span>'
+                : x.type === 'lesson' ? '<span class="td-pill lesson">Lesson</span>'
+                : `<span class="td-pill">${esc(x.kind_label || 'Event')}</span>`;
+            const inside = /^\/(?!\/)/.test(x.link || '');
+            const act = live && x.link ? `<a class="td-btn primary" href="${esc(x.link)}" ${inside ? '' : 'target="_blank" rel="noopener"'}>${x.type === 'live' ? 'Open studio' : 'Join'}</a>` : pill;
+            const title = x.type === 'lesson' ? `${x.subject}${x.topic ? ' · ' + x.topic : ''}` : x.title;
+            const who = x.type === 'lesson' ? x.student : x.type === 'live' ? [x.grade, plural(x.reminders || 0, 'reminder')].filter(Boolean).join(' · ') : (x.location || '');
+            return `<div class="td-item"><div class="td-cal"><b>${dayName(x.start, { day: 'numeric' })}</b><span>${dayName(x.start, { month: 'short' })}</span></div>
+                <div class="td-txt"><b>${esc(title)}</b><span>${dayKey(x.start) === D.today ? 'Today' : dayName(x.start, { weekday: 'short' })} ${hm(x.start)} · ${x.minutes} min${who ? ' · ' + esc(who) : ''}</span></div>${act}</div>`;
+        }).join('');
+        const noLive = !items.some(x => x.type === 'live');
+        $('tdUp').innerHTML = (rows || '<div class="td-empty">Nothing booked yet.</div>')
+            + (noLive ? '<div class="td-foot">No live classes planned. <a class="td-link" href="/teacher-live">Create one</a></div>' : '');
+    }
+
+    /* ---------- my learners ---------- */
+    function renderLearners() {
+        const t = D.tutoring, rows = t.engagements;
+        if (!rows.length) {
+            $('tdLearn').innerHTML = `<div class="td-empty">No learners yet. When a family hires you, they show up here.${t.profile && t.profile.exists ? '' : ' <a class="td-link" href="/teacher-settings#teaching">Set up your teaching profile</a> so families can find you.'}</div>`;
+            return;
         }
-        vals.forEach((v, i) => {
-            const x = pad.l + cw * i + (cw - bw) / 2, h = (H - pad.t - pad.b) * (v / top), y = H - pad.b - h;
-            const d = new Date(days[i] + 'T12:00:00');
-            s += `<rect class="b" x="${x}" y="${y}" width="${bw}" height="${Math.max(0, h)}" data-i="${i}"/>`;
-            if (range === 7 || i % 5 === 0 || i === vals.length - 1) s += `<text class="axis" x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${range === 7 ? d.toLocaleDateString('en-GB', { weekday: 'short' }) : d.getDate() + '/' + (d.getMonth() + 1)}</text>`;
-        });
-        s += '</svg>';
-        box.innerHTML = s + '<div class="td-tip" id="tdTip"></div>';
-        const tip = $('tdTip');
-        box.querySelectorAll('rect.b').forEach(r => {
-            const show = () => {
-                const i = +r.dataset.i, d = new Date(days[i] + 'T12:00:00');
-                tip.textContent = `${d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}: ${fmt(vals[i])} ${METRIC[metric]}`;
-                const bb = r.getBoundingClientRect(), pb = box.getBoundingClientRect();
-                tip.style.left = (bb.left - pb.left + bb.width / 2) + 'px'; tip.style.top = (bb.top - pb.top) + 'px'; tip.style.display = 'block';
-            };
-            r.addEventListener('mouseenter', show); r.addEventListener('click', show);
-            r.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
-        });
-        const total = vals.reduce((a, b) => a + b, 0), ptotal = prev.reduce((a, b) => a + b, 0);
-        const best = vals.indexOf(Math.max(...vals));
-        const ch = ptotal ? Math.round((total - ptotal) / ptotal * 100) : null;
-        $('tdChartSum').innerHTML =
-            `<div>Total ${esc(METRIC[metric])}<b>${fmt(total)}</b></div>` +
-            `<div>Average a day<b>${money() ? fmt(Math.round(total / vals.length)) : (total / vals.length).toFixed(1)}</b></div>` +
-            `<div>Best day<b>${total ? new Date(days[best] + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}</b></div>` +
-            `<div>Vs the ${range} days before<b class="${ch == null ? '' : ch >= 0 ? 'td-up' : 'td-down'}">${ch == null ? (total ? 'New' : '—') : (ch >= 0 ? '▲ ' : '▼ ') + Math.abs(ch) + '%'}</b></div>`;
+        $('tdLearn').innerHTML = `<table class="td-table"><thead><tr><th>Learner</th><th class="hide-sm">Subject</th><th>Lessons</th><th class="hide-sm">Next lesson</th><th class="hide-sm">Paid by</th><th></th></tr></thead><tbody>` +
+            rows.map(r => {
+                const nx = nextLessonFor(r.id);
+                const lessons = r.status === 'accepted' ? '<span class="td-pill warn">Waiting for payment</span>'
+                    : `${r.sessions_used} taught · <b>${r.sessions_left ? r.sessions_left + ' to book' : r.sessions_booked ? r.sessions_booked + ' booked' : 'all used'}</b>`;
+                const next = nx ? `${dayName(nx.start, { weekday: 'short', day: 'numeric', month: 'short' })}, ${hm(nx.start)}`
+                    : r.status === 'active' && r.sessions_left ? '<span class="td-pill warn">Not booked</span>' : '<span class="td-muted">—</span>';
+                const act = r.status === 'active' && r.sessions_left ? `<button type="button" class="td-btn primary" data-book-open="${r.id}">Book</button>` : '';
+                return `<tr><td><div class="td-who">${avatar(r.child)}<div>${esc(r.child.name)}<small>${esc(r.subject)}</small></div></div></td><td class="hide-sm">${esc(r.subject)}</td><td>${lessons}</td>
+                    <td class="hide-sm">${next}</td><td class="hide-sm td-muted">${r.self_paid ? 'The learner' : esc(r.parent.name)}</td><td>${act}</td></tr>`;
+            }).join('') + '</tbody></table>';
     }
-    $('tdMetric').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; metric = b.dataset.m; $('tdMetric').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderChart(); });
-    $('tdRange').addEventListener('click', e => { const b = e.target.closest('[data-r]'); if (!b) return; range = +b.dataset.r; $('tdRange').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderChart(); });
-    let rT = null; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (D) renderChart(); }, 150); });
 
-    /* ---------- ratings, feed ---------- */
-    function scoreHTML() {
-        const sc = D.score; if (!sc || sc.score == null) return '';
-        const p = sc.score_parts || {};
-        const part = (label, v, weight) => `<div class="td-part"><span>${label} <small style="color:var(--td-text-3)">${weight}</small></span><em><i style="width:${Math.max(3, v * 10)}%"></i></em><b>${v}</b></div>`;
-        return `<div class="td-score"><div class="td-score-big">${sc.score}<small>/10</small></div><div><b>Your eSchool score</b><span>${esc((sc.score_reasons || []).join(' · '))}</span></div></div>
-            <div class="td-parts">${part('Ratings', p.quality, '60%')}${part('Lessons held', p.reliability, '20%')}${part('Experience', p.experience, '20%')}</div>
-            <p class="td-why">Families see this score when they choose a teacher. It counts every rating you get (reviews, live classes and lessons), how many booked lessons you hold, and your time and lessons on eSchool. A few ratings count less, so one review can't make or break it.</p>`;
+    /* ---------- earnings ---------- */
+    function renderEarnings() {
+        const k = D.kpis, m = D.months || [], max = Math.max(1, ...m.map(x => x.amount));
+        $('tdEarn').innerHTML = `<div class="td-big">${money(k.earned.month)} <small>this month</small></div>
+            <div class="td-bars" role="img" aria-label="Earnings for the last 6 months">${m.map((x, i) => `<div class="${i === m.length - 1 ? 'cur' : ''}" title="${money(x.amount)}"><i style="height:${Math.max(2, x.amount / max * 100)}%"></i></div>`).join('')}</div>
+            <div class="td-blab">${m.map(x => `<span>${new Date(x.month + '-15T12:00:00').toLocaleDateString('en-US', { month: 'short' })}</span>`).join('')}</div>
+            <div class="td-split"><div>All time<b>${money(k.earned.total)}</b></div><div>Lessons taught this month<b>${fmt(k.lessons.month)}</b></div>
+            ${k.pending.value ? `<div>Being checked by Eschool<b>${money(k.pending.value)}</b></div>` : ''}</div>`;
     }
+
+    /* ---------- ratings ---------- */
     function renderRatings() {
-        const r = D.ratings;
-        if (!r.count) { $('tdRatings').innerHTML = scoreHTML() + '<div class="td-empty"><i class="far fa-star"></i>No reviews yet. Parents and learners you teach can rate you from your profile.</div>'; return; }
-        const max = Math.max(...r.dist, 1);
-        $('tdRatings').innerHTML = scoreHTML() + `<div class="td-rate-top"><div class="td-rate-big">${r.avg}</div><div><div class="td-stars">${stars(r.avg)}</div><div class="td-sub" style="font-size:.8rem;color:var(--td-text-3)">${fmt(r.count)} review${r.count > 1 ? 's' : ''}${r.new7 ? ` · ${r.new7} this week` : ''}</div></div></div>
-            <div class="td-dist">${r.dist.map((n, i) => `<div><span>${5 - i} ★</span><em><i style="width:${n / max * 100}%"></i></em><span>${n}</span></div>`).join('')}</div>
-            ${r.latest.map(v => `<div class="td-review"><div class="td-review-top">${avatar(v)}<b>${esc(v.name)}</b><span class="td-stars" style="font-size:.78rem">${stars(v.stars)}</span><time>${ago(v.at)}</time></div>${v.comment ? `<p>${esc(v.comment)}</p>` : ''}</div>`).join('')}`;
-    }
-    function renderFeed() {
-        $('tdFeed').innerHTML = D.feed.length ? D.feed.map(f => `<div class="td-feed-item"><span class="td-feed-ic" style="--c:${f.color}"><i class="fas ${f.icon}"></i></span><div>${esc(f.text)}<time>${ago(f.at)}</time></div></div>`).join('')
-            : '<div class="td-empty" style="grid-column:1/-1"><i class="far fa-clock"></i>Nothing has happened yet.</div>';
-        $('tdUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+        const sc = D.score, r = D.ratings;
+        const top = sc && sc.score != null ? `<div class="td-score"><div class="td-big">${sc.score}<small>/10</small></div>
+            <p>Your Eschool score: what families see.<br>${esc((sc.score_reasons || []).join(' · '))}</p></div>` : '';
+        const revs = r.latest.slice(0, 2).map(v => `<div class="td-rev"><div class="td-rev-top"><b>${esc(v.name)}</b><span class="td-stars">${stars(v.stars)}</span></div>
+            ${v.comment ? `<p>“${esc(v.comment)}”</p>` : ''}<time>${ago(v.at)}</time></div>`).join('');
+        $('tdRate').innerHTML = top + (revs || '<div class="td-empty">No reviews yet. Families you teach can rate you after a lesson.</div>');
     }
 
-    /* ---------- private teaching ---------- */
-    let teachTab = 'requests';
-    function renderTeaching() {
-        const t = D.tutoring;
-        $('tdTeachSub').textContent = t.profile && t.profile.exists ? (t.profile.accepting ? 'You are accepting new students' : 'You are not accepting new students') : 'Set up your teaching profile so parents and learners can find you';
-        $('tdTeachKpis').innerHTML = [
-            [t.students, 'students'], [t.lessons_month, 'lessons taught this month'],
-            ['KES ' + fmt(t.earned_month), 'paid this month'], [t.lesson_rating != null ? t.lesson_rating + ' / 5' : '—', 'lesson rating']
-        ].map(k => `<div class="td-tkpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
-        $('tdTeachSeg').querySelectorAll('button').forEach(b => {
-            const n = b.dataset.t === 'requests' ? t.pending.length : b.dataset.t === 'students' ? t.engagements.length : t.to_record.length;
-            b.textContent = b.textContent.replace(/\s*\(\d+\)$/, '') + (n ? ` (${n})` : '');
-            b.setAttribute('aria-pressed', String(b.dataset.t === teachTab));
-        });
-        let h = '';
-        if (teachTab === 'requests') {
-            h = t.pending.length ? t.pending.map(r => `<div class="td-card"><div class="td-card-top"><div><b>${esc(r.subject)} for ${esc(r.child.name)}</b>
-                <p>${r.self_paid ? 'The learner is asking and will pay' : 'From ' + esc(r.parent.name) + ' (parent)'} · ${r.sessions_per_week} lesson${r.sessions_per_week > 1 ? 's' : ''} a week · ${esc(r.mode_label)}${r.start_date ? ' · from ' + esc(r.start_date) : ''} · asked ${ago(r.created_at)}</p></div>
-                <div class="td-att-acts"><button type="button" class="td-btn primary" data-req-open="${r.id}" data-where="teach"><i class="fas fa-check"></i> Accept…</button><button type="button" class="td-btn danger" data-req-decline="${r.id}">Decline</button></div></div>
-                <div id="teachReq-${r.id}"></div><div class="td-note" id="teachNote-${r.id}"></div></div>`).join('')
-                : '<div class="td-empty"><i class="far fa-envelope-open"></i>No requests waiting. Parents and learners can ask you for lessons from the Teachers page.</div>';
-        } else if (teachTab === 'students') {
-            h = t.engagements.length ? t.engagements.map(r => `<div class="td-card"><div class="td-card-top"><div><b>${esc(r.child.name)} · ${esc(r.subject)}</b>
-                <p>${r.self_paid ? 'Pays for their own lessons' : 'Paid by ' + esc(r.parent.name)} · ${r.status === 'accepted' ? `Accepted · waiting for ${r.self_paid ? 'the learner' : 'the parent'} to pay` : `${r.sessions_paid} paid · ${r.sessions_used} used · ${r.sessions_booked} booked · <b>${r.sessions_left} left to book</b>`} · KES ${fmt(r.rate)} a lesson · ${r.session_minutes} min</p></div>
-                ${r.status === 'active' && r.sessions_left ? `<div class="td-att-acts"><button type="button" class="td-btn primary" data-book-open="${r.id}"><i class="fas fa-calendar-plus"></i> Book a lesson</button></div>` : ''}</div>
-                <div id="book-${r.id}"></div><div class="td-note" id="bookNote-${r.id}"></div></div>`).join('')
-                : '<div class="td-empty"><i class="fas fa-user-graduate"></i>No private students yet.</div>';
-        } else {
-            h = t.to_record.length ? '<p class="td-sub" style="margin:0 0 10px">eSchool marks a lesson as taught by itself from the lesson call, so you don\'t need to. Just write what you covered.</p>' + t.to_record.map(l => `<div class="td-card"><div class="td-card-top"><div><b>${esc(l.title)} with ${esc(l.student)}</b>
-                <p>${new Date(l.start).toLocaleDateString('en-GB', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short' })} at ${hm(l.start)} · ${l.minutes} min${l.topic ? ' · ' + esc(l.topic) : ''} · <b>${esc(l.outcome_label || '')}</b></p></div></div>
-                <div class="td-form-grid">
-                    <label class="wide">What you covered (the learner and the family can read this)<textarea class="td-textarea" maxlength="1000" data-r="notes-${l.id}" placeholder="What you covered and how the learner did"></textarea></label>
-                    <label class="wide">Homework (optional)<input class="td-input" maxlength="400" data-r="hw-${l.id}" placeholder="e.g. Exercise 4B, questions 1 to 10"></label>
-                    <label>&nbsp;<button type="button" class="td-btn primary" data-record="${l.id}"><i class="fas fa-floppy-disk"></i> Save notes</button></label>
-                </div><div class="td-note" id="recNote-${l.id}"></div></div>`).join('')
-                : '<div class="td-empty"><i class="fas fa-clipboard-check"></i>Every finished lesson has notes.</div>';
-        }
-        $('tdTeach').innerHTML = h;
+    /* ---------- forms inside the to-do list ---------- */
+    function openForm(key) {
+        const box = $('form-' + key);
+        if (!box) return null;
+        if (box.innerHTML) { box.innerHTML = ''; return null; }
+        document.querySelectorAll('.td-form').forEach(f => { if (f !== box) f.innerHTML = ''; });
+        return box;
     }
-    $('tdTeachSeg').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b) { teachTab = b.dataset.t; renderTeaching(); } });
-
-    // shared clicks: requests, booking, recording
     document.querySelector('.td').addEventListener('click', async e => {
         let b;
         if ((b = e.target.closest('[data-req-open]'))) {
-            const id = +b.dataset.reqOpen, box = b.dataset.where === 'teach' ? $('teachReq-' + id) : $('reqForm-' + id);
-            if (box.innerHTML) { box.innerHTML = ''; return; }
-            requestForm(id, box); box.querySelector('[data-f="rate"]').focus(); return;
+            const id = +b.dataset.reqOpen, box = openForm('req-' + id); if (!box) return;
+            const t = D.tutoring.pending.find(x => x.id === id) || {};
+            box.innerHTML = `<div class="td-quote">${esc(t.message || 'No message.')}${t.goals ? '\nGoals: ' + esc(t.goals) : ''}${t.preferred_times ? '\nPreferred times: ' + esc(t.preferred_times) : ''}</div>
+                <label>Price per lesson ({{ CURRENCY }})<input class="td-input" type="number" min="{{ LESSON_MIN }}" max="{{ LESSON_MAX }}" step="{{ LESSON_STEP }}" value="${Number(t.rate || (D.tutoring.profile && D.tutoring.profile.rate) || {{ LESSON_MIN }})}" data-f="rate"></label>
+                <label>Lesson length<select class="td-select" data-f="minutes">${[30, 45, 60, 90, 120].map(m => `<option value="${m}" ${m === (t.session_minutes || 60) ? 'selected' : ''}>${m} minutes</option>`).join('')}</select></label>
+                <label>&nbsp;<button type="button" class="td-btn primary" data-req-accept="${id}">Accept request</button></label>
+                <label class="wide">Note to the family (optional)<input class="td-input" maxlength="400" data-f="note" placeholder="e.g. I can start next Monday at 4 pm."></label>`;
+            box.querySelector('[data-f="rate"]').focus();
+            return;
         }
         if ((b = e.target.closest('[data-req-accept]'))) {
-            const id = +b.dataset.reqAccept, box = b.closest('.td-accept');
-            const body = { action: 'accept', rate: +box.querySelector('[data-f="rate"]').value, session_minutes: +box.querySelector('[data-f="minutes"]').value, note: box.querySelector('[data-f="note"]').value };
+            const id = +b.dataset.reqAccept, box = $('form-req-' + id), f = s => box.querySelector(`[data-f="${s}"]`).value;
             b.disabled = true;
-            try { await api(`/api/tutoring/${id}/respond`, 'POST', body); flash('Request accepted. They have been told the price and can now pay for lessons.'); await load(); }
-            catch (err) { b.disabled = false; const n = b.closest('.td-att-item, .td-card').querySelector('.td-note'); n.id && note(n.id, err.message, 'bad'); }
+            try { await api(`/api/tutoring/${id}/respond`, 'POST', { action: 'accept', rate: +f('rate'), session_minutes: +f('minutes'), note: f('note') }); flash('Request accepted. They have been told the price and can now pay for lessons.'); await load(); }
+            catch (err) { b.disabled = false; note('note-req-' + id, err.message, 'bad'); }
             return;
         }
         if ((b = e.target.closest('[data-req-decline]'))) {
             if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again to decline'; return; }
             b.disabled = true;
             try { await api(`/api/tutoring/${b.dataset.reqDecline}/respond`, 'POST', { action: 'decline' }); flash('Request declined. They have been told.'); await load(); }
-            catch (err) { b.disabled = false; const n = b.closest('.td-att-item, .td-card').querySelector('.td-note'); n.id && note(n.id, err.message, 'bad'); }
+            catch (err) { b.disabled = false; note('note-req-' + b.dataset.reqDecline, err.message, 'bad'); }
             return;
         }
         if ((b = e.target.closest('[data-book-open]'))) {
-            const id = +b.dataset.bookOpen, box = $('book-' + id);
-            if (box.innerHTML) { box.innerHTML = ''; return; }
-            const r = D.tutoring.engagements.find(x => x.id === id);
+            const id = +b.dataset.bookOpen, key = 'book-' + id;
+            const inTable = !!b.closest('.td-table');
+            const box = $('form-' + key);
+            if (inTable && box && box.innerHTML) { box.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+            if (!openForm(key)) return;
+            const r = D.tutoring.engagements.find(x => x.id === id) || {};
             const d = new Date(Date.now() + 86400000); d.setMinutes(0, 0, 0);
             const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-            box.innerHTML = `<div class="td-form-grid">
-                <label>Date and time<input class="td-input" type="datetime-local" data-b="when" value="${local}"></label>
+            box.innerHTML = `<label>Date and time<input class="td-input" type="datetime-local" data-b="when" value="${local}"></label>
                 <label>Length<select class="td-select" data-b="min">${[30, 45, 60, 90, 120].map(m => `<option ${m === (r.session_minutes || 60) ? 'selected' : ''} value="${m}">${m} minutes</option>`).join('')}</select></label>
-                <label>&nbsp;<button type="button" class="td-btn primary" data-book="${id}"><i class="fas fa-calendar-check"></i> Book lesson</button></label>
+                <label>&nbsp;<button type="button" class="td-btn primary" data-book="${id}">Book lesson</button></label>
                 <label class="wide">Topic (optional)<input class="td-input" maxlength="160" data-b="topic" placeholder="e.g. Acids and bases"></label>
-                <p class="td-sub wide" style="margin:0">Online lessons happen in an eSchool call: call the learner from Messages at lesson time.</p></div>`;
+                <p class="td-hint">Online lessons happen in an Eschool call: call the learner from Messages at lesson time.</p>`;
+            if (inTable) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
         if ((b = e.target.closest('[data-book]'))) {
-            const id = +b.dataset.book, box = $('book-' + id), v = s => box.querySelector(`[data-b="${s}"]`).value;
-            if (!v('when')) { note('bookNote-' + id, 'Choose the date and time.', 'bad'); return; }
+            const id = +b.dataset.book, box = $('form-book-' + id), v = s => box.querySelector(`[data-b="${s}"]`).value;
+            if (!v('when')) { note('note-book-' + id, 'Choose the date and time.', 'bad'); return; }
             b.disabled = true;
             try {
                 await api(`/api/tutoring/${id}/sessions`, 'POST', { starts_at: new Date(v('when')).toISOString(), minutes: +v('min'), topic: v('topic') });
                 flash('Lesson booked. The learner and the family have been told.'); await load();
-            } catch (err) { b.disabled = false; note('bookNote-' + id, err.message, 'bad'); }
+            } catch (err) { b.disabled = false; note('note-book-' + id, err.message, 'bad'); }
+            return;
+        }
+        if ((b = e.target.closest('[data-rec-open]'))) {
+            const id = +b.dataset.recOpen, box = openForm('rec-' + id); if (!box) return;
+            box.innerHTML = `<label class="wide">What you covered (the learner and the family can read this)<textarea class="td-textarea" maxlength="1000" data-r="notes" placeholder="What you covered and how the learner did"></textarea></label>
+                <label class="wide">Homework (optional)<input class="td-input" maxlength="400" data-r="hw" placeholder="e.g. Exercise 4B, questions 1 to 10"></label>
+                <label>&nbsp;<button type="button" class="td-btn primary" data-record="${id}">Save notes</button></label>
+                <p class="td-hint">Eschool already knows the lesson happened from the call. Just write what you covered.</p>`;
+            box.querySelector('textarea').focus();
             return;
         }
         if ((b = e.target.closest('[data-record]'))) {
-            const id = +b.dataset.record, card = b.closest('.td-card'), q = s => card.querySelector(`[data-r="${s}-${id}"]`);
+            const id = +b.dataset.record, box = $('form-rec-' + id), q = s => box.querySelector(`[data-r="${s}"]`);
+            if (!q('notes').value.trim()) { note('note-rec-' + id, 'Write what you covered first.', 'bad'); return; }
             b.disabled = true;
-            try {
-                if (!q('notes').value.trim()) { b.disabled = false; note('recNote-' + id, 'Write what you covered first.', 'bad'); return; }
-                await api(`/api/tutoring/sessions/${id}`, 'PATCH', { teacher_notes: q('notes').value, homework: q('hw').value });
-                flash('Lesson notes saved. The learner and the family can read them now.'); await load();
-            } catch (err) { b.disabled = false; note('recNote-' + id, err.message, 'bad'); }
+            try { await api(`/api/tutoring/sessions/${id}`, 'PATCH', { teacher_notes: q('notes').value, homework: q('hw').value }); flash('Lesson notes saved. The learner and the family can read them now.'); await load(); }
+            catch (err) { b.disabled = false; note('note-rec-' + id, err.message, 'bad'); }
         }
     });
-    function flash(text) {
-        let el = $('tdFlash');
-        if (!el) { el = document.createElement('div'); el.id = 'tdFlash'; el.className = 'td-note'; el.style.margin = '0 0 18px'; $('tdKpis').after(el); }
-        note('tdFlash', text, 'ok');
-    }
 
-    /* ---------- load everything ---------- */
+    /* ---------- load ---------- */
     async function load() {
-        try {
-            D = await api('/api/teacher/dashboard');
-        } catch (err) {
-            $('tdSummary').textContent = "Couldn't load your dashboard: " + err.message;
-            return;
-        }
+        try { D = await api('/api/teacher/dashboard'); }
+        catch (err) { $('tdSummary').textContent = "Couldn't load your dashboard: " + err.message; return; }
         todos = D.todos || [];
-        renderTop(); renderAttention(); renderSchedule(); renderTodos(); renderChart();
-        renderRatings(); renderTeaching(); renderFeed();
-        if (location.hash === '#teaching' && !load.jumped) { load.jumped = true; $('teaching').scrollIntoView({ behavior: 'smooth' }); }
+        renderHero(); renderJobs(); renderTodos(); renderUpcoming(); renderLearners(); renderEarnings(); renderRatings();
     }
-    document.addEventListener('click', e => { const a = e.target.closest('a[href="#teaching"]'); if (a) { e.preventDefault(); teachTab = a.dataset.tab || (/book/i.test(a.textContent) ? 'students' : /notes|record/i.test(a.textContent) ? 'record' : teachTab); renderTeaching(); $('teaching').scrollIntoView({ behavior: 'smooth' }); } });
     load();
-    // keep it current without reloading the page (skipped while you're typing in a form)
+    // keep it current, but never while something is being typed or a form is open
     setInterval(() => {
         if (document.hidden) return;
         const a = document.activeElement;
         if (a && a.closest && a.closest('.td') && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return;
-        if (document.querySelector('.td [id^="book-"]:not(:empty), .td [id^="reqForm-"]:not(:empty), .td [id^="teachReq-"]:not(:empty)')) return;
-        if ([...document.querySelectorAll('.td [data-r^="notes-"], .td [data-r^="hw-"]')].some(x => x.value.trim())) return;   // a lesson report being written
+        if (document.querySelector('.td .td-form:not(:empty)')) return;
         load();
     }, 60000);
 })();

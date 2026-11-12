@@ -3,25 +3,78 @@
 {% block allcontent %}
 {#
     ADMIN - Announcements  (templates/Admin/admin_announcements.html)   Route: /admin-announcements
-    GET    /api/admin/announcements       history, and how many people are in each group
-    POST   /api/admin/announcements       {audience: all|student|teacher|parent, title, message, link}
+    GET    /api/admin/announcements       history, how many each group really reaches, pages a button can open
+    POST   /api/admin/announcements       {audience: all|student|teacher|parent, kind: news|content|reminder|important, title, message, link?, link_label?}
     DELETE /api/admin/announcements/<id>  withdraw: removes it from everyone's bell
-    Sent to the notification bell. People who switched off "News from eSchool" don't get it.
+    Sent to the notification bell, with an optional button that opens an Eschool page.
+    People who switched off "News and announcements" don't get it, and admins never do.
 #}
+<style>
+.an-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.an-grid > .ad-card + .ad-card { margin-top: 0; }
+@media (max-width: 1100px) { .an-grid { grid-template-columns: minmax(0, 1fr); } }
+.an-kinds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 560px) { .an-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.an-kind { border: 1px solid var(--ab-border); background: var(--ab-surface); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: .8rem; font-weight: 600; color: var(--ab-text-2); cursor: pointer; display: flex; gap: 8px; align-items: center; text-align: left; }
+.an-kind i { width: 24px; height: 24px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; flex-shrink: 0;
+             background: color-mix(in srgb, var(--c) 15%, transparent); color: var(--c); }
+.an-kind[aria-checked="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 8%, var(--ab-surface)); color: var(--ab-text); }
+.an-reach { margin-top: 10px; font-size: .8rem; font-weight: 600; border-radius: 10px; padding: 8px 12px; background: #ecfdf5; color: #047857; }
+.an-reach.none { background: #fef2f2; color: #b91c1c; }
+body.dark-mode .an-reach { background: rgba(16, 185, 129, .14); color: #6ee7b7; }
+body.dark-mode .an-reach.none { background: rgba(239, 68, 68, .14); color: #fca5a5; }
+.an-kinds { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+.an-pick { margin-top: 10px; }
+.an-pick[hidden], .an-kind[hidden] { display: none; }
+.an-found { display: flex; flex-direction: column; margin-top: 6px; border: 1px solid var(--ab-border); border-radius: 10px; overflow: hidden; }
+.an-found:empty { display: none; }
+.an-found button { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border: 0; border-bottom: 1px solid var(--ab-border); background: var(--ab-surface); font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.an-found button:last-child { border-bottom: 0; }
+.an-found button:hover { background: var(--ab-hover); }
+.an-who { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--primary-color) 40%, transparent); border-radius: 12px; background: var(--ab-accent-soft); }
+.an-who b { color: var(--ab-text); font-size: .9rem; }
+.an-who .ad-btn { margin-left: auto; }
+.an-two { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 8px; }
+@media (max-width: 560px) { .an-two { grid-template-columns: minmax(0, 1fr); } }
+.an-two .ad-select { width: 100%; }
+.an-prev { display: flex; gap: 10px; padding: 12px; border: 1px solid var(--ab-border); border-radius: 12px; background: var(--ab-surface-2); }
+.an-ic { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--c) 15%, transparent); color: var(--c); }
+.an-prev b { display: block; color: var(--ab-text); font-size: .88rem; overflow-wrap: anywhere; }
+.an-prev p { font-size: .82rem; color: var(--ab-text-2); overflow-wrap: anywhere; white-space: pre-wrap; margin-top: 2px; line-height: 1.45; }
+.an-go { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 5px 11px; border-radius: 8px; background: var(--primary-color); color: #fff; font-size: .74rem; font-weight: 700; }
+.an-item { border: 1px solid var(--ab-border); border-radius: 12px; padding: 12px 14px; }
+.an-item + .an-item { margin-top: 10px; }
+.an-item.gone { opacity: .6; }
+.an-item .t { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.an-item b { color: var(--ab-text); overflow-wrap: anywhere; }
+.an-item p { font-size: .84rem; color: var(--ab-text-2); margin-top: 4px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+.an-meta { display: flex; gap: 6px 12px; flex-wrap: wrap; font-size: .74rem; color: var(--ab-text-3); margin-top: 9px; align-items: center; }
+.an-meta .acts { margin-left: auto; display: flex; gap: 6px; }
+.an-seen { height: 6px; border-radius: 99px; background: var(--ab-hover); overflow: hidden; width: 90px; display: inline-block; vertical-align: middle; }
+.an-seen i { display: block; height: 100%; background: #10b981; }
+</style>
+
 <div class="ad-page-h">
-    <div><h1>Announcements</h1><p>Send news to everyone, or just to learners, teachers or parents. It arrives in their notification bell.</p></div>
+    <div><h1>Announcements</h1><p>Send news to everyone, or just to learners, teachers or parents. It arrives in their notification bell, with a button that opens the right page if you add one.</p></div>
 </div>
-<div class="ad-split half">
+
+<div class="ad-kpis" id="nKpis"><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div></div>
+
+<div class="an-grid">
     <form class="ad-card" id="nForm" novalidate>
         <div class="ad-card-h"><h2>New announcement</h2></div>
         <div class="ad-form">
-            <div class="ad-field full"><span class="lbl">Send to</span><div class="ad-tabs" role="radiogroup" aria-label="Send to" id="nAud" style="margin:0"></div></div>
+            <div class="ad-field full"><span class="lbl">Send to</span><div class="ad-tabs" role="radiogroup" aria-label="Send to" id="nAud" style="margin:0"></div><div class="an-pick" id="nPick" hidden><div id="nWho"></div><div id="nFindBox"><input type="search" class="ad-input" id="nFind" placeholder="Search a name or email" aria-label="Find the person" autocomplete="off"><div class="an-found" id="nFound"></div></div></div><div class="an-reach" id="nReach" role="status"></div></div>
+            <div class="ad-field full"><span class="lbl">Kind</span><div class="an-kinds" role="radiogroup" aria-label="Kind" id="nKind"></div></div>
             <div class="ad-field full"><label for="nTitle">Title</label><input class="ad-input" id="nTitle" maxlength="100" placeholder="e.g. New Grade 10 Chemistry course is live"><small><span id="nTitleN">0</span> / 100</small></div>
             <div class="ad-field full"><label for="nMsg">Message</label><textarea class="ad-textarea" id="nMsg" maxlength="500" placeholder="Keep it short and clear. Say what changed and what people should do."></textarea><small><span id="nMsgN">0</span> / 500</small></div>
-            <div class="ad-field full"><label for="nLink">Link to an eSchool page <span class="ad-muted">(optional)</span></label><input class="ad-input" id="nLink" maxlength="200" placeholder="/courses"><small>Must start with "/". It's added to the end of the message.</small></div>
+            <div class="ad-field full"><span class="lbl">Button <span class="ad-muted">(optional)</span></span>
+                <div class="an-two"><select class="ad-select" id="nLink" aria-label="Page the button opens"><option value="">No button</option></select>
+                <input class="ad-input" id="nLabel" maxlength="30" placeholder="Button text, e.g. Start the course" aria-label="Button text" disabled></div>
+                <small>Opens that Eschool page when they tap it in their bell.</small></div>
         </div>
         <div class="ad-sec-t">Preview</div>
-        <div id="nPrev" style="display:flex;gap:10px;padding:12px;border:1px solid var(--ab-border);border-radius:12px;background:var(--ab-surface-2)"></div>
+        <div class="an-prev" id="nPrev"></div>
         <div class="ad-note" id="nNote" role="status" aria-live="polite" style="margin-top:12px"></div>
         <div id="nConfirm"></div>
         <div class="ad-actions" style="justify-content:flex-end;margin-top:12px"><button type="reset" class="ad-btn">Clear</button><button type="submit" class="ad-btn primary" id="nSend"><i class="fas fa-paper-plane"></i> Review and send</button></div>
@@ -31,70 +84,148 @@
         <div id="nList"><div class="ad-skel"></div><div class="ad-skel"></div></div>
     </div>
 </div>
-<style>
-.an-item { border: 1px solid var(--ab-border); border-radius: 12px; padding: 12px 14px; }
-.an-item + .an-item { margin-top: 10px; }
-.an-item.gone { opacity: .6; }
-.an-item b { color: var(--ab-text); }
-.an-item p { font-size: .84rem; color: var(--ab-text-2); margin-top: 4px; line-height: 1.5; overflow-wrap: anywhere; }
-.an-meta { display: flex; gap: 6px 12px; flex-wrap: wrap; font-size: .74rem; color: var(--ab-text-3); margin-top: 8px; align-items: center; }
-.an-seen { height: 6px; border-radius: 99px; background: var(--ab-hover); overflow: hidden; width: 90px; display: inline-block; vertical-align: middle; }
-.an-seen i { display: block; height: 100%; background: #10b981; }
-</style>
+
 <script>
 (function () {
     'use strict';
     var A = window.AD, $ = function (id) { return document.getElementById(id); };
-    var AUD = [['all', 'Everyone', 'fa-globe'], ['student', 'Learners', 'fa-user-graduate'], ['teacher', 'Teachers', 'fa-chalkboard-user'], ['parent', 'Parents', 'fa-people-roof']];
-    var S = { aud: 'all', sizes: {}, list: [] };
+    var AUD = [['all', 'Everyone', 'fa-globe', 'people'], ['student', 'Learners', 'fa-user-graduate', 'learners'], ['teacher', 'Teachers', 'fa-chalkboard-user', 'teachers'], ['parent', 'Parents', 'fa-people-roof', 'parents'], ['person', 'One person', 'fa-user', 'person']];
+    var KINDS = [['news', 'News', 'fa-bullhorn', '#4361ee'], ['content', 'New content', 'fa-book-open', '#f59e0b'], ['reminder', 'Reminder', 'fa-bell', '#10b981'], ['important', 'Important', 'fa-triangle-exclamation', '#ef4444'], ['warning', 'Warning', 'fa-scale-balanced', '#b91c1c']];
+    var ROLE = { student: 'Learner', parent: 'Parent', teacher: 'Teacher', admin: 'Admin' };
+    var S = { aud: 'all', kind: 'news', sizes: {}, off: {}, pages: [], list: [], person: null };
+    function kindOf(k) { return KINDS.filter(function (x) { return x[0] === k; })[0] || KINDS[0]; }
+    function audOf(a) { return AUD.filter(function (x) { return x[0] === a; })[0] || AUD[0]; }
+
     function drawAud() {
         $('nAud').innerHTML = AUD.map(function (a) { return '<button type="button" class="ad-tab" role="radio" data-a="' + a[0] + '" aria-pressed="' + (S.aud === a[0]) + '" aria-checked="' + (S.aud === a[0]) + '"><i class="fas ' + a[2] + '"></i>' + a[1] + (S.sizes[a[0]] != null ? ' <em>' + S.sizes[a[0]] + '</em>' : '') + '</button>'; }).join('');
+        var r = $('nReach');
+        $('nPick').hidden = S.aud !== 'person';
+        if (S.aud === 'person') {
+            drawWho();
+            r.hidden = false; r.className = 'an-reach' + (S.person ? '' : ' none');
+            r.textContent = S.person ? '✓ Goes only to ' + S.person.name + '. It arrives even if they switched announcements off.' : 'Search for the person you want to tell.';
+            return;
+        }
+        if (S.kind === 'warning') { S.kind = 'news'; drawKind(); prev(); }
+        var n = S.sizes[S.aud], off = S.off[S.aud] || 0;
+        if (n == null) { r.hidden = true; return; }
+        r.hidden = false; r.className = 'an-reach' + (n ? '' : ' none');
+        r.textContent = n ? '✓ Will reach ' + n + ' ' + (n === 1 ? 'person' : audOf(S.aud)[3]) + (off ? ' · ' + off + ' switched announcements off' : '') : 'Nobody in this group can get announcements right now.';
     }
+    function drawKind() {
+        // "Warning" is only for a notice to one person
+        $('nKind').innerHTML = KINDS.map(function (k) { return '<button type="button" class="an-kind" role="radio" style="--c:' + k[3] + '" data-k="' + k[0] + '" aria-checked="' + (S.kind === k[0]) + '"' + (k[0] === 'warning' && S.aud !== 'person' ? ' hidden' : '') + '><i class="fas ' + k[2] + '"></i>' + k[1] + '</button>'; }).join('');
+    }
+    function drawWho() {
+        var p = S.person;
+        $('nFindBox').hidden = !!p;
+        $('nWho').innerHTML = p ? '<div class="an-who">' + A.avatar(p.name, p.avatar_url) + '<span><b>' + A.esc(p.name) + '</b><br><span class="ad-muted">' + A.esc(ROLE[p.role] || 'Learner') + '</span></span>' +
+            '<a class="ad-btn sm" href="/admin-users?id=' + Number(p.id) + '" target="_blank" rel="noopener"><i class="fas fa-user"></i> Person file</a><button type="button" class="ad-btn sm" id="nChange">Change</button></div>' : '';
+    }
+    function pickPerson(p) { S.person = p; $('nFind').value = ''; $('nFound').innerHTML = ''; S.aud = 'person'; drawAud(); drawKind(); $('nConfirm').innerHTML = ''; }
+    var ft;
+    $('nFind').addEventListener('input', function () {
+        clearTimeout(ft); var v = this.value.trim();
+        ft = setTimeout(async function () {
+            if (v.length < 2) { $('nFound').innerHTML = ''; return; }
+            try {
+                var d = await A.api('/api/admin/inbox/find?q=' + encodeURIComponent(v));
+                S.found = d.people || [];
+                $('nFound').innerHTML = S.found.length ? S.found.map(function (p, i) { return '<button type="button" data-pick="' + i + '">' + A.avatar(p.name, p.avatar_url) + '<span><b style="color:var(--ab-text);font-size:.86rem">' + A.esc(p.name) + '</b><br><span class="ad-muted">' + A.esc(ROLE[p.role] || 'Learner') + '</span></span></button>'; }).join('')
+                    : '<div class="ad-muted" style="padding:8px 10px">Nobody found.</div>';
+            } catch (e) { $('nFound').innerHTML = '<div class="ad-note bad">' + A.esc(e.message) + '</div>'; }
+        }, 250);
+    });
+    $('nFound').addEventListener('click', function (e) { var b = e.target.closest('[data-pick]'); if (b) pickPerson(S.found[Number(b.dataset.pick)]); });
+    $('nWho').addEventListener('click', function (e) { if (e.target.closest('#nChange')) { S.person = null; drawAud(); $('nFind').focus(); } });
     function prev() {
-        var t = $('nTitle').value.trim() || 'Title', m = $('nMsg').value.trim() || 'Your message shows here.', l = $('nLink').value.trim();
+        var k = kindOf(S.kind), t = $('nTitle').value.trim() || 'Title', m = $('nMsg').value.trim() || 'Your message shows here.', link = $('nLink').value;
+        var page = S.pages.filter(function (p) { return p.path === link; })[0], label = $('nLabel').value.trim() || (page ? 'Open ' + page.label : '');
         $('nTitleN').textContent = $('nTitle').value.length; $('nMsgN').textContent = $('nMsg').value.length;
-        $('nPrev').innerHTML = '<span style="width:34px;height:34px;border-radius:9px;background:rgba(245,158,11,.15);color:#f59e0b;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-bullhorn"></i></span>' +
-            '<span style="min-width:0"><b style="display:block;color:var(--ab-text);font-size:.88rem">' + A.esc(t) + '</b><span style="font-size:.82rem;color:var(--ab-text-2);overflow-wrap:anywhere">' + A.esc(m + (l ? ' ' + l : '')) + '</span><br><small class="ad-muted">just now</small></span>';
+        $('nLabel').disabled = !link; if (!link) $('nLabel').value = '';
+        $('nLabel').placeholder = page ? 'Button text, e.g. Open ' + page.label : 'Pick a page first';
+        $('nPrev').innerHTML = '<span class="an-ic" style="--c:' + k[3] + '"><i class="fas ' + k[2] + '"></i></span><span style="min-width:0"><b>' + A.esc(t) + '</b><p>' + A.esc(m) + '</p>' +
+            (link ? '<span class="an-go">' + A.esc(label) + ' <i class="fas fa-arrow-right"></i></span><br>' : '') + '<small class="ad-muted">just now</small></span>';
         $('nConfirm').innerHTML = '';
     }
+    function drawKpis() {
+        var month = Date.now() - 30 * 86400000, sent = S.list.filter(function (a) { var d = new Date(a.created_at); return !isNaN(d) && d >= month; });
+        var live = sent.filter(function (a) { return !a.withdrawn_at; }), reached = live.reduce(function (s, a) { return s + (a.recipients || 0); }, 0);
+        var seen = live.reduce(function (s, a) { return s + (a.seen || 0); }, 0), withdrawn = sent.length - live.length;
+        $('nKpis').innerHTML = [['fa-paper-plane', '#4361ee', 'Sent (30 days)', sent.length, withdrawn ? withdrawn + ' withdrawn' : 'none withdrawn'],
+            ['fa-users', '#10b981', 'People reached', reached, 'across those announcements'],
+            ['fa-eye', '#f59e0b', 'Average seen', reached ? Math.round(seen / reached * 100) + '%' : '–', 'opened it in their bell']]
+            .map(function (x) { return '<div class="ad-kpi" style="--c:' + x[1] + '"><span><i class="fas ' + x[0] + '"></i>' + x[2] + '</span><b>' + x[3] + '</b><small>' + A.esc(x[4]) + '</small></div>'; }).join('');
+    }
     async function load() {
-        try { var d = await A.api('/api/admin/announcements'); S.sizes = d.sizes; S.list = d.announcements; drawAud(); drawList(); }
-        catch (e) { A.note('nNote', e.message, 'bad'); }
+        try {
+            var d = await A.api('/api/admin/announcements');
+            S.sizes = d.sizes; S.off = d.off || {}; S.list = d.announcements;
+            if (!S.pages.length) {
+                S.pages = d.pages || [];
+                $('nLink').innerHTML = '<option value="">No button</option>' + S.pages.map(function (p) { return '<option value="' + A.esc(p.path) + '">Opens: ' + A.esc(p.label) + '</option>'; }).join('');
+            }
+            drawAud(); drawList(); drawKpis(); prev();
+        } catch (e) { A.note('nNote', e.message, 'bad'); }
     }
     function drawList() {
         $('nList').innerHTML = S.list.length ? S.list.map(function (a) {
-            var pct = a.recipients ? Math.round(a.seen / a.recipients * 100) : 0;
-            return '<div class="an-item' + (a.withdrawn_at ? ' gone' : '') + '" data-id="' + a.id + '"><b>' + A.esc(a.title) + '</b>' + (a.withdrawn_at ? ' <span class="ad-pill">Withdrawn</span>' : '') + '<p>' + A.esc(a.message) + (a.link ? ' <span class="ad-mono">' + A.esc(a.link) + '</span>' : '') + '</p>' +
-                '<div class="an-meta"><span class="ad-pill info">' + A.esc(a.audience_label) + '</span><span>' + a.recipients + ' people</span>' +
+            var pct = a.recipients ? Math.round(a.seen / a.recipients * 100) : 0, k = kindOf(a.kind);
+            return '<div class="an-item' + (a.withdrawn_at ? ' gone' : '') + '" data-id="' + a.id + '"><div class="t"><span class="ad-pill" style="background:color-mix(in srgb,' + k[3] + ' 14%,transparent);color:' + k[3] + '"><i class="fas ' + k[2] + '"></i> ' + k[1] + '</span><b>' + A.esc(a.title) + '</b>' + (a.withdrawn_at ? ' <span class="ad-pill">Withdrawn</span>' : '') + '</div>' +
+                '<p>' + A.esc(a.message) + '</p>' + (a.link ? '<div class="an-meta" style="margin-top:6px"><span class="ad-pill info"><i class="fas fa-arrow-pointer"></i> Button: ' + A.esc(a.link_label || 'Open') + ' → ' + A.esc(a.link) + '</span></div>' : '') +
+                '<div class="an-meta">' + (a.audience === 'person' ? '<a class="ad-pill info" href="/admin-users?id=' + Number(a.target_id) + '" style="text-decoration:none"><i class="fas fa-user"></i> ' + A.esc(a.audience_label) + '</a>' : '<span class="ad-pill">' + A.esc(a.audience_label) + '</span><span>' + a.recipients + ' people</span>') +
                 (a.withdrawn_at ? '' : '<span title="' + a.seen + ' of ' + a.recipients + ' opened it"><span class="an-seen"><i style="width:' + pct + '%"></i></span> ' + pct + '% seen</span>') +
-                '<span>' + A.esc(a.by) + ' · ' + A.esc(A.when(a.created_at, true)) + '</span>' + (a.withdrawn_at ? '' : '<button type="button" class="ad-btn sm danger" data-w style="margin-left:auto"><i class="fas fa-rotate-left"></i> Withdraw</button>') + '</div><div data-box></div></div>';
+                '<span>' + A.esc(a.by) + ' · ' + A.esc(A.when(a.created_at, true)) + '</span><span class="acts"><button type="button" class="ad-btn sm" data-again><i class="fas fa-copy"></i> Send again</button>' +
+                (a.withdrawn_at ? '' : '<button type="button" class="ad-btn sm danger" data-w><i class="fas fa-rotate-left"></i> Withdraw</button>') + '</span></div><div data-box></div></div>';
         }).join('') : '<div class="ad-empty"><i class="fas fa-bullhorn"></i><b>Nothing sent yet</b>Your announcements will be listed here.</div>';
     }
-    $('nAud').addEventListener('click', function (e) { var b = e.target.closest('[data-a]'); if (b) { S.aud = b.dataset.a; drawAud(); $('nConfirm').innerHTML = ''; } });
-    ['nTitle', 'nMsg', 'nLink'].forEach(function (id) { $(id).addEventListener('input', function () { this.classList.remove('bad'); prev(); }); });
+
+    $('nAud').addEventListener('click', function (e) { var b = e.target.closest('[data-a]'); if (b) { S.aud = b.dataset.a; drawAud(); drawKind(); $('nConfirm').innerHTML = ''; if (S.aud === 'person' && !S.person) $('nFind').focus(); } });
+    $('nKind').addEventListener('click', function (e) { var b = e.target.closest('[data-k]'); if (b) { S.kind = b.dataset.k; drawKind(); prev(); } });
+    ['nTitle', 'nMsg', 'nLabel'].forEach(function (id) { $(id).addEventListener('input', function () { this.classList.remove('bad'); prev(); }); });
+    $('nLink').addEventListener('change', function () { prev(); if (this.value) $('nLabel').focus(); });
     var quiet = false;
-    $('nForm').addEventListener('reset', function () { var keep = quiet; quiet = false; setTimeout(function () { S.aud = 'all'; drawAud(); prev(); if (!keep) A.note('nNote', ''); }, 0); });
+    $('nForm').addEventListener('reset', function () { var keep = quiet; quiet = false; setTimeout(function () { S.aud = 'all'; S.kind = 'news'; S.person = null; drawAud(); drawKind(); prev(); if (!keep) A.note('nNote', ''); }, 0); });
     $('nForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        var body = { audience: S.aud, title: $('nTitle').value.trim(), message: $('nMsg').value.trim(), link: $('nLink').value.trim() };
+        var body = { audience: S.aud, user_id: S.aud === 'person' && S.person ? S.person.id : undefined, kind: S.kind, title: $('nTitle').value.trim(), message: $('nMsg').value.trim(), link: $('nLink').value, link_label: $('nLabel').value.trim() };
         if (body.title.length < 3) { $('nTitle').classList.add('bad'); $('nTitle').focus(); A.note('nNote', 'Add a title of at least 3 characters.', 'bad'); return; }
         if (body.message.length < 10) { $('nMsg').classList.add('bad'); $('nMsg').focus(); A.note('nNote', 'Write a message of at least 10 characters.', 'bad'); return; }
-        if (body.link && body.link[0] !== '/') { $('nLink').classList.add('bad'); $('nLink').focus(); A.note('nNote', 'The link must be an eSchool page starting with "/".', 'bad'); return; }
+        var one = S.aud === 'person', n = one ? (S.person ? 1 : 0) : S.sizes[S.aud];
+        if (one && !S.person) { A.note('nNote', 'Choose the person to send it to.', 'bad'); $('nFind').focus(); return; }
+        if (!n) { A.note('nNote', 'Nobody in this group can get announcements right now.', 'bad'); return; }
         A.note('nNote', '');
-        var who = AUD.filter(function (a) { return a[0] === S.aud; })[0][1].toLowerCase(), n = S.sizes[S.aud];
-        A.confirmIn('nConfirm', { title: 'Send to ' + (n != null ? n + ' ' : '') + who + '?', text: 'It goes straight to their notification bell. You can withdraw it later, but people may already have read it.',
-            yes: 'Send now', run: async function () {
+        A.confirmIn('nConfirm', { title: one ? 'Send to ' + S.person.name + '?' : 'Send to ' + n + ' ' + (n === 1 ? 'person' : audOf(S.aud)[3]) + '?',
+            text: one ? 'It goes straight to their notification bell and is noted in their person file. You can withdraw it later.' : 'It goes straight to their notification bell. You can withdraw it later, but people may already have read it.',
+            danger: S.kind === 'important' || S.kind === 'warning', yes: 'Send now', run: async function () {
                 var d = await A.api('/api/admin/announcements', { method: 'POST', body: body });
-                quiet = true; $('nForm').reset(); A.note('nNote', 'Sent to ' + d.recipients + ' people' + (d.skipped ? ' (' + d.skipped + ' have announcements switched off)' : '') + '.', 'ok', true); load();
+                quiet = true; $('nForm').reset();
+                A.note('nNote', d.to ? 'Sent to ' + d.to + '.' : 'Sent to ' + d.recipients + ' people' + (d.skipped ? ' (' + d.skipped + ' have announcements switched off)' : '') + '.', 'ok', true); load();
             } });
     });
     $('nList').addEventListener('click', function (e) {
-        var b = e.target.closest('[data-w]'); if (!b) return;
-        var card = b.closest('[data-id]'), a = S.list.filter(function (x) { return String(x.id) === card.dataset.id; })[0];
+        var card = e.target.closest('[data-id]'); if (!card) return;
+        var a = S.list.filter(function (x) { return String(x.id) === card.dataset.id; })[0]; if (!a) return;
+        if (e.target.closest('[data-again]')) {
+            S.aud = a.audience; S.kind = a.kind || 'news';
+            S.person = a.audience === 'person' && a.target_id ? { id: a.target_id, name: a.target_name, role: a.target_role } : null;
+            $('nTitle').value = a.title; $('nMsg').value = a.message; $('nLink').value = a.link || ''; $('nLabel').value = a.link_label || '';
+            drawAud(); drawKind(); prev(); $('nForm').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('nTitle').focus();
+            A.note('nNote', 'Copied into the form. Change anything you like, then send.', 'info');
+            return;
+        }
+        if (!e.target.closest('[data-w]')) return;
         A.confirmIn(card.querySelector('[data-box]'), { title: 'Withdraw "' + a.title + '"?', danger: true, text: 'It is removed from everyone\'s notification bell.', yes: 'Withdraw',
             run: async function () { var d = await A.api('/api/admin/announcements/' + a.id, { method: 'DELETE' }); A.note('nNote', 'Withdrawn from ' + d.removed + ' bells.', 'ok'); load(); } });
     });
-    drawAud(); prev(); load();
+    drawAud(); drawKind(); prev(); load();
+    // /admin-announcements?to=<user id> (from a person file) starts a notice to that person
+    (async function () {
+        var to = Number(new URLSearchParams(location.search).get('to'));
+        if (!to) return;
+        try { var d = await A.api('/api/admin/inbox/person/' + to); pickPerson({ id: d.person.id, name: d.person.name, role: d.person.role, avatar_url: d.person.avatar_url }); $('nTitle').focus(); }
+        catch (e) { A.note('nNote', e.message, 'bad'); }
+    })();
 })();
 </script>
 {% endblock %}

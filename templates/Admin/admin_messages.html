@@ -1,950 +1,450 @@
 {% extends "Admin/admin_body.html" %}
-
+{% block title %}Messages{% endblock %}
 {% block allcontent %}
+{#
+    ADMIN - Messages  (templates/Admin/admin_messages.html)   Route: /admin_messages   Open a chat: /admin_messages?to=<user id>
+    GET  /api/admin/inbox?q=&filter=all|unread|waiting|student|parent|teacher
+    GET  /api/admin/inbox/person/<uid>
+    GET  /api/admin/inbox/find?q=
+    GET|POST /api/admin/inbox/replies      DELETE /api/admin/inbox/replies/<id>
+    GET  /messages/conversation/<uid>?limit=200 | ?after=<id>   (also marks their messages as read)
+    POST /messages/send {receiver_id, text}
+    Sending to everyone is done on the Announcements page.
+#}
 <style>
-    :root {
-        --primary-light: #e0e7ff;
-        --success-color: #10b981;
-        --gray-50: #f9fafb;
-        --gray-100: #f3f4f6;
-        --gray-200: #e5e7eb;
-        --gray-300: #d1d5db;
-        --gray-400: #9ca3af;
-        --gray-500: #6b7280;
-        --gray-600: #4b5563;
-        --gray-700: #374151;
-        --gray-800: #1f2937;
-        --border-radius-sm: 8px;
-    }
-
-    .messages-container {
-        width: 100%;
-        min-width: 0;
-    }
-
-    /* Messages Layout */
-    .messages-layout {
-        display: grid;
-        grid-template-columns: 350px 1fr;
-        gap: 30px;
-        min-height: 600px;
-    }
-
-    /* Conversations Sidebar */
-    .conversations-sidebar {
-        background: white;
-        border-radius: var(--border-radius, 12px);
-        box-shadow: var(--card-shadow);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        max-height: 700px;
-        min-width: 0;
-    }
-
-    .sidebar-header {
-        padding: 20px;
-        border-bottom: 1px solid var(--gray-200);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .sidebar-header h3 {
-        font-size: 1.1rem;
-        color: var(--dark-color);
-    }
-
-    .sidebar-header .badge-count {
-        background: var(--primary-color);
-        color: white;
-        padding: 2px 10px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .conversations-list {
-        flex: 1;
-        overflow-y: auto;
-        padding: 8px 0;
-    }
-
-    .conversation-item {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding: 14px 20px;
-        cursor: pointer;
-        transition: var(--transition);
-        border-left: 3px solid transparent;
-    }
-
-    .conversation-item:hover {
-        background-color: var(--gray-50);
-    }
-
-    .conversation-item.active {
-        background-color: var(--primary-light);
-        border-left-color: var(--primary-color);
-    }
-
-    .conversation-avatar {
-        width: 45px;
-        height: 45px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 1rem;
-        color: white;
-        flex-shrink: 0;
-    }
-
-    .conversation-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .conversation-name {
-        font-weight: 600;
-        font-size: 0.95rem;
-        color: var(--dark-color);
-    }
-
-    .conversation-preview {
-        font-size: 0.85rem;
-        color: var(--gray-500);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .conversation-meta {
-        text-align: right;
-        flex-shrink: 0;
-    }
-
-    .conversation-time {
-        font-size: 0.75rem;
-        color: var(--gray-400);
-    }
-
-    .conversation-unread {
-        background: var(--primary-color);
-        color: white;
-        font-size: 0.7rem;
-        font-weight: 600;
-        padding: 2px 8px;
-        border-radius: 10px;
-        margin-top: 4px;
-        display: inline-block;
-    }
-
-    /* Message Area */
-    .message-area {
-        background: white;
-        border-radius: var(--border-radius, 12px);
-        box-shadow: var(--card-shadow);
-        display: flex;
-        flex-direction: column;
-        max-height: 700px;
-        min-width: 0;
-    }
-
-    .message-header {
-        padding: 18px 25px;
-        border-bottom: 1px solid var(--gray-200);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .message-header .recipient-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .message-header .recipient-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: white;
-        flex-shrink: 0;
-    }
-
-    .message-header .recipient-name {
-        font-weight: 600;
-        font-size: 1rem;
-    }
-
-    .message-header .recipient-status {
-        font-size: 0.8rem;
-        color: var(--gray-500);
-    }
-
-    .message-header .broadcast-badge {
-        background: var(--warning-color);
-        color: white;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-    }
-
-    .messages-list {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px 25px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        min-height: 300px;
-    }
-
-    .message-item {
-        max-width: 75%;
-        padding: 12px 18px;
-        border-radius: 16px;
-        animation: fadeIn 0.3s ease-out;
-    }
-
-    .message-item.sent {
-        align-self: flex-end;
-        background: var(--primary-color);
-        color: white;
-        border-bottom-right-radius: 4px;
-    }
-
-    .message-item.received {
-        align-self: flex-start;
-        background: var(--gray-100);
-        color: var(--dark-color);
-        border-bottom-left-radius: 4px;
-    }
-
-    .message-item.broadcast {
-        align-self: flex-start;
-        background: #fef3c7;
-        color: var(--dark-color);
-        border-left: 4px solid var(--warning-color);
-        max-width: 85%;
-    }
-
-    .message-item.broadcast .broadcast-label {
-        font-size: 0.7rem;
-        color: var(--warning-color);
-        font-weight: 600;
-        display: block;
-        margin-bottom: 4px;
-    }
-
-    .message-item .message-text {
-        font-size: 0.95rem;
-        line-height: 1.5;
-        word-wrap: break-word;
-    }
-
-    .message-item .message-time {
-        font-size: 0.7rem;
-        opacity: 0.7;
-        margin-top: 6px;
-        display: block;
-    }
-
-    .message-item.received .message-time {
-        color: var(--gray-500);
-    }
-
-    .message-item.sent .message-time {
-        color: rgba(255, 255, 255, 0.8);
-    }
-
-    .no-messages {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        color: var(--gray-400);
-        text-align: center;
-        padding: 40px 20px;
-    }
-
-    .no-messages i {
-        font-size: 3rem;
-        margin-bottom: 15px;
-        opacity: 0.5;
-    }
-
-    .no-messages p {
-        font-size: 1rem;
-    }
-
-    /* Message Input */
-    .message-input-area {
-        padding: 15px 25px;
-        border-top: 1px solid var(--gray-200);
-        display: flex;
-        gap: 12px;
-        align-items: flex-end;
-    }
-
-    .message-input-area textarea {
-        flex: 1;
-        padding: 12px 16px;
-        border: 2px solid var(--gray-200);
-        border-radius: var(--border-radius-sm);
-        font-size: 0.95rem;
-        font-family: 'Inter', 'Open Sans', sans-serif;
-        resize: none;
-        min-height: 50px;
-        max-height: 120px;
-        transition: var(--transition);
-        background: var(--gray-50);
-    }
-
-    .message-input-area textarea:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-    }
-
-    .message-input-area .send-btn {
-        padding: 12px 24px;
-        border-radius: var(--border-radius-sm);
-        border: none;
-        background: var(--primary-color);
-        color: white;
-        font-weight: 600;
-        cursor: pointer;
-        transition: var(--transition);
-        font-family: 'Inter', 'Open Sans', sans-serif;
-        font-size: 0.95rem;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        height: 50px;
-        flex-shrink: 0;
-    }
-
-    .message-input-area .send-btn:hover {
-        background: var(--secondary-color);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
-    }
-
-    .message-input-area .send-btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        transform: none;
-    }
-
-    /* Broadcast section */
-    .broadcast-section {
-        background: var(--gray-50);
-        border-radius: var(--border-radius-sm);
-        padding: 15px 20px;
-        margin-bottom: 15px;
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        flex-wrap: wrap;
-        border: 2px dashed var(--gray-300);
-    }
-
-    .broadcast-section .broadcast-label {
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: var(--gray-600);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .broadcast-section .broadcast-label i {
-        color: var(--warning-color);
-    }
-
-    .broadcast-section .broadcast-toggle {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .broadcast-section .toggle-switch {
-        position: relative;
-        width: 48px;
-        height: 26px;
-        background: var(--gray-300);
-        border-radius: 13px;
-        cursor: pointer;
-        transition: var(--transition);
-        flex-shrink: 0;
-    }
-
-    .broadcast-section .toggle-switch.active {
-        background: var(--primary-color);
-    }
-
-    .broadcast-section .toggle-switch .toggle-knob {
-        position: absolute;
-        top: 3px;
-        left: 3px;
-        width: 20px;
-        height: 20px;
-        background: white;
-        border-radius: 50%;
-        transition: var(--transition);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-
-    .broadcast-section .toggle-switch.active .toggle-knob {
-        left: 25px;
-    }
-
-    .broadcast-section .broadcast-info {
-        font-size: 0.85rem;
-        color: var(--gray-500);
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Dark Mode Support for admin */
-    body.dark-mode .conversations-sidebar,
-    body.dark-mode .message-area {
-        background-color: #1e293b;
-    }
-
-    body.dark-mode .sidebar-header {
-        border-bottom-color: #334155;
-    }
-
-    body.dark-mode .sidebar-header h3 {
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .conversation-item:hover {
-        background-color: #263449;
-    }
-
-    body.dark-mode .conversation-item.active {
-        background-color: #1c2b47;
-    }
-
-    body.dark-mode .conversation-name {
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .conversation-preview {
-        color: #94a3b8;
-    }
-
-    body.dark-mode .message-header {
-        border-bottom-color: #334155;
-    }
-
-    body.dark-mode .message-item.received {
-        background-color: #263449;
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .message-item.broadcast {
-        background: #3a2a1a;
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .message-item.broadcast .broadcast-label {
-        color: #f59e0b;
-    }
-
-    body.dark-mode .no-messages {
-        color: #94a3b8;
-    }
-
-    body.dark-mode .message-input-area {
-        border-top-color: #334155;
-    }
-
-    body.dark-mode .message-input-area textarea {
-        background-color: #0f172a;
-        border-color: #334155;
-        color: #f1f5f9;
-    }
-
-    body.dark-mode .broadcast-section {
-        background-color: #263449;
-        border-color: #334155;
-    }
-
-    body.dark-mode .broadcast-section .broadcast-label {
-        color: #94a3b8;
-    }
-
-    body.dark-mode .conversation-time {
-        color: #64748b;
-    }
-
-    @media (max-width: 1024px) {
-        .messages-layout {
-            grid-template-columns: 1fr;
-        }
-        .conversations-sidebar {
-            max-height: 300px;
-        }
-        .message-area {
-            max-height: 500px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .message-item {
-            max-width: 90%;
-        }
-        .broadcast-section {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 10px;
-        }
-        .broadcast-section .broadcast-toggle {
-            justify-content: space-between;
-        }
-        .message-input-area {
-            flex-direction: column;
-            align-items: stretch;
-        }
-        .message-input-area .send-btn {
-            width: 100%;
-            justify-content: center;
-        }
-    }
+.mx-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr) 290px; gap: 14px; height: max(560px, calc(100vh - var(--ab-header-h) - 270px)); }
+.mx-col { background: var(--ab-surface); border: 1px solid var(--ab-border); border-radius: 14px; box-shadow: var(--card-shadow); display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.mx-top { padding: 12px 12px 10px; border-bottom: 1px solid var(--ab-border); display: flex; flex-direction: column; gap: 9px; }
+.mx-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.mx-chip { border: 1px solid var(--ab-border); background: var(--ab-surface); color: var(--ab-text-2); padding: 4px 10px; border-radius: 99px; font: inherit; font-size: .74rem; font-weight: 600; cursor: pointer; }
+.mx-chip:hover { background: var(--ab-hover); }
+.mx-chip[aria-pressed="true"] { background: var(--ab-accent-soft); color: var(--ab-accent-text); border-color: color-mix(in srgb, var(--primary-color) 40%, transparent); }
+.mx-chip em { font-style: normal; color: var(--ab-text-3); margin-left: 3px; font-weight: 500; }
+.mx-list { flex: 1; overflow-y: auto; }
+.mx-cv { display: flex; gap: 10px; padding: 11px 12px; border-bottom: 1px solid var(--ab-border); cursor: pointer; width: 100%; border-left: 3px solid transparent; background: none; border-top: 0; border-right: 0; text-align: left; font: inherit; color: inherit; align-items: flex-start; }
+.mx-cv:hover { background: var(--ab-hover); }
+.mx-cv.on { background: var(--ab-accent-soft); border-left-color: var(--primary-color); }
+.mx-cv .m { flex: 1; min-width: 0; }
+.mx-cv b { font-size: .86rem; color: var(--ab-text); }
+.mx-cv .pv { font-size: .78rem; color: var(--ab-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.mx-cv.unread .pv { color: var(--ab-text); font-weight: 600; }
+.mx-cv .t { font-size: .7rem; color: var(--ab-text-3); text-align: right; flex-shrink: 0; white-space: nowrap; }
+.mx-av { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; position: relative; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: .76rem; }
+.mx-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.mx-av .dot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; background: #10b981; border: 2px solid var(--ab-surface); }
+.mx-role { font-size: .62rem; font-weight: 700; padding: 1px 6px; border-radius: 99px; margin-left: 5px; vertical-align: 1px; white-space: nowrap; }
+.mx-role.student { background: #e0e7ff; color: #4361ee; } .mx-role.teacher { background: #dcfce7; color: #047857; }
+.mx-role.parent { background: #fce7f3; color: #be185d; } .mx-role.admin { background: #fef3c7; color: #b45309; }
+body.dark-mode .mx-role.student { background: #1c2b47; color: #93c5fd; } body.dark-mode .mx-role.teacher { background: #12291f; color: #6ee7b7; }
+body.dark-mode .mx-role.parent { background: #3a1730; color: #f9a8d4; } body.dark-mode .mx-role.admin { background: #2d2a1a; color: #fbbf24; }
+.mx-un { background: var(--primary-color); color: #fff; border-radius: 99px; font-size: .66rem; font-weight: 700; padding: 1px 7px; display: inline-block; margin-top: 4px; }
+.mx-wt { background: #fffbeb; color: #b45309; border-radius: 99px; font-size: .62rem; font-weight: 700; padding: 1px 7px; display: inline-block; margin-top: 4px; }
+body.dark-mode .mx-wt { background: rgba(245, 158, 11, .15); color: #fcd34d; }
+.mx-head { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--ab-border); flex-wrap: wrap; }
+.mx-head .m { flex: 1; min-width: 140px; }
+.mx-head b { font-size: 1rem; color: var(--ab-text); }
+.mx-head small { display: block; font-size: .76rem; color: var(--ab-text-3); }
+.mx-back { display: none; }
+.mx-msgs { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; background: var(--ab-surface-2); }
+.mx-day { align-self: center; font-size: .7rem; font-weight: 700; color: var(--ab-text-3); background: var(--ab-hover); padding: 3px 10px; border-radius: 99px; margin: 6px 0; }
+.mx-b { max-width: 72%; padding: 9px 13px; border-radius: 16px; font-size: .87rem; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+.mx-b small { display: block; font-size: .68rem; margin-top: 3px; opacity: .75; white-space: normal; }
+.mx-b.r { background: var(--ab-surface); border: 1px solid var(--ab-border); align-self: flex-start; border-bottom-left-radius: 4px; color: var(--ab-text); }
+.mx-b.s { background: var(--primary-color); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+.mx-b.s.fail { background: #fee2e2; color: #b91c1c; }
+.mx-sys { align-self: center; font-size: .76rem; color: var(--ab-text-3); border: 1px dashed var(--ab-border); border-radius: 99px; padding: 4px 12px; text-align: center; max-width: 90%; }
+.mx-more { align-self: center; }
+.mx-cmp { border-top: 1px solid var(--ab-border); padding: 10px 14px; }
+.mx-qr { display: flex; gap: 6px; margin-bottom: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.mx-qr button { flex-shrink: 0; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: inherit; font-size: .72rem; border: 1px solid var(--ab-border); border-radius: 99px; padding: 4px 10px; color: var(--ab-text-2); background: var(--ab-surface-2); cursor: pointer; }
+.mx-qr button:hover { background: var(--ab-hover); color: var(--ab-text); }
+.mx-row { display: flex; gap: 8px; align-items: flex-end; }
+.mx-row textarea { flex: 1; resize: none; min-height: 44px; max-height: 160px; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--ab-border); background: var(--ab-surface); color: var(--ab-text); font: inherit; font-size: .88rem; line-height: 1.45; }
+.mx-row textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px var(--ab-accent-soft); }
+.mx-row .ad-btn { height: 44px; }
+.mx-hint { font-size: .7rem; color: var(--ab-text-3); margin-top: 6px; display: flex; justify-content: space-between; gap: 10px; }
+.mx-hint .over { color: #dc2626; font-weight: 700; }
+.mx-side { overflow-y: auto; padding: 16px; }
+.mx-side h3 { font-size: .98rem; color: var(--ab-text); }
+.mx-al { display: flex; gap: 8px; align-items: flex-start; font-size: .78rem; border-radius: 9px; padding: 8px 10px; margin-top: 6px; text-decoration: none; line-height: 1.4; }
+.mx-al i { margin-top: 2px; }
+.mx-al.info { background: #eff6ff; color: #1d4ed8; } .mx-al.warn { background: #fffbeb; color: #92400e; } .mx-al.bad { background: #fef2f2; color: #b91c1c; }
+body.dark-mode .mx-al.info { background: rgba(59, 130, 246, .15); color: #93c5fd; } body.dark-mode .mx-al.warn { background: rgba(245, 158, 11, .14); color: #fcd34d; }
+body.dark-mode .mx-al.bad { background: rgba(239, 68, 68, .14); color: #fca5a5; }
+a.mx-al:hover { filter: brightness(.97); }
+.mx-links { display: flex; flex-direction: column; gap: 6px; }
+.mx-links .ad-btn { justify-content: flex-start; }
+.mx-rep { display: flex; gap: 8px; align-items: flex-start; border: 1px solid var(--ab-border); border-radius: 10px; padding: 8px 10px; font-size: .8rem; color: var(--ab-text-2); }
+.mx-rep + .mx-rep { margin-top: 6px; }
+.mx-rep span { flex: 1; overflow-wrap: anywhere; }
+.mx-rep button { border: 0; background: none; color: var(--ab-text-3); cursor: pointer; padding: 2px 4px; }
+.mx-rep button:hover { color: #dc2626; }
+.mx-find { display: flex; flex-direction: column; }
+.mx-find button { display: flex; gap: 10px; align-items: center; padding: 8px 4px; border: 0; border-bottom: 1px solid var(--ab-border); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.mx-find button:hover { background: var(--ab-hover); }
+.mx-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--ab-text-3); padding: 30px; font-size: .88rem; line-height: 1.6; }
+.mx-empty i { font-size: 2.2rem; opacity: .4; margin-bottom: 10px; }
+.mx-empty b { color: var(--ab-text); font-size: .98rem; }
+@media (max-width: 1250px) {
+    .mx-grid { grid-template-columns: 300px minmax(0, 1fr); }
+    .mx-sidecol { grid-column: 1 / -1; }
+    .mx-grid { height: auto; grid-template-rows: max(540px, calc(100vh - var(--ab-header-h) - 270px)) auto; }
+}
+@media (max-width: 860px) {
+    .mx-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+    .mx-listcol, .mx-chatcol { height: calc(100vh - var(--ab-header-h) - 120px); min-height: 480px; }
+    .mx-grid.open .mx-listcol { display: none; }
+    .mx-grid:not(.open) .mx-chatcol, .mx-grid:not(.open) .mx-sidecol { display: none; }
+    .mx-back { display: inline-flex; }
+    .mx-b { max-width: 88%; }
+    .mx-head .ad-btn span { display: none; }
+}
 </style>
 
-<div class="admin-content messages-container">
-    <div class="messages-layout">
-        <!-- Conversations Sidebar -->
-        <div class="conversations-sidebar">
-            <div class="sidebar-header">
-                <h3><i class="fas fa-comments" style="color: var(--primary-color); margin-right: 8px;"></i>Conversations</h3>
-                <span class="badge-count" id="conversationCount">0</span>
-            </div>
-            <div class="conversations-list" id="conversationsList">
-                <!-- Will be populated by JavaScript -->
-                <div style="text-align:center; padding:40px 20px; color:var(--gray-400);">
-                    <i class="fas fa-comments" style="font-size:2rem; display:block; margin-bottom:10px;"></i>
-                    <p>No conversations yet</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Message Area -->
-        <div class="message-area">
-            <div class="message-header" id="messageHeader">
-                <div class="recipient-info">
-                    <div class="recipient-avatar" id="recipientAvatar" style="background:var(--gray-300);">?</div>
-                    <div>
-                        <div class="recipient-name" id="recipientName">Select a conversation</div>
-                        <div class="recipient-status" id="recipientStatus">Choose a user to start messaging</div>
-                    </div>
-                </div>
-                <div id="headerBadge"></div>
-            </div>
-
-            <div class="messages-list" id="messagesList">
-                <div class="no-messages">
-                    <i class="fas fa-inbox"></i>
-                    <p>Select a conversation to view messages</p>
-                </div>
-            </div>
-
-            <!-- Broadcast Toggle -->
-            <div class="broadcast-section" id="broadcastSection">
-                <div class="broadcast-label">
-                    <i class="fas fa-bullhorn"></i>
-                    <span>Broadcast Mode</span>
-                </div>
-                <div class="broadcast-toggle">
-                    <div class="toggle-switch" id="broadcastToggle" onclick="toggleBroadcast()">
-                        <div class="toggle-knob"></div>
-                    </div>
-                    <span class="broadcast-info" id="broadcastInfo">Send to all users</span>
-                </div>
-            </div>
-
-            <!-- Message Input -->
-            <div class="message-input-area">
-                <textarea id="messageInput" rows="1" placeholder="Type a message..." onkeydown="handleMessageKey(event)"></textarea>
-                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
-                    <i class="fas fa-paper-plane"></i> Send
-                </button>
-            </div>
-        </div>
+<div class="ad-page-h">
+    <div><h1>Messages</h1><p>Every conversation with learners, parents and teachers. See who is waiting for a reply, answer fast with saved replies, and open anyone's file in one click.</p></div>
+    <div class="ad-actions">
+        <button type="button" class="ad-btn" id="xRepliesBtn"><i class="fas fa-bolt"></i> Saved replies</button>
+        <a class="ad-btn" href="/admin-announcements" title="Messages to everyone are sent as announcements"><i class="fas fa-bullhorn"></i> Send to everyone</a>
+        <button type="button" class="ad-btn primary" id="xNewBtn"><i class="fas fa-pen-to-square"></i> New message</button>
     </div>
 </div>
 
+<div class="ad-kpis" id="xKpis"><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div></div>
+<div class="ad-note" id="xNote" role="status" aria-live="polite" style="margin-bottom:10px"></div>
+
+<div class="mx-grid" id="xGrid">
+    <section class="mx-col mx-listcol" aria-label="Conversations">
+        <div class="mx-top" id="xTop">
+            <input type="search" class="ad-input" id="xQ" placeholder="Search people or messages..." aria-label="Search conversations">
+            <div class="mx-chips" role="group" aria-label="Show" id="xChips"></div>
+        </div>
+        <div class="mx-list" id="xList"><div style="padding:12px"><div class="ad-skel"></div><div class="ad-skel"></div><div class="ad-skel"></div></div></div>
+    </section>
+
+    <section class="mx-col mx-chatcol" aria-label="Chat" id="xChat">
+        <div class="mx-empty"><i class="fas fa-comments"></i><b>Pick a conversation</b>Or press <b style="display:inline;font-size:inherit">New message</b> to write to anyone on Eschool.</div>
+    </section>
+
+    <aside class="mx-col mx-sidecol mx-side" aria-label="About this person" id="xSide">
+        <div class="ad-muted" style="line-height:1.6">Open a conversation to see who you're talking to: their role, children or parents, payments waiting, open tickets, reports and warnings.</div>
+    </aside>
+</div>
+
 <script>
-    // ===== STATE =====
-    let currentUserId = null;
-    let isBroadcast = false;
-    let conversations = [];
-    let messages = [];
-    const currentSessionUserId = parseInt('{{ session.get("user_id", 0) }}');
-
-    // ===== UTILITY =====
-    function getAvatarColor(name) {
-        const colors = ['#4361ee', '#3a0ca3', '#4cc9f0', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec489a', '#14b8a6', '#f97316'];
-        let hash = 0;
-        for (let i = 0; i < name.length; i++) {
-            hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        return colors[Math.abs(hash) % colors.length];
+(function () {
+    'use strict';
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    async function api(url, opt) {
+        opt = opt || {};
+        var init = { credentials: 'same-origin', cache: 'no-store', method: opt.method || 'GET', headers: {} };
+        if (opt.body !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(opt.body); }
+        var r; try { r = await fetch(url, init); } catch (e) { throw new Error('No connection. Check your internet and try again.'); }
+        var d = null; try { d = await r.json(); } catch (e) { /* not json */ }
+        if (r.status === 401) { setTimeout(function () { location.replace('/Login'); }, 1200); throw new Error('Please sign in again.'); }
+        if (!r.ok || (d && d.success === false)) throw new Error((d && (d.message || d.error)) || ('Something went wrong (' + r.status + ').'));
+        return d == null ? {} : d;
     }
-
-    function getInitials(name) {
-        return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    function toDate(iso) { return iso ? new Date(String(iso).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? '' : 'Z')) : null; }
+    function ok(d) { return d && !isNaN(d); }
+    function short(iso) {
+        var d = toDate(iso); if (!ok(d)) return '';
+        var s = (Date.now() - d) / 1000;
+        if (s < 60) return 'now'; if (s < 3600) return Math.floor(s / 60) + ' min'; if (s < 86400 && d.getDate() === new Date().getDate()) return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        if (s < 172800) return 'yesterday'; if (s < 604800) return d.toLocaleDateString('en-GB', { weekday: 'short' });
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     }
-
-    function formatTime(timestamp) {
-        if (!timestamp) return '';
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diff = now - date;
-
-        if (diff < 60000) return 'Just now';
-        if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-        if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-        if (diff < 172800000) return 'Yesterday';
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    function ago(iso) {
+        var d = toDate(iso); if (!ok(d)) return '';
+        var s = (Date.now() - d) / 1000;
+        if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+        if (s < 172800) return 'yesterday'; if (s < 2592000) return Math.floor(s / 86400) + ' days ago';
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     }
-
-    // ===== LOAD CONVERSATIONS =====
-    function loadConversations() {
-        fetch('/messages/conversations')
-            .then(res => res.json())
-            .then(data => {
-                conversations = data;
-                renderConversations();
-                document.getElementById('conversationCount').textContent = conversations.length;
-            })
-            .catch(err => {
-                console.error('Error loading conversations:', err);
-            });
+    function clock(iso) { var d = toDate(iso); return ok(d) ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''; }
+    function dayLabel(d) {
+        var t = new Date(); t.setHours(0, 0, 0, 0); var x = new Date(d); x.setHours(0, 0, 0, 0);
+        var diff = Math.round((t - x) / 86400000);
+        if (diff === 0) return 'Today'; if (diff === 1) return 'Yesterday';
+        return d.toLocaleDateString('en-GB', { weekday: diff < 7 ? 'long' : undefined, day: 'numeric', month: 'short', year: x.getFullYear() !== t.getFullYear() ? 'numeric' : undefined });
     }
+    function initials(n) { return String(n || '?').split(/\s+/).filter(Boolean).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(); }
+    var COLORS = ['#4361ee', '#3a0ca3', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+    function color(name) { var h = 0; name = String(name || ''); for (var i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h); return COLORS[Math.abs(h) % COLORS.length]; }
+    function avatar(name, url, online, size) {
+        var st = 'background:' + color(name) + (size ? ';width:' + size + 'px;height:' + size + 'px' : '');
+        return '<span class="mx-av" style="' + st + '">' + (url ? '<img src="' + esc(url) + '" alt="">' : esc(initials(name))) + (online ? '<span class="dot" title="Online now"></span>' : '') + '</span>';
+    }
+    var ROLE = { student: 'Learner', parent: 'Parent', teacher: 'Teacher', admin: 'Admin' };
+    function role(r) { r = ROLE[r] ? r : 'student'; return '<span class="mx-role ' + r + '">' + ROLE[r] + '</span>'; }
+    function note(msg, type) {
+        var el = $('xNote'); el.className = 'ad-note ' + (type || 'info');
+        el.innerHTML = msg ? '<i class="fas ' + (type === 'ok' ? 'fa-circle-check' : type === 'bad' ? 'fa-circle-exclamation' : 'fa-circle-info') + '" style="margin-top:2px"></i><span></span>' : '';
+        if (msg) el.querySelector('span').textContent = msg;
+        clearTimeout(el._t); if (msg && type !== 'bad') el._t = setTimeout(function () { el.innerHTML = ''; }, 5000);
+    }
+    function store(k, v) { try { if (v === undefined) return localStorage.getItem('adm.msg.' + k); localStorage.setItem('adm.msg.' + k, v); } catch (e) { return null; } }
 
-    function renderConversations() {
-        const container = document.getElementById('conversationsList');
-        if (!container) return;
+    var S = { filter: store('filter') || 'all', q: '', data: null, open: null, person: null, msgs: [], lastId: 0, firstId: 0, more: false,
+              replies: [], side: 'person', finder: false, drafts: {}, sending: false };
+    var MAX = 2000;
 
-        if (conversations.length === 0) {
-            container.innerHTML = `
-                <div style="text-align:center; padding:40px 20px; color:var(--gray-400);">
-                    <i class="fas fa-comments" style="font-size:2rem; display:block; margin-bottom:10px;"></i>
-                    <p>No conversations yet. Start messaging users!</p>
-                </div>
-            `;
-            return;
-        }
+    /* ---------- list ---------- */
+    async function loadList(quiet) {
+        try {
+            S.data = await api('/api/admin/inbox?' + new URLSearchParams({ q: S.q, filter: S.filter }));
+            renderKpis(); renderList();
+        } catch (e) { if (!quiet) note(e.message, 'bad'); }
+    }
+    function renderKpis() {
+        var k = S.data.kpis;
+        var rt = k.median_reply_min == null ? '–' : k.median_reply_min < 60 ? k.median_reply_min + ' min' : (Math.round(k.median_reply_min / 6) / 10) + ' h';
+        $('xKpis').innerHTML = [
+            ['fa-envelope', '#4361ee', 'Unread', k.unread, k.unread ? 'in ' + k.unread_convs + ' conversation' + (k.unread_convs === 1 ? '' : 's') : 'all caught up'],
+            ['fa-hourglass-half', '#f59e0b', 'Waiting for your reply', k.waiting, k.oldest_wait ? 'oldest since ' + ago(k.oldest_wait) : 'nobody is waiting'],
+            ['fa-reply', '#10b981', 'Replied in the last 7 days', k.replied_7, 'to ' + k.replied_people_7 + ' ' + (k.replied_people_7 === 1 ? 'person' : 'people')],
+            ['fa-stopwatch', '#ec4899', 'Usual reply time', rt, k.reply_samples ? 'half of replies were faster (last 30 days)' : 'not enough replies yet']
+        ].map(function (x) { return '<div class="ad-kpi" style="--c:' + x[1] + '"><span><i class="fas ' + x[0] + '"></i>' + x[2] + '</span><b>' + x[3] + '</b><small>' + esc(x[4]) + '</small></div>'; }).join('');
+    }
+    function renderList() {
+        var c = S.data.counts;
+        $('xChips').innerHTML = [['all', 'All'], ['unread', 'Unread'], ['waiting', 'Waiting'], ['student', 'Learners'], ['parent', 'Parents'], ['teacher', 'Teachers']]
+            .map(function (t) { return '<button type="button" class="mx-chip" data-f="' + t[0] + '" aria-pressed="' + (S.filter === t[0]) + '">' + t[1] + '<em>' + (c[t[0]] || 0) + '</em></button>'; }).join('');
+        var list = S.data.conversations;
+        $('xList').innerHTML = list.length ? list.map(function (x) {
+            var prev = x.match ? '“' + x.match + '”' : (x.last_from_me ? 'You: ' : '') + (x.last_kind === 'call' ? x.last : x.last);
+            return '<button type="button" class="mx-cv' + (S.open === x.id ? ' on' : '') + (x.unread ? ' unread' : '') + '" data-id="' + x.id + '">' + avatar(x.name, x.avatar_url, x.online) +
+                '<span class="m"><b>' + esc(x.name) + '</b>' + role(x.role) + '<div class="pv">' + esc(prev) + '</div></span>' +
+                '<span class="t">' + esc(short(x.last_at)) + '<br>' + (x.unread ? '<span class="mx-un">' + x.unread + '</span>' : x.waiting_since ? '<span class="mx-wt">Waiting</span>' : '') + '</span></button>';
+        }).join('') : '<div class="mx-empty" style="padding:30px 16px"><i class="fas fa-inbox"></i><b>' + (S.q ? 'No match' : S.filter === 'waiting' ? 'Nobody is waiting' : 'Nothing here') + '</b>' + (S.q ? 'Try another name or word.' : S.filter === 'all' ? 'Conversations show up here when someone writes to you or you write to them.' : 'Try another filter.') + '</div>';
+    }
+    $('xChips').addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (b) { S.filter = b.dataset.f; store('filter', S.filter); loadList(); } });
+    var qt; $('xQ').addEventListener('input', function () { clearTimeout(qt); var v = this.value.trim(); qt = setTimeout(function () { S.q = v; loadList(); }, 250); });
+    $('xList').addEventListener('click', function (e) { var b = e.target.closest('[data-id]'); if (b) openChat(Number(b.dataset.id)); });
 
-        let html = '';
-
-        // Broadcast option (always show for admin)
-        html += `
-            <div class="conversation-item ${isBroadcast ? 'active' : ''}" onclick="selectBroadcast()" style="border-left-color: var(--warning-color);">
-                <div class="conversation-avatar" style="background: var(--warning-color);">
-                    <i class="fas fa-bullhorn"></i>
-                </div>
-                <div class="conversation-info">
-                    <div class="conversation-name">📢 All Users (Broadcast)</div>
-                    <div class="conversation-preview">Send a message to everyone</div>
-                </div>
-                <div class="conversation-meta">
-                    ${isBroadcast ? '<span class="conversation-unread">Active</span>' : ''}
-                </div>
-            </div>
-        `;
-
-        conversations.forEach(conv => {
-            if (conv.is_broadcast) return;
-
-            const isActive = currentUserId === conv.id && !isBroadcast;
-            const unreadBadge = conv.unread > 0 ? `<span class="conversation-unread">${conv.unread}</span>` : '';
-            const avatarDisplay = conv.avatar || getInitials(conv.name);
-            const avatarColor = getAvatarColor(conv.name);
-
-            html += `
-                <div class="conversation-item ${isActive ? 'active' : ''}" onclick="selectConversation(${conv.id})">
-                    <div class="conversation-avatar" style="background: ${avatarColor};">${avatarDisplay}</div>
-                    <div class="conversation-info">
-                        <div class="conversation-name">${conv.name}</div>
-                        <div class="conversation-preview">${conv.lastMessage || 'Start a conversation'}</div>
-                    </div>
-                    <div class="conversation-meta">
-                        ${conv.lastTimestamp ? `<div class="conversation-time">${formatTime(conv.lastTimestamp)}</div>` : ''}
-                        ${unreadBadge}
-                    </div>
-                </div>
-            `;
+    /* ---------- chat ---------- */
+    function convOf(id) { return S.data && S.data.conversations.filter(function (c) { return c.id === id; })[0]; }
+    async function openChat(id, info) {
+        if (S.open && $('xText')) S.drafts[S.open] = $('xText').value;
+        S.open = id; S.msgs = []; S.lastId = 0; S.firstId = 0; S.person = null; S.side = 'person';
+        $('xGrid').classList.add('open');
+        try { history.replaceState(null, '', '/admin_messages?to=' + id); } catch (e) { /* ignore */ }
+        var c = convOf(id) || info || { name: 'Loading...', role: 'student' };
+        S.head = { name: c.name, role: c.role, avatar_url: c.avatar_url, online: c.online, last_seen: c.last_seen };
+        renderChatShell();
+        if (window.innerWidth <= 860) $('xGrid').scrollIntoView({ block: 'start' });
+        if (S.data) renderList();
+        loadPerson(id);
+        try {
+            var rows = await api('/messages/conversation/' + id + '?limit=200');
+            if (S.open !== id) return;
+            S.msgs = Array.isArray(rows) ? rows : []; S.more = S.msgs.length >= 200;
+            S.lastId = S.msgs.length ? S.msgs[S.msgs.length - 1].id : 0; S.firstId = S.msgs.length ? S.msgs[0].id : 0;
+            renderMsgs(true);
+            loadList(true); if (window.adminRefreshBadges) window.adminRefreshBadges();
+        } catch (e) { $('xMsgs').innerHTML = '<div class="mx-sys">' + esc(e.message) + '</div>'; }
+    }
+    function status(h) {
+        if (h.online) return 'online now';
+        if (h.last_seen) return 'last active ' + ago(h.last_seen);
+        return 'not active recently';
+    }
+    function renderChatShell() {
+        var h = S.head, id = S.open;
+        $('xChat').innerHTML = '<div class="mx-head"><button type="button" class="ad-btn sm mx-back" id="xBack" aria-label="Back to conversations"><i class="fas fa-arrow-left"></i></button>' +
+            avatar(h.name, h.avatar_url, h.online, 40) + '<div class="m"><b>' + esc(h.name) + '</b>' + role(h.role) + '<small id="xStatus">' + esc(status(h)) + '</small></div>' +
+            '<a class="ad-btn sm" href="/admin-users?id=' + id + '"><i class="fas fa-user"></i><span> Person file</span></a>' +
+            (h.role === 'parent' || h.role === 'student' ? '<a class="ad-btn sm" href="/admin-payments"><i class="fas fa-receipt"></i><span> Payments</span></a>' : '') + '</div>' +
+            '<div class="mx-msgs" id="xMsgs" aria-live="polite"><div class="ad-skel" style="width:60%"></div><div class="ad-skel" style="width:40%;align-self:flex-end"></div></div>' +
+            '<div class="mx-cmp"><div class="mx-qr" id="xQr"></div><div class="mx-row"><textarea id="xText" rows="1" maxlength="' + MAX + '" placeholder="Write to ' + esc(h.name.split(' ')[0]) + '..." aria-label="Message"></textarea>' +
+            '<button type="button" class="ad-btn primary" id="xSend"><i class="fas fa-paper-plane"></i> Send</button></div>' +
+            '<div class="mx-hint"><span>Enter to send · Shift+Enter for a new line</span><span id="xCount">0 / ' + MAX + '</span></div><div class="ad-note" id="xSendNote" style="margin-top:6px"></div></div>';
+        $('xText').value = S.drafts[id] || ''; sizeText(); renderQr();
+        if (window.innerWidth > 860) $('xText').focus();
+    }
+    function sizeText() {
+        var t = $('xText'); if (!t) return;
+        t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, 160) + 'px';
+        var n = t.value.length; $('xCount').textContent = n + ' / ' + MAX; $('xCount').className = n > MAX - 100 ? 'over' : '';
+    }
+    function renderMsgs(scroll) {
+        var box = $('xMsgs'); if (!box) return;
+        var me = S.data ? S.data.me : null, out = [], lastDay = '';
+        if (S.more) out.push('<button type="button" class="ad-btn sm mx-more" id="xOlder"><i class="fas fa-clock-rotate-left"></i> Show older messages</button>');
+        var lastMine = null;
+        S.msgs.forEach(function (m) { if (m.sender_id === me && !m.is_broadcast && (m.kind || 'text') === 'text') lastMine = m.id; });
+        S.msgs.forEach(function (m) {
+            var d = toDate(m.timestamp), day = ok(d) ? d.toDateString() : '';
+            if (day && day !== lastDay) { out.push('<span class="mx-day">' + esc(dayLabel(d)) + '</span>'); lastDay = day; }
+            if ((m.kind || 'text') === 'call') { out.push('<div class="mx-sys">' + esc(m.text) + ' · ' + esc(clock(m.timestamp)) + '</div>'); return; }
+            if (m.is_broadcast) { out.push('<div class="mx-sys"><i class="fas fa-bullhorn"></i> Old message sent to everyone: “' + esc(String(m.text).slice(0, 120)) + (m.text.length > 120 ? '…' : '') + '”</div>'); return; }
+            var mine = m.sender_id === me;
+            out.push('<div class="mx-b ' + (mine ? 's' : 'r') + (m._fail ? ' fail' : '') + '">' + esc(m.text) + '<small>' + esc(clock(m.timestamp)) +
+                (mine ? (m._fail ? ' · Not sent' : m._sending ? ' · Sending...' : m.id === lastMine ? (m.read ? ' · Read ✓✓' : ' · Sent ✓') : '') : '') + '</small></div>');
         });
-
-        container.innerHTML = html;
+        if (!S.msgs.length) out.push('<div class="mx-empty"><i class="fas fa-comment-dots"></i><b>No messages yet</b>Say hello. ' + esc(S.head.name.split(' ')[0]) + ' gets a notification.</div>');
+        var atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+        box.innerHTML = out.join('');
+        if (scroll || atBottom) box.scrollTop = box.scrollHeight;
     }
-
-    // ===== SELECT CONVERSATION =====
-    function selectConversation(userId) {
-        currentUserId = userId;
-        isBroadcast = false;
-        document.getElementById('broadcastToggle').classList.remove('active');
-        document.getElementById('broadcastInfo').textContent = 'Send to all users';
-
-        const conv = conversations.find(c => c.id === userId);
-        if (conv) {
-            updateHeader(conv.name, conv.avatar);
+    async function older() {
+        try {
+            var rows = await api('/messages/conversation/' + S.open + '?limit=200&before=' + S.firstId);
+            var box = $('xMsgs'), h = box.scrollHeight;
+            S.msgs = rows.concat(S.msgs); S.more = rows.length >= 200; if (rows.length) S.firstId = rows[0].id;
+            renderMsgs(false); box.scrollTop = box.scrollHeight - h;
+        } catch (e) { note(e.message, 'bad'); }
+    }
+    async function poll() {
+        if (!S.open || !S.lastId && S.msgs.length) return;
+        var id = S.open;
+        try {
+            var rows = await api('/messages/conversation/' + id + '?after=' + S.lastId);
+            if (S.open !== id) return;
+            var changed = false;
+            rows.forEach(function (m) { if (!S.msgs.some(function (x) { return x.id === m.id; })) { S.msgs.push(m); changed = true; } });
+            if (rows.length) S.lastId = rows[rows.length - 1].id;
+            if (changed) { renderMsgs(false); loadList(true); }
+        } catch (e) { /* offline */ }
+    }
+    async function send() {
+        var t = $('xText'), text = t.value.trim(); if (!text || S.sending) return;
+        if (text.length > MAX) { sendNote('Keep a message under ' + MAX.toLocaleString() + ' characters.'); return; }
+        S.sending = true; $('xSend').disabled = true; sendNote('');
+        var temp = { id: 'tmp' + Date.now(), sender_id: S.data ? S.data.me : 0, text: text, timestamp: new Date().toISOString(), _sending: true };
+        S.msgs.push(temp); t.value = ''; S.drafts[S.open] = ''; sizeText(); renderMsgs(true);
+        try {
+            var d = await api('/messages/send', { method: 'POST', body: { receiver_id: S.open, text: text } });
+            var i = S.msgs.indexOf(temp); if (i >= 0) S.msgs[i] = d.message;
+            if (d.message && d.message.id > S.lastId) S.lastId = d.message.id;
+            renderMsgs(true); loadList(true);
+        } catch (e) {
+            temp._sending = false; temp._fail = true; renderMsgs(true);
+            t.value = text; sizeText(); sendNote(e.message + ' Your message is back in the box.');
         }
-
-        loadMessages(userId);
-        renderConversations();
+        S.sending = false; if ($('xSend')) $('xSend').disabled = false;
     }
+    function sendNote(msg) { var n = $('xSendNote'); if (!n) return; n.className = msg ? 'ad-note bad' : 'ad-note'; n.textContent = msg; }
+    $('xChat').addEventListener('click', function (e) {
+        if (e.target.closest('#xSend')) send();
+        else if (e.target.closest('#xOlder')) older();
+        else if (e.target.closest('#xBack')) { $('xGrid').classList.remove('open'); try { history.replaceState(null, '', '/admin_messages'); } catch (er) { /* ignore */ } }
+        else if (e.target.closest('[data-qr]')) {
+            var r = S.replies[Number(e.target.closest('[data-qr]').dataset.qr)], t = $('xText'); if (!r) return;
+            t.value = t.value.trim() ? t.value.replace(/\s*$/, ' ') + r.text : r.text; sizeText(); t.focus();
+        } else if (e.target.closest('[data-qr-manage]')) openReplies();
+    });
+    $('xChat').addEventListener('input', function (e) { if (e.target.id === 'xText') { sizeText(); S.drafts[S.open] = e.target.value; } });
+    $('xChat').addEventListener('keydown', function (e) { if (e.target.id === 'xText' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
 
-    function selectBroadcast() {
-        currentUserId = null;
-        isBroadcast = true;
-        document.getElementById('broadcastToggle').classList.add('active');
-        document.getElementById('broadcastInfo').textContent = 'Broadcast mode: Send to all users';
-
-        updateHeader('All Users', null, true);
-        document.getElementById('messagesList').innerHTML = `
-            <div class="no-messages">
-                <i class="fas fa-bullhorn" style="color: var(--warning-color);"></i>
-                <p>You are in <strong>Broadcast Mode</strong>. Send a message to all users.</p>
-                <p style="font-size: 0.9rem; color: var(--gray-400); margin-top: 8px;">Everyone will receive this message.</p>
-            </div>
-        `;
-        renderConversations();
+    /* ---------- saved replies ---------- */
+    async function loadReplies() { try { S.replies = (await api('/api/admin/inbox/replies')).replies; renderQr(); if (S.side === 'replies') renderReplies(); } catch (e) { /* ignore */ } }
+    function renderQr() {
+        var q = $('xQr'); if (!q) return;
+        q.innerHTML = S.replies.map(function (r, i) { return '<button type="button" data-qr="' + i + '" title="' + esc(r.text) + '"><i class="fas fa-bolt" style="color:#f59e0b"></i> ' + esc(r.text) + '</button>'; }).join('') +
+            '<button type="button" data-qr-manage><i class="fas fa-plus"></i> ' + (S.replies.length ? 'Edit' : 'Add saved reply') + '</button>';
     }
-
-    function updateHeader(name, avatar, isBroadcastMode = false) {
-        const avatarEl = document.getElementById('recipientAvatar');
-        const nameEl = document.getElementById('recipientName');
-        const statusEl = document.getElementById('recipientStatus');
-        const badgeEl = document.getElementById('headerBadge');
-
-        if (isBroadcastMode) {
-            avatarEl.style.background = 'var(--warning-color)';
-            avatarEl.innerHTML = '<i class="fas fa-bullhorn"></i>';
-            nameEl.textContent = '📢 All Users';
-            statusEl.textContent = 'Broadcast mode - message will be sent to everyone';
-            badgeEl.innerHTML = '<span class="broadcast-badge">Broadcast</span>';
+    function openReplies() { S.side = 'replies'; S.finder = false; renderReplies(); if (window.innerWidth <= 1250) $('xSide').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    function renderReplies() {
+        $('xGrid').classList.add('open');
+        $('xSide').innerHTML = '<div class="ad-card-h" style="margin-bottom:6px"><h2><i class="fas fa-bolt" style="color:#f59e0b"></i> Saved replies</h2><button type="button" class="ad-btn sm" id="xRClose" aria-label="Close"><i class="fas fa-xmark"></i></button></div>' +
+            '<p class="ad-muted" style="line-height:1.55;margin-bottom:10px">Tap one above the message box to drop it in. Only you see your saved replies.</p>' +
+            '<textarea class="ad-textarea" id="xRNew" maxlength="500" style="min-height:64px" placeholder="Write a reply you send often..."></textarea>' +
+            '<div style="display:flex;justify-content:flex-end;margin:8px 0 12px"><button type="button" class="ad-btn sm primary" id="xRAdd"><i class="fas fa-plus"></i> Save reply</button></div><div class="ad-note" id="xRNote"></div>' +
+            (S.replies.length ? S.replies.map(function (r) { return '<div class="mx-rep"><span>' + esc(r.text) + '</span><button type="button" data-rdel="' + r.id + '" aria-label="Delete this saved reply"><i class="fas fa-trash"></i></button></div>'; }).join('')
+                : '<div class="ad-muted">No saved replies yet.</div>');
+    }
+    $('xRepliesBtn').addEventListener('click', function () { if (S.side === 'replies') { S.side = 'person'; renderPerson(); } else openReplies(); });
+    $('xSide').addEventListener('click', async function (e) {
+        if (e.target.closest('#xRClose')) { S.side = 'person'; renderPerson(); return; }
+        if (e.target.closest('#xRAdd')) {
+            var v = $('xRNew').value.trim(), n = $('xRNote');
+            if (v.length < 3) { n.className = 'ad-note bad'; n.textContent = 'Write the reply first.'; return; }
+            try { S.replies = (await api('/api/admin/inbox/replies', { method: 'POST', body: { text: v } })).replies; renderReplies(); renderQr(); }
+            catch (err) { n.className = 'ad-note bad'; n.textContent = err.message; }
             return;
         }
-
-        const avatarDisplay = avatar || getInitials(name);
-        const avatarColor = getAvatarColor(name);
-
-        avatarEl.style.background = avatarColor;
-        avatarEl.textContent = avatarDisplay;
-        nameEl.textContent = name;
-        statusEl.textContent = 'Online';
-        badgeEl.innerHTML = '';
-    }
-
-    // ===== LOAD MESSAGES =====
-    function loadMessages(userId) {
-        fetch(`/messages/conversation/${userId}`)
-            .then(res => res.json())
-            .then(data => {
-                messages = data;
-                renderMessages();
-            })
-            .catch(err => {
-                console.error('Error loading messages:', err);
-            });
-    }
-
-    function renderMessages() {
-        const container = document.getElementById('messagesList');
-        if (!container) return;
-
-        if (!messages || messages.length === 0) {
-            container.innerHTML = `
-                <div class="no-messages">
-                    <i class="fas fa-comment-dots"></i>
-                    <p>No messages yet</p>
-                    <p style="font-size: 0.9rem; color: var(--gray-400); margin-top: 8px;">Start the conversation!</p>
-                </div>
-            `;
-            return;
-        }
-
-        let html = '';
-        messages.forEach(msg => {
-            const isSent = msg.sender_id === currentSessionUserId;
-            const isBroadcastMsg = msg.is_broadcast || false;
-
-            let messageClass = 'message-item ';
-            if (isBroadcastMsg) {
-                messageClass += 'broadcast';
-            } else if (isSent) {
-                messageClass += 'sent';
-            } else {
-                messageClass += 'received';
-            }
-
-            let broadcastLabel = '';
-            if (isBroadcastMsg) {
-                broadcastLabel = '<span class="broadcast-label"><i class="fas fa-bullhorn"></i> Broadcast</span>';
-            }
-
-            html += `
-                <div class="${messageClass}">
-                    ${broadcastLabel}
-                    <div class="message-text">${escapeHtml(msg.text)}</div>
-                    <span class="message-time">${formatTime(msg.timestamp)}</span>
-                </div>
-            `;
-        });
-
-        container.innerHTML = html;
-        container.scrollTop = container.scrollHeight;
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // ===== SEND MESSAGE =====
-    function sendMessage() {
-        const input = document.getElementById('messageInput');
-        const text = input.value.trim();
-        if (!text) return;
-
-        const sendBtn = document.getElementById('sendBtn');
-        sendBtn.disabled = true;
-
-        let body = { text: text };
-
-        if (isBroadcast) {
-            body.receiver_id = 0;
-            body.is_broadcast = true;
-        } else if (currentUserId) {
-            body.receiver_id = currentUserId;
-            body.is_broadcast = false;
-        } else {
-            alert('Please select a recipient first.');
-            sendBtn.disabled = false;
-            return;
-        }
-
-        fetch('/messages/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                input.value = '';
-                input.style.height = 'auto';
-
-                if (isBroadcast) {
-                    alert(`✅ ${data.message || 'Broadcast sent to all users!'}`);
-                    const container = document.getElementById('messagesList');
-                    const sentMsg = document.createElement('div');
-                    sentMsg.className = 'message-item broadcast';
-                    sentMsg.innerHTML = `
-                        <span class="broadcast-label"><i class="fas fa-bullhorn"></i> Broadcast</span>
-                        <div class="message-text">${escapeHtml(text)}</div>
-                        <span class="message-time">Just now</span>
-                    `;
-                    container.appendChild(sentMsg);
-                    container.scrollTop = container.scrollHeight;
-                } else {
-                    const newMsg = {
-                        sender_id: currentSessionUserId,
-                        text: text,
-                        timestamp: new Date().toISOString(),
-                        is_broadcast: false
-                    };
-                    messages.push(newMsg);
-                    renderMessages();
-                    loadConversations();
-                }
-            } else {
-                alert('Error sending message: ' + (data.message || 'Unknown error'));
-            }
-        })
-        .catch(err => {
-            console.error('Error sending message:', err);
-            alert('Error sending message. Please try again.');
-        })
-        .finally(() => {
-            sendBtn.disabled = false;
-        });
-    }
-
-    // ===== TOGGLE BROADCAST =====
-    function toggleBroadcast() {
-        const toggle = document.getElementById('broadcastToggle');
-        toggle.classList.toggle('active');
-
-        if (toggle.classList.contains('active')) {
-            selectBroadcast();
-        } else {
-            isBroadcast = false;
-            document.getElementById('broadcastInfo').textContent = 'Send to all users';
-            if (conversations.length > 0) {
-                selectConversation(conversations[0].id);
-            } else {
-                document.getElementById('recipientAvatar').style.background = 'var(--gray-300)';
-                document.getElementById('recipientAvatar').textContent = '?';
-                document.getElementById('recipientName').textContent = 'Select a conversation';
-                document.getElementById('recipientStatus').textContent = 'Choose a user to start messaging';
-                document.getElementById('headerBadge').innerHTML = '';
-                document.getElementById('messagesList').innerHTML = `
-                    <div class="no-messages">
-                        <i class="fas fa-inbox"></i>
-                        <p>Select a conversation to view messages</p>
-                    </div>
-                `;
-            }
-            renderConversations();
-        }
-    }
-
-    // ===== KEYBOARD SHORTCUTS =====
-    function handleMessageKey(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-        e.target.style.height = 'auto';
-        e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-    }
-
-    // ===== LOAD ON PAGE LOAD =====
-    document.addEventListener('DOMContentLoaded', function() {
-        loadConversations();
+        var del = e.target.closest('[data-rdel]');
+        if (del) { del.disabled = true; try { await api('/api/admin/inbox/replies/' + del.dataset.rdel, { method: 'DELETE' }); S.replies = S.replies.filter(function (r) { return String(r.id) !== del.dataset.rdel; }); renderReplies(); renderQr(); } catch (err) { del.disabled = false; note(err.message, 'bad'); } }
     });
 
-    // ===== POLL FOR NEW MESSAGES =====
-    setInterval(() => {
-        if (currentUserId) {
-            loadMessages(currentUserId);
-        }
-        loadConversations();
-    }, 5000);
+    /* ---------- person panel ---------- */
+    async function loadPerson(id) {
+        $('xSide').innerHTML = S.side === 'person' ? '<div class="ad-skel"></div><div class="ad-skel"></div><div class="ad-skel"></div>' : $('xSide').innerHTML;
+        try { var d = await api('/api/admin/inbox/person/' + id); if (S.open !== id) return; S.person = d.person;
+            S.head.online = d.person.online; S.head.last_seen = d.person.last_seen; if ($('xStatus')) $('xStatus').textContent = status(S.head) + extra(d.person);
+            if (S.side === 'person') renderPerson(); }
+        catch (e) { if (S.side === 'person') $('xSide').innerHTML = '<div class="ad-note bad">' + esc(e.message) + '</div>'; }
+    }
+    function extra(p) {
+        if (p.role === 'parent' && p.children && p.children.length) return ' · parent of ' + p.children.map(function (c) { return c.name.split(' ')[0]; }).join(', ');
+        return '';
+    }
+    function when(iso) { var d = toDate(iso); return ok(d) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '–'; }
+    function renderPerson() {
+        var p = S.person, el = $('xSide');
+        if (!S.open) { el.innerHTML = '<div class="ad-muted" style="line-height:1.6">Open a conversation to see who you\'re talking to: their role, children or parents, payments waiting, open tickets, reports and warnings.</div>'; return; }
+        if (!p) { el.innerHTML = '<div class="ad-skel"></div><div class="ad-skel"></div>'; return; }
+        var dl = [['Joined', when(p.joined)], ['Last active', p.online ? 'online now' : p.last_seen ? ago(p.last_seen) : 'not recently']];
+        if (p.role === 'student') dl.push(['Plan', p.plan ? p.plan.charAt(0).toUpperCase() + p.plan.slice(1) + (p.plan_expires ? ' · until ' + when(p.plan_expires) : '') : 'Free']);
+        if (p.children) dl.push(['Children', p.children.length ? p.children.map(function (c) { return '<a href="/admin-users?id=' + c.id + '" style="color:var(--ab-accent-text)">' + esc(c.name) + '</a>' + (c.plan ? ' (' + esc(c.plan) + ')' : ''); }).join(', ') : 'none linked']);
+        if (p.parents) dl.push(['Parents', p.parents.length ? p.parents.map(function (c) { return '<a href="/admin-users?id=' + c.id + '" style="color:var(--ab-accent-text)">' + esc(c.name) + '</a>'; }).join(', ') : 'none linked']);
+        dl.push(['Messages', p.messages + ' with you']);
+        el.innerHTML = '<div style="display:flex;gap:10px;align-items:center">' + avatar(p.name, p.avatar_url, p.online, 46) + '<div style="min-width:0"><h3>' + esc(p.name) + '</h3>' + role(p.role).replace('margin-left:5px', '') + '</div></div>' +
+            '<div class="ad-sec-t">About</div><dl class="ad-dl">' + dl.map(function (x) { return '<dt>' + x[0] + '</dt><dd>' + (/</.test(x[1]) ? x[1] : esc(x[1])) + '</dd>'; }).join('') + '</dl>' +
+            '<div class="ad-sec-t">Worth knowing</div>' + (p.alerts.length ? p.alerts.map(function (a) {
+                var inner = '<i class="fas ' + esc(a.icon) + '"></i><span>' + esc(a.text) + '</span>';
+                return a.href ? '<a class="mx-al ' + a.level + '" href="' + esc(a.href) + '">' + inner + '</a>' : '<div class="mx-al ' + a.level + '">' + inner + '</div>';
+            }).join('') : '<div class="ad-muted"><i class="fas fa-circle-check" style="color:#10b981"></i> Nothing to flag.</div>') +
+            '<div class="ad-sec-t">Quick links</div><div class="mx-links"><a class="ad-btn sm" href="/admin-users?id=' + p.id + '"><i class="fas fa-user"></i> Open person file</a>' +
+            (p.role !== 'teacher' ? '<a class="ad-btn sm" href="/admin-payments"><i class="fas fa-receipt"></i> Payments</a>' : '<a class="ad-btn sm" href="/admin-live"><i class="fas fa-tower-broadcast"></i> Live classes</a>') +
+            '<a class="ad-btn sm" href="/admin_support"><i class="fas fa-headset"></i> Support tickets</a></div>';
+    }
+
+    /* ---------- new message ---------- */
+    function openFinder() {
+        S.finder = !S.finder;
+        var old = $('xFind'); if (old) old.remove();
+        if (!S.finder) return;
+        $('xGrid').classList.remove('open');
+        var box = document.createElement('div'); box.id = 'xFind';
+        box.innerHTML = '<div style="display:flex;gap:6px;align-items:center"><input type="search" class="ad-input" id="xFindQ" placeholder="Who do you want to write to? Name or email" aria-label="Find a person"><button type="button" class="ad-btn sm" id="xFindX" aria-label="Close"><i class="fas fa-xmark"></i></button></div><div class="mx-find" id="xFindL"></div>';
+        $('xTop').insertBefore(box, $('xTop').firstChild);
+        $('xFindQ').focus();
+    }
+    $('xNewBtn').addEventListener('click', openFinder);
+    var ft;
+    $('xTop').addEventListener('input', function (e) {
+        if (e.target.id !== 'xFindQ') return;
+        clearTimeout(ft); var v = e.target.value.trim();
+        ft = setTimeout(async function () {
+            var l = $('xFindL'); if (!l) return;
+            if (v.length < 2) { l.innerHTML = ''; return; }
+            try { var d = await api('/api/admin/inbox/find?q=' + encodeURIComponent(v));
+                l.innerHTML = d.people.length ? d.people.map(function (p) { return '<button type="button" data-pick="' + p.id + '" data-name="' + esc(p.name) + '" data-role="' + esc(p.role) + '" data-av="' + esc(p.avatar_url || '') + '">' + avatar(p.name, p.avatar_url, false, 32) + '<span><b style="font-size:.84rem;color:var(--ab-text)">' + esc(p.name) + '</b>' + role(p.role) + '</span></button>'; }).join('')
+                    : '<div class="ad-muted" style="padding:8px 2px">Nobody found.</div>'; }
+            catch (err) { l.innerHTML = '<div class="ad-note bad">' + esc(err.message) + '</div>'; }
+        }, 250);
+    });
+    $('xTop').addEventListener('click', function (e) {
+        if (e.target.closest('#xFindX')) { openFinder(); return; }
+        var b = e.target.closest('[data-pick]'); if (!b) return;
+        S.finder = true; openFinder();
+        openChat(Number(b.dataset.pick), { name: b.dataset.name, role: b.dataset.role, avatar_url: b.dataset.av || null });
+    });
+
+    /* ---------- start ---------- */
+    (async function () {
+        await loadList();
+        loadReplies();
+        var to = Number(new URLSearchParams(location.search).get('to'));
+        if (to) openChat(to);
+    })();
+    setInterval(function () { if (!document.hidden) poll(); }, 6000);
+    setInterval(function () { if (!document.hidden) loadList(true); }, 30000);
+    setInterval(function () { if (S.head && $('xStatus') && S.person) $('xStatus').textContent = status(S.head) + extra(S.person); }, 60000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) { poll(); loadList(true); } });
+})();
 </script>
 {% endblock %}

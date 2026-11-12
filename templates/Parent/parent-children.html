@@ -288,6 +288,8 @@ body.dark-mode .mc {
 .mc-steps { display: flex; gap: 6px; }
 .mc-steps i { width: 26px; height: 5px; border-radius: 99px; background: var(--mc-track); display: block; }
 .mc-steps i.on { background: var(--mc-accent); }
+#payCode::placeholder { text-transform: none; }
+.mc-hidden-val { font-size: .9rem; color: var(--mc-text-3); }
 .mc-field { display: flex; flex-direction: column; gap: 6px; }
 .mc-field > label, .mc-field > .lbl { font-size: .8rem; font-weight: 700; color: var(--mc-text-2); }
 .mc-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -341,7 +343,8 @@ body.mc-lock { overflow: hidden; }
     .mc-paybox { grid-template-columns: 1fr; }
     .mc-toolbar .mc-select { flex: 1; }
     .mc-child-head .mc-pill { display: none; }
-    .mc-actions .mc-btn { flex: 1; }
+    .mc-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mc-actions .mc-btn { white-space: nowrap; }
     .mc-actions .mc-btn-danger { margin-left: 0; }
     .mc-modal { padding: 0; align-items: flex-end; }
     .mc-dialog, .mc-dialog.sm { width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0; animation-name: mcUp; }
@@ -361,7 +364,7 @@ body.mc-lock { overflow: hidden; }
     <section class="mc-hero" aria-labelledby="mcTitle">
         <div class="mc-hero-text">
             <h1 id="mcTitle"><i class="fas fa-children" aria-hidden="true"></i> My children</h1>
-            <p>Follow each child's plan, grades, course progress, streaks and teachers, choose what you can see, and pay for their eSchool plan.</p>
+            <p>Follow each child's plan, grades, course progress, streaks and teachers, choose what you can see, and pay for their Eschool plan.</p>
             <div class="mc-hero-actions">
                 {% if kids %}<button type="button" class="mc-hero-btn solid" data-pay><i class="fas fa-crown"></i> Pay for a plan</button>{% endif %}
                 <a href="/parent-link" class="mc-hero-btn"><i class="fas fa-user-plus"></i> Link a child</a>
@@ -431,7 +434,7 @@ body.mc-lock { overflow: hidden; }
                     <h2 class="mc-name">{{ c.name }}</h2>
                     <div class="mc-meta">
                         <span><i class="fas fa-link"></i>{% if c.relationship %}{{ c.relationship }} · {% endif %}linked{% if c.linked_at %} {{ c.linked_at }}{% endif %}</span>
-                        <span><i class="fas fa-graduation-cap"></i>{{ c.grade or 'Grade not known yet' }}</span>
+                        <span><i class="fas fa-graduation-cap"></i>{% if c.grade %}{{ c.grade }}{% elif not c.can_see_grades %}Grade hidden{% else %}Grade not known yet{% endif %}</span>
                     </div>
                 </div>
                 <span class="mc-pill {{ plan.key }}">{% if plan.key == 'pro' %}<i class="fas fa-gem"></i>{% elif plan.key == 'basic' %}<i class="fas fa-crown"></i>{% endif %} {{ plan.name }}</span>
@@ -443,7 +446,7 @@ body.mc-lock { overflow: hidden; }
                 <div class="mc-plan-body">
                     {% if plan.key == 'free' %}
                     <div class="mc-plan-top"><strong>Free plan</strong>{% if plan.expired_plan %}<span>{{ plan.expired_plan }} has ended</span>{% endif %}</div>
-                    <div class="mc-sub">Upgrade to Basic or Pro to unlock more of eSchool.</div>
+                    <div class="mc-sub">Upgrade to Basic or Pro to unlock more of Eschool.</div>
                     {% else %}
                     <div class="mc-plan-top"><strong>{{ plan.name }} · {{ plan.time_left }}</strong><span>Ends {{ plan.expires_on }}</span></div>
                     {% if plan.percent_left is not none %}<div class="mc-bar {{ 'bad' if plan.ending_soon else plan.key }}"><i style="width: {{ plan.percent_left }}%"></i></div>{% endif %}
@@ -459,13 +462,14 @@ body.mc-lock { overflow: hidden; }
             <div class="mc-stats">
                 <div class="mc-stat{% if c.rank and c.rank <= 3 %} gold{% endif %}"><strong>{% if c.rank %}#{{ c.rank }}{% else %}-{% endif %}</strong><span>Monthly rank</span></div>
                 <div class="mc-stat"><strong>{{ '{:,}'.format(c.ep_total or 0) }}</strong><span>Total EP · Lv {{ c.level or 1 }}</span></div>
-                {% if c.can_see_grades and c.has_summary and c.overall_grade %}
-                {% set g = c.gpa or 0 %}
-                <div class="mc-stat"><strong class="{{ 'g-excellent' if g >= 3.7 else 'g-good' if g >= 3.0 else 'g-average' if g >= 2.0 else 'g-poor' }}">{{ c.overall_grade }}</strong><span>GPA {{ '%.2f'|format(g) }}</span></div>
+                {% if c.can_see_grades and c.score %}
+                {% set g = c.score.percent %}
+                <div class="mc-stat" title="Total score {{ c.score.total }} / {{ c.score.possible }}"><strong class="{{ 'g-excellent' if g >= 85 else 'g-good' if g >= 70 else 'g-average' if g >= 60 else 'g-poor' }}">{{ c.score.letter }}</strong><span>Grade · {{ g }}%</span></div>
                 {% else %}
-                <div class="mc-stat"><strong class="mc-muted">{% if not c.can_see_grades %}<i class="fas fa-lock"></i>{% else %}-{% endif %}</strong><span>Grade</span></div>
+                <div class="mc-stat"><strong class="mc-muted">{% if not c.can_see_grades %}<span class="mc-hidden-val"><i class="fas fa-lock"></i> Hidden</span>{% else %}-{% endif %}</strong><span>Grade</span></div>
                 {% endif %}
-                <div class="mc-stat"><strong><i class="fas fa-fire fire"></i> {{ c.quiz_streak or 0 }}</strong><span>Quiz streak</span></div>
+                {% if c.can_see_grades %}<div class="mc-stat"><strong><i class="fas fa-fire fire"></i> {{ c.quiz_streak or 0 }}</strong><span>Quiz streak</span></div>
+                {% else %}<div class="mc-stat"><strong class="mc-muted"><span class="mc-hidden-val"><i class="fas fa-lock"></i> Hidden</span></strong><span>Quiz streak</span></div>{% endif %}
             </div>
 
             <!-- Courses -->
@@ -484,21 +488,26 @@ body.mc-lock { overflow: hidden; }
                 {% elif c.has_summary %}
                 <p class="mc-locked"><i class="fas fa-book"></i>{{ c.first_name }} hasn't joined a course yet.</p>
                 {% else %}
-                <p class="mc-locked"><i class="fas fa-hourglass-half"></i>Progress shows up the next time {{ c.first_name }} opens their eSchool dashboard.</p>
+                <p class="mc-locked"><i class="fas fa-hourglass-half"></i>Progress shows up the next time {{ c.first_name }} opens their Eschool dashboard.</p>
                 {% endif %}
             </div>
             {% else %}
-            <p class="mc-locked"><i class="fas fa-lock"></i>Grades and course progress are hidden. Turn on <strong>Grades &amp; GPA</strong> under Manage access to see them.</p>
+            <p class="mc-locked"><i class="fas fa-lock"></i>Grades and course progress are hidden. Turn on <strong>Grades</strong> under Manage access to see them.</p>
             {% endif %}
 
             <!-- Facts -->
             <div class="mc-facts">
                 <div class="mc-fact"><small>Achievements</small>
+                    {% if not c.can_see_grades %}<span class="mc-muted"><i class="fas fa-lock"></i> Hidden</span>
+                    <div class="mc-muted" style="font-size:.78rem; margin-top:2px;">{{ c.ep_month or 0 }} EP this month</div>
+                    {% else %}
                     {{ c.modules_completed or 0 }} module{{ 's' if c.modules_completed != 1 }} · {{ c.quizzes_passed or 0 }} quiz{{ 'zes' if c.quizzes_passed != 1 }} · {{ c.courses_completed or 0 }} course{{ 's' if c.courses_completed != 1 }} done
                     <div class="mc-muted" style="font-size:.78rem; margin-top:2px;">Module streak {{ c.module_streak or 0 }} · {{ c.ep_month or 0 }} EP this month</div>
+                    {% endif %}
                 </div>
                 <div class="mc-fact"><small>Teachers followed</small>
                     {% if c.teachers %}<div class="mc-tags">{% for t in c.teachers[:6] %}<span class="mc-tag">{{ t }}</span>{% endfor %}{% if c.teachers|length > 6 %}<span class="mc-tag">+{{ c.teachers|length - 6 }}</span>{% endif %}</div>
+                    {% elif not c.can_see_grades %}<span class="mc-muted"><i class="fas fa-lock"></i> Hidden</span>
                     {% else %}<span class="mc-muted">None yet</span>{% endif %}
                 </div>
             </div>
@@ -518,7 +527,7 @@ body.mc-lock { overflow: hidden; }
             </div>
 
             <div class="mc-foot"><i class="fas fa-rotate"></i>
-                {% if c.has_summary %}Progress updated {{ c.updated }}{% else %}No progress shared yet{% endif %}
+                {% if c.has_summary and c.updated %}Progress updated {{ c.updated }}{% elif c.has_summary %}Progress updates show once Grades is turned on{% else %}No progress shared yet{% endif %}
             </div>
         </article>
         {% endfor %}
@@ -534,7 +543,7 @@ body.mc-lock { overflow: hidden; }
         <div class="mc-empty">
             <i class="fas fa-user-plus"></i>
             <h3>No children linked yet</h3>
-            <p>Link your child's eSchool account to follow their grades, progress and plan, and to pay for Basic or Pro for them.</p>
+            <p>Link your child's Eschool account to follow their grades, progress and plan, and to pay for Basic or Pro for them.</p>
             <a href="/parent-link" class="mc-btn mc-btn-primary"><i class="fas fa-user-plus"></i> Link a child</a>
         </div>
     </div>
@@ -571,7 +580,7 @@ body.mc-lock { overflow: hidden; }
                     <h2 id="payTitle">Pay for a plan</h2>
                     <p id="paySub">Step 1 of 2 · Choose the plan</p>
                 </div>
-                <div class="mc-steps" aria-hidden="true" style="margin-left:auto;"><i class="on" data-dot="1"></i><i data-dot="2"></i><i data-dot="3"></i></div>
+                <div class="mc-steps" aria-hidden="true" style="margin-left:auto;"><i class="on" data-dot="1"></i><i data-dot="2"></i></div>
                 <button type="button" class="mc-x" data-close aria-label="Close" style="margin-left:6px;"><i class="fas fa-xmark"></i></button>
             </div>
 
@@ -598,14 +607,20 @@ body.mc-lock { overflow: hidden; }
             <!-- step 2 -->
             <div class="mc-dialog-body" data-step="2" hidden>
                 <div class="mc-total"><span id="paySummary2">-</span><strong id="payTotal2">-</strong></div>
+                <div id="payCardBox" hidden>
+                    <button type="button" class="mc-btn mc-btn-primary" id="payCardBtn" style="width:100%;justify-content:center;"><i class="fas fa-credit-card"></i> <span id="payCardLabel">Pay by card</span></button>
+                    <p class="mc-sub" style="margin:8px 0 0;"><i class="fas fa-lock"></i> On Stripe's secure page: card, Apple Pay, Google Pay and other ways to pay. Eschool never sees your card. The plan starts as soon as it goes through.</p>
+                    <div class="mc-sec-label" id="payOr" style="margin-top:14px;"><span>Or pay with M-Pesa</span></div>
+                </div>
                 <div id="payReady">
                     <div class="mc-sec-label"><span>Pay with M-Pesa</span></div>
                     <ol class="mc-howto" id="payHow"></ol>
                     <div class="mc-paybox" id="payBox" style="margin-top:12px;"></div>
                 </div>
                 <div class="mc-notice warn" id="payNotReady" hidden style="box-shadow:none; margin:0;">
-                    <i class="fas fa-circle-info"></i><span>Online payments are not set up yet. Please contact the school to pay for a plan.</span>
+                    <i class="fas fa-circle-info"></i><span>Payments aren’t set up on Eschool yet, so plans can’t be paid here for now. <a href="/parent-support" style="color:inherit;font-weight:700;">Ask Eschool support</a> how to pay.</span>
                 </div>
+                <div id="payFields">
                 <div class="mc-two">
                     <div class="mc-field">
                         <label for="payCode">M-Pesa code</label>
@@ -616,7 +631,8 @@ body.mc-lock { overflow: hidden; }
                         <input id="payPhone" class="mc-input" type="tel" inputmode="tel" autocomplete="tel" placeholder="07XX XXX XXX">
                     </div>
                 </div>
-                <p class="mc-sub">eSchool checks the code against the M-Pesa statement, usually {{ opts.confirm_time or 'within 24 hours' }}. The plan starts as soon as it is confirmed, and you both get a notification.</p>
+                <p class="mc-sub">Eschool checks the code against the M-Pesa statement, usually {{ opts.confirm_time or 'within 24 hours' }}. The plan starts as soon as it is confirmed, and you both get a notification.</p>
+                </div>
             </div>
 
             <!-- step 3 -->
@@ -658,7 +674,7 @@ body.mc-lock { overflow: hidden; }
     var CHILDREN = {{ kids|tojson }};
     var OPTIONS = {{ opts|tojson }};
     var PERMISSIONS = [
-        { key: 'grades',        icon: 'fa-chart-line',     title: 'Grades & GPA',      desc: 'Results, GPA and course progress' },
+        { key: 'grades',        icon: 'fa-chart-line',     title: 'Grades',            desc: 'Grades, scores and course progress' },
         { key: 'schedule',      icon: 'fa-calendar-alt',   title: 'Schedule',          desc: 'Classes, assignments and exam dates' },
         { key: 'attendance',    icon: 'fa-clipboard-user', title: 'Attendance',        desc: 'Presence, lateness and absences' },
         { key: 'resources',     icon: 'fa-book-open',      title: 'Learning activity', desc: 'Resources viewed and teacher requests' },
@@ -668,7 +684,7 @@ body.mc-lock { overflow: hidden; }
     function $(id) { return document.getElementById(id); }
     function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
     function say(el, msg, type) { if (!el) return; el.className = 'mc-note ' + (type || 'info'); el.textContent = msg || ''; }
-    function money(n) { return 'KES ' + Number(n || 0).toLocaleString('en-KE'); }
+    function money(n) { return '{{ CURRENCY }} ' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
     function lengthName(d) { return d === 30 ? '1 month' : d === 90 ? '3 months' : d === 365 ? '12 months' : d + ' days'; }
     function niceDate(iso) { if (!iso) return ''; var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }); }
     function childById(id) { return CHILDREN.filter(function (c) { return String(c.id) === String(id); })[0]; }
@@ -879,7 +895,7 @@ body.mc-lock { overflow: hidden; }
             var extra = p.status === 'rejected' && p.note ? ' · ' + esc(p.note) : '';
             var act = p.status === 'pending' ? '<button type="button" class="mc-btn mc-btn-danger mc-btn-sm" data-withdraw="' + p.id + '"><i class="fas fa-xmark"></i> Withdraw</button>' : '';
             return '<div class="mc-row ' + esc(p.status) + '"><div class="mc-row-info"><h4>' + esc(p.student_name) + ' · ' + esc(p.plan_name) + ' for ' + esc(lengthName(p.days)) + '</h4>' +
-                   '<p>M-Pesa code <span class="mc-code">' + esc(p.reference) + '</span> · ' + esc(niceDate(p.created_at)) + extra + '</p></div>' +
+                   '<p>' + (p.method === 'stripe' ? '<i class="fas fa-credit-card"></i> Paid by card' : 'M-Pesa code <span class="mc-code">' + esc(p.reference) + '</span>') + ' · ' + esc(niceDate(p.created_at)) + extra + '</p></div>' +
                    '<span class="mc-row-amount">' + money(p.amount) + '</span><span class="mc-pill ' + esc(p.status) + '">' + esc(label[p.status] || p.status) + '</span>' +
                    (act ? '<div class="mc-row-actions">' + act + '</div>' : '') + '</div>';
         }).join('');
@@ -887,7 +903,7 @@ body.mc-lock { overflow: hidden; }
     if ($('payList')) {
         $('payList').addEventListener('click', function (e) {
             var w = e.target.closest('[data-withdraw]'); if (!w) return;
-            askConfirm('Withdraw this payment?', "Do this if you typed the wrong M-Pesa code. eSchool won't check it, and you can send the right code as a new payment.", 'Withdraw', async function () {
+            askConfirm('Withdraw this payment?', "Do this if you typed the wrong M-Pesa code. Eschool won't check it, and you can send the right code as a new payment.", 'Withdraw', async function () {
                 await api('/api/parent/payments/' + w.dataset.withdraw, { method: 'DELETE' });
                 say($('payListNote'), 'Payment withdrawn.', 'ok'); loadPayments();
             });
@@ -899,7 +915,7 @@ body.mc-lock { overflow: hidden; }
     var pay = { step: 1, child: null, plan: 'basic', days: 30 };
     function planOf(key) { return (OPTIONS.plans || []).filter(function (p) { return p.key === key; })[0]; }
     function priceOf(plan, days) { var p = planOf(plan); var x = p && p.prices.filter(function (r) { return r.days === days; })[0]; return x ? x.amount : 0; }
-    function blockedPlan(child, key) { return child && child.plan && child.plan.key !== 'free' && child.plan.key !== key ? child.plan : null; }
+    function blockedPlan(child, key) { return child && child.plan && child.plan.key === 'pro' && key === 'basic' ? child.plan : null; }   // Basic -> Pro is an upgrade
     function renderPlans() {
         var child = childById(pay.child);
         $('payPlans').innerHTML = (OPTIONS.plans || []).map(function (p) {
@@ -911,7 +927,8 @@ body.mc-lock { overflow: hidden; }
         }).join('');
         var b = (OPTIONS.plans || []).map(function (p) { return blockedPlan(child, p.key); }).filter(Boolean)[0];
         say($('payPlanNote'), b ? child.first_name + ' is on ' + b.name + ' until ' + b.expires_on + '. You can renew ' + b.name + ' now, or switch after it ends.' :
-            (child && child.plan.key !== 'free' ? 'Paying for the same plan adds the time to the end of the current one.' : ''), 'info');
+            (child && child.plan.key === 'basic' && pay.plan === 'pro' ? 'Upgrade: Pro starts as soon as the payment is confirmed, and the Basic days left become Pro days (half as many, as Pro costs double).' :
+             child && child.plan.key !== 'free' ? 'Paying for the same plan adds the time to the end of the current one.' : ''), 'info');
     }
     function renderLengths() {
         var p = planOf(pay.plan); if (!p) return;
@@ -938,7 +955,7 @@ body.mc-lock { overflow: hidden; }
         var steps = [], box = [];
         if (OPTIONS.paybill) {
             steps = ['On your phone open <strong>M-Pesa</strong> and choose <strong>Lipa na M-Pesa</strong>, then <strong>Pay Bill</strong>.',
-                     'Enter business number <strong>' + esc(OPTIONS.paybill) + '</strong> and account number <strong>' + esc(account) + '</strong> (this is ' + esc(child.first_name) + '\'s eSchool number).',
+                     'Enter business number <strong>' + esc(OPTIONS.paybill) + '</strong> and account number <strong>' + esc(account) + '</strong> (this is ' + esc(child.first_name) + '\'s Eschool number).',
                      'Pay exactly <strong>' + money(amount) + '</strong>, then type the M-Pesa code from the confirmation SMS below.'];
             box = [['Business no.', OPTIONS.paybill], ['Account no.', account], ['Amount', String(amount)]];
         } else {
@@ -954,18 +971,22 @@ body.mc-lock { overflow: hidden; }
         pay.step = n;
         document.querySelectorAll('#payModal [data-step]').forEach(function (el) { el.hidden = el.dataset.step !== String(n); });
         document.querySelectorAll('#payModal [data-dot]').forEach(function (d) { d.classList.toggle('on', Number(d.dataset.dot) <= n); });
-        $('paySub').textContent = n === 1 ? 'Step 1 of 2 · Choose the plan' : n === 2 ? 'Step 2 of 2 · Pay and enter the code' : 'Done';
+        $('paySub').textContent = n === 1 ? 'Step 1 of 2 · Choose the plan' : n === 2 ? 'Step 2 of 2 · Pay' : 'Done';
         $('payBack').hidden = n !== 2;
         $('payNext').hidden = false;
         $('payNext').disabled = false;
         if (n === 1) $('payNext').innerHTML = 'Continue <i class="fas fa-arrow-right"></i>';
         if (n === 2) {
-            $('payReady').hidden = !OPTIONS.ready; $('payNotReady').hidden = !!OPTIONS.ready;
-            if (OPTIONS.ready) renderHow();
-            $('payCode').disabled = $('payPhone').disabled = !OPTIONS.ready;
-            $('payNext').innerHTML = '<i class="fas fa-paper-plane"></i> Send for checking';
-            $('payNext').disabled = !OPTIONS.ready;
-            if (OPTIONS.ready) setTimeout(function () { $('payCode').focus(); }, 30);
+            var card = !!OPTIONS.card, mp = !!OPTIONS.ready;
+            $('payCardBox').hidden = !card; $('payOr').hidden = !mp;
+            $('payCardLabel').textContent = 'Pay ' + money(priceOf(pay.plan, pay.days)) + ' by card';
+            $('payReady').hidden = !mp; $('payNotReady').hidden = card || mp; $('payFields').hidden = !mp;
+            if (mp) renderHow();
+            $('payCode').disabled = $('payPhone').disabled = !mp;
+            $('payNext').innerHTML = '<i class="fas fa-paper-plane"></i> Send M-Pesa code';
+            $('payNext').hidden = !mp;
+            $('payNext').disabled = !mp;
+            setTimeout(function () { var f = card ? $('payCardBtn') : mp ? $('payCode') : null; if (f) f.focus(); }, 30);
         }
         if (n === 3) $('payNext').innerHTML = 'Done';
         say($('payNote'), '');
@@ -996,7 +1017,7 @@ body.mc-lock { overflow: hidden; }
             if (blockedPlan(c, pay.plan)) pay.plan = c.plan.key;
             renderPlans(); renderLengths();
         });
-        $('payPlans').addEventListener('change', function (e) { if (e.target.name === 'payPlan') { pay.plan = e.target.value; renderLengths(); } });
+        $('payPlans').addEventListener('change', function (e) { if (e.target.name === 'payPlan') { pay.plan = e.target.value; renderPlans(); renderLengths(); } });
         $('payLengths').addEventListener('change', function (e) { if (e.target.name === 'payLen') { pay.days = Number(e.target.value); updateTotal(); } });
         $('payBack').addEventListener('click', function () { goStep(1); });
         $('payCode').addEventListener('input', function () { this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10); });
@@ -1019,6 +1040,36 @@ body.mc-lock { overflow: hidden; }
             } catch (err) { say($('payNote'), err.message, 'bad'); btn.disabled = false; }
         });
     }
+    // pay by card: Stripe's page, then back here with ?paid=<id> (or ?unpaid=<id> if they cancelled)
+    if ($('payCardBtn')) $('payCardBtn').addEventListener('click', async function () {
+        var btn = this; btn.disabled = true; say($('payNote'), 'Opening the secure payment page...', 'info');
+        try {
+            var r = await api('/api/parent/payments/online', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_id: Number(pay.child), plan: pay.plan, days: pay.days, method: 'card' }) });
+            location.href = r.redirect;
+        } catch (err) { say($('payNote'), err.message, 'bad'); btn.disabled = false; }
+    });
+    (async function cameBack() {
+        var q = new URLSearchParams(location.search), paid = q.get('paid'), unpaid = q.get('unpaid');
+        if (!paid && !unpaid) return;
+        history.replaceState(null, '', location.pathname);
+        var note = $('payListNote'); if (!note) return;
+        if ($('mcPayments')) $('mcPayments').scrollIntoView({ block: 'start' });
+        if (unpaid) { say(note, 'Card payment cancelled. Nothing was charged.', 'info'); return; }
+        say(note, 'Confirming your card payment...', 'info');
+        for (var i = 0; i < 15; i++) {
+            try {
+                var r = await api('/api/parent/payments/' + encodeURIComponent(paid) + '/status');
+                if (r.payment.status === 'confirmed') {
+                    say(note, 'Payment received. ' + r.payment.student_name + ' is on ' + r.payment.plan_name + (r.current && r.current.expires_on ? ' until ' + r.current.expires_on : '') + '. Refresh to see it on their card.', 'ok');
+                    loadPayments(); return;
+                }
+                if (r.payment.status === 'failed') { say(note, "The card payment didn't go through. Nothing was charged. You can try again.", 'bad'); return; }
+            } catch (e) { /* try again */ }
+            await new Promise(function (res) { setTimeout(res, 2000); });
+        }
+        say(note, 'The card company is still confirming your payment. The plan starts as soon as it does, and you will get a notification.', 'info');
+    })();
     // open straight from a link like /parent-children#pay
     if (location.hash === '#pay' && CHILDREN.length) openPay();
 })();

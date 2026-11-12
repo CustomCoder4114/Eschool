@@ -6,7 +6,6 @@
     Route: /teacher-settings  (passes `stats`: followers, resources, reviews, rating, requests)
     APIs used (all real, no pop-ups; every message is shown on the page):
       GET/POST /api/profile/details        name, phone, bio, location, time zone
-      POST     /api/settings/upload-photo  profile photo
       GET/POST /api/tutor-profile          private lesson details, taking new learners
       GET      /api/tutoring/teacher       requests from parents and private learners
       POST     /api/tutoring/<id>/respond  accept (with fee) or decline a request
@@ -351,8 +350,9 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
 
     <div class="ps-layout">
         <nav class="ps-nav" role="tablist" aria-label="Settings" aria-orientation="vertical" id="psNav">
-            <button type="button" class="ps-tab" role="tab" id="tab-profile" data-tab="profile" aria-controls="panel-profile"><i class="fas fa-user"></i><span>Profile<small>Photo and personal details</small></span></button>
+            <button type="button" class="ps-tab" role="tab" id="tab-profile" data-tab="profile" aria-controls="panel-profile"><i class="fas fa-user"></i><span>Profile<small>Your personal details</small></span></button>
             <button type="button" class="ps-tab" role="tab" id="tab-teaching" data-tab="teaching" aria-controls="panel-teaching"><i class="fas fa-chalkboard-user"></i><span>Teaching<small>Private lessons and requests</small></span><span class="ps-dot" title="Requests waiting"{% if not stats.requests %} hidden{% endif %}>{{ stats.requests }}</span></button>
+            <button type="button" class="ps-tab" role="tab" id="tab-earnings" data-tab="earnings" aria-controls="panel-earnings"><i class="fas fa-money-bill-wave"></i><span>Earnings<small>What you earned and how you get paid</small></span></button>
             <button type="button" class="ps-tab" role="tab" id="tab-notifications" data-tab="notifications" aria-controls="panel-notifications"><i class="fas fa-bell"></i><span>Notifications<small>What reaches your bell</small></span></button>
             <button type="button" class="ps-tab" role="tab" id="tab-security" data-tab="security" aria-controls="panel-security"><i class="fas fa-shield-halved"></i><span>Sign-in &amp; security<small>Password and devices</small></span></button>
             <button type="button" class="ps-tab" role="tab" id="tab-privacy" data-tab="privacy" aria-controls="panel-privacy"><i class="fas fa-lock"></i><span>Privacy &amp; data<small>Who can see and message you</small></span></button>
@@ -364,17 +364,8 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
         <div>
             <!-- ================= PROFILE ================= -->
             <section class="ps-panel" id="panel-profile" role="tabpanel" aria-labelledby="tab-profile" hidden>
-                <div class="ps-panel-head"><h2>Profile</h2><p>How you appear to learners, parents and other teachers on eSchool.</p></div>
+                <div class="ps-panel-head"><h2>Profile</h2><p>How you appear to learners, parents and other teachers on Eschool.</p></div>
 
-                <div class="ps-card">
-                    <div class="ps-card-h"><span class="ic"><i class="fas fa-camera"></i></span><div><h3>Profile photo</h3><p>Shown next to your messages and on your profile. JPG, PNG, GIF or WEBP, up to 2 MB.</p></div></div>
-                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-                        <div class="ps-avatar" id="psPhoto" style="width:76px;height:76px;font-size:1.4rem;" data-profile-avatar>{% if avatar_url %}<img src="{{ avatar_url }}" alt="Profile photo">{% else %}{{ (firstname or '')[:1] }}{{ (lastname or '')[:1] }}{% endif %}</div>
-                        <input type="file" id="psPhotoInput" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
-                        <button type="button" class="ps-btn ps-btn-primary" id="psPhotoBtn"><i class="fas fa-upload"></i> <span>Upload a new photo</span></button>
-                        <div class="ps-note" id="psPhotoNote" role="status" aria-live="polite"></div>
-                    </div>
-                </div>
 
                 <form class="ps-card" id="psPersonal" novalidate>
                     <div class="ps-card-h"><span class="ic"><i class="fas fa-id-card"></i></span><div><h3>Personal details</h3><p>Your name is shown on your profile, your resources, your live classes and in messages.</p></div></div>
@@ -436,12 +427,12 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                 </div>
 
                 <div class="ps-card">
-                    <div class="ps-card-h"><span class="ic"><i class="fas fa-scale-balanced"></i></span><div><h3>What learners and parents see</h3><p>Checked by eSchool's servers, together with your choices in Privacy &amp; data.</p></div></div>
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-scale-balanced"></i></span><div><h3>What learners and parents see</h3><p>Checked by Eschool's servers, together with your choices in Privacy &amp; data.</p></div></div>
                     <div class="ps-can">
                         <div>
                             <h4><i class="fas fa-eye" style="color:var(--ps-ok)"></i> They can see</h4>
                             <ul>
-                                <li>Your name, photo, headline, subjects, grades and qualifications</li>
+                                <li>Your name, headline, subjects, grades and qualifications</li>
                                 <li>Your public resources and your live classes</li>
                                 <li>Your rating, reviews and your replies to them</li>
                                 <li>Parents only: your private lesson fee, lesson length and when you're available</li>
@@ -462,6 +453,28 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
 
 
             <!-- ================= NOTIFICATIONS ================= -->
+            <section class="ps-panel" id="panel-earnings" role="tabpanel" aria-labelledby="tab-earnings" hidden>
+                <div class="ps-panel-head"><h2>Earnings</h2><p>Money for the private lessons you teach. Eschool keeps a small share and sends the rest to you once a month.</p></div>
+                <div class="ps-family-sum" id="psErnSum"><div class="ps-loading">Loading...</div></div>
+                <div class="ps-card" id="psErnStripe" hidden>
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-building-columns"></i></span><div><h3>Get paid to your bank with Stripe</h3><p>Stripe pays Eschool's money into your bank account, in most countries. You add your bank and ID details on Stripe's own secure page; Eschool never sees them.</p></div></div>
+                    <div id="psErnStripeState"></div>
+                    <div class="ps-actions"><div class="ps-note" id="psErnStripeNote" role="status" aria-live="polite"></div>
+                        <button type="button" class="ps-btn" id="psErnStripeDash" hidden><i class="fas fa-arrow-up-right-from-square"></i> Open my Stripe</button>
+                        <button type="button" class="ps-btn ps-btn-primary" id="psErnStripeGo"><i class="fas fa-link"></i> <span>Set up Stripe</span></button></div>
+                </div>
+                <div class="ps-card" id="psErnMpesa">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-mobile-screen"></i></span><div><h3>Your M-Pesa number</h3><p>Where Eschool sends your pay. Only you and the Eschool team can see it.</p></div></div>
+                    <div class="ps-field full"><label for="psErnPhone">M-Pesa number</label><input type="tel" class="ps-input" id="psErnPhone" placeholder="0712 345 678" autocomplete="tel"></div>
+                    <div class="ps-actions"><div class="ps-note" id="psErnNote" role="status" aria-live="polite"></div>
+                        <button type="button" class="ps-btn ps-btn-primary" id="psErnSave"><i class="fas fa-check"></i> Save number</button></div>
+                </div>
+                <div class="ps-card">
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-receipt"></i></span><div><h3>Pay history</h3><p>Months waiting to be sent, and months already paid.</p></div></div>
+                    <div id="psErnList"><div class="ps-loading">Loading...</div></div>
+                </div>
+            </section>
+
             <section class="ps-panel" id="panel-notifications" role="tabpanel" aria-labelledby="tab-notifications" hidden>
                 <div class="ps-panel-head"><h2>Notifications</h2><p>Choose what shows up in your notification bell. Changes save straight away.</p></div>
                 <div class="ps-card">
@@ -472,7 +485,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                 <div class="ps-card">
                     <div class="ps-card-h"><span class="ic"><i class="fas fa-shield-heart"></i></span><div><h3>Always on</h3><p>These keep your account and your teaching on track, so they can't be switched off.</p></div></div>
                     <div class="ps-row"><span class="ico" style="--c:#10b981"><i class="fas fa-receipt"></i></span><div class="txt"><b>Payments</b><small>When a parent's payment for private lessons is confirmed or can't be confirmed</small></div><i class="fas fa-lock ps-lock" aria-label="Always on"></i></div>
-                    <div class="ps-row"><span class="ico" style="--c:#0ea5e9"><i class="fas fa-headset"></i></span><div class="txt"><b>Help &amp; Support</b><small>Replies from the eSchool team to the questions and reports you send</small></div><i class="fas fa-lock ps-lock" aria-label="Always on"></i></div>
+                    <div class="ps-row"><span class="ico" style="--c:#0ea5e9"><i class="fas fa-headset"></i></span><div class="txt"><b>Help &amp; Support</b><small>Replies from the Eschool team to the questions and reports you send</small></div><i class="fas fa-lock ps-lock" aria-label="Always on"></i></div>
                     <div class="ps-row"><span class="ico" style="--c:#8b5cf6"><i class="fas fa-key"></i></span><div class="txt"><b>Account security</b><small>Password changes and sign-in alerts (set under Sign-in &amp; security)</small></div><i class="fas fa-lock ps-lock" aria-label="Always on"></i></div>
                 </div>
                 <div class="ps-card">
@@ -527,7 +540,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                         <div class="ps-note" id="psLoginNote" role="status" aria-live="polite"></div>
                     </div>
                     <div class="ps-card">
-                        <div class="ps-card-h"><span class="ic"><i class="fas fa-hourglass-end"></i></span><div><h3>Automatic sign-out</h3><p>After this long with no activity on any eSchool tab you get a 1-minute warning, then you're signed out.</p></div></div>
+                        <div class="ps-card-h"><span class="ic"><i class="fas fa-hourglass-end"></i></span><div><h3>Automatic sign-out</h3><p>After this long with no activity on any Eschool tab you get a 1-minute warning, then you're signed out.</p></div></div>
                         <div class="ps-range"><input type="range" id="psTimeout" min="5" max="120" step="5" value="30" aria-label="Minutes before automatic sign-out"><output id="psTimeoutOut" for="psTimeout">30 minutes</output></div>
                         <div class="ps-note" id="psTimeoutNote" role="status" aria-live="polite" style="margin-top:10px;"></div>
                     </div>
@@ -543,7 +556,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
 
             <!-- ================= PRIVACY ================= -->
             <section class="ps-panel" id="panel-privacy" role="tabpanel" aria-labelledby="tab-privacy" hidden>
-                <div class="ps-panel-head"><h2>Privacy &amp; data</h2><p>These choices are checked on eSchool's servers and save straight away. Learners in your live classes still see your name while the class runs.</p></div>
+                <div class="ps-panel-head"><h2>Privacy &amp; data</h2><p>These choices are checked on Eschool's servers and save straight away. Learners in your live classes still see your name while the class runs.</p></div>
                 <div class="ps-card">
                     <div class="ps-card-h"><span class="ic"><i class="fas fa-eye"></i></span><div><h3>Who can see your profile</h3><p>Your profile is where parents decide to hire you and learners find your resources.</p></div></div>
                     <div class="ps-opts" role="radiogroup" aria-label="Who can see your profile" id="psVis">
@@ -565,10 +578,10 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                     <div class="ps-note" id="psMsgNote" role="status" aria-live="polite" style="margin-top:6px;"></div>
                 </div>
                 <div class="ps-card">
-                    <div class="ps-card-h"><span class="ic"><i class="fas fa-database"></i></span><div><h3>Your data</h3><p>What eSchool keeps about you, and a copy you can take with you.</p></div></div>
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-database"></i></span><div><h3>Your data</h3><p>What Eschool keeps about you, and a copy you can take with you.</p></div></div>
                     <div class="ps-danger-row"><div class="txt"><b>Download a copy of your data</b><small>Your account and personal details, teaching profile, list of resources, live classes, schedule, reviews you received, followers, messages and notifications, in one JSON file.</small></div>
                         <a class="ps-btn ps-btn-primary" href="/api/privacy/export" download id="psExport"><i class="fas fa-download"></i> Download my data</a></div>
-                    <div class="ps-danger-row"><div class="txt"><b>How eSchool uses your data</b><small>What we collect, why, what learners and parents can see, and how long we keep it.</small></div>
+                    <div class="ps-danger-row"><div class="txt"><b>How Eschool uses your data</b><small>What we collect, why, what learners and parents can see, and how long we keep it.</small></div>
                         <button type="button" class="ps-btn ps-btn-ghost" data-go="legal"><i class="fas fa-user-shield"></i> Read the privacy policy</button></div>
                     <div class="ps-note" id="psExportNote" role="status" aria-live="polite"></div>
                 </div>
@@ -576,7 +589,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
 
             <!-- ================= APPEARANCE ================= -->
             <section class="ps-panel" id="panel-appearance" role="tabpanel" aria-labelledby="tab-appearance" hidden>
-                <div class="ps-panel-head"><h2>Appearance</h2><p>How eSchool looks on this device. Changes apply straight away to every page.</p></div>
+                <div class="ps-panel-head"><h2>Appearance</h2><p>How Eschool looks on this device. Changes apply straight away to every page.</p></div>
                 <div class="ps-card">
                     <div class="ps-card-h"><span class="ic"><i class="fas fa-circle-half-stroke"></i></span><div><h3>Theme</h3><p>Light, dark, or follow your device.</p></div><span class="ps-saved right" id="psApSaved"><i class="fas fa-check"></i> Saved</span></div>
                     <div class="ps-modes" role="radiogroup" aria-label="Theme">
@@ -618,15 +631,15 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
             <!-- ================= POLICIES ================= -->
             <section class="ps-panel" id="panel-legal" role="tabpanel" aria-labelledby="tab-legal" hidden>
                 <div class="ps-panel-head" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
-                    <div style="flex:1;min-width:200px;"><h2>Policies</h2><p>The rules for teaching on eSchool, and how your data and your learners' data are handled.</p></div>
+                    <div style="flex:1;min-width:200px;"><h2>Policies</h2><p>The rules for teaching on Eschool, and how your data and your learners' data are handled.</p></div>
                     <div class="ps-seg" role="tablist" aria-label="Policy"><button type="button" role="tab" data-doc="privacy" aria-selected="true">Privacy policy</button><button type="button" role="tab" data-doc="terms" aria-selected="false">Terms of service</button></div>
                 </div>
                 <article class="ps-card ps-legal" id="docPrivacy">
                     <span class="upd">Last updated: 27 October 2026</span>
                     <h4>1. What we collect</h4>
-                    <p>Details you give us (your name, email address, phone number, location, profile photo and your teaching profile: headline, subjects, grades, qualifications, fee and availability) and information created as you teach on eSchool, such as the resources you upload, your live classes and their recordings, your schedule, messages, reviews you receive and your replies, private lesson requests and sign-in times.</p>
+                    <p>Details you give us (your name, email address, phone number, location and your teaching profile: headline, subjects, grades, qualifications, fee and availability) and information created as you teach on Eschool, such as the resources you upload, your live classes and their recordings, your schedule, messages, reviews you receive and your replies, private lesson requests and sign-in times.</p>
                     <h4>2. What learners and parents see</h4>
-                    <div class="box">Your public profile shows your name, photo, headline, subjects, grades, qualifications, public resources, live classes, rating and reviews. Your fee, lesson length and availability are shown to parents. Your email, phone number and address are never shown on your profile.</div>
+                    <div class="box">Your public profile shows your name, headline, subjects, grades, qualifications, public resources, live classes, rating and reviews. Your fee, lesson length and availability are shown to parents. Your email, phone number and address are never shown on your profile.</div>
                     <ul>
                         <li>Resources set to "Only me" can only be opened by you.</li>
                         <li>Your schedule, notes and day marks are private to you.</li>
@@ -634,18 +647,18 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                         <li>Parents you teach privately see the sessions you book and the reports you write for their child.</li>
                     </ul>
                     <h4>3. Learners' data you can see</h4>
-                    <p>You see what learners and parents choose to share with you: their name and photo, messages they send, questions and chat in your live classes, and the details a parent gives in a private lesson request. Use it only to teach them, and don't share it outside eSchool.</p>
+                    <p>You see what learners and parents choose to share with you: their name and photo, messages they send, questions and chat in your live classes, and the details a parent gives in a private lesson request. Use it only to teach them, and don't share it outside Eschool.</p>
                     <h4>4. How we use information</h4>
                     <ul>
-                        <li>To run eSchool, show your profile and resources, and stream your live classes</li>
+                        <li>To run Eschool, show your profile and resources, and stream your live classes</li>
                         <li>To send the notifications you chose, plus account and payment notices</li>
                         <li>To keep accounts secure (sign-in alerts, automatic sign-out)</li>
                         <li>To process private lesson payments (M-Pesa codes are checked by our team)</li>
                     </ul>
                     <h4>5. Sharing</h4>
-                    <p>We don't sell personal information. Other people see your profile only as allowed in Privacy &amp; data. Our team may look at a resource, review or message that has been reported, to keep eSchool safe.</p>
+                    <p>We don't sell personal information. Other people see your profile only as allowed in Privacy &amp; data. Our team may look at a resource, review or message that has been reported, to keep Eschool safe.</p>
                     <h4>6. Keeping data</h4>
-                    <p>We keep your information while your account is open. Resources you delete are removed from eSchool. Reviews stay on your profile unless the person who wrote them deletes them or our team removes them.</p>
+                    <p>We keep your information while your account is open. Resources you delete are removed from Eschool. Reviews stay on your profile unless the person who wrote them deletes them or our team removes them.</p>
                     <h4>7. Your choices</h4>
                     <p>You can change your details, lesson details, notifications and privacy here at any time, and download a copy of your data, including your teaching profile, resources list, live classes, schedule and reviews, from Privacy &amp; data.</p>
                     <h4>8. Contact</h4>
@@ -654,18 +667,18 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                 <article class="ps-card ps-legal" id="docTerms" hidden>
                     <span class="upd">Last updated: 27 October 2026</span>
                     <h4>1. Agreeing to these terms</h4>
-                    <p>By creating a teacher account and using eSchool you agree to these terms and to the privacy policy.</p>
+                    <p>By creating a teacher account and using Eschool you agree to these terms and to the privacy policy.</p>
                     <h4>2. Your account</h4>
                     <p>Keep your password private. You're responsible for everything done on your account, including what you upload, say in live classes and agree with parents. Tell us straight away if you think someone else has used it.</p>
                     <h4>3. Your profile</h4>
                     <ul>
-                        <li>Use your real name and a photo of you. Qualifications and years of experience must be true.</li>
+                        <li>Use your real name. Qualifications and years of experience must be true.</li>
                         <li>Don't ask for or post learners' personal contact details on your profile or in resources.</li>
                     </ul>
                     <h4>4. Resources you upload</h4>
                     <ul>
                         <li>Only upload material you made or have the right to share. You keep ownership of it.</li>
-                        <li>By making a resource public you let eSchool show it to learners, parents and teachers on eSchool.</li>
+                        <li>By making a resource public you let Eschool show it to learners, parents and teachers on Eschool.</li>
                         <li>Resources must suit the grades you set and contain nothing unlawful, hateful or adult.</li>
                     </ul>
                     <h4>5. Live classes</h4>
@@ -676,24 +689,24 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                     </ul>
                     <h4>6. Private lessons and payments</h4>
                     <ul>
-                        <li>Agree fees through eSchool. Sessions start once the parent's M-Pesa payment is confirmed.</li>
-                        <li>Don't ask families to pay you outside eSchool for lessons arranged here.</li>
-                        <li>Keep in touch with learners through eSchool, and include their parent in arrangements.</li>
+                        <li>Agree fees through Eschool. Sessions start once the parent's M-Pesa payment is confirmed.</li>
+                        <li>Don't ask families to pay you outside Eschool for lessons arranged here.</li>
+                        <li>Keep in touch with learners through Eschool, and include their parent in arrangements.</li>
                         <li>Book only the sessions that have been paid for, and record what happened in each one honestly.</li>
                     </ul>
                     <h4>7. Reviews</h4>
                     <p>Don't post, buy or ask for fake reviews. You may reply to a review once, politely. Report a review you believe breaks these terms through Help &amp; Support.</p>
                     <h4>8. Acceptable use</h4>
                     <ul>
-                        <li>Don't misuse eSchool, try to get around security, privacy choices or parental controls, or interfere with other people's use</li>
-                        <li>Never contact a learner in a way their parent or eSchool has not allowed</li>
+                        <li>Don't misuse Eschool, try to get around security, privacy choices or parental controls, or interfere with other people's use</li>
+                        <li>Never contact a learner in a way their parent or Eschool has not allowed</li>
                     </ul>
                     <h4>9. Suspension</h4>
                     <p>We may hide content or suspend accounts that break these terms, particularly anything that puts a learner at risk. Contact Help &amp; Support if you'd like your account closed.</p>
                     <h4>10. Service and liability</h4>
-                    <p>eSchool is provided as it is. We work to keep it running but can't promise it will never be interrupted. As far as the law allows, we aren't liable for indirect losses from using it.</p>
+                    <p>Eschool is provided as it is. We work to keep it running but can't promise it will never be interrupted. As far as the law allows, we aren't liable for indirect losses from using it.</p>
                     <h4>11. Changes</h4>
-                    <p>We may update these terms. We'll show the new date here, and using eSchool after a change means you accept it.</p>
+                    <p>We may update these terms. We'll show the new date here, and using Eschool after a change means you accept it.</p>
                 </article>
             </section>
         </div>
@@ -704,13 +717,13 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
 (function () {
     'use strict';
     var USER = "{{ session.get('email', 'anonymous') }}";
-    var TABS = ['profile', 'teaching', 'notifications', 'security', 'privacy', 'appearance', 'legal'];
+    var TABS = ['profile', 'teaching', 'earnings', 'notifications', 'security', 'privacy', 'appearance', 'legal'];
     var PREF_META = {
         messages: ['fa-envelope', '#4361ee', 'Messages', 'When a learner, parent or teacher sends you a message'],
         followers: ['fa-user-plus', '#10b981', 'New followers', 'When a learner or parent starts following you'],
         reviews: ['fa-star', '#f59e0b', 'Reviews', 'When someone reviews you or changes their review'],
         tutoring: ['fa-chalkboard-user', '#0ea5e9', 'Private teaching', 'New requests from parents, payments and session changes'],
-        announcements: ['fa-bullhorn', '#db2777', 'News from eSchool', 'Announcements from the eSchool team']
+        announcements: ['fa-bullhorn', '#db2777', 'News from Eschool', 'Announcements from the Eschool team']
     };
     var TIMEZONES = ['Africa/Nairobi', 'Africa/Kampala', 'Africa/Dar_es_Salaam', 'Africa/Kigali', 'Africa/Addis_Ababa', 'Africa/Lagos', 'Africa/Accra', 'Africa/Johannesburg', 'Europe/London', 'America/New_York', 'America/Toronto', 'Asia/Kolkata', 'Australia/Sydney'];
     var GENDERS = [['', 'Prefer not to say'], ['female', 'Female'], ['male', 'Male'], ['other', 'Other']];
@@ -782,7 +795,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
             field('firstname', 'First name', input('firstname', 'text', 'autocomplete="given-name" maxlength="50"')) +
             field('lastname', 'Last name', input('lastname', 'text', 'autocomplete="family-name" maxlength="50"')) +
             field('email', 'Email address', '<input class="ps-input" id="pf-email" type="email" value="' + esc(d.email) + '" readonly>', { hint: 'Your sign-in email. To change it, contact <a href="/support" style="color:var(--ps-accent-text)">Help &amp; Support</a>.' }) +
-            field('phone', 'Phone number', input('phone', 'tel', 'autocomplete="tel" placeholder="+254 712 345 678" maxlength="20"'), { optional: true, hint: 'Never shown on your profile. eSchool may use it to reach you about payments.' }) +
+            field('phone', 'Phone number', input('phone', 'tel', 'autocomplete="tel" placeholder="+254 712 345 678" maxlength="20"'), { optional: true, hint: 'Never shown on your profile. Eschool may use it to reach you about payments.' }) +
             field('gender', 'Gender', select('gender', GENDERS), { optional: true }) +
             '<div class="ps-field"></div>' +
             field('bio', 'About you', '<textarea class="ps-textarea" id="pf-bio" data-k="bio" maxlength="300" placeholder="e.g. Mathematics teacher at a secondary school in Nakuru. I love making hard topics simple.">' + esc(d.bio) + '</textarea>', { full: true, optional: true, hint: '<span id="bioCount">' + (d.bio || '').length + '</span>/300. Shown on your profile.' });
@@ -809,7 +822,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
     }
     function completeness() {
         var d = P.details, checks = [
-            [d.firstname && d.lastname, 'Add your full name'], [document.querySelector('#psPhoto img'), 'Add a profile photo'],
+            [d.firstname && d.lastname, 'Add your full name'],
             [d.phone, 'Add a phone number'], [d.country, 'Choose your country'], [d.city, 'Add your town or city'], [d.bio, 'Write a line about you']];
         var done = checks.filter(function (c) { return c[0]; }).length, pct = Math.round(done / checks.length * 100);
         var next = checks.filter(function (c) { return !c[0]; })[0];
@@ -867,23 +880,6 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
         form.querySelector('[data-reset]').addEventListener('click', function () { renderProfile(); note(group === 'personal' ? 'psPersonalNote' : 'psLocationNote', 'Changes discarded.', 'info'); });
     });
 
-    /* photo */
-    $('psPhotoBtn').addEventListener('click', function () { $('psPhotoInput').click(); });
-    $('psPhotoInput').addEventListener('change', async function () {
-        var f = this.files && this.files[0]; if (!f) return;
-        if (!/^image\/(png|jpe?g|gif|webp)$/.test(f.type)) { note('psPhotoNote', 'Use a JPG, PNG, GIF or WEBP image.', 'bad'); this.value = ''; return; }
-        if (f.size > 2 * 1024 * 1024) { note('psPhotoNote', 'That image is over 2 MB. Choose a smaller one.', 'bad'); this.value = ''; return; }
-        var btn = $('psPhotoBtn'); btn.disabled = true; note('psPhotoNote', 'Uploading...', 'info', true);
-        var fd = new FormData(); fd.append('photo', f);
-        try {
-            var d = await api('/api/settings/upload-photo', { method: 'POST', body: fd });
-            document.querySelectorAll('[data-profile-avatar]').forEach(function (el) { el.innerHTML = '<img src="' + esc(d.avatar_url) + '" alt="Profile photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'; });
-            note('psPhotoNote', 'Photo updated.', 'ok');
-            if (P.details) completeness();
-        } catch (e) { note('psPhotoNote', e.message, 'bad'); }
-        finally { btn.disabled = false; this.value = ''; }
-    });
-
     /* ---------- teaching ---------- */
     var T = { profile: null, subjects: [] };
     var MODES = [['online', 'Online'], ['in-person', 'In person'], ['both', 'Online & in person']];
@@ -896,7 +892,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
         $('psAcceptHint').textContent = p.accepting === 0 ? 'Paused. Parents see that you are not taking new learners and can\'t send a request.' : 'Parents can send you a request from your profile.';
         var mins = +(p.session_minutes || 60), lens = LENGTHS.indexOf(mins) < 0 ? LENGTHS.concat([mins]).sort(function (a, b) { return a - b; }) : LENGTHS;
         $('psTeachBody').innerHTML =
-            '<div class="ps-field"><label for="tk-rate">Fee per lesson (KES)</label><input class="ps-input" id="tk-rate" data-t="rate" type="number" min="50" max="100000" step="50" inputmode="numeric" placeholder="e.g. 800" value="' + esc(tVal('rate')) + '"><span class="ps-hint">From KES 50 to 100,000. You can still agree a different fee when you accept a request.</span><span class="ps-err" id="tkerr-rate"></span></div>' +
+            '<div class="ps-field"><label for="tk-rate">Fee per lesson ({{ CURRENCY }})</label><input class="ps-input" id="tk-rate" data-t="rate" type="number" min="{{ LESSON_MIN }}" max="{{ LESSON_MAX }}" step="{{ LESSON_STEP }}" inputmode="numeric" placeholder="e.g. 800" value="' + esc(tVal('rate')) + '"><span class="ps-hint">From {{ CURRENCY }} 50 to 100,000. You can still agree a different fee when you accept a request.</span><span class="ps-err" id="tkerr-rate"></span></div>' +
             '<div class="ps-field"><label for="tk-session_minutes">Lesson length</label><select class="ps-select" id="tk-session_minutes" data-t="session_minutes">' + lens.map(function (m) { return '<option value="' + m + '"' + (m === mins ? ' selected' : '') + '>' + m + ' minutes</option>'; }).join('') + '</select></div>' +
             '<div class="ps-field"><label for="tk-mode">How you teach</label><select class="ps-select" id="tk-mode" data-t="mode">' + MODES.map(function (m) { return '<option value="' + m[0] + '"' + ((p.mode || 'online') === m[0] ? ' selected' : '') + '>' + m[1] + '</option>'; }).join('') + '</select></div>' +
             '<div class="ps-field"><label for="tk-location">Where you\'re based <span class="opt">(optional)</span></label><input class="ps-input" id="tk-location" data-t="location" maxlength="80" placeholder="e.g. Eldoret, Kenya" value="' + esc(tVal('location')) + '"><span class="ps-hint">Helps parents who want in-person lessons.</span></div>' +
@@ -951,8 +947,8 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
     $('psTeach').addEventListener('submit', async function (e) {
         e.preventDefault();
         var v = teachValues(), rate = v.rate === '' ? null : Number(v.rate);
-        if (rate != null && (!isFinite(rate) || rate < 50 || rate > 100000 || Math.round(rate) !== rate)) {
-            $('tkerr-rate').textContent = 'Enter a whole amount from 50 to 100,000, or leave it empty.'; $('tk-rate').classList.add('bad'); $('tk-rate').focus();
+        if (rate != null && (!isFinite(rate) || rate < {{ LESSON_MIN }} || rate > {{ LESSON_MAX }} || Math.round(rate * 100) !== rate * 100)) {
+            $('tkerr-rate').textContent = 'Enter an amount from {{ CURRENCY }} {{ LESSON_MIN }} to {{ LESSON_MAX }}, or leave it empty.'; $('tk-rate').classList.add('bad'); $('tk-rate').focus();
             note('psTeachNote', 'Please fix the highlighted field.', 'bad'); return;
         }
         var btn = $('psTeachSave'); btn.disabled = true; note('psTeachNote', 'Saving...', 'info', true);
@@ -987,7 +983,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
     }
     function learnerHtml(r) {
         var st = { accepted: ['Waiting for payment', 'warn'], active: ['Active', 'ok'] }[r.status] || [r.status, ''];
-        var info = r.status === 'active' ? r.sessions_left + ' paid session' + (r.sessions_left === 1 ? '' : 's') + ' left to book · ' + r.sessions_used + ' done' : 'Accepted at KES ' + Number(r.rate || 0).toLocaleString() + ' a session';
+        var info = r.status === 'active' ? r.sessions_left + ' paid session' + (r.sessions_left === 1 ? '' : 's') + ' left to book · ' + r.sessions_used + ' done' : 'Accepted at {{ CURRENCY }} ' + Number(r.rate || 0).toLocaleString() + ' a session';
         return '<div class="ps-row"><div class="ps-avatar" style="width:40px;height:40px;font-size:.8rem;">' + esc(initials(r.child.name)) + '</div>' +
             '<div class="txt"><b>' + esc(r.child.name) + ' · ' + esc(r.subject) + ' <span class="ps-pill ' + st[1] + '">' + esc(st[0]) + '</span></b><small>' + esc(info) + ' · Parent: ' + esc(r.parent.name) + '</small></div>' +
             '<a class="ps-btn ps-btn-ghost ps-btn-sm" href="/teacher-messages?user=' + r.parent.id + '" aria-label="Message ' + esc(r.parent.name) + '"><i class="fas fa-comment"></i><span class="ps-hide-sm"> Message</span></a></div>';
@@ -1013,7 +1009,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
             box.dataset.kind = open.dataset.open; box.hidden = false;
             var p = T.profile || {};
             box.innerHTML = open.dataset.open === 'accept'
-                ? '<div class="ps-form"><div class="ps-field"><label for="ra-rate-' + id + '">Fee per session (KES)</label><input class="ps-input" id="ra-rate-' + id + '" data-f="rate" type="number" min="50" max="100000" step="50" inputmode="numeric" value="' + esc(r.rate || p.rate || '') + '"></div>' +
+                ? '<div class="ps-form"><div class="ps-field"><label for="ra-rate-' + id + '">Fee per session ({{ CURRENCY }})</label><input class="ps-input" id="ra-rate-' + id + '" data-f="rate" type="number" min="{{ LESSON_MIN }}" max="{{ LESSON_MAX }}" step="{{ LESSON_STEP }}" inputmode="numeric" value="' + esc(r.rate || p.rate || '') + '"></div>' +
                   '<div class="ps-field"><label for="ra-min-' + id + '">Session length</label><select class="ps-select" id="ra-min-' + id + '" data-f="session_minutes">' + LENGTHS.map(function (m) { return '<option value="' + m + '"' + (m === +(r.session_minutes || p.session_minutes || 60) ? ' selected' : '') + '>' + m + ' minutes</option>'; }).join('') + '</select></div>' +
                   '<div class="ps-field full"><label for="ra-note-' + id + '">Note to the parent <span class="opt">(optional)</span></label><textarea class="ps-textarea" id="ra-note-' + id + '" data-f="note" maxlength="400" placeholder="e.g. Happy to start next Monday at 5pm."></textarea></div></div>' +
                   '<div class="ps-actions" style="margin-top:10px;"><div class="ps-note" role="status" aria-live="polite"></div><button type="button" class="ps-btn ps-btn-ghost ps-btn-sm" data-cancel>Cancel</button><button type="button" class="ps-btn ps-btn-primary ps-btn-sm" data-do="accept"><i class="fas fa-check"></i> Accept and send</button></div>'
@@ -1028,7 +1024,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
         box.querySelectorAll('[data-f]').forEach(function (el) { body[el.dataset.f] = el.value.trim(); });
         if (body.action === 'accept') {
             var rate = Number(body.rate);
-            if (!body.rate || !isFinite(rate) || rate < 50 || rate > 100000) { note(n, 'Set your fee per session, from KES 50 to 100,000.', 'bad'); box.querySelector('[data-f="rate"]').focus(); return; }
+            if (!body.rate || !isFinite(rate) || rate < {{ LESSON_MIN }} || rate > {{ LESSON_MAX }}) { note(n, 'Set your fee per session, from {{ CURRENCY }} {{ LESSON_MIN }} to {{ LESSON_MAX }}.', 'bad'); box.querySelector('[data-f="rate"]').focus(); return; }
             body.rate = Math.round(rate); body.session_minutes = Number(body.session_minutes);
         }
         go.disabled = true; note(n, 'Sending...', 'info', true);
@@ -1224,7 +1220,58 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
         $('docPrivacy').hidden = b.dataset.doc !== 'privacy'; $('docTerms').hidden = b.dataset.doc !== 'terms';
     });
 
-    var LOADERS = { profile: loadProfile, teaching: loadTeaching, notifications: loadPrefs, security: loadSecurity, privacy: loadPrivacy, appearance: loadAppearance };
+    /* ---------- earnings: /api/teacher/payout-info ---------- */
+    function kes(n) { return '{{ CURRENCY }} ' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+    function monthName(m) { try { return new Date(m + '-01T12:00:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); } catch (e) { return m; } }
+    function drawEarnings(d) {
+        var t = d.this_month || {}, owed = d.owed || [], paid = d.paid || [];
+        var owedSum = owed.reduce(function (a, o) { return a + (o.net || 0); }, 0);
+        $('psErnSum').innerHTML =
+            '<div class="ps-stat"><i class="fas fa-calendar-day"></i><div><b>' + kes(t.net) + '</b><span>This month so far · ' + ((t.taught || 0) + (t.absent || 0)) + ' lesson' + ((t.taught || 0) + (t.absent || 0) === 1 ? '' : 's') + '</span></div></div>' +
+            '<div class="ps-stat"><i class="fas fa-hourglass-half"></i><div><b>' + kes(owedSum) + '</b><span>Waiting to be sent' + (owed.length ? '' : ' · nothing waiting') + '</span></div></div>' +
+            '<div class="ps-stat"><i class="fas fa-calendar-check"></i><div><b>Day ' + (d.pay_day || 1) + '</b><span>Pay day each month · Eschool keeps ' + (d.share_pct || 0) + '%</span></div></div>';
+        $('psErnPhone').placeholder = d.phone ? 'Saved: ' + d.phone + ' (type a new one to change it)' : '0712 345 678';
+        var st = d.stripe || {};
+        $('psErnStripe').hidden = !st.available;
+        $('psErnMpesa').hidden = !d.mpesa_available;
+        if (st.available) {
+            $('psErnStripeState').innerHTML = st.ready
+                ? '<div class="ps-row"><div class="txt"><b><i class="fas fa-circle-check" style="color:#16a34a"></i> Stripe is set up</b><small>Your pay goes to your Stripe account on pay day, and Stripe sends it to your bank.</small></div></div>'
+                : st.connected
+                ? '<div class="ps-row"><div class="txt"><b><i class="fas fa-hourglass-half" style="color:#d97706"></i> Almost done</b><small>' + (st.details_due ? 'Stripe still needs ' + st.details_due + ' detail' + (st.details_due === 1 ? '' : 's') + ' from you. ' : 'Stripe is checking your details. ') + 'Finish on Stripe so Eschool can pay you.</small></div></div>'
+                : '<div class="ps-row"><div class="txt"><b>Not set up yet</b><small>It takes about 5 minutes. Have your bank details and an ID ready.</small></div></div>';
+            $('psErnStripeGo').hidden = !!st.ready;
+            $('psErnStripeGo').querySelector('span').textContent = st.connected ? 'Finish on Stripe' : 'Set up Stripe';
+            $('psErnStripeDash').hidden = !st.connected;
+        }
+        var rows = owed.map(function (o) { return '<div class="ps-row"><div class="txt"><b>' + esc(monthName(o.month)) + '</b><small>' + o.lessons + ' lesson' + (o.lessons === 1 ? '' : 's') + ' · waiting to be sent</small></div><b>' + kes(o.net) + '</b></div>'; })
+            .concat(paid.map(function (p) { return '<div class="ps-row"><div class="txt"><b>' + esc(monthName(p.month)) + '</b><small>Paid' + (p.reference ? ' · ' + esc(p.reference) : '') + '</small></div><b>' + kes(p.net) + '</b></div>'; }));
+        $('psErnList').innerHTML = rows.length ? rows.join('') : '<p class="ps-muted" style="margin:0">No pay yet. Your first pay comes the month after your first taught lesson.</p>';
+        if (!d.phone && !(st.ready) && d.mpesa_available && !st.available) note($('psErnNote'), 'Add your M-Pesa number so Eschool can pay you.', 'info', true);
+    }
+    async function loadEarnings() {
+        try { drawEarnings(await api('/api/teacher/payout-info')); }
+        catch (e) { $('psErnSum').innerHTML = ''; $('psErnList').innerHTML = '<p class="ps-muted">' + esc(e.message) + '</p>'; }
+    }
+    async function stripeGo(url, btn) {
+        btn.disabled = true; note($('psErnStripeNote'), 'Opening Stripe...', 'info');
+        try { var r = await send(url, 'POST', {}); location.href = r.url; }
+        catch (e) { note($('psErnStripeNote'), e.message, 'bad'); btn.disabled = false; }
+    }
+    $('psErnStripeGo').addEventListener('click', function () { stripeGo('/api/teacher/stripe/connect', this); });
+    $('psErnStripeDash').addEventListener('click', function () { stripeGo('/api/teacher/stripe/dashboard', this); });
+    if (new URLSearchParams(location.search).get('stripe') === 'back') {
+        history.replaceState(null, '', location.pathname + '#earnings');
+        setTimeout(function () { note($('psErnStripeNote'), 'Welcome back. If Stripe asked for anything else, finish it there; this page shows when you are ready to be paid.', 'info', true); }, 400);
+    }
+    $('psErnSave').addEventListener('click', async function () {
+        var b = this; b.disabled = true;
+        try { drawEarnings(await send('/api/teacher/payout-info', 'POST', { phone: $('psErnPhone').value })); $('psErnPhone').value = ''; note($('psErnNote'), 'Number saved.', 'ok'); }
+        catch (e) { note($('psErnNote'), e.message, 'bad'); }
+        b.disabled = false;
+    });
+
+    var LOADERS = { profile: loadProfile, teaching: loadTeaching, earnings: loadEarnings, notifications: loadPrefs, security: loadSecurity, privacy: loadPrivacy, appearance: loadAppearance };
     loadAppearance(); loaded.appearance = true;
     loadProfile(); loaded.profile = true;   // the header's completeness needs the details
     openTab((location.hash || '').slice(1) || 'profile');

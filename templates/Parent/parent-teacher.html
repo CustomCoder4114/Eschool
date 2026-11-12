@@ -353,6 +353,63 @@ body.tp-lock { overflow: hidden; }
 .tp-pf-list li > i { color: var(--tp-ok); margin-top: 3px; width: 14px; text-align: center; flex-shrink: 0; }
 .tp-pf-hist { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--tp-border); font-size: .86rem; color: var(--tp-text-2); }
 .tp-pf-hist strong { color: var(--tp-text); }
+/* ---- Lessons: timetable + how the teaching is going ---- */
+.tp-tt-head, .tp-mon-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.tp-tt-head h2, .tp-mon-head h2 { font-size: 1.05rem; margin: 0; display: flex; align-items: center; gap: 8px; }
+.tp-tt-head h2 i, .tp-mon-head h2 i { color: var(--tp-accent); }
+.tp-tt-nav { display: inline-flex; align-items: center; gap: 6px; }
+.tp-tt-nav b { font-size: .9rem; min-width: 128px; text-align: center; }
+.tp-tt-nav button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--tp-border); background: var(--tp-surface); color: var(--tp-text-2); cursor: pointer; }
+.tp-tt-nav button:hover { border-color: var(--tp-accent); color: var(--tp-accent); }
+.tp-tt-chips, .tp-mon-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.tp-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.tp-day { background: var(--tp-surface-2); border: 1px solid var(--tp-border); border-radius: 12px; min-height: 140px; padding: 8px; min-width: 0; }
+.tp-day.today { border-color: var(--tp-accent); background: var(--tp-accent-soft); }
+.tp-day-n { display: flex; justify-content: space-between; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--tp-text-3); margin-bottom: 6px; }
+.tp-day.today .tp-day-n { color: var(--tp-accent); }
+.tp-ls { border-radius: 10px; padding: 7px 9px; margin-bottom: 6px; font-size: .76rem; line-height: 1.35; border-left: 4px solid var(--kc, var(--tp-accent)); background: color-mix(in srgb, var(--kc, var(--tp-accent)) 9%, var(--tp-surface)); overflow-wrap: anywhere; }
+.tp-ls b { display: block; font-size: .8rem; }
+.tp-ls small { display: block; color: var(--tp-text-2); }
+.tp-ls.past { opacity: .82; }
+.tp-ls .tp-ls-x { margin-top: 4px; background: none; border: 0; padding: 0; font: inherit; font-size: .72rem; font-weight: 600; color: var(--tp-text-3); text-decoration: underline; cursor: pointer; }
+.tp-tag { display: inline-block; font-size: .68rem; font-weight: 700; border-radius: 99px; padding: 1px 7px; margin-top: 3px; }
+.tp-tag.ok { background: var(--tp-ok-soft); color: var(--tp-ok); } .tp-tag.abs { background: var(--tp-warn-soft); color: var(--tp-warn); }
+.tp-tag.bad { background: var(--tp-bad-soft); color: var(--tp-bad); } .tp-tag.next { background: var(--tp-info-soft); color: var(--tp-info); }
+.tp-tag.gray { background: var(--tp-hover); color: var(--tp-text-3); }
+.tp-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .76rem; color: var(--tp-text-3); margin-top: 10px; align-items: center; }
+.tp-legend i.k { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.tp-mon { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 20px; }
+.tp-mon-who { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.tp-mon-who h3 { font-size: 1rem; margin: 0; } .tp-mon-who p { font-size: .82rem; color: var(--tp-text-3); margin: 2px 0 0; }
+.tp-mon-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.tp-mon-stat { background: var(--tp-surface-2); border: 1px solid var(--tp-border); border-radius: 11px; padding: 9px 6px; text-align: center; }
+.tp-mon-stat b { display: block; font-size: 1.15rem; } .tp-mon-stat span { font-size: .72rem; color: var(--tp-text-3); }
+.tp-lbl { font-size: .68rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--tp-text-3); margin: 14px 0 6px; }
+.tp-att { display: flex; gap: 5px; flex-wrap: wrap; }
+.tp-att i { width: 22px; height: 22px; border-radius: 6px; display: block; }
+.a-ok { background: #22c55e; } .a-abs { background: #f97316; } .a-bad { background: #ef4444; } .a-rev { background: #cbd5e1; } .a-next { border: 2px dashed #a5b4fc; }
+.tp-grade-ch { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-radius: 12px; padding: 10px 12px; font-size: .86rem; background: var(--tp-surface-2); border: 1px solid var(--tp-border); }
+.tp-grade-ch.up { background: var(--tp-ok-soft); border-color: color-mix(in srgb, var(--tp-ok) 30%, transparent); }
+.tp-grade-ch .L { font-size: 1.2rem; font-weight: 800; }
+.tp-grade-ch .d { margin-left: auto; font-weight: 700; }
+.tp-glog { border-left: 2px solid var(--tp-border); margin-left: 6px; padding-left: 16px; }
+.tp-gi { position: relative; padding-bottom: 14px; }
+.tp-gi:before { content: ""; position: absolute; left: -23px; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: #22c55e; border: 2px solid var(--tp-surface); box-shadow: 0 0 0 1px var(--tp-border); }
+.tp-gi.abs:before { background: #f97316; } .tp-gi.bad:before { background: #ef4444; } .tp-gi.rev:before { background: #cbd5e1; }
+.tp-gi.next:before { background: var(--tp-surface); box-shadow: 0 0 0 2px #a5b4fc; } .tp-gi.off:before { background: var(--tp-hover); }
+.tp-gi h4 { font-size: .86rem; margin: 0; } .tp-gi h4 span { font-weight: 500; color: var(--tp-text-3); font-size: .8rem; }
+.tp-gi p { font-size: .82rem; color: var(--tp-text-2); margin: 3px 0 0; line-height: 1.5; } .tp-gi p em { font-style: normal; color: var(--tp-text-3); }
+.tp-gi .tp-rate { display: inline-flex; vertical-align: middle; }
+.tp-gi-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.tp-mon-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+@media (max-width: 980px) { .tp-mon { grid-template-columns: 1fr; } }
+@media (max-width: 760px) {
+    .tp-week { grid-template-columns: 1fr; }
+    .tp-day { min-height: 0; }
+    .tp-day.empty { display: none; }
+    .tp-tt-chips, .tp-mon-chips { margin-left: 0; }
+    .tp-mon-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 820px) { .tp-pf-grid { grid-template-columns: 1fr; } .tp-pf-side { position: static; order: -1; } .tp-mg-sum, .tp-mg-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .tp-dialog.lg { width: 100%; } .tp-mg-sum, .tp-mg-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tp-mg-sum .tp-fact:last-child:nth-child(odd), .tp-mg-stats .tp-fact:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 @media (max-width: 1100px) {
@@ -415,7 +472,7 @@ body.tp-lock { overflow: hidden; }
             <div class="tp-search"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="fSearch" class="tp-input" placeholder="Search by name or subject" aria-label="Search teachers"></div>
             <select id="fSubject" class="tp-select" aria-label="Subject"><option value="">All subjects</option></select>
             <select id="fRating" class="tp-select" aria-label="Rating"><option value="0">Any rating</option><option value="4.5">9/10 and up</option><option value="4">8/10 and up</option><option value="3">6/10 and up</option></select>
-            <select id="fSort" class="tp-select" aria-label="Sort"><option value="match">Best match</option><option value="rating">Highest eSchool score</option><option value="price_low">Price: low to high</option><option value="price_high">Price: high to low</option><option value="experience">Most lessons taught</option></select>
+            <select id="fSort" class="tp-select" aria-label="Sort"><option value="match">Best match</option><option value="rating">Highest Eschool score</option><option value="price_low">Price: low to high</option><option value="price_high">Price: high to low</option><option value="experience">Most lessons taught</option></select>
         </div>
         <div class="tp-note" id="findNote" aria-live="polite"></div>
         <div class="tp-grid" id="teacherGrid"><div class="tp-loading">Loading teachers...</div></div>
@@ -429,12 +486,29 @@ body.tp-lock { overflow: hidden; }
 
     <!-- ===== SESSIONS ===== -->
     <section id="panel-sessions" role="tabpanel" aria-labelledby="tab-sessions" hidden>
-        <div class="tp-filters" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+        <div class="tp-note" id="sessNote" aria-live="polite"></div>
+        <div class="tp-card" id="ttCard">
+            <div class="tp-tt-head">
+                <h2><i class="fas fa-calendar-week" aria-hidden="true"></i> Timetable</h2>
+                <div class="tp-tt-nav"><button type="button" id="ttPrev" aria-label="Previous week"><i class="fas fa-chevron-left"></i></button><b id="ttLabel"></b><button type="button" id="ttNext" aria-label="Next week"><i class="fas fa-chevron-right"></i></button></div>
+                <button type="button" class="tp-btn tp-btn-ghost tp-btn-sm" id="ttToday">This week</button>
+                <div class="tp-tt-chips" id="ttChips" role="group" aria-label="Show lessons for"></div>
+            </div>
+            <div class="tp-week" id="ttWeek"></div>
+            <div class="tp-legend" id="ttLegend"></div>
+        </div>
+        <div class="tp-card" id="monCard">
+            <div class="tp-mon-head">
+                <h2><i class="fas fa-chart-line" aria-hidden="true"></i> How the teaching is going</h2>
+                <div class="tp-mon-chips" id="monChips" role="group" aria-label="Teacher and child"></div>
+            </div>
+            <div id="monBody"></div>
+        </div>
+        <div hidden>
             <select id="sChild" class="tp-select" aria-label="Child"><option value="">All children</option></select>
             <select id="sTeacher" class="tp-select" aria-label="Teacher"><option value="">All teachers</option></select>
             <select id="sWhen" class="tp-select" aria-label="Which lessons"><option value="upcoming">Upcoming</option><option value="past">Past</option><option value="all">All</option></select>
         </div>
-        <div class="tp-note" id="sessNote" aria-live="polite"></div>
         <div id="sessList"></div>
     </section>
 
@@ -504,7 +578,7 @@ body.tp-lock { overflow: hidden; }
                     <p class="tp-sub">You'll get an M-Pesa prompt on this phone. Enter your M-Pesa PIN to pay. The lessons are added as soon as it goes through.</p>
                 </div>
                 <div class="tp-paybox" id="payBox-card" hidden>
-                    <p class="tp-sub" style="margin:0;"><i class="fas fa-lock"></i> You'll go to a secure Stripe page to pay by Visa or Mastercard, then come back here. eSchool never sees your card number. The lessons are added as soon as it goes through.</p>
+                    <p class="tp-sub" style="margin:0;"><i class="fas fa-lock"></i> You'll go to Stripe's secure page to pay by card, Apple Pay, Google Pay or another way, then come back here. Eschool never sees your card number. The lessons are added as soon as it goes through.</p>
                 </div>
                 <div class="tp-paybox" id="payBox-code" hidden>
                     <div id="payHowWrap"><div class="tp-h">Pay with M-Pesa yourself</div><ol class="tp-howto" id="payHow"></ol></div>
@@ -512,9 +586,9 @@ body.tp-lock { overflow: hidden; }
                         <div class="tp-field"><label for="payCode">M-Pesa code</label><input id="payCode" class="tp-input" maxlength="12" autocomplete="off" placeholder="e.g. SJK3H7XQ2P" style="text-transform:uppercase; font-family: ui-monospace, monospace;"></div>
                         <div class="tp-field"><label for="payPhone">Phone that paid <span class="tp-muted" style="font-weight:500;">(optional)</span></label><input id="payPhone" class="tp-input" type="tel" placeholder="07XX XXX XXX"></div>
                     </div>
-                    <p class="tp-sub">eSchool checks the code, usually <span id="payTime">within 24 hours</span>. The lessons can be booked once it is confirmed.</p>
+                    <p class="tp-sub">Eschool checks the code, usually <span id="payTime">within 24 hours</span>. The lessons can be booked once it is confirmed.</p>
                 </div>
-                <p class="tp-sub" style="margin:0;">You pay eSchool, not the teacher. eSchool pays the teacher after the lessons are taught.</p>
+                <p class="tp-sub" style="margin:0;">You pay Eschool, not the teacher. Eschool pays the teacher after the lessons are taught.</p>
             </div>
             <div class="tp-dbody" id="payWait" hidden>
                 <div class="tp-done"><span class="tp-spin" aria-hidden="true"></span><h3 id="payWaitTitle">Check your phone</h3><p id="payWaitText"></p></div>
@@ -549,7 +623,7 @@ body.tp-lock { overflow: hidden; }
         <div class="tp-dialog sm" role="dialog" aria-modal="true" aria-labelledby="repTitle">
             <div class="tp-dhead"><h2 id="repTitle">Report a problem</h2><button type="button" class="tp-x" data-close aria-label="Close"><i class="fas fa-xmark"></i></button></div>
             <div class="tp-dbody">
-                <p class="tp-sub">Tell eSchool what went wrong with this lesson. An admin will look into it. The teacher is not shown your report.</p>
+                <p class="tp-sub">Tell Eschool what went wrong with this lesson. An admin will look into it. The teacher is not shown your report.</p>
                 <textarea id="repText" class="tp-textarea" maxlength="600" placeholder="e.g. The teacher didn't join, or the lesson ended early"></textarea>
             </div>
             <div class="tp-dfoot"><span class="tp-note" id="repNote" aria-live="polite"></span><button type="button" class="tp-btn tp-btn-ghost" data-close>Cancel</button><button type="button" class="tp-btn tp-btn-danger solid" id="repSend"><i class="fas fa-flag"></i> Send report</button></div>
@@ -571,7 +645,7 @@ body.tp-lock { overflow: hidden; }
     function $(id) { return document.getElementById(id); }
     function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
     function say(el, msg, type) { if (el) { el.className = 'tp-note ' + (type || 'info'); el.textContent = msg || ''; } }
-    function money(n) { return 'KES ' + Number(n || 0).toLocaleString('en-KE'); }
+    function money(n) { return '{{ CURRENCY }} ' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
     function avatar(name, url, cls) { return '<div class="tp-avatar ' + (cls || '') + '">' + (url ? '<img src="' + esc(url) + '" alt="">' : esc((name || '?').split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase())) + '</div>'; }
     function ten(r) { return (Math.round((Number(r) || 0) * 20) / 10).toFixed(1).replace(/\.0$/, '') + '/10'; }   // 1-5 stars -> score out of 10
     function stars(r) { var h = '', v = Math.round((r || 0) * 2) / 2; for (var i = 1; i <= 5; i++) h += v >= i ? '<i class="fas fa-star"></i>' : v >= i - .5 ? '<i class="fas fa-star-half-stroke"></i>' : '<i class="fas fa-star off"></i>'; return '<span class="tp-stars" aria-label="' + v + ' out of 5">' + h + '</span>'; }
@@ -679,7 +753,7 @@ body.tp-lock { overflow: hidden; }
             return matchOf(b).score - matchOf(a).score || b.rating_avg - a.rating_avg;
         });
         if (!list.length) {
-            $('teacherGrid').innerHTML = '<div class="tp-card" style="grid-column:1/-1;"><div class="tp-empty"><i class="fas fa-user-slash"></i><h3>' + (TEACHERS.length ? 'No teachers match' : 'No teachers yet') + '</h3><p>' + (TEACHERS.length ? 'Try another subject or clear the filters.' : 'Teachers appear here once they join eSchool.') + '</p></div></div>';
+            $('teacherGrid').innerHTML = '<div class="tp-card" style="grid-column:1/-1;"><div class="tp-empty"><i class="fas fa-user-slash"></i><h3>' + (TEACHERS.length ? 'No teachers match' : 'No teachers yet') + '</h3><p>' + (TEACHERS.length ? 'Try another subject or clear the filters.' : 'Teachers appear here once they join Eschool.') + '</p></div></div>';
             return;
         }
         var hired = {}, hiredEng = {}, RANK = { accepted: 3, pending: 2, active: 1 };
@@ -719,7 +793,7 @@ body.tp-lock { overflow: hidden; }
     $('teacherGrid').addEventListener('click', function (e) {
         var p = e.target.closest('[data-profile]'), r = e.target.closest('[data-request]');
         var py = e.target.closest('[data-pay]');
-        if (p) openProfile(Number(p.dataset.profile)); else if (r) openRequest(Number(r.dataset.request)); else if (py) openPay(Number(py.dataset.pay));
+        if (p) openTeacherPage(Number(p.dataset.profile)); else if (r) openRequest(Number(r.dataset.request)); else if (py) openPay(Number(py.dataset.pay));
     });
 
     async function loadTeachers() {
@@ -732,7 +806,8 @@ body.tp-lock { overflow: hidden; }
         } catch (e) { $('teacherGrid').innerHTML = ''; say($('findNote'), "Couldn't load teachers. " + e.message, 'bad'); }
     }
 
-    /* ---------- profile ---------- */
+    /* ---------- profile: the normal teacher profile page (the same one learners see) ---------- */
+    function openTeacherPage(id) { location.href = '/profile/' + Number(id); }
     async function openProfile(id) {
         $('profBody').innerHTML = '<div class="tp-loading">Loading profile...</div>'; $('profTitle').textContent = 'Teacher';
         openM('profModal');
@@ -758,9 +833,9 @@ body.tp-lock { overflow: hidden; }
         var h = '<div class="tp-pf-hero">' + avatar(t.name, t.avatar_url, 'lg') + '<div class="tp-pf-id">' +
             '<h3>' + esc(t.name) + (t.has_profile ? ' <i class="fas fa-circle-check" style="color:var(--tp-info);font-size:1rem;" title="Has a full teaching profile"></i>' : '') + '</h3>' +
             '<div class="tp-sub" style="margin:2px 0 6px;">' + esc(t.headline) + '</div>' +
-            (t.score != null ? '<div class="tp-sub" style="margin:0 0 4px;"><strong style="color:var(--tp-accent,#2563EB);">eSchool score ' + t.score + '/10</strong> · ' + esc((t.score_reasons || []).join(' · ')) + '</div>' : '') +
+            (t.score != null ? '<div class="tp-sub" style="margin:0 0 4px;"><strong style="color:var(--tp-accent,#2563EB);">Eschool score ' + t.score + '/10</strong> · ' + esc((t.score_reasons || []).join(' · ')) + '</div>' : '') +
             '<div class="tp-rating">' + stars(t.rating_avg) + ' <strong>' + (t.rating_count ? ten(t.rating_avg) : 'New') + '</strong> <span class="tp-muted">(' + t.rating_count + ' review' + (t.rating_count === 1 ? '' : 's') + ')</span></div>' +
-            '<div class="tp-pf-facts">' + fact('fa-briefcase', t.experience_label ? (t.experience_years ? t.experience_label + ' on eSchool' : 'New on eSchool') : '') +
+            '<div class="tp-pf-facts">' + fact('fa-briefcase', t.experience_label ? (t.experience_years ? t.experience_label + ' on Eschool' : 'New on Eschool') : '') +
                 fact('fa-reply', reply ? 'Replies ' + reply.toLowerCase() : '') + '</div>' +
             '<div class="tp-tags" style="margin-top:10px;">' + (t.accepting ? '<span class="tp-pill active"><i class="fas fa-circle" style="font-size:.45rem;"></i> Taking new students</span>' : '<span class="tp-pill ended">Not taking new students</span>') +
                 (t.hired ? '<span class="tp-pill accepted"><i class="fas fa-user-check"></i> Has taught your family</span>' : '') + '</div>' +
@@ -779,7 +854,7 @@ body.tp-lock { overflow: hidden; }
         if (t.qualifications.length) main += '<div><div class="tp-h">Qualifications</div><ul class="tp-pf-list">' + t.qualifications.map(function (q) { return '<li><i class="fas fa-award"></i><span>' + esc(q) + '</span></li>'; }).join('') + '</ul></div>';
         if ((t.subject_lessons || []).length) {
             var top = t.subject_lessons[0].lessons || 1;
-            main += '<div><div class="tp-h">Private lessons taught on eSchool</div>' + t.subject_lessons.map(function (s) { return '<div class="tp-dist-row"><span style="width:110px;color:var(--tp-text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(s.subject) + '</span><div class="tp-bar"><i style="width:' + Math.round(s.lessons / top * 100) + '%;background:var(--tp-accent);"></i></div><span style="width:30px;text-align:right;">' + s.lessons + '</span></div>'; }).join('') + '</div>';
+            main += '<div><div class="tp-h">Private lessons taught on Eschool</div>' + t.subject_lessons.map(function (s) { return '<div class="tp-dist-row"><span style="width:110px;color:var(--tp-text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(s.subject) + '</span><div class="tp-bar"><i style="width:' + Math.round(s.lessons / top * 100) + '%;background:var(--tp-accent);"></i></div><span style="width:30px;text-align:right;">' + s.lessons + '</span></div>'; }).join('') + '</div>';
         }
         if (mine.length) {
             main += '<div><div class="tp-h">Your family with ' + esc(t.name.split(' ')[0]) + '</div>' + mine.map(function (e) {
@@ -816,10 +891,10 @@ body.tp-lock { overflow: hidden; }
                 (t.hired ? '<a class="tp-btn tp-btn-ghost" href="/messages"><i class="fas fa-envelope"></i> Message</a>' : '') +
             '</div></div>' +
             '<div class="tp-pf-box"><div class="tp-h">How paying works</div><ul class="tp-pf-list">' +
-                '<li><i class="fas fa-check"></i><span>You pay eSchool, not the teacher directly.</span></li>' +
+                '<li><i class="fas fa-check"></i><span>You pay Eschool, not the teacher directly.</span></li>' +
                 '<li><i class="fas fa-check"></i><span>Pay for a few lessons at a time.</span></li>' +
                 '<li><i class="fas fa-check"></i><span>You see every lesson, message and call.</span></li>' +
-                '<li><i class="fas fa-check"></i><span>Lessons happen in an eSchool call, so eSchool can see each one took place.</span></li>' +
+                '<li><i class="fas fa-check"></i><span>Lessons happen in an Eschool call, so Eschool can see each one took place.</span></li>' +
                 '<li><i class="fas fa-check"></i><span>Lessons not taught can be refunded through Help &amp; Support.</span></li></ul></div>';
 
         h += '<div class="tp-pf-grid"><div class="tp-pf-main">' + main + '</div><aside class="tp-pf-side">' + side + '</aside></div>';
@@ -846,7 +921,7 @@ body.tp-lock { overflow: hidden; }
         if (!CHILDREN.length) { showTab('find'); say($('findNote'), 'Link a child first, then you can request a teacher for them.', 'bad'); return; }
         reqTeacher = TEACHERS.filter(function (x) { return x.id === id; })[0]; if (!reqTeacher) return;
         $('reqTitle').textContent = 'Request lessons with ' + reqTeacher.name;
-        $('reqSub').textContent = reqTeacher.rate ? money(reqTeacher.rate) + ' a lesson · lessons happen in an eSchool call' : 'The teacher sets the price when accepting';
+        $('reqSub').textContent = reqTeacher.rate ? money(reqTeacher.rate) + ' a lesson · lessons happen in an Eschool call' : 'The teacher sets the price when accepting';
         $('rqChild').innerHTML = CHILDREN.map(function (c) { return '<option value="' + c.id + '"' + (String(c.id) === childSel ? ' selected' : '') + '>' + esc(c.name) + (c.grade ? ' · ' + esc(c.grade) : '') + '</option>'; }).join('');
         fillSubjects();
         $('rqMode').value = 'online';
@@ -906,7 +981,7 @@ body.tp-lock { overflow: hidden; }
         if (checking && e.status === 'accepted') idx = 3;
         var used = e.sessions_used, paid = e.sessions_paid, pct = paid ? Math.round(used / paid * 100) : 0;
         var call = '';
-        if (e.status === 'accepted') call = '<div class="tp-callout"><i class="fas fa-circle-info"></i><span><strong>' + esc(e.teacher.name) + ' accepted</strong> at ' + money(e.rate) + ' per ' + e.session_minutes + ' min lesson.' + (e.teacher_note ? ' "' + esc(e.teacher_note) + '"' : '') + (checking ? ' Your payment is being checked by eSchool; lessons start once it is confirmed.' : ' Pay for lessons so they can start.') + '</span></div>';
+        if (e.status === 'accepted') call = '<div class="tp-callout"><i class="fas fa-circle-info"></i><span><strong>' + esc(e.teacher.name) + ' accepted</strong> at ' + money(e.rate) + ' per ' + e.session_minutes + ' min lesson.' + (e.teacher_note ? ' "' + esc(e.teacher_note) + '"' : '') + (checking ? ' Your payment is being checked by Eschool; lessons start once it is confirmed.' : ' Pay for lessons so they can start.') + '</span></div>';
         if (e.status === 'pending') call = '<div class="tp-callout warn"><i class="fas fa-hourglass-half"></i><span>Sent ' + esc(ago(e.created_at)) + '. You\'ll get a notification when ' + esc(e.teacher.name) + ' replies.</span></div>';
         if (e.status === 'declined') call = '<div class="tp-callout warn"><i class="fas fa-circle-xmark"></i><span>' + esc(e.teacher.name) + ' can\'t take this on' + (e.teacher_note ? ': "' + esc(e.teacher_note) + '"' : '.') + ' Try another teacher.</span></div>';
         if (e.status === 'active' && e.sessions_left === 0 && !e.sessions_booked) call = '<div class="tp-callout warn"><i class="fas fa-coins"></i><span>All paid lessons have been used. Pay for more to keep going.</span></div>';
@@ -983,8 +1058,8 @@ body.tp-lock { overflow: hidden; }
         var b;
         if ((b = t.closest('[data-pay]'))) openPay(Number(b.dataset.pay));
         else if ((b = t.closest('[data-log]'))) openLog(Number(b.dataset.log));
-        else if ((b = t.closest('[data-lessons]'))) { var e = engById(Number(b.dataset.lessons)); $('sTeacher').value = String(e.teacher.id); $('sChild').value = String(e.child.id); $('sWhen').value = 'all'; renderSessions(); showTab('sessions'); }
-        else if ((b = t.closest('[data-profile]'))) openProfile(Number(b.dataset.profile));
+        else if ((b = t.closest('[data-lessons]'))) { var e = engById(Number(b.dataset.lessons)); monPair = e.id; ttKid = ''; renderSessions(); showTab('sessions'); setTimeout(function () { $('monCard').scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); }
+        else if ((b = t.closest('[data-profile]'))) openTeacherPage(Number(b.dataset.profile));
         else if ((b = t.closest('[data-review]'))) openProfile(Number(b.dataset.review)).then(function () { setTimeout(function () { var r = $('revText') || $('profReviews'); if (r) { r.scrollIntoView({ block: 'center' }); if (r.focus) r.focus(); } }, 60); });
         else if ((b = t.closest('[data-request]'))) openRequest(Number(b.dataset.request));
         else if ((b = t.closest('[data-cancel]'))) { var id = Number(b.dataset.cancel); confirmIt('Withdraw this request?', 'The teacher will be told. Nothing has been charged.', 'Withdraw', async function () { await post('/api/tutoring/' + id + '/cancel'); await loadMine(); say($('mineNote'), 'Request withdrawn.', 'ok'); }); }
@@ -995,7 +1070,7 @@ body.tp-lock { overflow: hidden; }
         try { pv = await api('/api/tutoring/' + id + '/end-preview'); } catch (x) { pv = null; }
         var text = 'You can end lessons at any time. Booked lessons that haven\'t happened are cancelled. ';
         if (pv) text += e.teacher.name + ' keeps the money for the ' + pv.taught + ' lesson' + (pv.taught === 1 ? '' : 's') + ' already taught. ' +
-            (pv.refund_lessons ? 'eSchool sends you back ' + money(pv.refund_amount) + ' for the ' + pv.refund_lessons + ' paid lesson' + (pv.refund_lessons === 1 ? '' : 's') + ' not taught.' : 'There are no unused paid lessons to refund.');
+            (pv.refund_lessons ? 'Eschool sends you back ' + money(pv.refund_amount) + ' for the ' + pv.refund_lessons + ' paid lesson' + (pv.refund_lessons === 1 ? '' : 's') + ' not taught.' : 'There are no unused paid lessons to refund.');
         confirmIt('End lessons with ' + e.teacher.name + '?', text, 'End lessons', async function () {
             var r = await post('/api/tutoring/' + id + '/cancel'); await loadMine();
             var msg = 'Lessons ended.' + (r.refund_lessons ? ' ' + money(r.refund_amount) + ' will be sent back to you; you\'ll get a notification when it\'s done.' : '');
@@ -1050,7 +1125,7 @@ body.tp-lock { overflow: hidden; }
             a += '<button type="button" class="tp-btn tp-btn-ghost tp-btn-sm" data-log="' + e.id + '"><i class="fas fa-comments"></i> Messages &amp; calls</button>';
             if (e.status === 'active') a += '<button type="button" class="tp-btn tp-btn-danger tp-btn-sm" data-end="' + e.id + '"><i class="fas fa-circle-stop"></i> End lessons</button>';
             var warn = e.status === 'active' && e.sessions_left === 0 && !e.sessions_booked && !chk ? '<div class="tp-callout warn" style="margin-top:8px;"><i class="fas fa-coins"></i><span>All paid lessons are used. Pay for more to keep going.</span></div>' : '';
-            if (chk) warn = '<div class="tp-callout" style="margin-top:8px;"><i class="fas fa-clock"></i><span>Your latest payment is being checked by eSchool.</span></div>';
+            if (chk) warn = '<div class="tp-callout" style="margin-top:8px;"><i class="fas fa-clock"></i><span>Your latest payment is being checked by Eschool.</span></div>';
             return '<div class="tp-mg-row"><div class="tp-mg-row-top"><span><strong>' + esc(e.child.name) + '</strong> · ' + esc(e.subject) + '</span><span class="tp-muted">' + (e.rate ? money(e.rate) + ' a lesson' : '') + '</span></div>' +
                 '<div class="tp-mg-meta">' + e.sessions_used + ' of ' + e.sessions_paid + ' paid lessons used · ' + e.sessions_booked + ' booked · ' + e.sessions_left + ' left to book' + (e.status === 'ended' ? ' · ended ' + esc(dt(e.ended_at)) : nx ? ' · next ' + esc(dt(nx.starts_at, WHEN)) : '') + '</div>' +
                 '<div class="tp-bar ' + (pct >= 80 && e.status === 'active' ? 'warn' : '') + '"><i style="width:' + pct + '%"></i></div>' + warn +
@@ -1076,8 +1151,8 @@ body.tp-lock { overflow: hidden; }
     var payMethod = 'code', payPoll = null;
     function payMethodsAvail() {
         var m = [];
+        if (PAYOPT.card) m.push(['card', 'fa-credit-card', 'Card', 'Card, Apple Pay, Google Pay and more, through Stripe']);
         if (PAYOPT.mpesa_prompt) m.push(['mpesa', 'fa-mobile-screen-button', 'M-Pesa prompt', 'Get a PIN prompt on your phone']);
-        if (PAYOPT.card) m.push(['card', 'fa-credit-card', 'Card', 'Visa or Mastercard, through Stripe']);
         if (PAYOPT.ready) m.push(['code', 'fa-receipt', 'M-Pesa code', 'Already paid? Enter the code']);
         return m;
     }
@@ -1134,7 +1209,7 @@ body.tp-lock { overflow: hidden; }
                 var r = await api('/api/tutoring/payments/' + pid + '/status');
                 if (r.status === 'confirmed') return paidOk(r, e);
                 if (r.status === 'failed') { payView('fields'); say($('payNote'), 'The payment did not go through' + (r.note ? ': ' + r.note : '') + '. Nothing was taken. You can try again.', 'bad'); $('paySend').disabled = false; loadMine(); return; }
-                if (r.status === 'pending') { $('payDoneTitle').textContent = 'Payment sent for checking'; $('payDoneText').textContent = r.note || 'eSchool will check it and tell you.'; payView('done'); loadMine(); return; }
+                if (r.status === 'pending') { $('payDoneTitle').textContent = 'Payment sent for checking'; $('payDoneText').textContent = r.note || 'Eschool will check it and tell you.'; payView('done'); loadMine(); return; }
             } catch (err) { /* keep trying */ }
             if (tries > 0) watchPayment(pid, e, tries - 1);
             else { payView('fields'); $('paySend').disabled = false; say($('payNote'), "We haven't heard back yet. If money left your phone, it will show here within a few minutes; don't pay twice.", 'info'); }
@@ -1219,42 +1294,179 @@ body.tp-lock { overflow: hidden; }
     function lastLogEng() { var name = $('logSub').textContent; return ENG.filter(function (e) { return name.indexOf(e.teacher.name + ' and ' + e.child.first_name) === 0; })[0] || { teacher: { name: 'Teacher' }, child: { first_name: 'Child' } }; }
 
     /* ---------- lessons ---------- */
-    function renderSessions() {
-        var ch = $('sChild').value, te = $('sTeacher').value, when = $('sWhen').value, now = new Date().toISOString();
-        var all = [];
-        ENG.forEach(function (e) { (e.sessions || []).forEach(function (s) { all.push({ s: s, e: e }); }); });
-        var list = all.filter(function (x) {
-            if (ch && String(x.e.child.id) !== ch) return false;
-            if (te && String(x.e.teacher.id) !== te) return false;
-            var upcoming = x.s.status === 'scheduled';
-            return when === 'all' || (when === 'upcoming' ? upcoming : !upcoming);
-        }).sort(function (a, b) { return when === 'upcoming' ? a.s.starts_at.localeCompare(b.s.starts_at) : b.s.starts_at.localeCompare(a.s.starts_at); });
-        if (!list.length) {
-            $('sessList').innerHTML = '<div class="tp-card"><div class="tp-empty"><i class="far fa-calendar"></i><h3>' + (when === 'upcoming' ? 'No upcoming lessons' : 'No lessons here') + '</h3><p>' + (ENG.some(function (e) { return e.status === 'active'; }) ? 'Teachers book lessons from the ones you have paid for. They show up here with the time, topic and link.' : 'Lessons show up here once a teacher you hired books them.') + '</p></div></div>';
+    /* ---------- Lessons: timetable + how the teaching is going ---------- */
+    var KID_COLORS = ['#4361ee', '#db2777', '#0d9488', '#ea580c', '#7c3aed', '#0891b2'];
+    var ttWeek = 0, ttKid = '', monPair = null;
+    function kidColor(id) {
+        var kids = []; ENG.forEach(function (e) { if (kids.indexOf(e.child.id) < 0) kids.push(e.child.id); });
+        return KID_COLORS[Math.max(0, kids.indexOf(id)) % KID_COLORS.length];
+    }
+    function weekStart(offset) {
+        var d = new Date(); d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + offset * 7);
+        return d;
+    }
+    function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+    function timeOf(d) { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+    /* what happened in a lesson, in words: [css, text] */
+    function lessonState(s, e) {
+        var first = e.child.first_name, d = new Date(s.starts_at), mins = s.together_seconds ? Math.round(s.together_seconds / 60) : null;
+        if (s.status === 'scheduled') {
+            var diff = d - new Date();
+            if (diff < -(s.minutes || 60) * 60000) return ['gray', 'Waiting for the check'];
+            if (diff <= 0) return ['next', 'On now'];
+            if (diff < 24 * 3600000) return ['next', diff < 3600000 ? 'In ' + Math.max(1, Math.round(diff / 60000)) + ' min' : 'In ' + Math.round(diff / 3600000) + ' h'];
+            return ['next', 'Booked'];
+        }
+        if (s.status === 'cancelled') return ['gray', 'Cancelled'];
+        if (s.status === 'review') return ['gray', 'Being checked'];
+        if (s.outcome === 'learner_absent' || (s.status === 'missed' && s.outcome !== 'not_taught' && s.outcome !== 'refund')) return ['abs', first + " didn't join"];
+        if (s.status === 'missed' || s.outcome === 'not_taught' || s.outcome === 'refund') return ['bad', "Teacher didn't come"];
+        if (s.outcome === 'moved') return ['gray', 'Moved'];
+        return ['ok', 'Taught' + (mins ? ' · ' + mins + ' min' : '')];
+    }
+    function engsWithLessons() { return ENG.filter(function (e) { return ['active', 'ended', 'accepted'].indexOf(e.status) > -1; }); }
+
+    function renderTimetable() {
+        var ws = weekStart(ttWeek), we = new Date(ws); we.setDate(we.getDate() + 7);
+        var last = new Date(we); last.setDate(last.getDate() - 1);
+        $('ttLabel').textContent = ws.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' – ' + last.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+        $('ttToday').hidden = ttWeek === 0;
+        var kids = {}; ENG.forEach(function (e) { kids[e.child.id] = e.child.first_name; });
+        var ids = Object.keys(kids);
+        $('ttChips').innerHTML = ids.length > 1 ? ['<button type="button" class="tp-chip" data-tt-kid="" aria-pressed="' + (!ttKid) + '">All children</button>'].concat(ids.map(function (id) {
+            return '<button type="button" class="tp-chip" data-tt-kid="' + id + '" aria-pressed="' + (ttKid === id) + '">' + esc(kids[id]) + '</button>'; })).join('') : '';
+        var items = [];
+        ENG.forEach(function (e) {
+            if (ttKid && String(e.child.id) !== ttKid) return;
+            (e.sessions || []).forEach(function (s) { var d = new Date(s.starts_at); if (d >= ws && d < we) items.push({ s: s, e: e, d: d }); });
+        });
+        items.sort(function (a, b) { return a.d - b.d; });
+        var today = new Date(), html = '';
+        for (var i = 0; i < 7; i++) {
+            var day = new Date(ws); day.setDate(ws.getDate() + i);
+            var mine = items.filter(function (x) { return sameDay(x.d, day); });
+            html += '<div class="tp-day' + (sameDay(day, today) ? ' today' : '') + (mine.length ? '' : ' empty') + '"><div class="tp-day-n"><span>' + esc(day.toLocaleDateString([], { weekday: 'short' })) + '</span><span>' + day.getDate() + (sameDay(day, today) ? ' · today' : '') + '</span></div>' +
+                mine.map(function (x) {
+                    var st = lessonState(x.s, x.e), canCancel = x.s.status === 'scheduled' && (x.d - new Date()) > 2 * 3600000;
+                    return '<div class="tp-ls' + (x.s.status === 'scheduled' ? '' : ' past') + '" style="--kc:' + kidColor(x.e.child.id) + '">' +
+                        '<b>' + esc(timeOf(x.d)) + ' · ' + esc(x.e.subject) + '</b><small>' + esc(x.e.teacher.name) + ' · ' + esc(x.e.child.first_name) + '</small>' +
+                        (x.s.topic ? '<small>Topic: ' + esc(x.s.topic) + '</small>' : '') +
+                        '<span class="tp-tag ' + st[0] + '">' + esc(st[1]) + '</span>' +
+                        (canCancel ? '<br><button type="button" class="tp-ls-x" data-cancel-lesson="' + x.s.id + '">Cancel</button>' : '') + '</div>';
+                }).join('') + '</div>';
+        }
+        $('ttWeek').innerHTML = html;
+        var any = ENG.some(function (e) { return (e.sessions || []).length; });
+        $('ttLegend').innerHTML = (ids.length ? ids.map(function (id) { return '<span><i class="k" style="background:' + kidColor(Number(id)) + '"></i>' + esc(kids[id]) + '</span>'; }).join('') : '') +
+            '<span>' + (items.length ? 'The teacher sets the times. ' + (ids.length > 1 ? 'Your children see' : esc(kids[ids[0]] || 'Your child') + ' sees') + ' the same lessons on their Schedule.'
+                : any ? 'No lessons this week.' + nextHint() : 'Lessons show here once a teacher you hired books them.') + '</span>';
+        function nextHint() {
+            var up = []; ENG.forEach(function (e) { if (ttKid && String(e.child.id) !== ttKid) return; (e.sessions || []).forEach(function (s) { if (s.status === 'scheduled' && new Date(s.starts_at) > new Date()) up.push(s.starts_at); }); });
+            if (!up.length) return '';
+            up.sort(); var d = new Date(up[0]);
+            return ' Next lesson: ' + d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + timeOf(d) + '.';
+        }
+    }
+
+    function renderMonitor() {
+        var pairs = engsWithLessons();
+        if (!pairs.length) {
+            $('monChips').innerHTML = '';
+            $('monBody').innerHTML = '<div class="tp-empty"><i class="fas fa-chalkboard-user"></i><h3>No teacher yet</h3><p>Once you hire a teacher, you can follow every lesson here: what was taught, attendance, notes, homework and how the grade changes.</p><button type="button" class="tp-btn tp-btn-primary" data-goto="find">Find a teacher</button></div>';
             return;
         }
-        $('sessList').innerHTML = list.map(function (x) {
-            var s = x.s, e = x.e, d = new Date(s.starts_at), past = s.status !== 'scheduled';
-            var soon = !past && (d - new Date()) < 15 * 60000 && (d - new Date()) > -s.minutes * 60000;
-            var notes = '';
-            if (s.status === 'completed' || s.status === 'missed') {
-                notes = '<div class="tp-sess-notes">' + (s.status === 'completed' ? '<strong>' + (s.child_attended === 0 ? esc(e.child.first_name) + ' did not attend.' : esc(e.child.first_name) + ' attended.') + '</strong> ' : '<strong>Marked as missed.</strong> ') +
-                        (s.teacher_notes ? esc(s.teacher_notes) : '<span class="tp-muted">No notes from the teacher.</span>') + (s.homework ? '<br><strong>Homework:</strong> ' + esc(s.homework) : '') + '</div>';
+        if (!monPair || !pairs.some(function (e) { return e.id === monPair; })) monPair = (pairs.filter(function (e) { return e.status === 'active'; })[0] || pairs[0]).id;
+        $('monChips').innerHTML = pairs.length > 1 ? pairs.map(function (e) {
+            return '<button type="button" class="tp-chip" data-mon="' + e.id + '" aria-pressed="' + (e.id === monPair) + '">' + esc(e.teacher.name.split(' ')[0]) + ' · ' + esc(e.child.first_name) + ' · ' + esc(e.subject) + '</button>'; }).join('') : '';
+        var e = engById(monPair), ss = (e.sessions || []).slice();
+        var first = e.child.first_name, tfirst = e.teacher.name.split(' ')[0];
+        var states = ss.map(function (s) { return lessonState(s, e)[0]; });
+        var taught = ss.filter(function (s) { return s.status === 'completed' && s.outcome !== 'learner_absent'; }).length;
+        var kidMissed = states.filter(function (x) { return x === 'abs'; }).length;
+        var tMissed = states.filter(function (x) { return x === 'bad'; }).length;
+        var since = e.responded_at || e.created_at;
+        var head = '<div class="tp-mon-who">' + avatar(e.teacher.name, e.teacher.avatar_url) + '<div><h3>' + esc(e.teacher.name) + ' teaching ' + esc(first) + '</h3><p>' + esc(e.subject) +
+            (since ? ' · since ' + esc(new Date(since).toLocaleDateString([], { day: 'numeric', month: 'short' })) : '') + ' · ' + e.sessions_per_week + ' lesson' + (e.sessions_per_week === 1 ? '' : 's') + ' a week' +
+            (e.status === 'ended' ? ' · ended' : '') + '</p></div></div>';
+        var stats = '<div class="tp-mon-stats"><div class="tp-mon-stat"><b>' + taught + '</b><span>Lessons taught</span></div>' +
+            '<div class="tp-mon-stat"><b>' + kidMissed + '</b><span>' + esc(first) + ' missed</span></div>' +
+            '<div class="tp-mon-stat"><b>' + tMissed + '</b><span>Teacher missed</span></div>' +
+            '<div class="tp-mon-stat"><b>' + ((e.sessions_left || 0) + (e.sessions_booked || 0)) + '</b><span>Paid, still to come</span></div></div>';
+        // last 10 lessons, oldest first, plus the next one
+        var done = ss.filter(function (s) { return s.status !== 'scheduled' && s.status !== 'cancelled'; }).sort(function (a, b) { return a.starts_at.localeCompare(b.starts_at); }).slice(-10);
+        var nxt = ss.filter(function (s) { return s.status === 'scheduled'; }).sort(function (a, b) { return a.starts_at.localeCompare(b.starts_at); })[0];
+        var sq = done.map(function (s) { var st = lessonState(s, e); return '<i class="a-' + ({ ok: 'ok', abs: 'abs', bad: 'bad' }[st[0]] || 'rev') + '" title="' + esc(new Date(s.starts_at).toLocaleDateString([], { day: 'numeric', month: 'short' }) + ': ' + st[1]) + '"></i>'; }).join('') +
+            (nxt ? '<i class="a-next" title="Next lesson"></i>' : '');
+        var att = '<div class="tp-lbl">Last ' + (done.length || '') + ' lesson' + (done.length === 1 ? '' : 's') + '</div>' + (sq ? '<div class="tp-att">' + sq + '</div>' +
+            '<div class="tp-legend" style="margin-top:6px"><span><i class="k a-ok"></i>Taught</span><span><i class="k a-abs"></i>' + esc(first) + ' missed</span><span><i class="k a-bad"></i>Teacher missed</span><span><i class="k a-rev"></i>Being checked</span></div>'
+            : '<p class="tp-sub" style="margin:0">No lessons yet.</p>');
+        var g = e.grade_change, gr = '';
+        if (g) {
+            var col = function (p) { return p >= 85 ? 'var(--tp-ok)' : p >= 70 ? 'var(--tp-info)' : p >= 60 ? 'var(--tp-warn)' : 'var(--tp-bad)'; };
+            var part = function (x) { return x ? '<span class="L" style="color:' + col(x.percent) + '">' + esc(x.letter) + '</span><span>' + x.percent + '%</span>' : '<span class="tp-muted">no results</span>'; };
+            gr = '<div class="tp-lbl">' + esc(first) + "'s " + esc(g.name) + ' grade</div><div class="tp-grade-ch' + (g.change > 0 ? ' up' : '') + '"><span>Before lessons</span>' + part(g.before) + '<span aria-hidden="true">→</span><span>Now</span>' + part(g.now) +
+                (g.change !== null ? '<span class="d" style="color:' + (g.change > 0 ? 'var(--tp-ok)' : g.change < 0 ? 'var(--tp-bad)' : 'var(--tp-text-3)') + '">' + (g.change > 0 ? '+' : '') + g.change + ' points</span>' : '') + '</div>' +
+                '<p class="tp-sub" style="margin:6px 0 0">From ' + esc(first) + "'s " + esc(g.name) + ' module tests and quizzes on Eschool.' + (g.now ? '' : ' It shows once ' + esc(first) + ' takes a test or quiz in this course.') + '</p>';
+        }
+        // lesson by lesson, newest first
+        var log = ss.filter(function (s) { return s.status !== 'cancelled'; }).sort(function (a, b) { return b.starts_at.localeCompare(a.starts_at); }).map(function (s) {
+            var st = lessonState(s, e), d = new Date(s.starts_at), when = d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+            var cls = s.status === 'scheduled' ? 'next' : { ok: '', abs: 'abs', bad: 'bad' }[st[0]] !== undefined ? { ok: '', abs: 'abs', bad: 'bad' }[st[0]] : 'rev';
+            var p = '';
+            if (s.status === 'scheduled') p = '<p><em>' + esc(timeOf(d)) + ' · ' + (s.minutes || 60) + ' min</em>' + (s.topic ? ' · Topic: ' + esc(s.topic) : '') + '</p>';
+            else {
+                if (s.topic) p += '<p><em>Topic:</em> ' + esc(s.topic) + '</p>';
+                if (s.teacher_notes) p += '<p><em>' + esc(tfirst) + "'s notes:</em> " + esc(s.teacher_notes) + '</p>';
+                if (s.homework) p += '<p><em>Homework:</em> ' + esc(s.homework) + '</p>';
+                if (!s.topic && !s.teacher_notes && !s.homework && st[0] === 'ok') p += '<p class="tp-muted">No notes from the teacher for this lesson.</p>';
+                if (s.parent_report) p += '<p><em>You reported:</em> ' + esc(s.parent_report) + '</p>';
             }
-            var rate = '';
-            if (s.status === 'completed') rate = '<span class="tp-sub">Your rating</span><div class="tp-rate" data-rate-session="' + s.id + '">' + [5, 4, 3, 2, 1].map(function (n) { return '<button type="button" data-star="' + n + '" aria-label="Rate ' + (n * 2) + ' out of 10" class="' + ((s.parent_rating || 0) >= n ? 'on' : '') + '"><i class="fas fa-star"></i></button>'; }).join('') + '</div>';
-            return '<div class="tp-sess' + (past ? ' past' : '') + '"><div class="tp-date"><b>' + d.getDate() + '</b><small>' + esc(d.toLocaleDateString([], { month: 'short' })) + '</small></div><div class="tp-sess-body">' +
-                '<div class="tp-sess-top"><h4>' + esc(e.subject) + (s.topic ? ': ' + esc(s.topic) : '') + '</h4><span class="tp-pill ' + esc(s.status) + '">' + esc({ scheduled: 'Booked', completed: 'Done', missed: 'Missed', review: 'Being checked', cancelled: 'Cancelled' }[s.status] || s.status) + '</span></div>' +
-                '<div class="tp-sess-meta"><span><i class="far fa-clock"></i> ' + esc(d.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })) + ' · ' + s.minutes + ' min</span><span><i class="fas fa-user"></i> ' + esc(e.teacher.name) + '</span><span><i class="fas fa-child"></i> ' + esc(e.child.first_name) + '</span></div>' +
-                notes + (s.parent_report ? '<div class="tp-callout warn"><i class="fas fa-flag"></i><span>You reported: ' + esc(s.parent_report) + '</span></div>' : '') +
-                '<div class="tp-sess-actions">' + (s.status === 'scheduled' && !past && (d - new Date()) > 2 * 3600000 ? '<button type="button" class="tp-btn tp-btn-ghost tp-btn-sm" data-cancel-lesson="' + s.id + '"><i class="fas fa-calendar-xmark"></i> Cancel this lesson</button>' : '') + (!past && s.link ? '<a class="tp-btn ' + (soon ? 'tp-btn-primary' : 'tp-btn-ghost') + ' tp-btn-sm" href="' + esc(s.link) + '" target="_blank" rel="noopener noreferrer"><i class="fas fa-video"></i> Lesson link</a>' : '') + rate +
-                    (s.status !== 'cancelled' && !s.parent_report ? '<button type="button" class="tp-btn tp-btn-ghost tp-btn-sm" data-report="' + s.id + '" style="margin-left:auto;"><i class="fas fa-flag"></i> Report a problem</button>' : '') + '</div>' +
-                '<div class="tp-note" id="sessNote-' + s.id + '" aria-live="polite"></div></div></div>';
+            var acts = '';
+            if (s.status === 'completed') acts += '<div class="tp-rate" data-rate-session="' + s.id + '" aria-label="Rate this lesson">' + [5, 4, 3, 2, 1].map(function (n) { return '<button type="button" data-star="' + n + '" aria-label="Rate ' + n + ' out of 5" class="' + ((s.parent_rating || 0) >= n ? 'on' : '') + '"><i class="fas fa-star"></i></button>'; }).join('') + '</div>';
+            if (s.status === 'scheduled' && (d - new Date()) > 2 * 3600000) acts += '<button type="button" class="tp-btn tp-btn-ghost tp-btn-sm" data-cancel-lesson="' + s.id + '"><i class="fas fa-calendar-xmark"></i> Cancel</button>';
+            if (s.status !== 'scheduled' && !s.parent_report) acts += '<button type="button" class="tp-btn tp-btn-ghost tp-btn-sm" data-report="' + s.id + '"><i class="fas fa-flag"></i> Report a problem</button>';
+            return '<div class="tp-gi ' + cls + '"><h4>' + esc(when) + ' <span>· ' + esc(s.status === 'scheduled' ? (st[1] === 'Booked' ? 'next' : st[1].toLowerCase()) : st[1]) + '</span></h4>' + p +
+                (acts ? '<div class="tp-gi-acts">' + acts + '</div>' : '') + '<div class="tp-note" id="sessNote-' + s.id + '" aria-live="polite"></div></div>';
         }).join('');
+        var right = '<div class="tp-lbl" style="margin-top:0">Lesson by lesson</div>' + (log ? '<div class="tp-glog">' + log + '</div>' : '<p class="tp-sub">' + esc(tfirst) + ' books the lessons from the ones you paid for. Each one shows here with what happened.</p>') +
+            '<div class="tp-mon-acts"><a class="tp-btn tp-btn-ghost tp-btn-sm" href="/messages?user=' + e.teacher.id + '"><i class="fas fa-envelope"></i> Message ' + esc(tfirst) + '</a>' +
+            '<button type="button" class="tp-btn tp-btn-ghost tp-btn-sm" data-log="' + e.id + '"><i class="fas fa-comments"></i> Messages &amp; calls</button>' +
+            '<button type="button" class="tp-btn tp-btn-ghost tp-btn-sm" data-mon-report="' + e.id + '"><i class="fas fa-download"></i> Download report</button></div>';
+        $('monBody').innerHTML = '<div class="tp-mon"><div>' + head + stats + att + gr + '</div><div>' + right + '</div></div>';
     }
-    ['sChild', 'sTeacher', 'sWhen'].forEach(function (id) { $(id).addEventListener('change', renderSessions); });
+
+    function monitorReport(e) {
+        var L = [], first = e.child.first_name, g = e.grade_change;
+        L.push('Eschool lessons report: ' + e.teacher.name + ' teaching ' + e.child.name + ' (' + e.subject + ')');
+        L.push('Date: ' + new Date().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }), '');
+        var ss = (e.sessions || []).slice().sort(function (a, b) { return a.starts_at.localeCompare(b.starts_at); });
+        var c = { ok: 0, abs: 0, bad: 0 }; ss.forEach(function (s) { var k = lessonState(s, e)[0]; if (c[k] !== undefined) c[k]++; });
+        L.push('Lessons taught: ' + c.ok + '   ' + first + ' missed: ' + c.abs + '   Teacher missed: ' + c.bad + '   Paid, still to come: ' + ((e.sessions_left || 0) + (e.sessions_booked || 0)));
+        if (g) L.push(g.name + ' grade: before lessons ' + (g.before ? g.before.letter + ' (' + g.before.percent + '%)' : '-') + ', now ' + (g.now ? g.now.letter + ' (' + g.now.percent + '%)' : '-'));
+        L.push('', 'LESSONS');
+        ss.forEach(function (s) {
+            if (s.status === 'cancelled') return;
+            L.push('- ' + new Date(s.starts_at).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + ': ' + lessonState(s, e)[1] +
+                (s.topic ? ' | Topic: ' + s.topic : '') + (s.teacher_notes ? ' | Notes: ' + s.teacher_notes : '') + (s.homework ? ' | Homework: ' + s.homework : '') + (s.parent_rating ? ' | Your rating: ' + s.parent_rating + '/5' : ''));
+        });
+        var blob = new Blob([L.join('\n')], { type: 'text/plain' }), a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = ('lessons-' + first + '-' + e.subject).replace(/[^a-z0-9-]+/gi, '-').toLowerCase() + '.txt';
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    }
+
+    function renderSessions() { renderTimetable(); renderMonitor(); }
+    $('ttPrev').addEventListener('click', function () { ttWeek--; renderTimetable(); });
+    $('ttNext').addEventListener('click', function () { ttWeek++; renderTimetable(); });
+    $('ttToday').addEventListener('click', function () { ttWeek = 0; renderTimetable(); });
+    $('panel-sessions').addEventListener('click', function (ev) {
+        var k = ev.target.closest('[data-tt-kid]'); if (k) { ttKid = k.dataset.ttKid; renderTimetable(); return; }
+        var m = ev.target.closest('[data-mon]'); if (m) { monPair = Number(m.dataset.mon); renderMonitor(); return; }
+        var r = ev.target.closest('[data-mon-report]'); if (r) { monitorReport(engById(Number(r.dataset.monReport))); return; }
+        var l = ev.target.closest('[data-log]'); if (l) { openLog(Number(l.dataset.log)); }
+    });
     var repSession = null;
-    $('sessList').addEventListener('click', async function (ev) {
+    $('panel-sessions').addEventListener('click', async function (ev) {
         var star = ev.target.closest('[data-rate-session] [data-star]');
         if (star) {
             var box = star.closest('[data-rate-session]'), sid = Number(box.dataset.rateSession), n = Number(star.dataset.star);
@@ -1308,7 +1520,9 @@ body.tp-lock { overflow: hidden; }
     });
     /* opened from a teacher's profile: /parent-teacher?teacher=<id> */
     var askTeacher = Number(new URLSearchParams(location.search).get('teacher'));
-    if (askTeacher) openProfile(askTeacher);
+    if (askTeacher) loadTeachers().then(function () {
+        if (TEACHERS.some(function (t) { return t.id === askTeacher; })) openRequest(askTeacher); else openProfile(askTeacher);
+    });
 })();
 </script>
 {% endblock %}

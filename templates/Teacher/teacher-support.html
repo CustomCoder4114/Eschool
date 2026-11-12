@@ -7,11 +7,12 @@
       GET  /api/complaints/mine            your tickets and the team's replies
       POST /api/complaints                 send a ticket
       POST /api/complaints/<id>/close      you mark your own ticket solved
+      POST /api/complaints/<id>/add        add more to your ticket (reopens one resolved in the last 7 days)
+      POST /api/complaints/<id>/seen       you opened the team's reply (clears "New reply")
+    Links: /teacher-support#t<id> opens that ticket.
     Replies arrive in the notification bell too. The admin team answers on /admin_support.
     No pop-ups: every message is shown on the page.
 #}
-<!-- EmailJS (pinned): best-effort email alert to the support inbox; the ticket is saved on the server either way -->
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
 <style>
 /* ======================================================================
    HELP & SUPPORT (teachers)
@@ -127,7 +128,9 @@ body.dark-mode .hs-topic i { color: color-mix(in srgb, var(--c) 60%, #fff); }
 .hs-loading { padding: 26px; text-align: center; color: var(--hs-text-3); }
 
 /* layout */
-.hs-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: start; }
+.hs-grid { display: block; }
+.hs-times { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .78rem; color: var(--hs-text-3); margin-top: 6px; }
+.hs-times span { display: inline-flex; gap: 6px; align-items: center; }
 .hs-side { display: flex; flex-direction: column; gap: 14px; }
 .hs-urgent { border-left: 5px solid var(--hs-bad); }
 .hs-urgent .ic { background: var(--hs-bad-soft) !important; color: var(--hs-bad) !important; }
@@ -175,6 +178,13 @@ body.dark-mode .hs-topic i { color: color-mix(in srgb, var(--c) 60%, #fff); }
 .hs-wait { font-size: .84rem; color: var(--hs-text-3); display: flex; gap: 8px; align-items: flex-start; }
 .hs-ticket-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
+.hs-pill.new { background: var(--hs-accent); color: #fff; }
+.hs-ticket.fresh { box-shadow: 0 0 0 2px var(--hs-accent-line); }
+.hs-thread { display: flex; flex-direction: column; gap: 8px; }
+.hs-msg.added small { color: var(--hs-text-3); }
+.hs-add { display: flex; flex-direction: column; gap: 8px; }
+.hs-add .hs-textarea { min-height: 84px; }
+.st-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* FAQ */
 .hs-faq-group + .hs-faq-group { margin-top: 18px; }
 .hs-faq-group h3 { display: flex; align-items: center; gap: 10px; font-family: 'Poppins', sans-serif; font-size: 1rem; color: var(--hs-text); margin-bottom: 8px; }
@@ -250,7 +260,12 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
             <div class="hs-hero-icon" aria-hidden="true"><i class="fas fa-headset"></i></div>
             <div>
                 <h1>Help &amp; Support</h1>
-                <p>Answers to common questions, and a direct line to the eSchool team.</p>
+                <p>Answers to common questions, and a direct line to the Eschool team.</p>
+            </div>
+            <div class="hs-hero-stats" aria-label="Your tickets">
+                <div class="hs-hero-stat"><b id="hsStOpen">–</b><span>open</span></div>
+                <div class="hs-hero-stat"><b id="hsStNew">–</b><span>new replies</span></div>
+                <div class="hs-hero-stat"><b id="hsStDone">–</b><span>resolved</span></div>
             </div>
         </div>
     </header>
@@ -279,7 +294,9 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
             <section id="panel-faq" role="tabpanel" aria-labelledby="tab-faq" hidden>
                 <div class="hs-card">
                     <div class="hs-card-h"><span class="ic"><i class="fas fa-circle-question"></i></span><div><h2>Questions teachers ask</h2><p>Tap a question to see the answer.</p></div></div>
+                    <input class="hs-input" id="hsFaqQ" type="search" placeholder="Search the questions, e.g. payout, camera, review" aria-label="Search the questions" style="margin-bottom:12px">
                     <div id="hsFaq"></div>
+                    <div class="hs-empty" id="hsFaqNone" hidden><i class="fas fa-magnifying-glass"></i><h3>No question matches</h3><p>Ask the team directly and they'll answer.</p><button type="button" class="hs-btn hs-btn-primary" data-go="new"><i class="fas fa-pen-to-square"></i> Contact us</button></div>
                 </div>
             </section>
 
@@ -287,7 +304,8 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
             <!-- new ticket -->
             <section id="panel-new" role="tabpanel" aria-labelledby="tab-new" hidden>
                 <form class="hs-card" id="hsForm" novalidate>
-                    <div class="hs-card-h"><span class="ic"><i class="fas fa-pen-to-square"></i></span><div><h2>Contact the eSchool team</h2><p>We answer here and in your notification bell, usually within one working day.</p></div></div>
+                    <div class="hs-card-h"><span class="ic"><i class="fas fa-pen-to-square"></i></span><div><h2>Contact the Eschool team</h2><p>We answer here and in your notification bell.</p>
+                        <div class="hs-times"><span><i class="fas fa-bolt"></i> Urgent: within a few hours</span><span><i class="fas fa-clock"></i> Others: within 1 working day</span><span><i class="fas fa-money-bill-wave"></i> Payouts: usually the same day</span></div></div></div>
                     <div class="hs-note" id="hsFormNote" role="alert"></div>
                     <div class="hs-form">
                         <div class="hs-field full">
@@ -301,8 +319,9 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
                                 <option value="">Choose a topic</option>
                                 <option value="uploads">Uploads and resources</option>
                                 <option value="live">Live classes and the studio</option>
-                                <option value="tutoring">Private teaching and payments</option>
+                                <option value="tutoring">Private teaching, payouts and missed lessons</option>
                                 <option value="profile">My profile and reviews</option>
+                                <option value="schedule">Schedule and messages</option>
                                 <option value="safety">A learner or safety concern</option>
                                 <option value="account">My account and sign-in</option>
                                 <option value="technical">Something isn't working</option>
@@ -310,6 +329,7 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
                                 <option value="other">Something else</option>
                             </select>
                             <span class="hs-err" id="errCategory"></span>
+                            <span class="hs-hint" id="hsSafetyTip" hidden><span><i class="fas fa-triangle-exclamation" style="color:var(--hs-bad)"></i> If a child is in danger now, call your local emergency number first. In a live class, delete the message or pause the chat, then send this ticket.</span></span>
                         </div>
                         <div class="hs-field full">
                             <span class="lbl" id="hsPrioLbl">How urgent is it?</span>
@@ -328,7 +348,7 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
                         </div>
                     </div>
                     <div class="hs-form-foot" style="margin-top:16px;">
-                        <small><i class="fas fa-lock"></i> Only you and the eSchool support team can see this ticket.</small>
+                        <small><i class="fas fa-lock"></i> Only you and the Eschool support team can see this ticket.</small>
                         <button type="reset" class="hs-btn hs-btn-ghost">Clear</button>
                         <button type="submit" class="hs-btn hs-btn-primary" id="hsSend"><i class="fas fa-paper-plane"></i> Send ticket</button>
                     </div>
@@ -336,30 +356,12 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
             </section>
         </div>
 
-        <aside class="hs-side">
-            <div class="hs-card hs-urgent">
-                <div class="hs-card-h" style="margin-bottom:10px;"><span class="ic"><i class="fas fa-triangle-exclamation"></i></span><div><h3>Worried about a learner?</h3></div></div>
-                <ul class="hs-list" style="list-style:none;padding:0;">
-                    <li><i class="fas fa-phone"></i><span>If a child is in danger now, call <b>999</b> or <b>112</b> (Kenya).</span></li>
-                    <li><i class="fas fa-child-reaching"></i><span><b>Childline Kenya 116</b>: free, 24 hours, for any worry about a child's safety.</span></li>
-                    <li><i class="fas fa-shield-halved"></i><span>In a live class, delete the message or pause chat straight away, then send us an <b>Urgent</b> ticket under "A learner or safety concern".</span></li>
-                </ul>
-            </div>
-            <div class="hs-card">
-                <div class="hs-card-h" style="margin-bottom:10px;"><span class="ic"><i class="fas fa-clock"></i></span><div><h3>When we answer</h3><p>Times are East Africa Time.</p></div></div>
-                <div class="hs-hours"><span>Urgent tickets</span><b>Within a few hours</b><span>Other tickets</span><b>Within 1 working day</b><span>Payment checks</span><b>Usually same day</b></div>
-            </div>
-        </aside>
     </div>
 </div>
 
 <script>
 (function () {
     'use strict';
-    /* best-effort email alert to the support inbox (the ticket is already saved on the server) */
-    var EMAILJS = { key: 'pONGzo5pWq5jJzaMM', service: 'service_49v69xj', template: 'template_3grdzv9', to: 'kibetdan4114@gmail.com' };
-    try { if (window.emailjs) emailjs.init(EMAILJS.key); } catch (e) { /* ignore */ }
-    var ME = ({{ ((session.get('firstname') or '') ~ ' ' ~ (session.get('lastname') or '')) | trim | tojson }}) || 'eSchool teacher';
 
     var TOPICS = [
         { key: 'uploads', icon: 'fa-cloud-arrow-up', c: '#0ea5e9', title: 'Uploads & resources', text: 'Files, covers, privacy and editing' },
@@ -373,12 +375,17 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
         ['uploads', 'Which files can I upload, and how big?', 'Documents (PDF, Word, PowerPoint, Excel, text), pictures, videos (MP4, MOV, WEBM and more), audio (MP3, WAV, M4A) and ZIP files, up to 2 GB each. You can add several files at once on <a href="/teacher-upload">Upload</a>; each one gets its own title.'],
         ['uploads', 'My upload is slow or stuck.', 'Large videos take time on slow connections. Keep the Upload page open until the bar reaches 100%; you can press <b>Stop</b> on one file without losing the others. If it stops at the same point every time, try a Wi-Fi connection or compress the video, then send us a ticket with the file type and size.'],
         ['uploads', 'Who can see what I upload?', '<b>Public</b> resources show on your profile and in Resources for every learner, parent and teacher. <b>Only me</b> resources can only be opened by you. Change it any time under <a href="/teacher-resourses">Resources &gt; My uploads</a> with the Public / Private button.'],
-        ['live', 'How do I start a live class?', 'On <a href="/teacher-live">Live classes</a>, fill in the title, subject and grade, choose <b>Now</b> or a time, and save. Press <b>Open studio</b>, allow your camera and microphone, check the list, then press <b>Go live</b>. Learners watch inside eSchool on their Live page; no outside link is needed.'],
-        ['live', 'The studio says it can\'t use my camera or microphone.', 'Your browser has blocked them. Press the camera or lock icon in the address bar, allow camera and microphone for eSchool, then reload the studio. Close other apps that use the camera (Zoom, Meet, WhatsApp calls). On a phone, use Chrome or Safari, not an in-app browser.'],
-        ['live', 'How do I record a class?', 'Press <b>Record</b> in the studio before or during the class and tell learners you are recording. When you end the class, choose <b>Save to Resources</b>; the recording is uploaded as a video you can make public or keep private.'],
+        ['live', 'How do I start a live class?', 'On <a href="/teacher-live">Live classes</a>, fill in the title, subject and grade, choose <b>Now</b> or a time, and save. Press <b>Open studio</b>, allow your camera and microphone, check the list, then press <b>Go live</b>. Learners watch inside Eschool on their Live page; no outside link is needed.'],
+        ['live', 'The studio says it can\'t use my camera or microphone.', 'Your browser has blocked them. Press the camera or lock icon in the address bar, allow camera and microphone for Eschool, then reload the studio. Close other apps that use the camera (Zoom, Meet, WhatsApp calls). On a phone, use Chrome or Safari, not an in-app browser.'],
+        ['live', 'Are my live classes recorded?', 'Yes. From the moment you press <b>Go live</b>, Eschool records what you show and say (your camera or shared screen, and your voice). Learners\' cameras and voices are never recorded. Only Eschool admins can watch recordings, to settle complaints fairly, and they are deleted after 90 days. You\'ll see a red <b>REC</b> badge in the studio while it records.'],
+        ['live', 'I closed the studio by mistake. What happens to my class?', 'Open it again from <a href="/teacher-live">Live classes</a> with <b>Back to studio</b>, and learners reconnect. If you don\'t come back, the class ends on its own after 15 minutes. A class whose time passed without going live moves to <b>Past</b> as “Not taught”; you can still press <b>Teach it now</b> or <b>Plan again</b>.'],
         ['tutoring', 'Where do I see requests from parents?', 'In <a href="/teacher-settings#teaching">Settings &gt; Teaching</a>. Each request shows the child, subject, times that suit them, goals and the parent\'s message. Accept with your fee per session, or decline with a short reason; the parent is told straight away.'],
-        ['tutoring', 'How do I get paid for private lessons?', 'When you accept, the parent pays for a pack of sessions with M-Pesa. Our team confirms the M-Pesa code, the family then shows as <b>Active</b> with the number of paid sessions left. If a payment you expected hasn\'t shown, send a ticket under "Private teaching and payments" with the family\'s name.'],
-        ['profile', 'How do I make my profile stand out?', 'Add a clear photo, a one-line headline, the subjects and grades you teach, your qualifications and years of experience on <a href="/teacher-profile">your profile</a>. Profiles that are filled in, with public resources, are chosen far more often by parents.'],
+        ['tutoring', 'How do I get paid for private lessons?', 'The family pays Eschool for a pack of lessons. Eschool holds the money until each lesson happens, then pays you once a month, on pay day, for the lessons of the month before, minus Eschool\'s share. You get a notification with the amount and the transaction code. Make sure Eschool has your <b>payout number</b>; if it doesn\'t, send a ticket under "Private teaching, payouts and missed lessons".'],
+        ['tutoring', 'What happens when a lesson is missed?', 'If the learner didn\'t come and you waited, Eschool checks it and you are still paid. If you missed it, the family gets that lesson\'s money back. If you and the family agreed to move it, it goes back to be booked again and nothing is lost. Write what happened in the lesson notes: Eschool reads them, and the parent\'s note, before deciding.'],
+        ['tutoring', 'A payout is missing or the amount looks wrong.', 'Open <a href="/teacher-profile#rankings">your profile</a> to check your lessons, then send a ticket with the month and the lessons you think are missing. Lessons still being checked are paid on the next pay day once they are decided.'],
+        ['profile', 'How do I make my profile stand out?', 'Add a one-line headline, the subjects and grades you teach, your qualifications and years of experience on <a href="/teacher-profile">your profile</a>. Profiles that are filled in, with public resources, are chosen far more often by parents.'],
+        ['profile', 'How do badges and rankings work?', 'You earn badges by teaching on Eschool: lessons taught, holding lessons as booked, good reviews, live classes and helpful resources. Each badge goes from Bronze up to Diamond, and badges once earned are kept. Your place among teachers is on the <b>Rankings</b> tab of <a href="/teacher-profile#rankings">your profile</a>.'],
+        ['profile', 'Can I change my profile picture?', 'No. Profile pictures can\'t be changed on Eschool, so your initials are shown. Your name, headline, subjects and qualifications are what parents look at.'],
         ['profile', 'Can I remove a bad review?', 'You can\'t delete reviews, but you can reply once to each one on your profile. A calm, helpful reply reads well to parents. If a review is abusive, false or about someone else, send us a ticket and we\'ll look at it.'],
         ['schedule', 'How do I plan my week?', 'On <a href="/teacher-schedule">Schedule</a>, press <b>New event</b> to add classes, private lessons, meetings and marking time. Repeat them weekly, mark them done, and see your live classes alongside. Press <b>Add to calendar app</b> to export everything as an .ics file.'],
         ['schedule', 'How do I message a parent or learner?', 'Open <a href="/teacher-messages">Messages</a>, search for the person by name and write. Use the filter chips to see only learners or parents, and save quick replies for things you say often. Some learners only accept messages from people they follow; their parents can always be reached.'],
@@ -433,15 +440,23 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
     document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('.hs [data-go]'); if (b) { openTab(b.dataset.go); document.querySelector('.hs-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
 
     /* ---------- FAQ ---------- */
+    var faqQ = '';
     function renderFaq() {
+        var words = faqQ.toLowerCase().split(/\s+/).filter(Boolean), shownAny = false;
+        var hit = function (q) { var txt = (q[1] + ' ' + strip(q[2])).toLowerCase(); return words.every(function (w) { return txt.indexOf(w) > -1; }); };
         $('hsFaq').innerHTML = TOPICS.map(function (t) {
-            return '<div class="hs-faq-group"><h3><i class="fas ' + t.icon + '" style="--c:' + t.c + '"></i>' + esc(t.title) + '</h3>' + FAQ.map(function (q, i) {
-                if (q[0] !== t.key) return '';
-                var open = !!S.open[i];
+            var qs = FAQ.map(function (q, i) { return [q, i]; }).filter(function (p) { return p[0][0] === t.key && hit(p[0]); });
+            if (!qs.length) return '';
+            shownAny = true;
+            return '<div class="hs-faq-group"><h3><i class="fas ' + t.icon + '" style="--c:' + t.c + '"></i>' + esc(t.title) + '</h3>' + qs.map(function (p) {
+                var q = p[0], i = p[1];
+                var open = !!S.open[i] || (words.length && qs.length <= 2);
                 return '<div class="hs-q" id="faq-' + i + '"><button type="button" aria-expanded="' + open + '" aria-controls="faqa-' + i + '" data-q="' + i + '">' + esc(q[1]) + '<i class="fas fa-chevron-down" aria-hidden="true"></i></button><div class="a" id="faqa-' + i + '"' + (open ? '' : ' hidden') + '>' + q[2] + '</div></div>';
             }).join('') + '</div>';
         }).join('');
+        $('hsFaqNone').hidden = shownAny;
     }
+    var fqt; $('hsFaqQ').addEventListener('input', function () { var v = this.value.trim(); clearTimeout(fqt); fqt = setTimeout(function () { faqQ = v; renderFaq(); }, 150); });
     $('hsFaq').addEventListener('click', function (e) {
         var b = e.target.closest('[data-q]'); if (!b) return;
         var i = +b.dataset.q; S.open[i] = !S.open[i];
@@ -449,70 +464,133 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
     });
 
     /* ---------- tickets ---------- */
-    async function loadTickets() {
-        try {
-            S.tickets = (await api('/api/complaints/mine')).complaints || [];
-            renderTickets();
-        } catch (e) { $('hsTickets').innerHTML = '<div class="hs-empty"><i class="fas fa-triangle-exclamation"></i><h3>Couldn\'t load your tickets</h3><p>' + esc(e.message) + '</p><button type="button" class="hs-btn hs-btn-ghost" id="hsRetry">Try again</button></div>'; $('hsRetry').onclick = loadTickets; }
+    function fullDate(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    var loading = null, lastSig = '';
+    function loadTickets() {
+        if (loading) return loading;
+        loading = (async function () {
+            try { S.tickets = (await api('/api/complaints/mine')).complaints || []; renderTickets(); }
+            catch (e) { if (!S.tickets.length) { lastSig = ''; $('hsTickets').innerHTML = '<div class="hs-empty"><i class="fas fa-triangle-exclamation"></i><h3>Couldn\'t load your tickets</h3><p>' + esc(e.message) + '</p><button type="button" class="hs-btn hs-btn-ghost" data-retry>Try again</button></div>'; } }
+            finally { loading = null; }
+        })();
+        return loading;
     }
+    function answeredOf(x) { return (x.thread || []).some(function (m) { return m.who === 'support'; }) || !!x.response; }
     function renderTickets() {
         var t = S.tickets;
-        var open = t.filter(function (x) { return x.status !== 'resolved'; }).length;
-        $('hsTicketCount').textContent = t.length;
-        var groups = [['all', 'All', t.length], ['open', 'Open', open], ['answered', 'Answered', t.filter(function (x) { return x.response && x.status !== 'resolved'; }).length], ['resolved', 'Resolved', t.filter(function (x) { return x.status === 'resolved'; }).length]];
-        $('hsFilters').innerHTML = groups.map(function (g) { return '<button type="button" class="hs-fchip" data-filter="' + g[0] + '" aria-pressed="' + (S.filter === g[0]) + '">' + g[1] + ' (' + g[2] + ')</button>'; }).join('');
+        var fresh = t.filter(function (x) { return x.new_reply; }).length, open = t.filter(function (x) { return x.status !== 'resolved'; }).length;
+        $('hsTicketCount').textContent = fresh ? fresh + ' new' : t.length;
+        $('hsStOpen').textContent = open; $('hsStNew').textContent = fresh; $('hsStDone').textContent = t.length - open;
+        var waitingAnswer = function (x) { return x.status !== 'resolved' && answeredOf(x); };
+        var groups = [['all', 'All', t.length], ['open', 'Open', open], ['answered', 'Answered', t.filter(waitingAnswer).length], ['resolved', 'Resolved', t.length - open]];
         var shown = t.filter(function (x) {
-            return S.filter === 'all' || (S.filter === 'open' && x.status !== 'resolved') || (S.filter === 'resolved' && x.status === 'resolved') || (S.filter === 'answered' && x.response && x.status !== 'resolved');
+            return S.filter === 'all' || (S.filter === 'open' && x.status !== 'resolved') || (S.filter === 'resolved' && x.status === 'resolved') || (S.filter === 'answered' && waitingAnswer(x));
         });
-        if (!t.length) {
-            $('hsTickets').innerHTML = '<div class="hs-empty"><i class="fas fa-ticket"></i><h3>No tickets yet</h3><p>When you contact the team, your ticket and their reply appear here. Many answers are already under Questions.</p><button type="button" class="hs-btn hs-btn-primary" data-go="new"><i class="fas fa-plus"></i> Contact us</button></div>';
-            return;
-        }
-        if (!shown.length) { $('hsTickets').innerHTML = '<div class="hs-empty"><i class="fas fa-filter"></i><h3>Nothing here</h3><p>No tickets match this filter.</p></div>'; return; }
-        $('hsTickets').innerHTML = shown.map(ticketHtml).join('');
+        var html;
+        if (!t.length) html = '<div class="hs-empty"><i class="fas fa-ticket"></i><h3>No tickets yet</h3><p>When you contact the team, your ticket and their replies appear here. Many answers are already under Questions.</p><button type="button" class="hs-btn hs-btn-primary" data-go="new"><i class="fas fa-plus"></i> Contact us</button></div>';
+        else if (!shown.length) html = '<div class="hs-empty"><i class="fas fa-filter"></i><h3>Nothing here</h3><p>No tickets match this filter.</p></div>';
+        else html = shown.map(ticketHtml).join('');
+        var filters = groups.map(function (g) { return '<button type="button" class="hs-fchip" data-filter="' + g[0] + '" aria-pressed="' + (S.filter === g[0]) + '">' + g[1] + ' (' + g[2] + ')</button>'; }).join('');
+        // redraw only when something changed (it checks every minute) and never while typing in a ticket
+        var sig = filters + html;
+        if (sig === lastSig) return;
+        var a = document.activeElement;
+        if (a && a.tagName === 'TEXTAREA' && $('hsTickets').contains(a) && a.value) return;
+        lastSig = sig;
+        $('hsFilters').innerHTML = filters;
+        $('hsTickets').innerHTML = html;
     }
     function ticketHtml(x) {
-        var st = STATUS[x.status] || STATUS.pending, cat = CAT[x.category] || CAT.other, open = !!S.open['t' + x.id];
-        var answered = !!x.response, resolved = x.status === 'resolved';
-        if (answered && !resolved) st = STATUS['in-progress'];
+        var id = Number(x.id), cat = CAT[x.category] || CAT.other, open = !!S.open['t' + id];
+        var answered = answeredOf(x), resolved = x.status === 'resolved';
+        var thread = x.thread && x.thread.length ? x.thread : [{ who: 'person', kind: 'first', text: x.description, at: x.created_at }].concat(x.response ? [{ who: 'support', text: x.response, at: x.response_date }] : []);
+        // oldest first by time (the latest reply is stored apart from the rest, so put it where it belongs)
+        thread = thread.map(function (m, i) { return [m, i]; }).sort(function (p, q) { var a = Date.parse(p[0].at) || 0, b = Date.parse(q[0].at) || 0; return a - b || p[1] - q[1]; }).map(function (p) { return p[0]; });
+        var last = thread[thread.length - 1] || {};
+        var st = resolved ? STATUS.resolved : (last.who === 'support' ? STATUS['in-progress'] : STATUS.pending);
         var prio = { low: 'Low', medium: 'Normal', high: 'High', urgent: 'Urgent' }[x.priority] || 'Normal';
-        var h = '<div class="hs-ticket' + (answered ? ' answered' : '') + '" data-id="' + x.id + '">';
-        h += '<button type="button" class="hs-ticket-head" aria-expanded="' + open + '" aria-controls="tb-' + x.id + '" data-toggle="' + x.id + '"><span class="hs-ticket-ic"><i class="fas ' + cat[0] + '"></i></span>' +
-            '<span class="hs-ticket-main"><b>' + esc(x.subject) + '</b><span class="hs-ticket-meta"><span>#' + x.id + '</span><span><i class="fas fa-tag"></i> ' + esc(cat[1]) + '</span><span><i class="fas fa-flag"></i> ' + prio + '</span><span><i class="fas fa-clock"></i> ' + esc(when(x.created_at)) + '</span></span></span>' +
-            '<span class="hs-pill ' + st[0] + '">' + st[1] + '</span><i class="fas fa-chevron-down hs-chev" aria-hidden="true"></i></button>';
-        h += '<div class="hs-ticket-body" id="tb-' + x.id + '"' + (open ? '' : ' hidden') + '>';
+        var lastAt = Date.parse(last.at || x.created_at) || 0, recent = resolved && (Date.now() - lastAt) < 7 * 86400000;
+        var h = '<div class="hs-ticket' + (answered ? ' answered' : '') + (x.new_reply ? ' fresh' : '') + '" id="t' + id + '">';
+        h += '<button type="button" class="hs-ticket-head" aria-expanded="' + open + '" aria-controls="tb-' + id + '" data-toggle="' + id + '"><span class="hs-ticket-ic"><i class="fas ' + cat[0] + '"></i></span>' +
+            '<span class="hs-ticket-main"><b>' + esc(x.subject) + '</b><span class="hs-ticket-meta"><span>#' + id + '</span><span><i class="fas fa-tag"></i> ' + esc(cat[1]) + '</span><span><i class="fas fa-flag"></i> ' + prio + '</span><span title="' + esc(fullDate(x.created_at)) + '"><i class="fas fa-clock"></i> ' + esc(when(x.created_at)) + '</span>' +
+            (thread.length > 1 ? '<span><i class="fas fa-comments"></i> ' + thread.length + ' messages</span>' : '') + '</span></span>' +
+            (x.new_reply ? '<span class="hs-pill new">New reply</span>' : '') +
+            '<span class="hs-pill ' + st[0] + '">' + (resolved ? 'Resolved' : last.who === 'support' ? 'Answered' : 'Waiting for the team') + '</span><i class="fas fa-chevron-down hs-chev" aria-hidden="true"></i></button>';
+        h += '<div class="hs-ticket-body" id="tb-' + id + '"' + (open ? '' : ' hidden') + '>';
         h += '<div class="hs-steps" aria-label="Ticket progress"><span class="hs-step done"><i class="fas fa-check"></i> Sent</span><span class="hs-step-line' + (answered ? ' done' : '') + '"></span><span class="hs-step' + (answered ? ' done' : '') + '"><i class="fas fa-check"></i> Answered</span><span class="hs-step-line' + (resolved ? ' done' : '') + '"></span><span class="hs-step' + (resolved ? ' done' : '') + '"><i class="fas fa-check"></i> Resolved</span></div>';
-        h += '<div class="hs-msg me"><small>You wrote · ' + esc(when(x.created_at)) + '</small>' + esc(x.description || '(no message)') + '</div>';
-        if (answered) h += '<div class="hs-msg team"><small><i class="fas fa-headset"></i> eSchool support' + (x.response_date ? ' · ' + esc(when(x.response_date)) : '') + '</small>' + esc(x.response) + '</div>';
-        else h += '<div class="hs-wait"><i class="fas fa-hourglass-half"></i><span>The team hasn\'t replied yet. You\'ll get a notification in your bell when they do.</span></div>';
+        h += '<div class="hs-thread">' + thread.map(function (m) {
+            var team = m.who === 'support';
+            return '<div class="hs-msg ' + (team ? 'team' : 'me' + (m.kind === 'added' ? ' added' : '')) + '"><small title="' + esc(fullDate(m.at)) + '">' +
+                (team ? '<i class="fas fa-headset"></i> Eschool support' : m.kind === 'added' ? 'You added' : 'You wrote') + (m.at ? ' · ' + esc(when(m.at)) : '') + '</small>' + esc(m.text || '(no message)') + '</div>';
+        }).join('') + '</div>';
+        if (!resolved && last.who !== 'support') h += '<div class="hs-wait"><i class="fas fa-hourglass-half"></i><span>' + (answered ? 'The team has your update and will reply here.' : 'The team hasn\'t replied yet.') + ' You\'ll get a notification in your bell when they do.</span></div>';
         h += '<div class="hs-ticket-acts">';
-        if (!resolved) h += '<button type="button" class="hs-btn hs-btn-ghost hs-btn-sm" data-close="' + x.id + '"><i class="fas fa-circle-check"></i> My problem is solved</button>';
-        h += '<button type="button" class="hs-btn hs-btn-ghost hs-btn-sm" data-follow="' + x.id + '"><i class="fas fa-reply"></i> ' + (resolved ? 'Still a problem? Send a new ticket' : 'Add more information') + '</button>';
-        h += '<span class="hs-note" id="tn-' + x.id + '" style="margin:0;padding:6px 10px;"></span></div>';
+        if (!resolved) h += '<button type="button" class="hs-btn hs-btn-ghost hs-btn-sm" data-close="' + id + '"><i class="fas fa-circle-check"></i> My problem is solved</button>';
+        if (!resolved || recent) h += '<button type="button" class="hs-btn hs-btn-ghost hs-btn-sm" data-add="' + id + '" aria-expanded="false" aria-controls="add-' + id + '"><i class="fas fa-reply"></i> ' + (resolved ? 'Still a problem? Reopen it' : last.who === 'support' ? 'Reply' : 'Add more information') + '</button>';
+        else h += '<button type="button" class="hs-btn hs-btn-ghost hs-btn-sm" data-follow="' + id + '"><i class="fas fa-reply"></i> Still a problem? Send a new ticket</button>';
+        h += '<span class="hs-note" id="tn-' + id + '" role="status" style="margin:0;padding:6px 10px;"></span></div>';
+        h += '<form class="hs-add" id="add-' + id + '" data-add-form="' + id + '" hidden><label class="st-sr" for="addtx-' + id + '">Your message for ticket ' + id + '</label>' +
+             '<textarea class="hs-textarea" id="addtx-' + id + '" maxlength="2000" rows="3" placeholder="' + (last.who === 'support' ? 'Your reply to the team' : 'What else should the team know?') + '"></textarea>' +
+             '<div class="hs-ticket-acts"><button type="submit" class="hs-btn hs-btn-primary hs-btn-sm"><i class="fas fa-paper-plane"></i> ' + (resolved ? 'Reopen and send' : 'Send') + '</button><button type="button" class="hs-btn hs-btn-ghost hs-btn-sm" data-add-cancel="' + id + '">Cancel</button></div></form>';
         return h + '</div></div>';
+    }
+    function markSeen(x) {
+        if (!x || !x.new_reply) return;
+        x.new_reply = false;
+        api('/api/complaints/' + Number(x.id) + '/seen', { method: 'POST' }).catch(function () {});
+        renderTickets();
+    }
+    function openTicket(id) {
+        openTab('tickets');
+        S.filter = 'all'; S.open['t' + id] = true; lastSig = ''; renderTickets();
+        var el = $('t' + id); if (!el) return;
+        markSeen(S.tickets.filter(function (x) { return String(x.id) === String(id); })[0]);
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     $('hsFilters').addEventListener('click', function (e) { var b = e.target.closest('[data-filter]'); if (b) { S.filter = b.dataset.filter; renderTickets(); } });
     $('hsTickets').addEventListener('click', async function (e) {
         var b;
+        if (e.target.closest('[data-retry]')) { loadTickets(); return; }
         if ((b = e.target.closest('[data-toggle]'))) {
             var id = b.dataset.toggle, k = 't' + id; S.open[k] = !S.open[k];
-            b.setAttribute('aria-expanded', String(S.open[k])); $('tb-' + id).hidden = !S.open[k]; return;
+            b.setAttribute('aria-expanded', String(S.open[k])); $('tb-' + id).hidden = !S.open[k];
+            if (S.open[k]) markSeen(S.tickets.filter(function (x) { return String(x.id) === id; })[0]);
+            return;
         }
         if ((b = e.target.closest('[data-close]'))) {
             b.disabled = true;
-            try { await api('/api/complaints/' + b.dataset.close + '/close', { method: 'POST' }); note('hsNote', 'Glad it\'s sorted. The ticket is marked as resolved.', 'ok'); await loadTickets(); }
+            try { await api('/api/complaints/' + Number(b.dataset.close) + '/close', { method: 'POST' }); note('hsNote', 'Glad it\'s sorted. The ticket is marked as resolved.', 'ok'); lastSig = ''; await loadTickets(); }
             catch (err) { b.disabled = false; note('tn-' + b.dataset.close, err.message, 'bad'); }
             return;
         }
+        if ((b = e.target.closest('[data-add]'))) {
+            var f = $('add-' + b.dataset.add); f.hidden = !f.hidden; b.setAttribute('aria-expanded', String(!f.hidden));
+            if (!f.hidden) f.querySelector('textarea').focus();
+            return;
+        }
+        if ((b = e.target.closest('[data-add-cancel]'))) { $('add-' + b.dataset.addCancel).hidden = true; return; }
         if ((b = e.target.closest('[data-follow]'))) {
             var t = S.tickets.filter(function (x) { return String(x.id) === b.dataset.follow; })[0];
             if (!t) return;
-            $('hsSubject').value = ('Re: #' + t.id + ' ' + t.subject).slice(0, 150);
-            $('hsCategory').value = CAT[t.category] && $('hsCategory').querySelector('option[value="' + t.category + '"]') ? t.category : 'other';
+            $('hsSubject').value = ('Re: #' + t.id + ' ' + String(t.subject).replace(/^(Re:\s*#\d+\s*)+/i, '')).slice(0, 150);
+            $('hsCategory').value = $('hsCategory').querySelector('option[value="' + t.category + '"]') ? t.category : 'other';
             setPrio(t.priority || 'medium');
             $('hsMessage').value = ''; count();
             openTab('new'); $('hsMessage').focus();
         }
+    });
+    $('hsTickets').addEventListener('submit', async function (e) {
+        var f = e.target.closest('[data-add-form]'); if (!f) return;
+        e.preventDefault();
+        var id = f.dataset.addForm, ta = f.querySelector('textarea'), text = ta.value.trim();
+        if (text.length < 2) { ta.focus(); return; }
+        var btn = f.querySelector('[type="submit"]'); btn.disabled = true;
+        try {
+            await api('/api/complaints/' + Number(id) + '/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: text }) });
+            ta.value = ''; S.open['t' + id] = true; lastSig = '';
+            await loadTickets();
+            note('tn-' + id, 'Sent. The team has been told.', 'ok');
+        } catch (err) { btn.disabled = false; note('tn-' + id, err.message, 'bad'); }
     });
 
     /* ---------- new ticket ---------- */
@@ -529,11 +607,12 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
     $('hsCategory').addEventListener('change', function () {
         clearErr('hsCategory', 'errCategory');
         if (this.value === 'safety' && S.priority === 'medium') setPrio('urgent');
+        $('hsSafetyTip').hidden = this.value !== 'safety';
         var ph = { tutoring: 'Which family, the subject, what you expected and what happened. For payments, the date the parent paid.', live: 'The class title and time, what learners saw or heard, and which device and browser you used.', uploads: 'The file name, type and size, and what happened when you uploaded it.', safety: 'What happened, when, and the learner\'s name. Don\'t paste private details you don\'t need to.' };
         $('hsMessage').placeholder = ph[this.value] || 'What were you trying to do, what happened instead, and when? For a resource or live class, give its title.';
     });
     $('hsSubject').addEventListener('input', function () { clearErr('hsSubject', 'errSubject'); });
-    $('hsForm').addEventListener('reset', function () { setTimeout(function () { setPrio('medium'); count(); ['hsSubject', 'hsCategory', 'hsMessage'].forEach(function (f) { $(f).classList.remove('bad'); }); $('hsMessage').placeholder = 'What were you trying to do, what happened instead, and when? For a resource or live class, give its title.'; ['errSubject', 'errCategory', 'errMessage'].forEach(function (e) { $(e).textContent = ''; }); note('hsFormNote', ''); }, 0); });
+    $('hsForm').addEventListener('reset', function () { setTimeout(function () { setPrio('medium'); count(); ['hsSubject', 'hsCategory', 'hsMessage'].forEach(function (f) { $(f).classList.remove('bad'); }); $('hsMessage').placeholder = 'What were you trying to do, what happened instead, and when? For a resource or live class, give its title.'; $('hsSafetyTip').hidden = true; ['errSubject', 'errCategory', 'errMessage'].forEach(function (e) { $(e).textContent = ''; }); note('hsFormNote', ''); }, 0); });
     $('hsForm').addEventListener('submit', async function (e) {
         e.preventDefault();
         var body = { subject: $('hsSubject').value.trim(), category: $('hsCategory').value, priority: S.priority, description: $('hsMessage').value.trim() };
@@ -546,9 +625,6 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
         try {
             var d = await api('/api/complaints', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
             var t = d.complaint || {};
-            try {
-                if (window.emailjs) emailjs.send(EMAILJS.service, EMAILJS.template, { to_email: EMAILJS.to, ticket_id: t.id, from_user: ME + ' (teacher)', subject: t.subject, category: t.category, priority: t.priority, message: t.description, created_at: t.created_at }).catch(function () { /* the ticket is saved anyway */ });
-            } catch (err) { /* ignore */ }
             this.reset();
             S.open['t' + t.id] = true; S.filter = 'all';
             await loadTickets();
@@ -562,9 +638,12 @@ body.dark-mode .hs-guide-top i { color: color-mix(in srgb, var(--c) 60%, #fff); 
 
     /* ---------- start ---------- */
     renderFaq();
-    loadTickets();
-    var h = (location.hash || '').slice(1);
+    var h = (location.hash || '').slice(1), tq = /^t(\d+)$/.exec(h) || /[?&]t=(\d+)/.exec(location.search);
     openTab(TABS.indexOf(h) > -1 ? h : 'tickets');
+    loadTickets().then(function () { if (tq) openTicket(tq[1]); });
+    setInterval(function () { if (!document.hidden) loadTickets(); }, 60000);
+    // a link to one ticket while already on this page (e.g. from the bell)
+    window.addEventListener('hashchange', function () { var m = /^#t(\d+)$/.exec(location.hash); if (m) loadTickets().then(function () { openTicket(m[1]); }); });
 })();
 </script>
 {% endblock %}

@@ -846,6 +846,8 @@
             margin-bottom: 4px;
         }
 
+        .nf-go { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 2px; padding: 6px 12px; border-radius: 8px; background: var(--primary-color, #4361ee); color: #fff !important; font-size: 12px; font-weight: 700; text-decoration: none; }
+        .nf-go:hover { filter: brightness(1.08); }
         .notification-message {
             font-size: 13px;
             color: #6b7280;
@@ -1718,6 +1720,7 @@
                         <div class="notification-content">
                             <div class="notification-title">${escapeHtml(n.title)}</div>
                             <div class="notification-message">${escapeHtml(n.message)}</div>
+                            ${n.link && /^\/[^\/]/.test(n.link) ? `<a class="nf-go" href="${escapeHtml(n.link)}" data-nf-go="${escapeHtml(n.id)}">${escapeHtml(n.link_label || 'Open')} <i class="fas fa-arrow-right" aria-hidden="true"></i></a>` : ''}
                             <div class="notification-time">${formatNotifTime(n.time)}</div>
                         </div>
                     </div>
@@ -1726,6 +1729,10 @@
 
             notificationsList.innerHTML = html;
             updateNotificationBadge();
+            notificationsList.querySelectorAll('[data-nf-go]').forEach(a => a.addEventListener('click', e => {
+                e.stopPropagation();          // mark it read on the way to the page
+                try { fetch('/notifications/' + encodeURIComponent(a.dataset.nfGo) + '/read', { method: 'POST', credentials: 'same-origin', keepalive: true }); } catch (x) { /* ignore */ }
+            }));
 
             notificationsList.querySelectorAll('.notification-item').forEach(item => {
                 item.addEventListener('click', function () {

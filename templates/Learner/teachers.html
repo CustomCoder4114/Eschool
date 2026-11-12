@@ -548,7 +548,7 @@ $("backBtn").addEventListener("click", () => {
     if (fromHere && history.length > 1) history.back(); else location.href = "/dashboard";
 });
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const money = (n, cur) => `${cur || "KES"} ${Number(n || 0).toLocaleString()}`;
+const money = (n, cur) => `${cur || "{{ CURRENCY }}"} ${Number(n || 0).toLocaleString()}`;
 const shortDate = s => { const d = new Date(String(s || "").replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(s || "") ? "" : "Z")); return isNaN(d) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); };
 const when = s => { const d = new Date(s); return isNaN(d) ? "" : d.toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); };
 async function api(url, opts) {
@@ -594,7 +594,7 @@ const STATUS = { pending: "Waiting for the teacher", accepted: "Accepted: pay to
 const LESSON = { scheduled: "Booked", completed: "Taught", missed: "Missed", review: "Being checked", cancelled: "Cancelled" };
 function avatar(t) { return `<span class="tc-av">${t.avatar_url ? `<img src="${esc(t.avatar_url)}" alt="" onerror="this.remove()">` : esc(t.initials || "T")}</span>`; }
 function draw() {
-    const cur = (E.payment || {}).currency || "KES";
+    const cur = (E.payment || {}).currency || "{{ CURRENCY }}";
     const open = (E.engagements || []).filter(x => ["pending", "accepted", "active"].includes(x.status));
     const closed = (E.engagements || []).filter(x => !["pending", "accepted", "active"].includes(x.status)).slice(0, 4);
     const eng = open.concat(closed);

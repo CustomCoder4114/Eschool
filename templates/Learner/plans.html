@@ -539,7 +539,7 @@ $("backBtn").addEventListener("click", () => {
     if (fromHere && history.length > 1) history.back(); else location.href = "/dashboard";
 });
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const money = (n, cur) => `${cur || "KES"} ${Number(n || 0).toLocaleString()}`;
+const money = (n, cur) => `${cur || "{{ CURRENCY }}"} ${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const shortDate = s => { const d = new Date(String(s || "").replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(s || "") ? "" : "Z")); return isNaN(d) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); };
 const when = s => { const d = new Date(s); return isNaN(d) ? "" : d.toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); };
 async function api(url, opts) {
@@ -594,26 +594,52 @@ function draw() {
             <div><h3>${esc(p.name)} ${c.key === p.key ? '<span class="st confirmed">Your plan</span>' : ""}</h3><p class="tag">${esc(p.tagline)}</p></div>
             ${list(p)}
             <div class="pp-prices" role="group" aria-label="${esc(p.name)} length">${p.prices.map(x => `<button type="button" data-len="${p.key}:${x.days}" aria-pressed="${x.days === sel}"><b>${esc(money(x.amount, o.currency))}</b><small>${x.days === 365 ? "1 year" : x.days + " days"}</small></button>`).join("")}</div>
-            ${INDEPENDENT ? `<button type="button" class="sc-btn primary" data-buy="${p.key}" ${o.ready ? "" : "disabled"}>${o.ready ? `<i class="fas fa-bolt"></i> ${c.key === p.key ? "Renew" : "Get"} ${esc(p.name)}` : '<i class="fas fa-clock"></i> Coming soon'}</button>` : ""}
-            ${INDEPENDENT && !o.ready ? '<p class="sc-hint">Buying plans opens soon. Until then you can get plan days with EP on the Points page.</p>' : ""}
+            ${INDEPENDENT ? `<button type="button" class="sc-btn primary" data-buy="${p.key}" ${o.any_ready ? "" : "disabled"}>${o.any_ready ? `<i class="fas fa-bolt"></i> ${c.key === p.key ? "Renew" : (c.key === "basic" && p.key === "pro" ? "Upgrade to" : "Get")} ${esc(p.name)}` : '<i class="fas fa-clock"></i> Coming soon'}</button>` : ""}
+            ${INDEPENDENT && !o.any_ready ? '<p class="sc-hint">Buying plans opens soon. Until then you can get plan days with EP on the Points page.</p>' : ""}
         </article>`;
     }).join("");
     const pays = D.payments || [];
-    $("payments").innerHTML = pays.length ? `<div class="sc-scroll"><table class="pp-table"><thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>M-Pesa code</th><th>Status</th><th></th></tr></thead><tbody>${pays.map(p => `
-        <tr><td>${esc(shortDate(p.created_at))}</td><td>${esc(p.plan_name)} · ${p.days === 365 ? "1 year" : p.days + " days"}</td><td>${esc(money(p.amount, o.currency))}</td><td>${esc(p.reference)}</td>
+    $("payments").innerHTML = pays.length ? `<div class="sc-scroll"><table class="pp-table"><thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Paid with</th><th>Status</th><th></th></tr></thead><tbody>${pays.map(p => `
+        <tr><td>${esc(shortDate(p.created_at))}</td><td>${esc(p.plan_name)} · ${p.days === 365 ? "1 year" : p.days + " days"}</td><td>${esc(money(p.amount, o.currency))}</td><td>${esc(p.paid_with || p.reference)}</td>
         <td><span class="st ${esc(p.status)}">${esc({ pending: "Being checked", confirmed: "Confirmed", rejected: "Not accepted", cancelled: "Withdrawn" }[p.status] || p.status)}</span>${p.note ? `<div class="sc-hint">${esc(p.note)}</div>` : ""}</td>
         <td>${p.parent_id !== p.student_id ? '<span class="sc-hint">Paid by your parent</span>' : INDEPENDENT && p.status === "pending" ? `<button type="button" class="sc-btn sm danger" data-withdraw="${p.id}">Withdraw</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
         : '<p class="sc-muted">No payments yet.</p>';
 }
 function buyForm(key) {
     const o = D.options, p = o.plans.find(x => x.key === key), days = pick[key] || p.prices[0].days, price = p.prices.find(x => x.days === days);
-    openDrawer(head(`Get ${esc(p.name)}`, `${days === 365 ? "1 year" : days + " days"} · ${esc(money(price.amount, o.currency))}`) + `
-        <div class="sc-pb"><div class="sc-form">
+    const card = o.card ? `<div class="sc-f wide"><button type="button" class="sc-btn primary" id="bCard" data-plan="${key}" data-days="${days}" style="width:100%;justify-content:center"><i class="fas fa-credit-card"></i> Pay ${esc(money(price.amount, o.currency))} by card</button>
+            <p class="sc-hint" style="margin-top:6px"><i class="fas fa-lock"></i> On Stripe's secure page: card, Apple Pay, Google Pay and other ways to pay. Eschool never sees your card. Your plan starts as soon as it goes through.</p></div>` : "";
+    const mpesa = o.ready ? `${o.card ? '<div class="sc-f wide"><p class="sc-hint" style="margin:4px 0 0;text-align:center">or pay with M-Pesa</p></div>' : ""}
             <div class="sc-f wide">${howToPay(o, price.amount)}</div>
             <div class="sc-f"><label for="bRef">M-Pesa code <span class="req">*</span></label><input class="sc-in" id="bRef" maxlength="12" placeholder="e.g. SJK3H7XQ2P" autocomplete="off" style="text-transform:uppercase"></div>
-            <div class="sc-f"><label for="bPhone">Phone that paid</label><input class="sc-in" id="bPhone" inputmode="tel" maxlength="15" placeholder="07…"></div>
-        </div></div>
-        <div class="sc-pf"><span class="msg" id="drMsg" role="status"></span><button type="button" class="sc-btn" data-close>Cancel</button><button type="button" class="sc-btn primary" id="bSave" data-plan="${key}" data-days="${days}"><i class="fas fa-check"></i> Send for checking</button></div>`, "#bRef");
+            <div class="sc-f"><label for="bPhone">Phone that paid</label><input class="sc-in" id="bPhone" inputmode="tel" maxlength="15" placeholder="07…"></div>` : "";
+    openDrawer(head(`Get ${esc(p.name)}`, `${days === 365 ? "1 year" : days + " days"} · ${esc(money(price.amount, o.currency))}`) + `
+        <div class="sc-pb"><div class="sc-form">${card}${mpesa}</div></div>
+        <div class="sc-pf"><span class="msg" id="drMsg" role="status"></span><button type="button" class="sc-btn" data-close>Cancel</button>${o.ready ? `<button type="button" class="sc-btn ${o.card ? "" : "primary"}" id="bSave" data-plan="${key}" data-days="${days}"><i class="fas fa-check"></i> Send M-Pesa code</button>` : ""}</div>`, o.card ? "#bCard" : "#bRef");
+}
+async function payByCard(btn) {
+    const msg = $("drMsg"); btn.disabled = true; msg.className = "msg"; msg.textContent = "Opening the secure payment page…";
+    try {
+        const r = await send("/api/parent/payments/online", "POST", { plan: btn.dataset.plan, days: Number(btn.dataset.days), method: "card" });
+        location.href = r.redirect;
+    } catch (e) { btn.disabled = false; msg.className = "msg bad"; msg.textContent = e.message; }
+}
+/* back from Stripe: ?paid=<id> -> wait until the plan is on; ?unpaid=<id> -> nothing was charged */
+async function cameBack() {
+    const q = new URLSearchParams(location.search), paid = q.get("paid"), unpaid = q.get("unpaid");
+    if (!paid && !unpaid) return;
+    history.replaceState(null, "", location.pathname);
+    if (unpaid) { note("Card payment cancelled. Nothing was charged.", "info"); return; }
+    note("Confirming your card payment…", "info");
+    for (let i = 0; i < 15; i++) {
+        try {
+            const r = await api(`/api/parent/payments/${encodeURIComponent(paid)}/status`);
+            if (r.payment.status === "confirmed") { await load(); note(`Payment received. You're on ${r.payment.plan_name}` + (r.current && r.current.expires_on ? ` until ${r.current.expires_on}.` : "."), "ok"); return; }
+            if (r.payment.status === "failed") { note("The card payment didn't go through. Nothing was charged. You can try again.", "bad"); return; }
+        } catch (e) { /* try again */ }
+        await new Promise(res => setTimeout(res, 2000));
+    }
+    note("Your payment is still being confirmed by the card company. Your plan starts as soon as it does; you'll get a notification.", "info");
 }
 async function buy(btn) {
     const msg = $("drMsg"); btn.disabled = true; msg.className = "msg"; msg.textContent = "Sending…";
@@ -627,6 +653,7 @@ document.addEventListener("click", e => {
     const l = t.closest("[data-len]"); if (l) { const [k, d] = l.dataset.len.split(":"); pick[k] = Number(d); draw(); return; }
     const b = t.closest("[data-buy]"); if (b) { buyForm(b.dataset.buy); return; }
     if (t.closest("#bSave")) { buy(t.closest("#bSave")); return; }
+    if (t.closest("#bCard")) { payByCard(t.closest("#bCard")); return; }
     const w = t.closest("[data-withdraw]");
     if (w) {
         if (!w.dataset.sure) { w.dataset.sure = 1; w.textContent = "Sure?"; w.classList.add("sure"); return; }
@@ -634,7 +661,7 @@ document.addEventListener("click", e => {
         send(`/api/parent/payments/${w.dataset.withdraw}`, "DELETE").then(load).then(() => note("Payment withdrawn.", "ok")).catch(err => { w.disabled = false; note(err.message, "bad"); });
     }
 });
-load();
+load().then(cameBack);
 
 })();
 </script>

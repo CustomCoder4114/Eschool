@@ -3,7 +3,7 @@
 {% block allcontent %}
 {#
     PARENT PAGE - Learner Progress  (templates/Parent/parent-progress.html)
-    A full progress report for each linked child, from what eSchool records:
+    A full progress report for each linked child, from what Eschool records:
       GET /api/parent/children                         linked children + what each allows
       GET /api/parent/children/<id>/progress?range=    summary, courses, results, activity,
                                                        private lessons, teacher notes, achievements
@@ -336,7 +336,7 @@ body.dark-mode .pp {
         catch (e) { $('ppContent').innerHTML = '<div class="pp-card">' + empty('fa-triangle-exclamation', "Couldn't load your children", e.message) + '</div>'; return; }
         if (!S.children.length) {
             $('ppToolbar').hidden = true;
-            $('ppContent').innerHTML = '<div class="pp-card">' + empty('fa-user-plus', 'No linked children yet', "Link your child's eSchool account to see their progress here.", '<a class="pp-btn pp-btn-primary" href="/parent-link"><i class="fas fa-link"></i> Link a child</a>') + '</div>';
+            $('ppContent').innerHTML = '<div class="pp-card">' + empty('fa-user-plus', 'No linked children yet', "Link your child's Eschool account to see their progress here.", '<a class="pp-btn pp-btn-primary" href="/parent-link"><i class="fas fa-link"></i> Link a child</a>') + '</div>';
             return;
         }
         var saved = null; try { saved = Number(sessionStorage.getItem('pp_child')); } catch (e) { /* ignore */ }
@@ -430,7 +430,8 @@ body.dark-mode .pp {
         var goal = p.weekly_goal ? Math.min(100, Math.round(p.ep_week / p.weekly_goal * 100)) : null;
         return [
             k('#4361ee', 'fa-gauge-high', s ? clamp(s.overall_progress) + '%' : '-', 'Course progress', s ? '<div class="pp-bar"><i style="width:' + clamp(s.overall_progress) + '%"></i></div>' : lock),
-            k('#10b981', 'fa-graduation-cap', s ? (s.gpa != null ? Number(s.gpa).toFixed(2) : '-') : '-', 'GPA' + (s && s.overall_grade ? ' · grade ' + esc(s.overall_grade) : ''), s ? '<div class="pp-kpi-t">' + s.assessments + ' assessments</div>' : lock),
+            k('#10b981', 'fa-graduation-cap', s && s.progress_grade ? esc(s.progress_grade.letter) + '<small style="font-size:.8rem;font-weight:600;"> · ' + s.progress_grade.percent + '%</small>' : '-', 'Overall grade',
+              s ? '<div class="pp-kpi-t">' + (s.progress_grade ? 'Total score ' + s.progress_grade.total + ' / ' + s.progress_grade.possible + ' · same as ' + esc(child().first_name) + "'s Progress page" : 'Shows after the first test or quiz') + '</div>' : lock),
             k('#7c3aed', 'fa-bullseye', s && s.avg_score != null ? s.avg_score + '%' : '-', 'Average test score', s ? ch : lock),
             k('#ea580c', 'fa-fire', s ? s.quiz_streak + '<small style="font-size:.8rem;font-weight:600;"> days</small>' : '-', 'Quiz streak', s ? '<div class="pp-kpi-t">Best ' + s.best_quiz_streak + ' · module streak ' + s.module_streak + '</div>' : lock),
             k('#0891b2', 'fa-layer-group', s ? s.modules_completed + (s.modules_total ? '<small style="font-size:.8rem;font-weight:600;"> / ' + s.modules_total + '</small>' : '') : '-', 'Modules passed', s ? '<div class="pp-kpi-t">' + s.quizzes_passed + ' quizzes · ' + s.courses_completed + ' courses finished</div>' : lock),
@@ -470,8 +471,8 @@ body.dark-mode .pp {
                     '<div><div class="pp-prog"><span>Course progress</span><strong>' + clamp(c.progress) + '%</strong></div><div class="pp-bar" style="--c:' + esc(c.color) + ';height:10px;"><i style="width:' + clamp(c.progress) + '%"></i></div></div>' +
                     '<div class="pp-mini"><div class="pp-mini-c"><strong>' + c.modules_completed + (c.modules_total ? '<small style="font-size:.75rem;">/' + c.modules_total + '</small>' : '') + '</strong><span>Modules</span></div>' +
                         '<div class="pp-mini-c"><strong>' + c.quizzes_passed + '</strong><span>Quizzes</span></div>' +
-                        '<div class="pp-mini-c"><strong>' + (c.avg_score != null ? c.avg_score + '%' : '-') + '</strong><span>Avg score</span></div></div>' +
-                    '<div class="pp-course-foot"><span>' + (c.best_score != null ? 'Best score ' + c.best_score + '%' : 'No scored tests yet') + '</span><span>Last active ' + esc(rel(c.last_activity)) + '</span></div></article>';
+                        '<div class="pp-mini-c"><strong>' + (c.grade ? esc(c.grade.letter) + ' <small style="font-size:.75rem;">' + c.grade.percent + '%</small>' : '-') + '</strong><span>Grade</span></div></div>' +
+                    '<div class="pp-course-foot"><span>' + (c.best_score != null ? 'Average ' + c.avg_score + '% · best ' + c.best_score + '%' : 'No scored tests yet') + '</span><span>Last active ' + esc(rel(c.last_activity)) + '</span></div></article>';
             }).join('') + '</div>';
         },
         results: function (d) {
@@ -487,7 +488,7 @@ body.dark-mode .pp {
                 '<div class="pp-filters"><input type="search" class="pp-input" id="ppQ" placeholder="Search by course or test" aria-label="Search results" value="' + esc(S.q) + '">' +
                 '<select class="pp-select" id="ppType" aria-label="Type"><option value="all">All types</option><option value="module">Module tests</option><option value="quiz">Course quizzes</option><option value="daily">Daily Quiz</option><option value="course">Courses finished</option></select></div>' +
                 '<div class="pp-table-wrap"><table class="pp-table"><thead><tr><th>Date</th><th>Course</th><th>Test</th><th>Score</th><th>Result</th><th>EP</th></tr></thead><tbody id="ppRows"></tbody></table></div>' +
-                '<p class="pp-sub" style="margin:10px 0 0;">eSchool records a test when it is passed (60% or more). Scores show for tests taken since scores began to be saved.</p>';
+                '<p class="pp-sub" style="margin:10px 0 0;">Eschool records a test when it is passed (60% or more). Scores show for tests taken since scores began to be saved.</p>';
         },
         activity: function (d) {
             if (!d.permissions.grades) return locked('Activity', 'learning activity');

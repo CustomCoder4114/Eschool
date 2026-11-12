@@ -1058,7 +1058,7 @@ function formatDayAndDate(dateKey) {
             tests.sort((a, b) => a.index - b.index);
 
             if (quizzes.length === 0 && tests.length === 0) return;
-            subjects.push(makeCourseSubject(course.name, tests, quizzes));
+            subjects.push(Object.assign(makeCourseSubject(course.name, tests, quizzes), { courseId: course.id, nTests: tests.length, nQuizzes: quizzes.length }));
         });
 
         const test = getDailyQuizTestResults().map(d => ({ kind: 'daily', ...d, attempts: 1 }));
@@ -1153,7 +1153,9 @@ function formatDayAndDate(dateKey) {
         try {
             const g = generateScoreGrades(enrolled);
             grades = { grade: g.overallGrade, percent: g.overallPercent, total: g.totalScore,
-                       subjects: g.subjects.length, graded: g.gradedCount };
+                       subjects: g.subjects.length, graded: g.gradedCount,
+                       // each course's score from every attempt (passed or not), for the Career page
+                       courses: g.subjects.filter(sub => sub.courseId).map(sub => ({ id: sub.courseId, avg: sub.average, tests: sub.nTests, quizzes: sub.nQuizzes })) };
         } catch (e) { grades = undefined; }
         return { courses, quizzes, daily: dailyTest, streaks, grades };
     }
@@ -1175,6 +1177,8 @@ function formatDayAndDate(dateKey) {
         })
             .then(r => r.ok ? r.json() : fetch('/api/ep/summary', { credentials: 'same-origin' }).then(r2 => r2.ok ? r2.json() : null))
             .then(d => {
+                // sent too soon after the Courses page's sync: send it again so the grades still reach the server
+                if (d && d.throttled) { clearTimeout(epSyncTimer); epSyncTimer = setTimeout(() => syncEP(true), Math.max(1, Number(d.retry_in) || 4) * 1000); }
                 if (d && d.success) epSummary = d;
                 updateTotalEPStat();
                 if (!goalEditing) refreshEPCard();   // don't wipe a goal being typed

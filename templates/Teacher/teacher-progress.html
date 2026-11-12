@@ -373,13 +373,13 @@ body.dark-mode .an {
             <div id="anReviews"><div class="an-skel"></div></div>
         </div>
         <div class="an-card">
-            <div class="an-card-h"><div><h2>Payments for your lessons</h2><p>What parents and learners paid for lessons with you. eSchool checks each payment before it counts.</p></div><a class="an-btn" href="/teacher-settings#teaching" style="padding:6px 10px;">Your price</a></div>
+            <div class="an-card-h"><div><h2>Payments for your lessons</h2><p>What parents and learners paid for lessons with you. Eschool checks each payment before it counts.</p></div><a class="an-btn" href="/teacher-settings#teaching" style="padding:6px 10px;">Your price</a></div>
             <div class="an-strip" id="anTeachStrip" style="grid-template-columns:repeat(2,minmax(0,1fr));"></div>
             <div class="an-tbl-wrap"><table class="an-tbl" id="anPayTbl" style="min-width:420px;"><tbody></tbody></table></div>
         </div>
     </div>
 
-    <p class="an-foot"><i class="fas fa-circle-info"></i> Days run from midnight East Africa Time. Earnings are payments for your private lessons, from parents or from learners paying for themselves, once eSchool has confirmed them. A lesson counts as taught when the eSchool call shows it happened. Numbers update every time you open this page.</p>
+    <p class="an-foot"><i class="fas fa-circle-info"></i> Days run from midnight East Africa Time. Earnings are payments for your private lessons, from parents or from learners paying for themselves, once Eschool has confirmed them. A lesson counts as taught when the Eschool call shows it happened. Numbers update every time you open this page.</p>
 </div>
 
 <script>
@@ -387,8 +387,8 @@ body.dark-mode .an {
     'use strict';
     var USER = "{{ session.get('email', 'anonymous') }}";
     var METRICS = {
-        earnings:     { label: 'Earnings', icon: 'fa-coins', unit: 'KES', money: true, tip: 'Confirmed payments for your lessons, from parents and learners' },
-        lessons:      { label: 'Lessons taught', icon: 'fa-chalkboard-user', unit: 'lessons', tip: 'Private lessons the eSchool call shows you taught' },
+        earnings:     { label: 'Earnings', icon: 'fa-coins', unit: '{{ CURRENCY }}', money: true, tip: 'Confirmed payments for your lessons, from parents and learners' },
+        lessons:      { label: 'Lessons taught', icon: 'fa-chalkboard-user', unit: 'lessons', tip: 'Private lessons the Eschool call shows you taught' },
         hours:        { label: 'Hours taught', icon: 'fa-clock', unit: 'hours', tip: 'Time spent in private lessons' },
         requests:     { label: 'New requests', icon: 'fa-envelope-open-text', unit: 'requests', tip: 'Parents and learners who asked you for lessons' },
         lessons_paid: { label: 'Lessons paid for', icon: 'fa-receipt', unit: 'lessons', tip: 'Lessons parents and learners paid for (confirmed)' },
@@ -405,7 +405,7 @@ body.dark-mode .an {
     function ls(k, v) { try { if (v === undefined) return localStorage.getItem('tprog.' + k + '.' + USER); localStorage.setItem('tprog.' + k + '.' + USER, v); } catch (e) { return null; } }
     function fmt(n, money) {
         n = Number(n) || 0;
-        if (money) return 'KES ' + n.toLocaleString('en-KE');
+        if (money) return '{{ CURRENCY }} ' + n.toLocaleString('en-KE');
         if (Math.abs(n) >= 10000) return (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + 'k';
         return n.toLocaleString('en-KE');
     }
@@ -483,15 +483,15 @@ body.dark-mode .an {
             var m = METRICS[k], dl = delta(t[k], pv[k]);
             return '<button type="button" class="an-kpi" data-metric="' + k + '" aria-pressed="' + (S.metric === k) + '" title="' + esc(m.tip) + '">' +
                 '<span class="an-kpi-l"><i class="fas ' + m.icon + '"></i>' + esc(m.label) + '</span>' +
-                '<span class="an-kpi-v an-num">' + (m.money ? '<small style="margin:0 4px 0 0">KES</small>' + fmt(t[k]) : fmt(t[k])) + '</span>' +
-                '<span class="an-kpi-f">' + (cmp ? '<span class="an-delta ' + dl.cls + '"><i class="fas ' + dl.icon + '"></i>' + dl.text + '</span><span>vs ' + (m.money ? 'KES ' : '') + fmt(pv[k]) + ' before</span>' : '<span>In ' + RANGE_TEXT[S.range] + '</span>') + '</span>' +
+                '<span class="an-kpi-v an-num">' + (m.money ? '<small style="margin:0 4px 0 0">{{ CURRENCY }}</small>' + fmt(t[k]) : fmt(t[k])) + '</span>' +
+                '<span class="an-kpi-f">' + (cmp ? '<span class="an-delta ' + dl.cls + '"><i class="fas ' + dl.icon + '"></i>' + dl.text + '</span><span>vs ' + (m.money ? '{{ CURRENCY }} ' : '') + fmt(pv[k]) + ' before</span>' : '<span>In ' + RANGE_TEXT[S.range] + '</span>') + '</span>' +
                 spark(d.series[k]) + '</button>';
         });
         var rv = d.reviews, tc = d.teaching;
         tiles.push('<div class="an-kpi static"><span class="an-kpi-l"><i class="fas fa-user-graduate"></i>Learners</span><span class="an-kpi-v an-num">' + tc.active_learners + '<small>active</small></span>' +
             '<span class="an-kpi-f"><span>' + (tc.requests ? tc.requests + ' request' + (tc.requests === 1 ? '' : 's') + ' waiting' : 'No requests waiting') + (tc.waiting_payment ? ' · ' + tc.waiting_payment + ' to pay' : '') + '</span></span></div>');
-        tiles.push('<div class="an-kpi static"><span class="an-kpi-l"><i class="fas fa-hourglass-half"></i>Being checked</span><span class="an-kpi-v an-num"><small style="margin:0 4px 0 0">KES</small>' + fmt(tc.pending_amount) + '</span>' +
-            '<span class="an-kpi-f"><span>Paid, waiting for eSchool to confirm</span></span></div>');
+        tiles.push('<div class="an-kpi static"><span class="an-kpi-l"><i class="fas fa-hourglass-half"></i>Being checked</span><span class="an-kpi-v an-num"><small style="margin:0 4px 0 0">{{ CURRENCY }}</small>' + fmt(tc.pending_amount) + '</span>' +
+            '<span class="an-kpi-f"><span>Paid, waiting for Eschool to confirm</span></span></div>');
         tiles.push('<div class="an-kpi static"><span class="an-kpi-l"><i class="fas fa-user-check"></i>Attendance</span><span class="an-kpi-v an-num">' + (tc.attendance != null ? tc.attendance + '<small>%</small>' : '–') + '</span>' +
             '<span class="an-kpi-f"><span>' + (tc.sessions_missed ? tc.sessions_missed + ' missed in ' + RANGE_TEXT[S.range] : 'Learners present at lessons') + '</span></span></div>');
         tiles.push('<div class="an-kpi static"><span class="an-kpi-l"><i class="fas fa-star"></i>Rating</span><span class="an-kpi-v an-num">' + (rv.avg != null ? rv.avg.toFixed(1) + '<small>/ 5</small>' : '–') + '</span>' +
@@ -595,9 +595,9 @@ body.dark-mode .an {
         var tc = d.teaching;
         if (t.earnings || pv.earnings) {
             var de = delta(t.earnings, pv.earnings);
-            out.push([t.earnings ? 'good' : 'warn', 'fa-coins', t.earnings ? 'You earned <b>KES ' + t.earnings.toLocaleString('en-KE') + '</b> from lessons in ' + period + (cmp && pv.earnings ? ', ' + (de.cls === 'up' ? 'up ' : de.cls === 'down' ? 'down ' : 'level at ') + de.text.replace(/^[+-]/, '') + ' on the period before.' : '.') : 'No confirmed payments in ' + period + ' (KES ' + pv.earnings.toLocaleString('en-KE') + ' the period before).']);
+            out.push([t.earnings ? 'good' : 'warn', 'fa-coins', t.earnings ? 'You earned <b>{{ CURRENCY }} ' + t.earnings.toLocaleString('en-KE') + '</b> from lessons in ' + period + (cmp && pv.earnings ? ', ' + (de.cls === 'up' ? 'up ' : de.cls === 'down' ? 'down ' : 'level at ') + de.text.replace(/^[+-]/, '') + ' on the period before.' : '.') : 'No confirmed payments in ' + period + ' ({{ CURRENCY }} ' + pv.earnings.toLocaleString('en-KE') + ' the period before).']);
         }
-        if (tc.pending_amount) out.push(['warn', 'fa-hourglass-half', '<b>KES ' + tc.pending_amount.toLocaleString('en-KE') + '</b> in payments is waiting for eSchool to confirm.']);
+        if (tc.pending_amount) out.push(['warn', 'fa-hourglass-half', '<b>{{ CURRENCY }} ' + tc.pending_amount.toLocaleString('en-KE') + '</b> in payments is waiting for Eschool to confirm.']);
         if (tc.requests) out.push(['warn', 'fa-envelope-open-text', '<b>' + tc.requests + '</b> lesson request' + (tc.requests === 1 ? ' is' : 's are') + ' waiting for your answer. <a href="/teacher-tutoring" style="color:var(--an-accent-text)">Answer now</a>: families choose teachers who reply fast.']);
         if (t.lessons) out.push(['good', 'fa-chalkboard-user', 'You taught <b>' + t.lessons + '</b> lesson' + (t.lessons === 1 ? '' : 's') + ' (' + t.hours + ' h) in ' + period + '.']);
         var noneLeft = tc.learners.filter(function (l) { return l.status === 'active' && !l.left && !l.booked; });
@@ -704,8 +704,8 @@ body.dark-mode .an {
     function renderAudience() {
         var a = S.data.audience, py = S.data.teaching.payers, total = py.parents + py.learners;
         var parts = [['Parents', py.parents, 'var(--s1)'], ['Learners paying for themselves', py.learners, 'var(--s3)']].filter(function (x) { return x[1]; });
-        $('anPayers').innerHTML = total ? '<div class="an-split" role="img" aria-label="' + esc(parts.map(function (x) { return x[0] + ' KES ' + x[1]; }).join(', ')) + '">' + parts.map(function (x) { return '<i style="width:' + (x[1] / total * 100) + '%;background:' + x[2] + '" title="' + x[0] + ': KES ' + x[1].toLocaleString('en-KE') + '"></i>'; }).join('') + '</div>' +
-            '<div class="an-keys">' + parts.map(function (x) { return '<span><i style="background:' + x[2] + '"></i>' + x[0] + ' <b>KES ' + x[1].toLocaleString('en-KE') + '</b> (' + pct(x[1], total) + '%)</span>'; }).join('') + '</div>'
+        $('anPayers').innerHTML = total ? '<div class="an-split" role="img" aria-label="' + esc(parts.map(function (x) { return x[0] + ' {{ CURRENCY }} ' + x[1]; }).join(', ')) + '">' + parts.map(function (x) { return '<i style="width:' + (x[1] / total * 100) + '%;background:' + x[2] + '" title="' + x[0] + ': {{ CURRENCY }} ' + x[1].toLocaleString('en-KE') + '"></i>'; }).join('') + '</div>' +
+            '<div class="an-keys">' + parts.map(function (x) { return '<span><i style="background:' + x[2] + '"></i>' + x[0] + ' <b>{{ CURRENCY }} ' + x[1].toLocaleString('en-KE') + '</b> (' + pct(x[1], total) + '%)</span>'; }).join('') + '</div>'
             : '<div class="an-empty" style="padding:10px"><i class="fas fa-wallet"></i>No confirmed payments yet.</div>';
         var cmax = Math.max.apply(null, a.countries.map(function (c) { return c.count; }).concat([1]));
         $('anCountries').innerHTML = a.countries.length ? a.countries.map(function (c) { return '<div class="an-bar-row"><span class="n">' + esc(c.name) + '</span><div class="an-track"><i style="width:' + (c.count / cmax * 100) + '%"></i></div><span class="v an-num">' + c.count + '</span></div>'; }).join('') : '<p style="font-size:.8rem;color:var(--an-text-3)">Not known yet.</p>';
@@ -725,15 +725,15 @@ body.dark-mode .an {
     }
     function renderTeaching() {
         var t = S.data.teaching, e = S.data.totals.earnings;
-        $('anTeachStrip').innerHTML = '<div><b class="an-num">KES ' + e.toLocaleString('en-KE') + '</b><span>Earned in ' + RANGE_TEXT[S.range] + '</span></div>' +
-            '<div><b class="an-num">KES ' + t.earned_total.toLocaleString('en-KE') + '</b><span>Earned all time</span></div>' +
-            '<div><b class="an-num">KES ' + t.pending_amount.toLocaleString('en-KE') + '</b><span>Being checked</span></div>' +
+        $('anTeachStrip').innerHTML = '<div><b class="an-num">{{ CURRENCY }} ' + e.toLocaleString('en-KE') + '</b><span>Earned in ' + RANGE_TEXT[S.range] + '</span></div>' +
+            '<div><b class="an-num">{{ CURRENCY }} ' + t.earned_total.toLocaleString('en-KE') + '</b><span>Earned all time</span></div>' +
+            '<div><b class="an-num">{{ CURRENCY }} ' + t.pending_amount.toLocaleString('en-KE') + '</b><span>Being checked</span></div>' +
             '<div><b class="an-num">' + S.data.totals.lessons_paid + '</b><span>Lessons paid for in ' + RANGE_TEXT[S.range] + '</span></div>';
         var STATUS = { confirmed: ['ok', 'Confirmed'], pending: ['warn', 'Being checked'], rejected: ['bad', 'Not confirmed'], cancelled: ['', 'Cancelled'] };
         $('anPayTbl').querySelector('tbody').innerHTML = t.payments.length ? '<tr><th>Payment</th><th class="num">Amount</th><th>Status</th></tr>' + t.payments.map(function (p) {
             var s = STATUS[p.status] || ['', p.status];
             return '<tr><td><div class="t" style="min-width:150px"><b>' + esc(p.child) + ' · ' + esc(p.subject) + '</b><small>' + esc(p.family) + ' · ' + p.sessions + ' session' + (p.sessions === 1 ? '' : 's') + ' · ' + esc(when(p.at)) + '</small></div></td>' +
-                '<td class="num"><b>KES ' + Number(p.amount).toLocaleString('en-KE') + '</b></td><td><span class="an-pill ' + s[0] + '">' + s[1] + '</span></td></tr>';
+                '<td class="num"><b>{{ CURRENCY }} ' + Number(p.amount).toLocaleString('en-KE') + '</b></td><td><span class="an-pill ' + s[0] + '">' + s[1] + '</span></td></tr>';
         }).join('') : '<tr><td><div class="an-empty"><i class="fas fa-receipt"></i>No payments yet. When a parent or a learner pays for lessons with you, it shows here.</div></td></tr>';
     }
 
@@ -741,15 +741,15 @@ body.dark-mode .an {
     function csvCell(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
     $('anCsv').addEventListener('click', function () {
         var d = S.data; if (!d) return;
-        var rows = [['eSchool teaching report', RANGE_TEXT[S.range], d.period.start + ' to ' + d.period.end], [],
+        var rows = [['Eschool teaching report', RANGE_TEXT[S.range], d.period.start + ' to ' + d.period.end], [],
             ['Summary', 'This period', 'Period before']];
-        TREND_KEYS.forEach(function (k) { rows.push([METRICS[k].label + (METRICS[k].money ? ' (KES)' : ''), d.totals[k], d.prev[k]]); });
-        rows.push(['Being checked (KES)', d.teaching.pending_amount, ''], ['Earned all time (KES)', d.teaching.earned_total, ''], ['Rating (all time)', d.reviews.avg == null ? '' : d.reviews.avg, ''], []);
+        TREND_KEYS.forEach(function (k) { rows.push([METRICS[k].label + (METRICS[k].money ? ' ({{ CURRENCY }})' : ''), d.totals[k], d.prev[k]]); });
+        rows.push(['Being checked ({{ CURRENCY }})', d.teaching.pending_amount, ''], ['Earned all time ({{ CURRENCY }})', d.teaching.earned_total, ''], ['Rating (all time)', d.reviews.avg == null ? '' : d.reviews.avg, ''], []);
         rows.push([d.unit === 'day' ? 'Day' : d.unit === 'week' ? 'Week starting' : 'Month'].concat(TREND_KEYS.map(function (k) { return METRICS[k].label; })));
         d.labels.forEach(function (l, i) { rows.push([l].concat(TREND_KEYS.map(function (k) { return d.series[k][i]; }))); });
         rows.push([], ['Learner', 'Subject', 'Paid by', 'Lessons paid for', 'Taught', 'Booked', 'Left to book', 'Status']);
         d.teaching.learners.forEach(function (l) { rows.push([l.name, l.subject, l.self_paid ? 'Learner' : 'Parent', l.paid, l.taught, l.booked, l.left, l.status]); });
-        rows.push([], ['Payment', 'Subject', 'Paid by', 'Lessons', 'Amount (KES)', 'Status', 'Date']);
+        rows.push([], ['Payment', 'Subject', 'Paid by', 'Lessons', 'Amount ({{ CURRENCY }})', 'Status', 'Date']);
         d.teaching.payments.forEach(function (p) { rows.push([p.child, p.subject, p.family, p.sessions, p.amount, p.status, (p.at || '').slice(0, 10)]); });
         rows.push([], ['Live class', 'Date', 'Minutes', 'Joined', 'Most at once', 'Chat messages']);
         d.live.classes.forEach(function (c) { rows.push([c.title, (c.start || '').slice(0, 10), c.minutes || '', c.viewers, c.peak, c.chat]); });

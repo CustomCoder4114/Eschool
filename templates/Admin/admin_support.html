@@ -1,1184 +1,361 @@
 {% extends "Admin/admin_body.html" %}
-
+{% block title %}Support{% endblock %}
 {% block allcontent %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Support - eSchool</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --primary-dark: #3a0ca3;
-            --secondary-color: #7209b7;
-            --accent-color: #4cc9f0;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --danger-color: #ef4444;
-            --info-color: #3b82f6;
-            --dark-color: #1e293b;
-            --light-color: #f8fafc;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --border-radius: 20px;
-            --border-radius-sm: 12px;
-            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f1f5f9;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        /* Page Header */
-        .page-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 25px 40px;
-            border-radius: var(--border-radius);
-            margin-bottom: 25px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .page-header::after {
-            content: "🎫";
-            position: absolute;
-            right: 20px;
-            bottom: -20px;
-            font-size: 8rem;
-            opacity: 0.08;
-        }
-
-        .header-content {
-            position: relative;
-            z-index: 2;
-        }
-
-        .page-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 2rem;
-            margin-bottom: 5px;
-            font-weight: 700;
-        }
-
-        .page-subtitle {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        .stat-box {
-            background: white;
-            border-radius: var(--border-radius-sm);
-            padding: 18px 20px;
-            box-shadow: var(--card-shadow);
-            text-align: center;
-        }
-
-        .stat-box .number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-
-        .stat-box .label {
-            font-size: 0.85rem;
-            color: var(--gray-500);
-        }
-
-        .stat-box.pending .number { color: var(--warning-color); }
-        .stat-box.in-progress .number { color: var(--info-color); }
-        .stat-box.resolved .number { color: var(--success-color); }
-
-        /* Tickets Layout */
-        .tickets-layout {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            min-height: 500px;
-        }
-
-        /* Tickets List */
-        .tickets-card {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 25px;
-            box-shadow: var(--card-shadow);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .tickets-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .tickets-header h2 {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.3rem;
-            color: var(--dark-color);
-        }
-
-        .tickets-header .filter-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .tickets-header select {
-            padding: 8px 14px;
-            border: 2px solid var(--gray-200);
-            border-radius: var(--border-radius-sm);
-            font-size: 0.85rem;
-            background: white;
-            cursor: pointer;
-        }
-
-        .tickets-header select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-
-        .tickets-list {
-            flex: 1;
-            overflow-y: auto;
-            max-height: 550px;
-        }
-
-        .tickets-list::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .tickets-list::-webkit-scrollbar-track {
-            background: var(--gray-100);
-            border-radius: 10px;
-        }
-
-        .tickets-list::-webkit-scrollbar-thumb {
-            background: var(--primary-color);
-            border-radius: 10px;
-        }
-
-        .ticket-item {
-            padding: 16px 18px;
-            border-radius: var(--border-radius-sm);
-            border: 1px solid var(--gray-200);
-            margin-bottom: 12px;
-            transition: var(--transition);
-            cursor: pointer;
-        }
-
-        .ticket-item:hover {
-            border-color: var(--primary-color);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        }
-
-        .ticket-item.unread {
-            border-left: 4px solid var(--primary-color);
-            background: var(--gray-50);
-        }
-
-        .ticket-item.resolved {
-            border-left: 4px solid var(--success-color);
-            opacity: 0.7;
-        }
-
-        .ticket-item .ticket-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .ticket-item .ticket-user {
-            font-weight: 600;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .ticket-item .ticket-user .user-initials {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .ticket-item .ticket-type {
-            font-size: 0.7rem;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-weight: 600;
-            background: var(--gray-200);
-            color: var(--gray-600);
-        }
-
-        .ticket-item .ticket-type.technical {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        .ticket-item .ticket-type.academic {
-            background: #e0e7ff;
-            color: var(--primary-color);
-        }
-
-        .ticket-item .ticket-type.billing {
-            background: #dcfce7;
-            color: var(--success-color);
-        }
-
-        .ticket-item .ticket-type.content {
-            background: #f3e8ff;
-            color: #7c3aed;
-        }
-
-        .ticket-item .ticket-type.account {
-            background: #fce7f3;
-            color: #db2777;
-        }
-
-        .ticket-item .ticket-type.other {
-            background: #f3f4f6;
-            color: #6b7280;
-        }
-
-        .ticket-item .ticket-title {
-            font-weight: 500;
-            color: var(--dark-color);
-            margin: 6px 0 3px;
-        }
-
-        .ticket-item .ticket-preview {
-            font-size: 0.85rem;
-            color: var(--gray-500);
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .ticket-item .ticket-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 8px;
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-
-        .ticket-item .ticket-time {
-            font-size: 0.7rem;
-            color: var(--gray-400);
-        }
-
-        .ticket-item .ticket-status {
-            font-size: 0.65rem;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-weight: 600;
-        }
-
-        .ticket-item .ticket-status.pending {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        .ticket-item .ticket-status.resolved {
-            background: #dcfce7;
-            color: var(--success-color);
-        }
-
-        .ticket-item .ticket-status.in-progress {
-            background: #e0e7ff;
-            color: var(--primary-color);
-        }
-
-        .ticket-item .has-response {
-            margin-top: 6px;
-            font-size: 0.75rem;
-            color: var(--success-color);
-        }
-
-        /* Ticket Detail Panel */
-        .ticket-detail-panel {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 25px;
-            box-shadow: var(--card-shadow);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .ticket-detail-panel .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: var(--gray-500);
-            text-align: center;
-            padding: 40px 20px;
-        }
-
-        .ticket-detail-panel .empty-state i {
-            font-size: 4rem;
-            color: var(--gray-300);
-            margin-bottom: 15px;
-        }
-
-        .ticket-detail-panel .empty-state h3 {
-            color: var(--dark-color);
-            margin-bottom: 5px;
-        }
-
-        .ticket-detail-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .ticket-detail-header .ticket-id {
-            font-size: 0.8rem;
-            color: var(--gray-400);
-        }
-
-        .ticket-user-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 15px;
-            padding: 15px;
-            background: var(--gray-50);
-            border-radius: var(--border-radius-sm);
-        }
-
-        .ticket-user-info .avatar {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-
-        .ticket-user-info .user-details .name {
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-
-        .ticket-user-info .user-details .email {
-            font-size: 0.85rem;
-            color: var(--gray-500);
-        }
-
-        .ticket-detail-body {
-            background: var(--gray-50);
-            padding: 20px;
-            border-radius: var(--border-radius-sm);
-            margin: 10px 0 20px;
-        }
-
-        .ticket-detail-body .label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--gray-400);
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .ticket-detail-body .text {
-            color: var(--gray-700);
-            line-height: 1.7;
-            font-size: 0.95rem;
-        }
-
-        .ticket-response-area {
-            margin-top: auto;
-            border-top: 1px solid var(--gray-200);
-            padding-top: 20px;
-        }
-
-        .ticket-response-area .response-label {
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 10px;
-            font-size: 0.95rem;
-        }
-
-        .ticket-response-area textarea {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--gray-200);
-            border-radius: var(--border-radius-sm);
-            font-size: 0.95rem;
-            font-family: 'Inter', sans-serif;
-            resize: vertical;
-            min-height: 80px;
-            transition: var(--transition);
-        }
-
-        .ticket-response-area textarea:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        .ticket-response-area .response-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 12px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 10px 24px;
-            border: none;
-            border-radius: var(--border-radius-sm);
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.9rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
-        }
-
-        .btn-success {
-            background: var(--success-color);
-            color: white;
-        }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--primary-color);
-            border: 2px solid var(--primary-color);
-        }
-
-        .btn-outline:hover {
-            background: var(--primary-light);
-        }
-
-        .btn-danger {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        .existing-response {
-            background: var(--gray-50);
-            padding: 15px;
-            border-radius: var(--border-radius-sm);
-            margin-top: 15px;
-            border-left: 4px solid var(--success-color);
-        }
-
-        .existing-response .response-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--gray-400);
-            font-weight: 600;
-        }
-
-        .existing-response .response-text {
-            color: var(--gray-700);
-            margin-top: 5px;
-            line-height: 1.6;
-        }
-
-        .existing-response .response-time {
-            font-size: 0.7rem;
-            color: var(--gray-400);
-            margin-top: 5px;
-        }
-
-        /* Dark Mode */
-        body.dark-mode .tickets-card,
-        body.dark-mode .ticket-detail-panel {
-            background-color: #1e293b;
-        }
-
-        body.dark-mode .tickets-header h2,
-        body.dark-mode .ticket-detail-header .ticket-id {
-            color: #f1f5f9;
-        }
-
-        body.dark-mode .ticket-item {
-            border-color: #334155;
-            background-color: #263449;
-        }
-
-        body.dark-mode .ticket-item:hover {
-            border-color: var(--primary-color);
-        }
-
-        body.dark-mode .ticket-item .ticket-user {
-            color: #f1f5f9;
-        }
-
-        body.dark-mode .ticket-item .ticket-title {
-            color: #f1f5f9;
-        }
-
-        body.dark-mode .ticket-item .ticket-preview {
-            color: #94a3b8;
-        }
-
-        body.dark-mode .ticket-item.unread {
-            background: #1c2b47;
-        }
-
-        body.dark-mode .ticket-user-info {
-            background: #0f172a;
-        }
-
-        body.dark-mode .ticket-user-info .user-details .name {
-            color: #f1f5f9;
-        }
-
-        body.dark-mode .ticket-detail-body {
-            background: #0f172a;
-        }
-
-        body.dark-mode .ticket-detail-body .text {
-            color: #e2e8f0;
-        }
-
-        body.dark-mode .ticket-response-area textarea {
-            background-color: #0f172a;
-            border-color: #334155;
-            color: #f1f5f9;
-        }
-
-        body.dark-mode .existing-response {
-            background: #0f172a;
-        }
-
-        body.dark-mode .existing-response .response-text {
-            color: #e2e8f0;
-        }
-
-        body.dark-mode .ticket-detail-panel .empty-state h3 {
-            color: #e2e8f0;
-        }
-
-        body.dark-mode .ticket-detail-panel .empty-state i {
-            color: #475569;
-        }
-
-        body.dark-mode .tickets-header select {
-            background-color: #0f172a;
-            border-color: #334155;
-            color: #f1f5f9;
-        }
-
-        body.dark-mode .stat-box {
-            background-color: #1e293b;
-        }
-
-        body.dark-mode .stat-box .label {
-            color: #94a3b8;
-        }
-
-        /* Responsive */
-        @media (max-width: 968px) {
-            .tickets-layout {
-                grid-template-columns: 1fr;
-            }
-            .ticket-detail-panel {
-                min-height: 400px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 0 10px;
-            }
-            .page-header {
-                padding: 20px;
-            }
-            .page-title {
-                font-size: 1.5rem;
-            }
-            .stats-row {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 10px;
-            }
-            .stat-box .number {
-                font-size: 1.3rem;
-            }
-            .tickets-header {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .tickets-header .filter-group {
-                flex-direction: column;
-            }
-            .tickets-header select {
-                width: 100%;
-            }
-            .ticket-response-area .response-actions {
-                flex-direction: column;
-            }
-            .ticket-response-area .response-actions .btn {
-                width: 100%;
-                justify-content: center;
-            }
-            .ticket-detail-header {
-                flex-direction: column;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .stats-row {
-                grid-template-columns: 1fr 1fr;
-            }
-            .stat-box .number {
-                font-size: 1.1rem;
-            }
-            .page-title {
-                font-size: 1.2rem;
-            }
-            .ticket-item .ticket-top {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Page Header -->
-        <header class="page-header">
-            <div class="header-content">
-                <h1 class="page-title"><i class="fas fa-ticket-alt"></i> Support Tickets</h1>
-                <p class="page-subtitle">View and respond to user support requests</p>
-            </div>
-        </header>
-
-        <!-- Stats -->
-        <div class="stats-row" id="statsRow">
-            <div class="stat-box pending">
-                <div class="number" id="pendingCount">0</div>
-                <div class="label">🟡 Pending</div>
-            </div>
-            <div class="stat-box in-progress">
-                <div class="number" id="inProgressCount">0</div>
-                <div class="label">🔵 In Progress</div>
-            </div>
-            <div class="stat-box resolved">
-                <div class="number" id="resolvedCount">0</div>
-                <div class="label">✅ Resolved</div>
-            </div>
-            <div class="stat-box">
-                <div class="number" id="totalCount">0</div>
-                <div class="label">📊 Total Tickets</div>
-            </div>
-        </div>
-
-        <!-- Tickets Layout -->
-        <div class="tickets-layout">
-            <!-- Tickets List -->
-            <div class="tickets-card">
-                <div class="tickets-header">
-                    <h2>All Tickets</h2>
-                    <div class="filter-group">
-                        <select id="statusFilter" onchange="filterTickets()">
-                            <option value="all">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="resolved">Resolved</option>
-                        </select>
-                        <select id="categoryFilter" onchange="filterTickets()">
-                            <option value="all">All Categories</option>
-                            <option value="technical">Technical</option>
-                            <option value="academic">Academic</option>
-                            <option value="billing">Billing</option>
-                            <option value="content">Content</option>
-                            <option value="account">Account</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="tickets-list" id="ticketsList">
-                    <!-- Tickets will be rendered here -->
-                    <div class="empty-state" id="emptyTickets">
-                        <i class="fas fa-ticket-alt"></i>
-                        <h3>No tickets found</h3>
-                        <p>Support tickets will appear here</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Ticket Detail -->
-            <div class="ticket-detail-panel" id="ticketDetailPanel">
-                <div class="empty-state" id="emptyDetail">
-                    <i class="fas fa-inbox"></i>
-                    <h3>Select a ticket</h3>
-                    <p>Click on a ticket from the list to view details</p>
-                </div>
-                <div id="ticketDetailContent" style="display: none;">
-                    <div class="ticket-detail-header">
-                        <div>
-                            <h3 id="detailSubject" style="font-family: 'Poppins', sans-serif; color: var(--dark-color);">Subject</h3>
-                            <span class="ticket-id" id="detailId">#TICKET-000</span>
-                        </div>
-                        <span id="detailStatusBadge" class="ticket-status pending">Pending</span>
-                    </div>
-
-                    <div class="ticket-user-info">
-                        <div class="avatar" id="detailAvatar">U</div>
-                        <div class="user-details">
-                            <div class="name" id="detailUserName">User Name</div>
-                            <div class="email" id="detailUserEmail">user@email.com</div>
-                        </div>
-                    </div>
-
-                    <div class="ticket-detail-body">
-                        <div class="label">Category</div>
-                        <div class="text" id="detailCategory">Technical</div>
-                        <div class="label" style="margin-top: 12px;">Description</div>
-                        <div class="text" id="detailDescription">Description goes here...</div>
-                        <div class="label" style="margin-top: 12px;">Submitted</div>
-                        <div class="text" id="detailTime">2 hours ago</div>
-                    </div>
-
-                    <div id="detailExistingResponse"></div>
-
-                    <div class="ticket-response-area">
-                        <div class="response-label"><i class="fas fa-reply"></i> Respond to Ticket</div>
-                        <textarea id="responseText" placeholder="Type your response here..." rows="3"></textarea>
-                        <div class="response-actions">
-                            <button class="btn btn-primary" onclick="sendResponse()">
-                                <i class="fas fa-paper-plane"></i> Send Response
-                            </button>
-                            <button class="btn btn-success" onclick="markResolved()">
-                                <i class="fas fa-check-circle"></i> Mark Resolved
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+{#
+    ADMIN - Support  (templates/Admin/admin_support.html)   Route: /admin_support   Open a ticket: /admin_support?t=<ticket id>
+    GET  /api/admin/support?tab=needs|waiting|resolved|all&q=&category=&priority=&sort=urgent|old|new
+    GET  /api/admin/support/<id>            (marks it read)
+    POST /api/admin/support/<id>  {action: reply {text, resolve} | note {text} | resolve | reopen | set {priority, category}}
+    GET  /api/admin/support/export.csv
+    GET  /api/admin/inbox/person/<uid>      GET|POST /api/admin/inbox/replies   (shared with Messages)
+#}
+<style>
+.sp-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; background: var(--ab-surface); border: 1px solid var(--ab-border); border-radius: 12px; padding: 4px; margin-bottom: 14px; max-width: 100%; }
+.sp-seg button { border: 0; background: none; padding: 7px 14px; border-radius: 9px; font: inherit; font-size: .84rem; font-weight: 600; color: var(--ab-text-2); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.sp-seg button:hover { background: var(--ab-hover); color: var(--ab-text); }
+.sp-seg button[aria-pressed="true"] { background: var(--ab-accent-soft); color: var(--ab-accent-text); }
+.sp-seg em { font-style: normal; background: var(--ab-hover); color: var(--ab-text-3); border-radius: 99px; padding: 1px 7px; font-size: .7rem; }
+.sp-seg button[data-t="needs"][aria-pressed="true"] em { background: #ef4444; color: #fff; }
+.sp-grid { display: grid; grid-template-columns: 370px minmax(0, 1fr) 280px; gap: 14px; height: max(580px, calc(100vh - var(--ab-header-h) - 330px)); }
+.sp-col { background: var(--ab-surface); border: 1px solid var(--ab-border); border-radius: 14px; box-shadow: var(--card-shadow); display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.sp-tool { padding: 12px; border-bottom: 1px solid var(--ab-border); display: flex; flex-direction: column; gap: 8px; }
+.sp-tool .row { display: flex; gap: 6px; }
+.sp-tool .ad-select { flex: 1; min-width: 0; font-size: .74rem; padding: 7px 4px; }
+.sp-list { flex: 1; overflow-y: auto; }
+.sp-tk { display: block; width: 100%; text-align: left; padding: 11px 14px; border: 0; border-bottom: 1px solid var(--ab-border); border-left: 3px solid transparent; background: none; font: inherit; color: inherit; cursor: pointer; }
+.sp-tk:hover { background: var(--ab-hover); }
+.sp-tk.on { background: var(--ab-accent-soft); border-left-color: var(--primary-color); }
+.sp-tk.res { opacity: .72; }
+.sp-t1 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: .72rem; color: var(--ab-text-3); }
+.sp-tk b.s { display: block; font-size: .88rem; margin: 4px 0 2px; color: var(--ab-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-tk .pv { font-size: .78rem; color: var(--ab-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-t3 { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: .72rem; color: var(--ab-text-3); flex-wrap: wrap; }
+.sp-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.sp-dot.urgent { background: #dc2626; } .sp-dot.high { background: #f97316; } .sp-dot.medium { background: #3b82f6; } .sp-dot.low { background: #94a3b8; }
+.sp-urg { color: #dc2626; font-weight: 800; letter-spacing: .03em; }
+.sp-age.warn { color: #b45309; font-weight: 700; } .sp-age.bad { color: #dc2626; font-weight: 700; }
+body.dark-mode .sp-age.warn { color: #fcd34d; } body.dark-mode .sp-age.bad, body.dark-mode .sp-urg { color: #f87171; }
+.sp-new { background: var(--primary-color) !important; color: #fff !important; }
+.sp-dh { padding: 14px 18px; border-bottom: 1px solid var(--ab-border); }
+.sp-dh h2 { font-size: 1.05rem; color: var(--ab-text); overflow-wrap: anywhere; }
+.sp-dh .m { display: flex; gap: 6px 8px; align-items: center; margin-top: 5px; flex-wrap: wrap; font-size: .76rem; color: var(--ab-text-3); }
+.sp-ctl { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+.sp-ctl label { font-size: .74rem; font-weight: 600; color: var(--ab-text-3); display: inline-flex; gap: 5px; align-items: center; }
+.sp-ctl .ad-select { font-size: .76rem; padding: 5px 8px; border-radius: 8px; }
+.sp-back { display: none; }
+.sp-th { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; background: var(--ab-surface-2); }
+.sp-ev { border: 1px solid var(--ab-border); background: var(--ab-surface); border-radius: 12px; padding: 10px 13px; font-size: .86rem; line-height: 1.55; max-width: 86%; color: var(--ab-text); overflow-wrap: anywhere; white-space: pre-wrap; }
+.sp-ev .w { font-size: .72rem; color: var(--ab-text-3); margin-bottom: 3px; font-weight: 600; white-space: normal; }
+.sp-ev.sup { align-self: flex-end; background: var(--ab-accent-soft); border-color: color-mix(in srgb, var(--primary-color) 30%, transparent); }
+.sp-ev.note { align-self: stretch; max-width: 100%; background: #fffbeb; border: 1px dashed #fcd34d; }
+body.dark-mode .sp-ev.note { background: rgba(245, 158, 11, .1); border-color: rgba(245, 158, 11, .45); }
+.sp-sys { align-self: center; font-size: .72rem; color: var(--ab-text-3); background: var(--ab-hover); border-radius: 99px; padding: 3px 11px; text-align: center; max-width: 92%; }
+.sp-cmp { border-top: 1px solid var(--ab-border); padding: 10px 14px; }
+.sp-modes { display: flex; gap: 4px; margin-bottom: 8px; }
+.sp-modes button { border: 0; background: none; font: inherit; font-size: .78rem; font-weight: 600; padding: 5px 10px; border-radius: 8px; color: var(--ab-text-3); cursor: pointer; }
+.sp-modes button[aria-pressed="true"] { background: var(--ab-accent-soft); color: var(--ab-accent-text); }
+.sp-modes button[data-m="note"][aria-pressed="true"] { background: #fffbeb; color: #92400e; }
+body.dark-mode .sp-modes button[data-m="note"][aria-pressed="true"] { background: rgba(245, 158, 11, .15); color: #fcd34d; }
+.sp-qr { display: flex; gap: 6px; margin-bottom: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.sp-qr button { flex-shrink: 0; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: inherit; font-size: .72rem; border: 1px solid var(--ab-border); border-radius: 99px; padding: 4px 10px; color: var(--ab-text-2); background: var(--ab-surface-2); cursor: pointer; }
+.sp-cmp textarea { width: 100%; resize: vertical; min-height: 70px; max-height: 240px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--ab-border); background: var(--ab-surface); color: var(--ab-text); font: inherit; font-size: .87rem; line-height: 1.5; }
+.sp-cmp textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px var(--ab-accent-soft); }
+.sp-cmp.note textarea { border-color: #fcd34d; background: #fffdf5; }
+body.dark-mode .sp-cmp.note textarea { background: rgba(245, 158, 11, .06); border-color: rgba(245, 158, 11, .45); }
+.sp-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+.sp-acts .hint { margin-right: auto; font-size: .7rem; color: var(--ab-text-3); }
+.sp-side { overflow-y: auto; padding: 16px; }
+.sp-side h3 { font-size: .96rem; color: var(--ab-text); }
+.sp-av { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: .8rem; overflow: hidden; }
+.sp-av img { width: 100%; height: 100%; object-fit: cover; }
+.sp-role { font-size: .64rem; font-weight: 700; padding: 1px 7px; border-radius: 99px; white-space: nowrap; }
+.sp-role.student { background: #e0e7ff; color: #4361ee; } .sp-role.teacher { background: #dcfce7; color: #047857; }
+.sp-role.parent { background: #fce7f3; color: #be185d; } .sp-role.admin { background: #fef3c7; color: #b45309; }
+body.dark-mode .sp-role.student { background: #1c2b47; color: #93c5fd; } body.dark-mode .sp-role.teacher { background: #12291f; color: #6ee7b7; }
+body.dark-mode .sp-role.parent { background: #3a1730; color: #f9a8d4; } body.dark-mode .sp-role.admin { background: #2d2a1a; color: #fbbf24; }
+.sp-al { display: flex; gap: 8px; align-items: flex-start; font-size: .78rem; border-radius: 9px; padding: 8px 10px; margin-top: 6px; text-decoration: none; line-height: 1.4; }
+.sp-al i { margin-top: 2px; }
+.sp-al.info { background: #eff6ff; color: #1d4ed8; } .sp-al.warn { background: #fffbeb; color: #92400e; } .sp-al.bad { background: #fef2f2; color: #b91c1c; } .sp-al.ok { background: #ecfdf5; color: #047857; }
+body.dark-mode .sp-al.info { background: rgba(59, 130, 246, .15); color: #93c5fd; } body.dark-mode .sp-al.warn { background: rgba(245, 158, 11, .14); color: #fcd34d; }
+body.dark-mode .sp-al.bad { background: rgba(239, 68, 68, .14); color: #fca5a5; } body.dark-mode .sp-al.ok { background: rgba(16, 185, 129, .14); color: #6ee7b7; }
+.sp-hist button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--ab-border); background: none; font: inherit; font-size: .77rem; color: var(--ab-text-2); padding: 6px 0; cursor: pointer; }
+.sp-hist button:hover { color: var(--ab-accent-text); }
+.sp-links { display: flex; flex-direction: column; gap: 6px; }
+.sp-links .ad-btn { justify-content: flex-start; }
+.sp-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--ab-text-3); padding: 30px; font-size: .88rem; line-height: 1.6; }
+.sp-empty i { font-size: 2.2rem; opacity: .4; margin-bottom: 10px; }
+.sp-empty b { color: var(--ab-text); font-size: .98rem; }
+@media (max-width: 1250px) {
+    .sp-grid { grid-template-columns: 330px minmax(0, 1fr); height: auto; grid-template-rows: max(560px, calc(100vh - var(--ab-header-h) - 300px)) auto; }
+    .sp-sidecol { grid-column: 1 / -1; }
+}
+@media (max-width: 860px) {
+    .sp-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+    .sp-listcol, .sp-tkcol { height: calc(100vh - var(--ab-header-h) - 110px); min-height: 500px; }
+    .sp-grid.open .sp-listcol { display: none; }
+    .sp-grid:not(.open) .sp-tkcol, .sp-grid:not(.open) .sp-sidecol { display: none; }
+    .sp-back { display: inline-flex; }
+    .sp-ev { max-width: 94%; }
+}
+</style>
+
+<div class="ad-page-h">
+    <div><h1>Support</h1><p>Tickets from learners, parents and teachers. Urgent and long-waiting tickets come first, the whole conversation is in one place, and you can see who sent it without leaving the page.</p></div>
+    <div class="ad-actions">
+        <a class="ad-btn" href="/admin_messages" title="Saved replies are shared with Messages"><i class="fas fa-envelope"></i> Messages</a>
+        <a class="ad-btn" href="/api/admin/support/export.csv"><i class="fas fa-file-csv"></i> Export CSV</a>
     </div>
+</div>
 
-    <script>
-        // =============================================================
-        // STATE
-        // =============================================================
-        let allTickets = [];
-        let currentTicketId = null;
-        let currentFilter = 'all';
-        let currentCategory = 'all';
+<div class="ad-kpis" id="sKpis"><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div></div>
 
-        // =============================================================
-        // LOAD TICKETS FROM BACKEND
-        // =============================================================
-        function loadTickets() {
-            fetch('/api/complaints')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        allTickets = data.complaints;
-                        renderStats();
-                        renderTickets();
-                    } else {
-                        console.error('Failed to load tickets:', data.message);
-                    }
-                })
-                .catch(err => {
-                    console.error('Error loading tickets:', err);
-                });
+<div class="sp-seg" role="group" aria-label="Show" id="sSeg">
+    <button type="button" data-t="needs">Needs a reply <em></em></button>
+    <button type="button" data-t="waiting">Waiting on person <em></em></button>
+    <button type="button" data-t="resolved">Resolved <em></em></button>
+    <button type="button" data-t="all">All <em></em></button>
+</div>
+<div class="ad-note" id="sNote" role="status" aria-live="polite" style="margin-bottom:10px"></div>
+
+<div class="sp-grid" id="sGrid">
+    <section class="sp-col sp-listcol" aria-label="Tickets">
+        <div class="sp-tool">
+            <input type="search" class="ad-input" id="sQ" placeholder="Search subject, words, name, ticket #..." aria-label="Search tickets">
+            <div class="row">
+                <select class="ad-select" id="sCat" aria-label="Category"><option value="">All categories</option></select>
+                <select class="ad-select" id="sPri" aria-label="Priority"><option value="">All priorities</option><option value="urgent">Urgent</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+                <select class="ad-select" id="sSort" aria-label="Order"><option value="urgent">Urgent first</option><option value="old">Waiting longest</option><option value="new">Latest activity</option></select>
+            </div>
+        </div>
+        <div class="sp-list" id="sList"><div style="padding:12px"><div class="ad-skel"></div><div class="ad-skel"></div><div class="ad-skel"></div></div></div>
+    </section>
+    <section class="sp-col sp-tkcol" aria-label="Ticket" id="sTk">
+        <div class="sp-empty"><i class="fas fa-ticket"></i><b>Pick a ticket</b>The whole conversation, private notes and reply box show here.</div>
+    </section>
+    <aside class="sp-col sp-sidecol sp-side" aria-label="Who sent it" id="sSide">
+        <div class="ad-muted" style="line-height:1.6">Open a ticket to see who sent it: their role, children or parents, payments waiting, other tickets, reports and warnings.</div>
+    </aside>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    async function api(url, opt) {
+        opt = opt || {};
+        var init = { credentials: 'same-origin', cache: 'no-store', method: opt.method || 'GET', headers: {} };
+        if (opt.body !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(opt.body); }
+        var r; try { r = await fetch(url, init); } catch (e) { throw new Error('No connection. Check your internet and try again.'); }
+        var d = null; try { d = await r.json(); } catch (e) { /* not json */ }
+        if (r.status === 401) { setTimeout(function () { location.replace('/Login'); }, 1200); throw new Error('Please sign in again.'); }
+        if (!r.ok || (d && d.success === false)) throw new Error((d && (d.message || d.error)) || ('Something went wrong (' + r.status + ').'));
+        return d == null ? {} : d;
+    }
+    function toDate(iso) { return iso ? new Date(String(iso).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? '' : 'Z')) : null; }
+    function ok(d) { return d && !isNaN(d); }
+    function dur(sec) { if (sec < 3600) return Math.max(1, Math.floor(sec / 60)) + ' min'; if (sec < 86400) return Math.floor(sec / 3600) + ' h'; var d = Math.floor(sec / 86400); return d + ' day' + (d === 1 ? '' : 's'); }
+    function ago(iso) { var d = toDate(iso); if (!ok(d)) return ''; var s = (Date.now() - d) / 1000; return s < 60 ? 'just now' : dur(s) + ' ago'; }
+    function stamp(iso) { var d = toDate(iso); if (!ok(d)) return ''; var t = new Date(); return d.toDateString() === t.toDateString() ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+    function when(iso) { var d = toDate(iso); return ok(d) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '–'; }
+    function initials(n) { return String(n || '?').split(/\s+/).filter(Boolean).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(); }
+    var COLORS = ['#4361ee', '#3a0ca3', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+    function color(name) { var h = 0; name = String(name || ''); for (var i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h); return COLORS[Math.abs(h) % COLORS.length]; }
+    var ROLE = { student: 'Learner', parent: 'Parent', teacher: 'Teacher', admin: 'Admin' };
+    function role(r) { r = ROLE[r] ? r : 'student'; return '<span class="sp-role ' + r + '">' + ROLE[r] + '</span>'; }
+    var CAT = { technical: 'Technical', academic: 'Academic', billing: 'Billing', content: 'Content', account: 'Account', other: 'Other', course: 'Course', feature: 'Idea',
+                linking: 'Linking a child', payments: 'Payments', safety: 'Safety', teachers: 'Teachers', progress: 'Progress' };
+    var CAT_PILL = { safety: 'bad', content: 'bad', payments: 'warn', billing: 'warn', technical: 'info', account: 'info', linking: 'info' };
+    function cat(c) { return CAT[c] || (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'Other'); }
+    var PRI = { urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
+    var STATUS = { pending: ['Pending', 'warn'], 'in-progress': ['In progress', 'info'], resolved: ['Resolved', 'ok'] };
+    function note(msg, type) {
+        var el = $('sNote'); el.className = 'ad-note ' + (type || 'info');
+        el.innerHTML = msg ? '<i class="fas ' + (type === 'ok' ? 'fa-circle-check' : type === 'bad' ? 'fa-circle-exclamation' : 'fa-circle-info') + '" style="margin-top:2px"></i><span></span>' : '';
+        if (msg) el.querySelector('span').textContent = msg;
+        clearTimeout(el._t); if (msg && type !== 'bad') el._t = setTimeout(function () { el.innerHTML = ''; }, 5000);
+    }
+    function store(k, v) { try { if (v === undefined) return localStorage.getItem('adm.sup.' + k); localStorage.setItem('adm.sup.' + k, v); } catch (e) { return null; } }
+    function badges() { if (window.adminRefreshBadges) window.adminRefreshBadges(); }
+
+    var S = { tab: store('tab') || 'needs', q: '', cat: '', pri: '', sort: 'urgent', data: null, open: null, t: null, person: null, mode: 'reply', drafts: {}, notes: {}, replies: [], busy: false };
+    if (['needs', 'waiting', 'resolved', 'all'].indexOf(S.tab) < 0) S.tab = 'needs';
+
+    /* ---------- list ---------- */
+    async function loadList(quiet) {
+        try { S.data = await api('/api/admin/support?' + new URLSearchParams({ tab: S.tab, q: S.q, category: S.cat, priority: S.pri, sort: S.sort })); render(); }
+        catch (e) { if (!quiet) note(e.message, 'bad'); }
+    }
+    function render() {
+        var k = S.data.kpis, c = S.data.counts;
+        var fr = k.first_reply_min == null ? '–' : k.first_reply_min < 60 ? k.first_reply_min + ' min' : k.first_reply_min < 2880 ? (Math.round(k.first_reply_min / 6) / 10) + ' h' : Math.round(k.first_reply_min / 1440) + ' days';
+        $('sKpis').innerHTML = [
+            ['fa-reply', '#f59e0b', 'Needs a reply', k.needs, k.oldest_wait ? 'oldest waiting ' + ago(k.oldest_wait).replace(' ago', '') : 'nobody is waiting'],
+            ['fa-triangle-exclamation', '#ef4444', 'Urgent open', k.urgent, k.urgent ? k.urgent_cats.map(cat).join(' · ') : 'none right now'],
+            ['fa-ticket', '#4361ee', 'Open tickets', k.open, k.waiting_on_person + ' waiting on the person'],
+            ['fa-stopwatch', '#ec4899', 'First reply time', fr, k.first_reply_samples ? 'half answered faster (30 days)' : 'not enough tickets yet'],
+            ['fa-circle-check', '#10b981', 'Resolved this week', k.resolved_7, 'reopened: ' + k.reopened_7]
+        ].map(function (x) { return '<div class="ad-kpi" style="--c:' + x[1] + '"><span><i class="fas ' + x[0] + '"></i>' + x[2] + '</span><b>' + x[3] + '</b><small>' + esc(x[4]) + '</small></div>'; }).join('');
+        document.querySelectorAll('#sSeg [data-t]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === S.tab)); b.querySelector('em').textContent = c[b.dataset.t] || 0; });
+        var sel = $('sCat'), cur = S.cat;
+        sel.innerHTML = '<option value="">All categories</option>' + S.data.categories.map(function (x) { return '<option value="' + esc(x) + '"' + (x === cur ? ' selected' : '') + '>' + esc(cat(x)) + '</option>'; }).join('');
+        var list = S.data.tickets;
+        $('sList').innerHTML = list.length ? list.map(item).join('') + (S.data.total > list.length ? '<p class="ad-muted" style="padding:10px 14px">Showing ' + list.length + ' of ' + S.data.total + '. Search to narrow it down.</p>' : '')
+            : '<div class="sp-empty" style="padding:30px 16px"><i class="fas ' + (S.tab === 'needs' ? 'fa-face-smile' : 'fa-inbox') + '"></i><b>' + (S.tab === 'needs' && !S.q && !S.cat && !S.pri ? 'Every ticket has an answer' : 'No tickets here') + '</b>' + (S.q || S.cat || S.pri ? 'Try another search or filter.' : '') + '</div>';
+    }
+    function age(x) {
+        if (!x.waiting_since) return '<span>' + esc(x.status === 'resolved' ? 'resolved · ' + ago(x.last_at) : 'last update ' + ago(x.last_at)) + '</span>';
+        var s = (Date.now() - toDate(x.waiting_since)) / 1000, cls = s > 86400 || (x.priority === 'urgent' && s > 3600) ? 'bad' : s > 4 * 3600 ? 'warn' : '';
+        return '<span class="sp-age ' + cls + '">waiting ' + dur(s) + '</span>';
+    }
+    function item(x) {
+        return '<button type="button" class="sp-tk' + (S.open === x.id ? ' on' : '') + (x.status === 'resolved' ? ' res' : '') + '" data-id="' + x.id + '">' +
+            '<div class="sp-t1"><span class="sp-dot ' + esc(x.priority) + '" title="' + esc(PRI[x.priority] || x.priority) + ' priority"></span>' + (x.priority === 'urgent' ? '<span class="sp-urg">URGENT</span>' : '') +
+            '<span>#' + String(x.id).padStart(4, '0') + '</span><span class="ad-pill ' + (CAT_PILL[x.category] || '') + '">' + esc(cat(x.category)) + '</span>' +
+            (x.new ? '<span class="ad-pill sp-new">NEW</span>' : '') + (x.updated_by_person ? '<span class="ad-pill">Updated by person</span>' : '') + (x.status === 'resolved' ? '<span class="ad-pill ok">Resolved</span>' : '') + '</div>' +
+            '<b class="s">' + esc(x.subject) + '</b><div class="pv">' + esc(x.preview) + '</div>' +
+            '<div class="sp-t3"><span>' + esc(x.name) + ' · ' + esc(ROLE[x.role] || 'Learner') + '</span>·' + age(x) + '</div></button>';
+    }
+    $('sSeg').addEventListener('click', function (e) { var b = e.target.closest('[data-t]'); if (b && b.dataset.t !== S.tab) { S.tab = b.dataset.t; store('tab', S.tab); loadList(); } });
+    var qt; $('sQ').addEventListener('input', function () { clearTimeout(qt); var v = this.value.trim(); qt = setTimeout(function () { S.q = v; loadList(); }, 250); });
+    $('sCat').addEventListener('change', function () { S.cat = this.value; loadList(); });
+    $('sPri').addEventListener('change', function () { S.pri = this.value; loadList(); });
+    $('sSort').addEventListener('change', function () { S.sort = this.value; loadList(); });
+    $('sList').addEventListener('click', function (e) { var b = e.target.closest('[data-id]'); if (b) openTicket(Number(b.dataset.id)); });
+
+    /* ---------- ticket ---------- */
+    async function openTicket(id, keep) {
+        if (S.open && $('sText')) saveDraft();
+        if (!keep) { S.mode = 'reply'; }
+        S.open = id; $('sGrid').classList.add('open');
+        try { history.replaceState(null, '', '/admin_support?t=' + id); } catch (e) { /* ignore */ }
+        if (!keep) { $('sTk').innerHTML = '<div style="padding:18px"><div class="ad-skel"></div><div class="ad-skel" style="width:60%"></div></div>'; if (window.innerWidth <= 860) $('sGrid').scrollIntoView({ block: 'start' }); }
+        if (S.data) document.querySelectorAll('#sList .sp-tk').forEach(function (b) { b.classList.toggle('on', Number(b.dataset.id) === id); });
+        try {
+            var d = await api('/api/admin/support/' + id);
+            if (S.open !== id) return;
+            var samePerson = S.t && S.t.user_id === d.ticket.user_id;
+            S.t = d.ticket; renderTicket();
+            if (!keep || !samePerson || !S.person) loadPerson(S.t.user_id); else renderSide();
+            if (!keep) { badges(); loadList(true); }
+        } catch (e) { $('sTk').innerHTML = '<div class="sp-empty"><i class="fas fa-circle-exclamation"></i><b>Couldn\'t open it</b>' + esc(e.message) + '</div>'; }
+    }
+    function saveDraft() { var t = $('sText'); if (!t || !S.open) return; (S.mode === 'note' ? S.notes : S.drafts)[S.open] = t.value; }
+    function renderTicket() {
+        var t = S.t, st = STATUS[t.status] || STATUS.pending, first = t.name.split(' ')[0];
+        var ev = t.events.map(function (e) {
+            if (e.type === 'note') return '<div class="sp-ev note"><div class="w"><i class="fas fa-lock"></i> Private note · ' + esc(e.by) + ' · ' + esc(stamp(e.at)) + ' — only admins see this</div>' + esc(e.text) + '</div>';
+            if (e.type === 'event') return '<div class="sp-sys">' + esc(e.text) + (e.by ? ' · ' + esc(e.by) : '') + ' · ' + esc(stamp(e.at)) + '</div>';
+            if (e.who === 'support') return '<div class="sp-ev sup"><div class="w"><i class="fas fa-headset"></i> Eschool support · ' + esc(stamp(e.at)) + '</div>' + esc(e.text) + '</div>';
+            return '<div class="sp-ev"><div class="w">' + esc(t.name) + (e.kind === 'added' ? ' added' : '') + ' · ' + esc(stamp(e.at)) + '</div>' + (esc(e.text) || '<span class="ad-muted">No message, subject only.</span>') + '</div>';
+        }).join('');
+        var res = t.status === 'resolved';
+        $('sTk').innerHTML = '<div class="sp-dh"><div style="display:flex;gap:8px;align-items:flex-start"><button type="button" class="ad-btn sm sp-back" id="sBack" aria-label="Back to tickets"><i class="fas fa-arrow-left"></i></button><h2>' + esc(t.subject) + '</h2></div>' +
+            '<div class="m"><span>#' + String(t.id).padStart(4, '0') + '</span>·<span>sent ' + esc(ago(t.created_at)) + ' by ' + esc(t.name) + '</span>·<span class="ad-pill ' + st[1] + '">' + st[0] + '</span>' +
+            (t.seen_reply ? '<span class="ad-pill ok" title="They opened your latest reply"><i class="fas fa-check-double"></i> Seen your reply</span>' : t.replies && !res ? '<span class="ad-pill" title="They haven\'t opened your latest reply yet">Reply not opened yet</span>' : '') + '</div>' +
+            '<div class="sp-ctl"><label>Priority <select class="ad-select" id="sSetPri">' + Object.keys(PRI).map(function (p) { return '<option value="' + p + '"' + (p === t.priority ? ' selected' : '') + '>' + PRI[p] + '</option>'; }).join('') + '</select></label>' +
+            '<label>Category <select class="ad-select" id="sSetCat">' + Object.keys(CAT).map(function (c) { return '<option value="' + c + '"' + (c === t.category ? ' selected' : '') + '>' + CAT[c] + '</option>'; }).join('') + '</select></label>' +
+            '<a class="ad-btn sm" href="/admin_messages?to=' + t.user_id + '"><i class="fas fa-envelope"></i> Message ' + esc(first) + '</a>' +
+            (res ? '<button type="button" class="ad-btn sm" id="sReopen"><i class="fas fa-rotate-left"></i> Reopen</button>' : '') + '</div></div>' +
+            '<div class="sp-th" id="sTh">' + ev + '</div>' +
+            '<div class="sp-cmp' + (S.mode === 'note' ? ' note' : '') + '" id="sCmp"><div class="sp-modes" role="group" aria-label="Write"><button type="button" data-m="reply" aria-pressed="' + (S.mode === 'reply') + '"><i class="fas fa-reply"></i> Reply to ' + esc(first) + '</button><button type="button" data-m="note" aria-pressed="' + (S.mode === 'note') + '"><i class="fas fa-lock"></i> Private note</button></div>' +
+            '<div class="sp-qr" id="sQr"' + (S.mode === 'note' ? ' hidden' : '') + '></div>' +
+            '<textarea id="sText" maxlength="5000" aria-label="' + (S.mode === 'note' ? 'Private note' : 'Reply') + '" placeholder="' + (S.mode === 'note' ? 'Only admins see this. Write what you checked or what should happen next...' : 'Write to ' + esc(first) + '. They get a notification...') + '"></textarea>' +
+            '<div class="ad-note" id="sSendNote" style="margin-top:6px"></div><div class="sp-acts" id="sActs"></div></div>';
+        $('sText').value = (S.mode === 'note' ? S.notes : S.drafts)[t.id] || '';
+        renderActs(); renderQr();
+        var th = $('sTh'); th.scrollTop = th.scrollHeight;
+    }
+    function renderActs() {
+        var t = S.t, res = t.status === 'resolved', a = $('sActs');
+        if (S.mode === 'note') { a.innerHTML = '<span class="hint">Ctrl+Enter to save</span><button type="button" class="ad-btn" data-do="note" style="background:#f59e0b;border-color:#f59e0b;color:#fff"><i class="fas fa-lock"></i> Save note</button>'; return; }
+        a.innerHTML = '<span class="hint">Ctrl+Enter to send</span>' + (res ? '' : '<button type="button" class="ad-btn" data-do="resolve"><i class="fas fa-check"></i> Resolve without reply</button>') +
+            '<button type="button" class="ad-btn' + (res ? ' primary' : '') + '" data-do="reply"><i class="fas fa-paper-plane"></i> Send reply</button>' +
+            (res ? '' : '<button type="button" class="ad-btn ok" data-do="replyres"><i class="fas fa-circle-check"></i> Send &amp; resolve</button>');
+    }
+    function renderQr() {
+        var q = $('sQr'); if (!q) return;
+        q.innerHTML = S.replies.map(function (r, i) { return '<button type="button" data-qr="' + i + '" title="' + esc(r.text) + '"><i class="fas fa-bolt" style="color:#f59e0b"></i> ' + esc(r.text) + '</button>'; }).join('') +
+            '<a class="ad-btn sm" href="/admin_messages" style="flex-shrink:0;border-radius:99px" title="Saved replies are managed on the Messages page"><i class="fas fa-pen"></i> Edit</a>';
+    }
+    async function act(kind) {
+        if (S.busy) return;
+        var t = S.t, txt = $('sText') ? $('sText').value.trim() : '', n = $('sSendNote');
+        var body = kind === 'note' ? { action: 'note', text: txt } : kind === 'resolve' ? { action: 'resolve' } : { action: 'reply', text: txt, resolve: kind === 'replyres' };
+        if (kind !== 'resolve' && txt.length < 2) { n.className = 'ad-note bad'; n.textContent = kind === 'note' ? 'Write the note first.' : 'Write your reply first.'; $('sText').focus(); return; }
+        S.busy = true; document.querySelectorAll('#sActs button').forEach(function (b) { b.disabled = true; }); n.className = 'ad-note info'; n.textContent = 'Saving...';
+        try {
+            await api('/api/admin/support/' + t.id, { method: 'POST', body: body });
+            if (kind === 'note') S.notes[t.id] = ''; else if (kind !== 'resolve') S.drafts[t.id] = '';
+            if ($('sText') && kind !== 'resolve') $('sText').value = '';
+            note(kind === 'note' ? 'Private note saved.' : kind === 'resolve' ? 'Ticket resolved. ' + t.name + ' was told.' : kind === 'replyres' ? 'Reply sent and ticket resolved.' : 'Reply sent. ' + t.name + ' gets a notification.', 'ok');
+            S.busy = false; await openTicket(t.id, true); loadList(true); badges();
+        } catch (e) { S.busy = false; n.className = 'ad-note bad'; n.textContent = e.message; document.querySelectorAll('#sActs button').forEach(function (b) { b.disabled = false; }); }
+    }
+    async function setField(field, value) {
+        var body = { action: 'set' }; body[field] = value;
+        try { await api('/api/admin/support/' + S.t.id, { method: 'POST', body: body }); note((field === 'priority' ? 'Priority' : 'Category') + ' changed.', 'ok'); openTicket(S.t.id, true); loadList(true); badges(); }
+        catch (e) { note(e.message, 'bad'); }
+    }
+    $('sTk').addEventListener('click', async function (e) {
+        var b;
+        if (e.target.closest('#sBack')) { $('sGrid').classList.remove('open'); try { history.replaceState(null, '', '/admin_support'); } catch (er) { /* ignore */ } return; }
+        if ((b = e.target.closest('[data-m]'))) { saveDraft(); S.mode = b.dataset.m; renderTicket(); $('sText').focus(); return; }
+        if ((b = e.target.closest('[data-do]'))) { act(b.dataset.do); return; }
+        if ((b = e.target.closest('[data-qr]'))) { var r = S.replies[Number(b.dataset.qr)], t = $('sText'); if (r) { t.value = t.value.trim() ? t.value.replace(/\s*$/, ' ') + r.text : r.text; t.focus(); } return; }
+        if (e.target.closest('#sReopen')) {
+            try { await api('/api/admin/support/' + S.t.id, { method: 'POST', body: { action: 'reopen' } }); note('Ticket reopened.', 'ok'); openTicket(S.t.id, true); loadList(true); badges(); }
+            catch (er) { note(er.message, 'bad'); }
         }
+    });
+    $('sTk').addEventListener('change', function (e) {
+        if (e.target.id === 'sSetPri') setField('priority', e.target.value);
+        if (e.target.id === 'sSetCat') setField('category', e.target.value);
+    });
+    $('sTk').addEventListener('input', function (e) { if (e.target.id === 'sText') saveDraft(); });
+    $('sTk').addEventListener('keydown', function (e) { if (e.target.id === 'sText' && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); act(S.mode === 'note' ? 'note' : 'reply'); } });
 
-        // =============================================================
-        // RENDER STATS
-        // =============================================================
-        function renderStats() {
-            const pending = allTickets.filter(t => t.status === 'pending').length;
-            const inProgress = allTickets.filter(t => t.status === 'in-progress').length;
-            const resolved = allTickets.filter(t => t.status === 'resolved').length;
+    /* ---------- person ---------- */
+    async function loadPerson(uid) {
+        S.person = null; renderSide();
+        try { var d = await api('/api/admin/inbox/person/' + uid); if (S.t && S.t.user_id === uid) { S.person = d.person; renderSide(); } }
+        catch (e) { $('sSide').innerHTML = '<div class="ad-note bad">' + esc(e.message) + '</div>'; }
+    }
+    function renderSide() {
+        var p = S.person, t = S.t, el = $('sSide');
+        if (!t) return;
+        if (!p) { el.innerHTML = '<div class="ad-skel"></div><div class="ad-skel"></div><div class="ad-skel"></div>'; return; }
+        var dl = [['Joined', when(p.joined)], ['Last active', p.online ? 'online now' : p.last_seen ? ago(p.last_seen) : 'not recently']];
+        if (t.email) dl.push(['Email', esc(t.email)]);
+        if (p.role === 'student') dl.push(['Plan', esc(p.plan ? p.plan.charAt(0).toUpperCase() + p.plan.slice(1) + (p.plan_expires ? ' · until ' + when(p.plan_expires) : '') : 'Free')]);
+        if (p.children) dl.push(['Children', p.children.length ? p.children.map(function (c) { return '<a href="/admin-users?id=' + c.id + '" style="color:var(--ab-accent-text)">' + esc(c.name) + '</a>' + (c.plan ? ' (' + esc(c.plan) + ')' : ''); }).join(', ') : 'none linked']);
+        if (p.parents) dl.push(['Parents', p.parents.length ? p.parents.map(function (c) { return '<a href="/admin-users?id=' + c.id + '" style="color:var(--ab-accent-text)">' + esc(c.name) + '</a>'; }).join(', ') : 'none linked']);
+        var alerts = p.alerts.filter(function (a) { return a.icon !== 'fa-headset'; });
+        if (t.replies) alerts.push(t.seen_reply ? { level: 'ok', icon: 'fa-check-double', text: 'Has seen your last reply' } : { level: 'info', icon: 'fa-envelope', text: 'Hasn\'t opened your last reply yet' });
+        el.innerHTML = '<div style="display:flex;gap:10px;align-items:center"><span class="sp-av" style="background:' + color(p.name) + '">' + (p.avatar_url ? '<img src="' + esc(p.avatar_url) + '" alt="">' : esc(initials(p.name))) + '</span><div style="min-width:0"><h3>' + esc(p.name) + '</h3>' + role(p.role) + '</div></div>' +
+            '<div class="ad-sec-t">About</div><dl class="ad-dl">' + dl.map(function (x) { return '<dt>' + x[0] + '</dt><dd>' + x[1] + '</dd>'; }).join('') + '</dl>' +
+            '<div class="ad-sec-t">Worth knowing</div>' + (alerts.length ? alerts.map(function (a) {
+                var inner = '<i class="fas ' + esc(a.icon) + '"></i><span>' + esc(a.text) + '</span>';
+                return a.href ? '<a class="sp-al ' + a.level + '" href="' + esc(a.href) + '">' + inner + '</a>' : '<div class="sp-al ' + a.level + '">' + inner + '</div>';
+            }).join('') : '<div class="ad-muted"><i class="fas fa-circle-check" style="color:#10b981"></i> Nothing to flag.</div>') +
+            '<div class="ad-sec-t">Their other tickets</div>' + (t.others.length ? '<div class="sp-hist">' + t.others.map(function (o) {
+                return '<button type="button" data-other="' + o.id + '">#' + String(o.id).padStart(4, '0') + ' ' + esc(o.subject.length > 34 ? o.subject.slice(0, 34) + '…' : o.subject) + ' · <b>' + esc((STATUS[o.status] || STATUS.pending)[0].toLowerCase()) + '</b></button>';
+            }).join('') + '</div>' : '<div class="ad-muted">This is their only ticket.</div>') +
+            '<div class="ad-sec-t">Quick links</div><div class="sp-links"><a class="ad-btn sm" href="/admin-users?id=' + p.id + '"><i class="fas fa-user"></i> Open person file</a>' +
+            '<a class="ad-btn sm" href="/admin_messages?to=' + p.id + '"><i class="fas fa-envelope"></i> Message ' + esc(p.name.split(' ')[0]) + '</a>' +
+            (p.role !== 'teacher' ? '<a class="ad-btn sm" href="/admin-payments"><i class="fas fa-receipt"></i> Payments</a>' : '<a class="ad-btn sm" href="/admin-live"><i class="fas fa-tower-broadcast"></i> Live classes</a>') + '</div>';
+    }
+    $('sSide').addEventListener('click', function (e) { var b = e.target.closest('[data-other]'); if (b) openTicket(Number(b.dataset.other)); });
 
-            document.getElementById('pendingCount').textContent = pending;
-            document.getElementById('inProgressCount').textContent = inProgress;
-            document.getElementById('resolvedCount').textContent = resolved;
-            document.getElementById('totalCount').textContent = allTickets.length;
-        }
-
-        // =============================================================
-        // RENDER TICKETS
-        // =============================================================
-        function renderTickets() {
-            const container = document.getElementById('ticketsList');
-            const emptyEl = document.getElementById('emptyTickets');
-
-            let filtered = allTickets;
-
-            if (currentFilter !== 'all') {
-                filtered = filtered.filter(t => t.status === currentFilter);
-            }
-
-            if (currentCategory !== 'all') {
-                filtered = filtered.filter(t => t.category === currentCategory);
-            }
-
-            // Sort by newest first
-            filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-            if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-ticket-alt"></i>
-                        <h3>No tickets found</h3>
-                        <p>Try changing your filters</p>
-                    </div>
-                `;
-                return;
-            }
-
-            let html = '';
-            filtered.forEach(ticket => {
-                const isUnread = !ticket.is_read;
-                const isResolved = ticket.status === 'resolved';
-                const statusClass = ticket.status || 'pending';
-                const categoryClass = ticket.category || 'other';
-                const date = new Date(ticket.created_at);
-                const timeAgo = formatTimeAgo(date);
-
-                html += `
-                    <div class="ticket-item ${isUnread ? 'unread' : ''} ${isResolved ? 'resolved' : ''}" onclick="selectTicket('${ticket.id}')" data-id="${ticket.id}">
-                        <div class="ticket-top">
-                            <div class="ticket-user">
-                                <span class="user-initials">${getInitials(ticket.user_name || 'User')}</span>
-                                ${ticket.user_name || 'Unknown User'}
-                            </div>
-                            <span class="ticket-type ${categoryClass}">${capitalizeFirst(ticket.category || 'Other')}</span>
-                        </div>
-                        <div class="ticket-title">${escapeHtml(ticket.subject || 'No subject')}</div>
-                        <div class="ticket-preview">${escapeHtml((ticket.description || '').substring(0, 100))}${(ticket.description || '').length > 100 ? '...' : ''}</div>
-                        <div class="ticket-meta">
-                            <span class="ticket-time"><i class="far fa-clock"></i> ${timeAgo}</span>
-                            <span class="ticket-status ${statusClass}">${capitalizeFirst(ticket.status || 'pending')}</span>
-                        </div>
-                        ${ticket.response ? `<div class="has-response"><i class="fas fa-reply"></i> Replied</div>` : ''}
-                    </div>
-                `;
-            });
-
-            container.innerHTML = html;
-
-            // If there's a selected ticket, highlight it
-            if (currentTicketId) {
-                document.querySelectorAll('.ticket-item').forEach(el => {
-                    if (el.dataset.id === currentTicketId) {
-                        el.style.borderColor = 'var(--primary-color)';
-                        el.style.boxShadow = '0 0 0 2px var(--primary-color)';
-                    }
-                });
-            }
-        }
-
-        // =============================================================
-        // SELECT TICKET
-        // =============================================================
-        function selectTicket(ticketId) {
-            currentTicketId = ticketId;
-            const ticket = allTickets.find(t => t.id == ticketId);
-            if (!ticket) return;
-
-            // Mark as read
-            fetch(`/api/complaints/${ticketId}/read`, { method: 'POST' })
-                .then(() => {
-                    ticket.is_read = true;
-                    renderTickets();
-                });
-
-            showTicketDetail(ticket);
-        }
-
-        // =============================================================
-        // SHOW TICKET DETAIL
-        // =============================================================
-        function showTicketDetail(ticket) {
-            document.getElementById('emptyDetail').style.display = 'none';
-            document.getElementById('ticketDetailContent').style.display = 'block';
-
-            document.getElementById('detailSubject').textContent = ticket.subject || 'No Subject';
-            document.getElementById('detailId').textContent = `#TICKET-${String(ticket.id).padStart(4, '0')}`;
-            document.getElementById('detailStatusBadge').textContent = capitalizeFirst(ticket.status || 'pending');
-            document.getElementById('detailStatusBadge').className = `ticket-status ${ticket.status || 'pending'}`;
-
-            const initials = getInitials(ticket.user_name || 'User');
-            document.getElementById('detailAvatar').textContent = initials;
-            document.getElementById('detailUserName').textContent = ticket.user_name || 'Unknown User';
-            document.getElementById('detailUserEmail').textContent = ticket.user_email || 'No email';
-
-            document.getElementById('detailCategory').textContent = capitalizeFirst(ticket.category || 'Other');
-            document.getElementById('detailDescription').textContent = ticket.description || 'No description provided.';
-            document.getElementById('detailTime').textContent = formatTimeAgo(new Date(ticket.created_at));
-
-            // Show existing response
-            const responseContainer = document.getElementById('detailExistingResponse');
-            if (ticket.response) {
-                responseContainer.innerHTML = `
-                    <div class="existing-response">
-                        <div class="response-label"><i class="fas fa-reply"></i> Admin Response</div>
-                        <div class="response-text">${escapeHtml(ticket.response)}</div>
-                        <div class="response-time">${formatTimeAgo(new Date(ticket.response_date))}</div>
-                    </div>
-                `;
-                responseContainer.style.display = 'block';
-            } else {
-                responseContainer.style.display = 'none';
-            }
-
-            // Set response textarea
-            document.getElementById('responseText').value = '';
-
-            // Highlight the ticket in the list
-            document.querySelectorAll('.ticket-item').forEach(el => {
-                el.style.borderColor = '';
-                el.style.boxShadow = '';
-                if (el.dataset.id == ticket.id) {
-                    el.style.borderColor = 'var(--primary-color)';
-                    el.style.boxShadow = '0 0 0 2px var(--primary-color)';
-                }
-            });
-        }
-
-        // =============================================================
-        // SEND RESPONSE
-        // =============================================================
-        function sendResponse() {
-            const responseText = document.getElementById('responseText');
-            const text = responseText.value.trim();
-
-            if (!text) {
-                alert('Please enter a response.');
-                return;
-            }
-
-            if (!currentTicketId) {
-                alert('No ticket selected.');
-                return;
-            }
-
-            const btn = document.querySelector('.btn-primary');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-
-            fetch(`/api/complaints/${currentTicketId}/respond`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ response: text })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    // Update local data
-                    const ticket = allTickets.find(t => t.id == currentTicketId);
-                    if (ticket) {
-                        ticket.response = text;
-                        ticket.response_date = new Date().toISOString();
-                        ticket.status = 'in-progress';
-                    }
-                    renderStats();
-                    renderTickets();
-                    showTicketDetail(ticket);
-                    responseText.value = '';
-                } else {
-                    alert('Error: ' + (data.message || 'Failed to send response'));
-                }
-            })
-            .catch(err => {
-                console.error('Error sending response:', err);
-                alert('Error sending response. Please try again.');
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Response';
-            });
-        }
-
-        // =============================================================
-        // MARK RESOLVED
-        // =============================================================
-        function markResolved() {
-            if (!currentTicketId) {
-                alert('No ticket selected.');
-                return;
-            }
-
-            if (!confirm('Mark this ticket as resolved?')) return;
-
-            const btn = document.querySelector('.btn-success');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-
-            fetch(`/api/complaints/${currentTicketId}/resolve`, {
-                method: 'POST'
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    const ticket = allTickets.find(t => t.id == currentTicketId);
-                    if (ticket) {
-                        ticket.status = 'resolved';
-                    }
-                    renderStats();
-                    renderTickets();
-                    showTicketDetail(ticket);
-                } else {
-                    alert('Error: ' + (data.message || 'Failed to resolve ticket'));
-                }
-            })
-            .catch(err => {
-                console.error('Error resolving ticket:', err);
-                alert('Error resolving ticket. Please try again.');
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark Resolved';
-            });
-        }
-
-        // =============================================================
-        // FILTER TICKETS
-        // =============================================================
-        function filterTickets() {
-            currentFilter = document.getElementById('statusFilter').value;
-            currentCategory = document.getElementById('categoryFilter').value;
-            renderTickets();
-        }
-
-        // =============================================================
-        // UTILITY FUNCTIONS
-        // =============================================================
-        function formatTimeAgo(date) {
-            if (!date) return 'Unknown';
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMin = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMs / 3600000);
-            const diffDays = Math.floor(diffMs / 86400000);
-
-            if (diffMin < 1) return 'Just now';
-            if (diffMin < 60) return `${diffMin}m ago`;
-            if (diffHours < 24) return `${diffHours}h ago`;
-            if (diffDays < 7) return `${diffDays}d ago`;
-            return date.toLocaleDateString();
-        }
-
-        function getInitials(name) {
-            if (!name) return 'U';
-            return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-        }
-
-        function capitalizeFirst(str) {
-            if (!str) return '';
-            return str.charAt(0).toUpperCase() + str.slice(1);
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // =============================================================
-        // AUTO-REFRESH
-        // =============================================================
-        setInterval(() => {
-            loadTickets();
-        }, 10000);
-
-        // =============================================================
-        // INIT
-        // =============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            loadTickets();
-        });
-    </script>
-</body>
-</html>
+    /* ---------- start ---------- */
+    (async function () {
+        await loadList();
+        try { S.replies = (await api('/api/admin/inbox/replies')).replies; renderQr(); } catch (e) { /* no saved replies */ }
+        var t = Number(new URLSearchParams(location.search).get('t'));
+        if (t) openTicket(t);
+    })();
+    setInterval(function () { if (!document.hidden) loadList(true); }, 30000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) loadList(true); });
+})();
+</script>
 {% endblock %}

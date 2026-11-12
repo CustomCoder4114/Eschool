@@ -7,7 +7,6 @@
     Every choice is real and saved on the server, except Appearance, which is
     kept per device like on the learner Settings page.
       GET/POST /api/profile/details        personal details
-      POST     /api/settings/upload-photo  profile photo (form field "photo")
       GET/POST /api/settings               sign-in alerts, automatic sign-out
       POST     /api/account/change-password | logout-all | deactivate | delete
       GET/POST /api/notification-prefs     (parent categories)
@@ -319,7 +318,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
 
     <div class="ps-layout">
         <nav class="ps-nav" role="tablist" aria-label="Settings" aria-orientation="vertical" id="psNav">
-            <button type="button" class="ps-tab" role="tab" id="tab-profile" data-tab="profile" aria-controls="panel-profile"><i class="fas fa-user"></i><span>Profile<small>Photo and personal details</small></span></button>
+            <button type="button" class="ps-tab" role="tab" id="tab-profile" data-tab="profile" aria-controls="panel-profile"><i class="fas fa-user"></i><span>Profile<small>Your personal details</small></span></button>
             <button type="button" class="ps-tab" role="tab" id="tab-family" data-tab="family" aria-controls="panel-family"><i class="fas fa-people-roof"></i><span>Family<small>Linked children</small></span>{% if pending_count %}<span class="ps-dot" title="">{{ pending_count }}</span>{% endif %}</button>
             <button type="button" class="ps-tab" role="tab" id="tab-notifications" data-tab="notifications" aria-controls="panel-notifications"><i class="fas fa-bell"></i><span>Notifications<small>What reaches your bell</small></span></button>
             <button type="button" class="ps-tab" role="tab" id="tab-security" data-tab="security" aria-controls="panel-security"><i class="fas fa-shield-halved"></i><span>Sign-in &amp; security<small>Password and devices</small></span></button>
@@ -332,17 +331,8 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
         <div>
             <!-- ================= PROFILE ================= -->
             <section class="ps-panel" id="panel-profile" role="tabpanel" aria-labelledby="tab-profile" hidden>
-                <div class="ps-panel-head"><h2>Profile</h2><p>How you appear to teachers and to your children on eSchool.</p></div>
+                <div class="ps-panel-head"><h2>Profile</h2><p>How you appear to teachers and to your children on Eschool.</p></div>
 
-                <div class="ps-card">
-                    <div class="ps-card-h"><span class="ic"><i class="fas fa-camera"></i></span><div><h3>Profile photo</h3><p>Shown next to your messages and on your profile. JPG, PNG, GIF or WEBP, up to 2 MB.</p></div></div>
-                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-                        <div class="ps-avatar" id="psPhoto" style="width:76px;height:76px;font-size:1.4rem;" data-profile-avatar>{% if avatar_url %}<img src="{{ avatar_url }}" alt="Profile photo">{% else %}{{ (firstname or '')[:1] }}{{ (lastname or '')[:1] }}{% endif %}</div>
-                        <input type="file" id="psPhotoInput" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
-                        <button type="button" class="ps-btn ps-btn-primary" id="psPhotoBtn"><i class="fas fa-upload"></i> <span>Upload a new photo</span></button>
-                        <div class="ps-note" id="psPhotoNote" role="status" aria-live="polite"></div>
-                    </div>
-                </div>
 
                 <form class="ps-card" id="psPersonal" novalidate>
                     <div class="ps-card-h"><span class="ic"><i class="fas fa-id-card"></i></span><div><h3>Personal details</h3><p>Your name is shown to your children's teachers and on goals you set.</p></div></div>
@@ -466,7 +456,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                         <div class="ps-note" id="psLoginNote" role="status" aria-live="polite"></div>
                     </div>
                     <div class="ps-card">
-                        <div class="ps-card-h"><span class="ic"><i class="fas fa-hourglass-end"></i></span><div><h3>Automatic sign-out</h3><p>After this long with no activity on any eSchool tab you get a 1-minute warning, then you're signed out.</p></div></div>
+                        <div class="ps-card-h"><span class="ic"><i class="fas fa-hourglass-end"></i></span><div><h3>Automatic sign-out</h3><p>After this long with no activity on any Eschool tab you get a 1-minute warning, then you're signed out.</p></div></div>
                         <div class="ps-range"><input type="range" id="psTimeout" min="5" max="120" step="5" value="30" aria-label="Minutes before automatic sign-out"><output id="psTimeoutOut" for="psTimeout">30 minutes</output></div>
                         <div class="ps-note" id="psTimeoutNote" role="status" aria-live="polite" style="margin-top:10px;"></div>
                     </div>
@@ -495,11 +485,11 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
 
             <!-- ================= PRIVACY ================= -->
             <section class="ps-panel" id="panel-privacy" role="tabpanel" aria-labelledby="tab-privacy" hidden>
-                <div class="ps-panel-head"><h2>Privacy &amp; data</h2><p>These choices are checked on eSchool's servers and save straight away. Your own children can always see and message you.</p></div>
+                <div class="ps-panel-head"><h2>Privacy &amp; data</h2><p>These choices are checked on Eschool's servers and save straight away. Your own children can always see and message you.</p></div>
                 <div class="ps-card">
                     <div class="ps-card-h"><span class="ic"><i class="fas fa-eye"></i></span><div><h3>Who can see your profile</h3><p>Your linked children can always open it.</p></div></div>
                     <div class="ps-opts" role="radiogroup" aria-label="Who can see your profile" id="psVis">
-                        <button type="button" class="ps-opt" role="radio" data-vis="everyone" aria-checked="false"><b><i class="fas fa-globe"></i> Everyone</b>Anyone signed in to eSchool.</button>
+                        <button type="button" class="ps-opt" role="radio" data-vis="everyone" aria-checked="false"><b><i class="fas fa-globe"></i> Everyone</b>Anyone signed in to Eschool.</button>
                         <button type="button" class="ps-opt" role="radio" data-vis="teachers" aria-checked="false"><b><i class="fas fa-chalkboard-user"></i> Teachers</b>Teachers, plus your own children.</button>
                         <button type="button" class="ps-opt" role="radio" data-vis="private" aria-checked="false"><b><i class="fas fa-lock"></i> Only my children</b>Nobody else can open your profile.</button>
                     </div>
@@ -508,7 +498,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                 <div class="ps-card">
                     <div class="ps-card-h"><span class="ic"><i class="fas fa-comments"></i></span><div><h3>Who can message and call you</h3><p>Teachers and your own children can always reach you.</p></div></div>
                     <div class="ps-opts" role="radiogroup" aria-label="Who can message you" id="psMsg">
-                        <button type="button" class="ps-opt" role="radio" data-msg="everyone" aria-checked="false"><b><i class="fas fa-globe"></i> Everyone</b>Anyone on eSchool.</button>
+                        <button type="button" class="ps-opt" role="radio" data-msg="everyone" aria-checked="false"><b><i class="fas fa-globe"></i> Everyone</b>Anyone on Eschool.</button>
                         <button type="button" class="ps-opt" role="radio" data-msg="following" aria-checked="false"><b><i class="fas fa-user-check"></i> People I follow</b>Plus teachers and your children.</button>
                         <button type="button" class="ps-opt" role="radio" data-msg="teachers" aria-checked="false"><b><i class="fas fa-chalkboard-user"></i> Teachers only</b>Plus your children.</button>
                     </div>
@@ -517,10 +507,10 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                     <div class="ps-note" id="psMsgNote" role="status" aria-live="polite" style="margin-top:6px;"></div>
                 </div>
                 <div class="ps-card">
-                    <div class="ps-card-h"><span class="ic"><i class="fas fa-database"></i></span><div><h3>Your data</h3><p>What eSchool keeps about you, and a copy you can take with you.</p></div></div>
+                    <div class="ps-card-h"><span class="ic"><i class="fas fa-database"></i></span><div><h3>Your data</h3><p>What Eschool keeps about you, and a copy you can take with you.</p></div></div>
                     <div class="ps-danger-row"><div class="txt"><b>Download a copy of your data</b><small>Your account and personal details, links to your children, messages and notifications, in one JSON file.</small></div>
                         <a class="ps-btn ps-btn-primary" href="/api/privacy/export" download id="psExport"><i class="fas fa-download"></i> Download my data</a></div>
-                    <div class="ps-danger-row"><div class="txt"><b>How eSchool uses your data</b><small>What we collect, why, and how long we keep it, including what we keep about your children.</small></div>
+                    <div class="ps-danger-row"><div class="txt"><b>How Eschool uses your data</b><small>What we collect, why, and how long we keep it, including what we keep about your children.</small></div>
                         <button type="button" class="ps-btn ps-btn-ghost" data-go="legal"><i class="fas fa-user-shield"></i> Read the privacy policy</button></div>
                     <div class="ps-note" id="psExportNote" role="status" aria-live="polite"></div>
                 </div>
@@ -528,7 +518,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
 
             <!-- ================= APPEARANCE ================= -->
             <section class="ps-panel" id="panel-appearance" role="tabpanel" aria-labelledby="tab-appearance" hidden>
-                <div class="ps-panel-head"><h2>Appearance</h2><p>How eSchool looks on this device. Changes apply straight away to every page.</p></div>
+                <div class="ps-panel-head"><h2>Appearance</h2><p>How Eschool looks on this device. Changes apply straight away to every page.</p></div>
                 <div class="ps-card">
                     <div class="ps-card-h"><span class="ic"><i class="fas fa-circle-half-stroke"></i></span><div><h3>Theme</h3><p>Light, dark, or follow your device.</p></div><span class="ps-saved right" id="psApSaved"><i class="fas fa-check"></i> Saved</span></div>
                     <div class="ps-modes" role="radiogroup" aria-label="Theme">
@@ -570,23 +560,23 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
             <!-- ================= POLICIES ================= -->
             <section class="ps-panel" id="panel-legal" role="tabpanel" aria-labelledby="tab-legal" hidden>
                 <div class="ps-panel-head" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
-                    <div style="flex:1;min-width:200px;"><h2>Policies</h2><p>The rules for using eSchool, and how your family's data is handled.</p></div>
+                    <div style="flex:1;min-width:200px;"><h2>Policies</h2><p>The rules for using Eschool, and how your family's data is handled.</p></div>
                     <div class="ps-seg" role="tablist" aria-label="Policy"><button type="button" role="tab" data-doc="privacy" aria-selected="true">Privacy policy</button><button type="button" role="tab" data-doc="terms" aria-selected="false">Terms of service</button></div>
                 </div>
                 <article class="ps-card ps-legal" id="docPrivacy">
                     <span class="upd">Last updated: 24 October 2026</span>
                     <h4>1. What we collect</h4>
-                    <p>Details you give us (your name, email address, phone number, location and profile photo) and information created as you use eSchool, such as sign-in times, messages, payments you make and the settings you choose for your children.</p>
+                    <p>Details you give us (your name, email address, phone number, and location) and information created as you use Eschool, such as sign-in times, messages, payments you make and the settings you choose for your children.</p>
                     <h4>2. Parents and children's data</h4>
                     <div class="box">A parent can only link to a child after the child agrees. The child decides what to share (grades and progress, schedule, attendance, resources, activity updates and messages) and can change it at any time.</div>
                     <ul>
-                        <li>Controls you set on Manage learner (screen time, contact rules, features) are stored so eSchool can enforce them, and your child is told when they change.</li>
+                        <li>Controls you set on Manage learner (screen time, contact rules, features) are stored so Eschool can enforce them, and your child is told when they change.</li>
                         <li>Goals and rewards you set are visible to the child they are for.</li>
                         <li>We never show you your child's password, and you can't sign in as them.</li>
                     </ul>
                     <h4>3. How we use information</h4>
                     <ul>
-                        <li>To run eSchool and show you your children's progress</li>
+                        <li>To run Eschool and show you your children's progress</li>
                         <li>To send the notifications you chose, plus safety and payment notices</li>
                         <li>To keep accounts secure (sign-in alerts, automatic sign-out)</li>
                         <li>To process subscription and teaching payments (M-Pesa codes are checked by our team)</li>
@@ -603,29 +593,29 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                 <article class="ps-card ps-legal" id="docTerms" hidden>
                     <span class="upd">Last updated: 24 October 2026</span>
                     <h4>1. Agreeing to these terms</h4>
-                    <p>By creating an account and using eSchool you agree to these terms and to the privacy policy.</p>
+                    <p>By creating an account and using Eschool you agree to these terms and to the privacy policy.</p>
                     <h4>2. Your account</h4>
                     <p>Keep your password private. You're responsible for what happens on your account, including payments and the controls you set for your children. Tell us straight away if you think someone else has used it.</p>
                     <h4>3. Parent accounts</h4>
                     <ul>
                         <li>Only link to children you are the parent or legal guardian of, or are responsible for with the family's permission.</li>
                         <li>Use what you see about your child to support their learning. Don't share it publicly.</li>
-                        <li>Teachers you hire through eSchool are paid for the sessions you buy. Report any concern about a session from the Teachers page.</li>
+                        <li>Teachers you hire through Eschool are paid for the sessions you buy. Report any concern about a session from the Teachers page.</li>
                     </ul>
                     <h4>4. Payments</h4>
-                    <p>Subscriptions and teaching sessions start once your M-Pesa payment is confirmed. Payments that can't be confirmed are not charged on eSchool's side. Ask Help &amp; Support about refunds.</p>
+                    <p>Subscriptions and teaching sessions start once your M-Pesa payment is confirmed. Payments that can't be confirmed are not charged on Eschool's side. Ask Help &amp; Support about refunds.</p>
                     <h4>5. Acceptable use</h4>
                     <ul>
-                        <li>Don't misuse eSchool, try to get around security or parental controls, or interfere with other people's use</li>
+                        <li>Don't misuse Eschool, try to get around security or parental controls, or interfere with other people's use</li>
                         <li>Don't post anything unlawful, abusive or that breaks someone else's privacy</li>
-                        <li>Course materials can't be shared outside eSchool without permission</li>
+                        <li>Course materials can't be shared outside Eschool without permission</li>
                     </ul>
                     <h4>6. Suspension and closing accounts</h4>
                     <p>We may suspend accounts that break these terms. You can deactivate or delete your account at any time from Sign-in &amp; security.</p>
                     <h4>7. Service and liability</h4>
-                    <p>eSchool is provided as it is. We work to keep it running but can't promise it will never be interrupted. As far as the law allows, we aren't liable for indirect losses from using it.</p>
+                    <p>Eschool is provided as it is. We work to keep it running but can't promise it will never be interrupted. As far as the law allows, we aren't liable for indirect losses from using it.</p>
                     <h4>8. Changes</h4>
-                    <p>We may update these terms. We'll show the new date here, and using eSchool after a change means you accept it.</p>
+                    <p>We may update these terms. We'll show the new date here, and using Eschool after a change means you accept it.</p>
                 </article>
             </section>
         </div>
@@ -642,7 +632,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
         messages: ['fa-envelope', '#4361ee', 'Messages', 'When your child, a teacher or anyone else sends you a message'],
         goals: ['fa-trophy', '#db2777', 'Goals & rewards', 'When your child reaches or misses a goal you set'],
         tutoring: ['fa-chalkboard-user', '#0ea5e9', 'Private teaching', 'Teacher replies, booked lessons and lesson reports'],
-        announcements: ['fa-bullhorn', '#f59e0b', 'News from eSchool', 'Announcements from teachers and the eSchool team']
+        announcements: ['fa-bullhorn', '#f59e0b', 'News from Eschool', 'Announcements from teachers and the Eschool team']
     };
     var TIMEZONES = ['Africa/Nairobi', 'Africa/Kampala', 'Africa/Dar_es_Salaam', 'Africa/Kigali', 'Africa/Addis_Ababa', 'Africa/Lagos', 'Africa/Accra', 'Africa/Johannesburg', 'Europe/London', 'America/New_York', 'America/Toronto', 'Asia/Kolkata', 'Australia/Sydney'];
     var GENDERS = [['', 'Prefer not to say'], ['female', 'Female'], ['male', 'Male'], ['other', 'Other']];
@@ -741,7 +731,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
     }
     function completeness() {
         var d = P.details, checks = [
-            [d.firstname && d.lastname, 'Add your full name'], [document.querySelector('#psPhoto img'), 'Add a profile photo'],
+            [d.firstname && d.lastname, 'Add your full name'],
             [d.phone, 'Add a phone number'], [d.country, 'Choose your country'], [d.city, 'Add your town or city'], [d.bio, 'Write a line about you']];
         var done = checks.filter(function (c) { return c[0]; }).length, pct = Math.round(done / checks.length * 100);
         var next = checks.filter(function (c) { return !c[0]; })[0];
@@ -799,22 +789,6 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
         form.querySelector('[data-reset]').addEventListener('click', function () { renderProfile(); note(group === 'personal' ? 'psPersonalNote' : 'psLocationNote', 'Changes discarded.', 'info'); });
     });
 
-    /* photo */
-    $('psPhotoBtn').addEventListener('click', function () { $('psPhotoInput').click(); });
-    $('psPhotoInput').addEventListener('change', async function () {
-        var f = this.files && this.files[0]; if (!f) return;
-        if (!/^image\/(png|jpe?g|gif|webp)$/.test(f.type)) { note('psPhotoNote', 'Use a JPG, PNG, GIF or WEBP image.', 'bad'); this.value = ''; return; }
-        if (f.size > 2 * 1024 * 1024) { note('psPhotoNote', 'That image is over 2 MB. Choose a smaller one.', 'bad'); this.value = ''; return; }
-        var btn = $('psPhotoBtn'); btn.disabled = true; note('psPhotoNote', 'Uploading...', 'info', true);
-        var fd = new FormData(); fd.append('photo', f);
-        try {
-            var d = await api('/api/settings/upload-photo', { method: 'POST', body: fd });
-            document.querySelectorAll('[data-profile-avatar]').forEach(function (el) { el.innerHTML = '<img src="' + esc(d.avatar_url) + '" alt="Profile photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'; });
-            note('psPhotoNote', 'Photo updated.', 'ok');
-            if (P.details) completeness();
-        } catch (e) { note('psPhotoNote', e.message, 'bad'); }
-        finally { btn.disabled = false; this.value = ''; }
-    });
 
     /* ---------- family ---------- */
     async function loadFamily() {

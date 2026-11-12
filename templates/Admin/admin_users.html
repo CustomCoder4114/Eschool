@@ -211,7 +211,7 @@ function ago(d) {
     if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago"; if (s < 86400) return Math.floor(s / 3600) + " h ago";
     if (s < 86400 * 2) return "yesterday"; if (s < 86400 * 60) return Math.floor(s / 86400) + " days ago"; return date(d);
 }
-function money(n) { return "KES " + fmt(n); }
+function money(n) { return "{{ CURRENCY }} " + fmt(n); }
 function initials(n) { return String(n || "?").split(/\s+/).map(function (w) { return w[0] || ""; }).join("").slice(0, 2).toUpperCase(); }
 function safeUrl(u) { return typeof u === "string" && /^\/(?!\/)/.test(u) ? u : ""; }
 function avatar(p, big) { var u = safeUrl(p.avatar_url); return '<span class="us-av' + (big ? " big" : "") + '">' + (u ? '<img src="' + esc(u) + '" alt="">' : esc(initials(p.name))) + "</span>"; }
@@ -320,7 +320,8 @@ function drawFile(msg, kind) {
         '<div class="facts">' + esc(facts.join(" · ")) + "</div>" + (p.suspension && p.suspension.reason ? '<div class="us-m" style="margin-top:4px">Suspension reason: ' + esc(p.suspension.reason) + "</div>" : "") + "</div>";
     h += '<div class="us-acts">' + '<a class="us-btn sm" href="/profile/' + num(p.id) + '"><i class="fas fa-id-badge" aria-hidden="true"></i> Profile</a>' +
         (me ? '<a class="us-btn sm" href="/admin-settings"><i class="fas fa-gear" aria-hidden="true"></i> My settings</a>' :
-        '<a class="us-btn sm" href="/admin_messages?user=' + num(p.id) + '"><i class="fas fa-envelope" aria-hidden="true"></i> Message</a>' +
+        '<a class="us-btn sm" href="/admin_messages?to=' + num(p.id) + '"><i class="fas fa-envelope" aria-hidden="true"></i> Message</a>' +
+        '<a class="us-btn sm" href="/admin-announcements?to=' + num(p.id) + '"><i class="fas fa-bell" aria-hidden="true"></i> Send notice</a>' +
         (p.role === "student" ? '<button type="button" class="us-btn sm" data-act="plan"><i class="fas fa-crown" aria-hidden="true"></i> Plan</button>' : "") +
         '<button type="button" class="us-btn sm" data-act="role"><i class="fas fa-user-gear" aria-hidden="true"></i> Change type</button>' +
         (p.role !== "admin" && !p.google ? '<button type="button" class="us-btn sm" data-act="reset"><i class="fas fa-key" aria-hidden="true"></i> Reset password</button>' : "") +

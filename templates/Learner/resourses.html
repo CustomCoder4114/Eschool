@@ -1403,7 +1403,7 @@ function createPdfViewer({ url, title, mount, resource }) {
             } catch (err) {
                 if (state.destroyed || loadId !== state.loadId) return;
                 console.error("Failed to load PDF:", err);
-                showStatus("Couldn’t load this document. Check your connection and try again, or download it.", true);
+                showStatus("Couldn’t load this document. Check your connection and try again.", true);
             }
         },
         nextPage() { scrollToPage(state.currentPage + 1); },
@@ -1437,7 +1437,7 @@ function createPdfViewer({ url, title, mount, resource }) {
    browser's own viewer. */
 function createIframeDocViewer({ viewerUrl, title, mount, resource, viaGoogle }) {
     const hint = viaGoogle
-        ? `<div class="pv-doc-hint" role="note">Shown with Google’s document viewer, which is sent this file’s address. If it stays blank, ${resource ? `<a href="/api/resources/${Number(resource.id)}/download" download>download it</a>` : "download it"}. <button type="button" class="pv-hint-close" data-hint-close aria-label="Hide this note"><i class="fas fa-times" aria-hidden="true"></i></button></div>`
+        ? `<div class="pv-doc-hint" role="note">Shown with Google’s document viewer, which is sent this file’s address. If it stays blank, close it and try again in a moment. <button type="button" class="pv-hint-close" data-hint-close aria-label="Hide this note"><i class="fas fa-times" aria-hidden="true"></i></button></div>`
         : "";
     mount.innerHTML = `
         <div class="docviewer docviewer-iframe-mode">
@@ -1458,10 +1458,8 @@ let previewSeq = 0;
 let lastOpenId = null;
 
 function fileLinksHTML(r) {
-    const open = safeUrl(r.file_url);
-    if (!open) return "";
-    return `<a class="pv-act" href="/api/resources/${Number(r.id)}/download" download><i class="fas fa-download" aria-hidden="true"></i> Download</a>` +
-           `<a class="pv-act" href="${esc(open)}" target="_blank" rel="noopener noreferrer"><i class="fas fa-up-right-from-square" aria-hidden="true"></i> Open in new tab</a>`;
+    // Eschool resources are watched and read here only: no download or "open in new tab" links
+    return "";
 }
 
 // Everything behind the preview is made inert so Tab and screen readers stay inside it
@@ -1470,7 +1468,7 @@ function setBackgroundInert(on) {
     if (on) {
         for (let el = modal; el && el !== document.body; el = el.parentElement) {
             Array.from(el.parentElement ? el.parentElement.children : []).forEach(sib => {
-                if (sib === el || sib.contains(modal) || sib.inert || ["SCRIPT", "STYLE", "LINK"].includes(sib.tagName)) return;
+                if (sib === el || sib.contains(modal) || sib.inert || sib.hasAttribute("data-keep-active") || ["SCRIPT", "STYLE", "LINK"].includes(sib.tagName)) return;
                 sib.inert = true;
                 sib.setAttribute("data-rs-inert", "");
             });
@@ -1522,7 +1520,7 @@ async function openPreview(id) {
         docMode = true;
         media = `<div class="pv-media pv-doc" id="docViewerMount"></div>`;
     } else {
-        media = `<div class="pv-msg"><i class="fas fa-file-circle-exclamation" aria-hidden="true"></i>This file type (${esc(ext || "unknown")}) can’t be shown here. Download it to open it on your device.<div class="pv-actions">${fileLinksHTML(r)}</div></div>`;
+        media = `<div class="pv-msg"><i class="fas fa-file-circle-exclamation" aria-hidden="true"></i>This file type (${esc(ext || "unknown")}) can’t be shown here yet. Please ask Eschool support if you need it.</div>`;
     }
 
     const views = r.views_count ?? r.views ?? 0;
@@ -1539,7 +1537,6 @@ async function openPreview(id) {
             ${sourceHTML()}
             <span class="pv-views" data-views="${Number(r.id)}">${formatCount(views)} views</span>
             ${likeHTML(r)}${saveHTML(r, true)}
-            ${fileUrl ? `<a class="rs-icon-btn pv-download" href="/api/resources/${Number(r.id)}/download" download><i class="fas fa-download" aria-hidden="true"></i><span class="lbl">Download</span></a>` : ""}
             <div class="pv-desc">${esc(r.description || "")}</div>
         </div>`;
 
@@ -1560,22 +1557,33 @@ async function openPreview(id) {
                 activeDocViewer.load();
             } else if (kind === "pdf" || ["txt", "md", "csv"].includes(ext)) {
                 // (PDF without PDF.js, e.g. if its download was blocked: the browser's own viewer)
-                activeDocViewer = createIframeDocViewer({ viewerUrl: fileUrl, title: r.title, mount, resource: r });
+                activeDocViewer = createIframeDocViewer({ viewerUrl: kind === "pdf" ? fileUrl + "#toolbar=0&navpanes=0" : fileUrl, title: r.title, mount, resource: r });
             } else {
-                // Word / PowerPoint / Excel: Google's viewer, which can only open files on a public web address
-                const local = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
-                if (local) {
-                    mount.innerHTML = `<div class="pv-msg" style="padding:40px 20px"><i class="fas fa-file-word" aria-hidden="true"></i>Word, PowerPoint and Excel files can be previewed once Eschool is online.<div class="pv-actions">${fileLinksHTML(r)}</div></div>`;
-                    activeDocViewer = null;
-                } else {
-                    activeDocViewer = createIframeDocViewer({ viewerUrl: `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`, title: r.title, mount, resource: r, viaGoogle: true });
-                }
+                // Word / PowerPoint / Excel can't be shown inside Eschool, and resources can't be downloaded
+                mount.innerHTML = `<div class="pv-msg" style="padding:40px 20px"><i class="fas fa-file-lines" aria-hidden="true"></i>This ${ext ? "." + esc(ext) + " " : ""}file can’t be shown on Eschool yet. Please ask Eschool support if you need it.</div>`;
+                activeDocViewer = null;
             }
         });
     }
     fitBody(true);
     trackView(r.id);
+    // notes written now belong to this resource (and open it again from "All notes")
+    if (window.esSetNoteContext) window.esSetNoteContext({ key: "resource:" + Number(r.id), label: "Resource: " + String(r.title || "").slice(0, 150), url: "/resourses?open=" + Number(r.id) });
 }
+
+// No "Save video as" / "Save image as": the right-click menu is turned off on the preview's video, sound, pictures and pages
+document.addEventListener("contextmenu", e => {
+    if (e.target.closest && e.target.closest("#previewModal .pv-body, .rs-card video, .rs-card img")) e.preventDefault();
+});
+document.addEventListener("dragstart", e => {
+    if (e.target.closest && e.target.closest("#previewModal .pv-body")) e.preventDefault();
+});
+
+// /resourses?open=<id> opens that resource (used by notes written on it)
+window.addEventListener("load", () => {
+    const o = Number(new URLSearchParams(location.search).get("open"));
+    if (o > 0) openPreview(o);
+});
 
 function closePreview() {
     previewSeq++;                                   // a preview still loading won't open after this
@@ -1587,6 +1595,7 @@ function closePreview() {
     document.body.classList.remove("rs-lock");
     setBackgroundInert(false);
     currentPreview = null;
+    if (window.esSetNoteContext) window.esSetNoteContext(null);          // back to notes for the Resources page
     // back to what opened it; if the grid was redrawn meanwhile, to the same card, else the page heading
     let target = lastFocus && document.contains(lastFocus) ? lastFocus : null;
     if (!target && lastOpenId != null) target = document.querySelector(`.rs-title-btn[data-open="${lastOpenId}"]`);
@@ -1680,6 +1689,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.addEventListener("keydown", e => {
         if (!$("previewModal").classList.contains("show")) return;
+        if (e.target.closest && e.target.closest("#esNotes")) return;      // typing in Notes: leave the keys alone
         if (e.key === "Escape") { closePreview(); return; }
         if (activeDocViewer && e.key === "PageDown") { e.preventDefault(); activeDocViewer.nextPage(); }
         if (activeDocViewer && e.key === "PageUp") { e.preventDefault(); activeDocViewer.prevPage(); }
@@ -1688,6 +1698,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             const f = Array.from($("previewModal").querySelectorAll("button, a[href], video, audio, iframe, [tabindex='0']"))
                 .filter(x => !x.disabled && x.getClientRects().length && getComputedStyle(x).visibility !== "hidden");
             if (!f.length) return;
+            const nb = document.querySelector("#esNotes:not([hidden]) .nt-fab:not([hidden]), #esNotes:not([hidden]) .nt-panel:not([hidden]) button");
+            if (nb) f.push(nb);                                             // the Notes button is part of the tab order too
             const i = f.indexOf(document.activeElement);
             if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
             else if (!e.shiftKey && (i === -1 || i === f.length - 1)) { e.preventDefault(); f[0].focus(); }

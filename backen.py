@@ -1,10 +1,15 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash, Response, abort
 import sqlite3
+try:    # WAL: people reading never block someone saving, the main cause of "database is locked" (kept in the database file)
+    _c0 = sqlite3.connect('users.db', timeout=20); _c0.execute('PRAGMA journal_mode=WAL'); _c0.close()
+except Exception:
+    pass
 # Every database connection waits up to 15 seconds for another page that is saving at the same
 # moment, instead of failing with "database is locked" after 5 seconds.
 _sqlite_connect = sqlite3.connect
 def _connect_patient(*args, **kwargs):
-    kwargs.setdefault('timeout', 15)
+    if len(args) < 2:
+        kwargs.setdefault('timeout', 15)
     return _sqlite_connect(*args, **kwargs)
 sqlite3.connect = _connect_patient
 import os
@@ -204,7 +209,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'   # lets the Google sign-in redire
 # Every POST/PUT/PATCH/DELETE must come from Eschool's own pages. Browsers always say where a
 # request comes from (Sec-Fetch-Site / Origin / Referer), so this works for every page without
 # changing any of them. Payment providers calling us back are the only exceptions.
-CSRF_EXEMPT_PREFIXES = ('/api/stripe/webhook', '/api/mpesa/callback/')
+CSRF_EXEMPT_PREFIXES = ('/api/stripe/webhook', '/api/mpesa/callback/', '/api/mpesa/b2c/')
 
 
 def _same_site_request():
@@ -2268,7 +2273,8 @@ def jschedule():
 def jlive():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    return render_template('Teacher/teacher-live.html', firstname=session.get('firstname', ''))
+    return render_template('Teacher/teacher-live.html', firstname=session.get('firstname', ''),
+                           live_subjects=[(k, EP_COURSE_NAMES.get(k, k).replace('Grade 10 ', '')) for k in EP_COURSE_MODULES])
 
 @app.route('/teacher-profile')
 def jprofile():
@@ -2301,6 +2307,34 @@ def profile_template_for_role(role):
 _EXTENDS_RE = re.compile(r'{%-?\s*extends\s+["\'][^"\']+["\']\s*-?%}')
 
 
+PROFILE_BASE_STYLE = """
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--primary-color:#4361ee;--secondary-color:#3a0ca3;--accent-color:#4cc9f0;--success-color:#4ade80;--warning-color:#f59e0b;
+--danger-color:#ef4444;--light-color:#f8fafc;--dark-color:#1e293b;--gray-color:#64748b;--primary-light:#e0e7ff;--primary-dark:#3a0ca3;
+--card-bg:#fff;--card-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06);--transition:all .3s ease}
+.es-prof-wrap{max-width:1180px;margin:0 auto;padding:18px 16px 40px;font-family:'Open Sans',system-ui,sans-serif;color:#1e293b}
+.es-prof-wrap h1,.es-prof-wrap h2,.es-prof-wrap h3{font-family:'Poppins',system-ui,sans-serif}
+.es-prof-back{display:inline-flex;align-items:center;gap:8px;margin:0 0 14px;padding:8px 14px;border-radius:10px;border:1px solid #e2e8f0;
+background:#fff;color:#334155;font-weight:600;font-size:.88rem;text-decoration:none}
+.es-prof-back:hover{border-color:#4361ee;color:#4361ee}
+</style>
+<div class="es-prof-wrap">
+"""
+PROFILE_PARENT_EXTRA = {   # per page: what a parent doesn't need on it
+    'Learner/profile.html': '<style>.profile-search-section{visibility:hidden}</style>',
+    'Teacher/teacher-profile.html': '<a class="es-prof-back" href="javascript:history.length>1?history.back():location.assign(\'/parent-teacher\')"><i class="fas fa-arrow-left"></i> Back</a>',
+}
+
+NO_PARENT_PROFILE_PAGE = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>No profile · Eschool</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f1f5f9;font-family:system-ui,sans-serif;color:#1e293b}
+.c{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:32px 28px;max-width:420px;text-align:center;margin:16px}
+h1{font-size:1.25rem;margin:0 0 8px}p{color:#64748b;line-height:1.55;margin:0 0 20px}
+a{display:inline-block;padding:10px 18px;border-radius:10px;background:#4361ee;color:#fff;text-decoration:none;font-weight:600}</style></head>
+<body><div class="c"><h1>{{ name }} is a parent</h1><p>Parents don't have a profile on Eschool. You can still message them from Messages.</p>
+<a href="javascript:history.length>1?history.back():location.assign('/')">Go back</a></div></body></html>"""
+
+
 def render_profile(ctx):
     """Renders the profile page inside the VIEWER's own menu. Parents used to get
     the teacher profile with the teacher menu, so its buttons (Messages, Settings ...)
@@ -2308,12 +2342,17 @@ def render_profile(ctx):
     inside the parent layout (Parent/parent-body.html) instead."""
     template = profile_template_for_role(session.get('role'))
     if session.get('role') == 'parent':
+        # the normal profile of whoever it belongs to: a child's learner profile, a teacher's teacher profile
+        template = 'Teacher/teacher-profile.html' if ctx.get('profile_role') == 'teacher' else 'Learner/profile.html'
         try:
             src = app.jinja_loader.get_source(app.jinja_env, template)[0]
             if _EXTENDS_RE.search(src):
                 src = _EXTENDS_RE.sub('{% extends "Parent/parent-body.html" %}', src, count=1)
                 if '{% block allcontent %}' not in src and '{% block content %}' in src:
                     src = src.replace('{% block content %}', '{% block allcontent %}', 1)
+                # the colours and fonts the learner layout gives this page, so it looks the same here
+                src = src.replace('{% block allcontent %}', '{% block allcontent %}' + PROFILE_BASE_STYLE + PROFILE_PARENT_EXTRA.get(template, ''), 1)
+                src = '</div>{% endblock %}'.join(src.rsplit('{% endblock %}', 1))
                 return render_template_string(src, **ctx)
         except Exception as e:   # fall back to the normal page rather than failing
             app.logger.warning('parent profile layout skipped: %s', e)
@@ -2359,6 +2398,9 @@ def view_profile(user_id):
     ctx = build_profile_context(user_id)
     if ctx is None:
         abort(404)
+    if (ctx.get('profile_role') or '') == 'parent' and session.get('role') != 'admin':
+        name = f"{ctx.get('firstname') or ''} {ctx.get('lastname') or ''}".strip() or 'This parent'
+        return render_template_string(NO_PARENT_PROFILE_PAGE, name=name)
 
     conn = sqlite3.connect('users.db')
     try:
@@ -2482,7 +2524,7 @@ def parent_dashboard():
             try:
                 hidden = _users_with_privacy(conn, 'show_on_leaderboard', 0)
                 ranked = _ranked_learners(conn, exclude_ids=hidden)
-                ranks = {t[1]: t[0] for t in ranked}
+                ranks = {t[1]: t[0] for t in ranked if t[5]['ep_month'] > 0}   # 0 EP this month: no place yet
                 ranked_total = len(ranked)
             except Exception:
                 ranks = {}
@@ -2505,7 +2547,8 @@ def parent_dashboard():
             has_data = can_see and has_summary
             gpa = st['gpa'] if has_data else None
             avg = int(st['avg_progress'] or 0) if has_data else 0
-            average = round(gpa / 4 * 100) if gpa is not None else avg
+            pg = _progress_page_grade(conn, sid) if has_data else None      # same grade as the child's Progress page
+            average = pg['percent'] if pg else 0
 
             child_activity, active_days, last_seen = [], set(), None
             if can_see:
@@ -2551,8 +2594,13 @@ def parent_dashboard():
                 'has_summary': has_summary,
                 'has_data': has_data,
                 'gpa': gpa or 0,
-                'has_gpa': gpa is not None,
-                'letter': (r['overall_grade'] or letter_for(gpa)) if (has_data and gpa is not None) else '-',
+                'has_gpa': pg is not None,          # kept for older templates: "has a grade"
+                'has_grade': pg is not None,
+                'letter': pg['letter'] if pg else '-',
+                'score_pct': pg['percent'] if pg else None,
+                'total_score': pg['total'] if pg else None,
+                'total_possible': pg['possible'] if pg else 0,
+                'band': _grade_band(pg['percent']) if pg else '',
                 'average': average,
                 'avg_progress': avg,
                 'rank': ranks.get(sid),   # public: same as the leaderboard page
@@ -2669,11 +2717,21 @@ def parent_dashboard():
     finally:
         conn.close()
 
+    tconn = _links_db()
+    try:     # teachers hired: private teachers who accepted, for any of this parent's children
+        _tutor_tables(tconn)
+        teachers_hired = tconn.execute("SELECT COUNT(DISTINCT teacher_id) FROM tutoring WHERE parent_id = ? AND status IN ('accepted', 'active')",
+                                       (parent_id,)).fetchone()[0]
+    finally:
+        tconn.close()
     with_data = [c for c in children if c['has_data']]
-    graded = [c for c in with_data if c['has_gpa']]
+    graded = [c for c in with_data if c['has_grade']]
+    avg_pct = round(sum(c['score_pct'] for c in graded) / len(graded)) if graded else None
     performance = {
         'has_data': bool(graded),
-        'overall_average': round(sum(c['average'] for c in with_data) / len(with_data)) if with_data else 0,
+        'overall_average': avg_pct or 0,
+        'overall_letter': _grade_for_pct(avg_pct)[0] if avg_pct is not None else '-',
+        'overall_band': _grade_band(avg_pct),
         'avg_progress': round(sum(c['avg_progress'] for c in with_data) / len(with_data)) if with_data else 0,
         'gpa': round(sum(c['gpa'] for c in graded) / len(graded), 2) if graded else 0,
         'ep_week': sum(c['ep_week'] for c in children),
@@ -2689,7 +2747,7 @@ def parent_dashboard():
                 'full_name': _full_name(session.get('firstname'), session.get('lastname'), ''),
                 'avatar_url': get_avatar_url(parent_id, me['avatar_filename']) if me else None},
         children=children,
-        stats={'children_count': len(children), 'recent_activity_count': activity_today,
+        stats={'children_count': len(children), 'teachers_count': teachers_hired, 'recent_activity_count': activity_today,
                'best_rank': min(ranked) if ranked else None, 'ranked_total': ranked_total,
                'pending_count': pending_count},
         activities=activities,
@@ -2828,7 +2886,7 @@ def Pchildren():
             try:
                 hidden = _users_with_privacy(conn, 'show_on_leaderboard', 0)
                 ranked = _ranked_learners(conn, exclude_ids=hidden)
-                ranks, ranked_total = {t[1]: t[0] for t in ranked}, len(ranked)
+                ranks, ranked_total = {t[1]: t[0] for t in ranked if t[5]['ep_month'] > 0}, len(ranked)   # 0 EP: no place yet
             except Exception:
                 ranks = {}
         for r in rows:
@@ -2876,6 +2934,8 @@ def Pchildren():
                 'has_summary': has_summary,
                 'gpa': r['gpa'] if (can_see_grades and has_summary) else None,
                 'overall_grade': r['overall_grade'] if (can_see_grades and has_summary) else None,
+                # the grade exactly as the child's Progress page shows it
+                'score': (_progress_page_grade(conn, r['student_id']) if (can_see_grades and has_summary) else None),
                 'avg_progress': r['avg_progress'] if (can_see_grades and has_summary) else None,
                 'courses': courses if can_see_grades else [],
                 # only what the child shares: nothing about their learning when "grades" is off
@@ -3054,10 +3114,65 @@ def api_my_plan_access():
                     'pro_only_courses': sorted(PRO_ONLY_COURSES)})
 
 
-PLAN_PRICES = {            # KES for each length (days)
+# ============ MONEY: one currency for the whole site ============
+# Every price, payment, lesson rate and payout is in SITE_CURRENCY (payments.env), e.g. KES, USD, EUR, GBP, NGN.
+# Choose it before the first real payment and don't change it afterwards: amounts already saved don't convert.
+SITE_CURRENCY = (os.environ.get('SITE_CURRENCY') or 'KES').strip().upper()[:3]
+ZERO_DECIMAL_CURRENCIES = {'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'}
+# what a teacher may charge for one lesson, in SITE_CURRENCY
+LESSON_PRICE_MIN = float(os.environ.get('LESSON_PRICE_MIN') or (50 if SITE_CURRENCY == 'KES' else 1))
+LESSON_PRICE_MAX = float(os.environ.get('LESSON_PRICE_MAX') or (100000 if SITE_CURRENCY == 'KES' else 10000))
+
+
+def _money(n, cur=None):
+    """'KES 1,200' / 'USD 4.99': an amount in the site currency, written for people."""
+    try:
+        v = float(n or 0)
+    except (TypeError, ValueError):
+        v = 0.0
+    return f"{cur or SITE_CURRENCY} {v:,.0f}" if v.is_integer() else f"{cur or SITE_CURRENCY} {v:,.2f}"
+
+
+def _round_money(v):
+    """Whole units for currencies without cents (KES, UGX ...), cents otherwise."""
+    if SITE_CURRENCY in ZERO_DECIMAL_CURRENCIES or SITE_CURRENCY == 'KES':
+        return int(round(v))
+    x = round(float(v), 2)
+    return int(x) if x.is_integer() else x
+
+
+def _parse_amount(v, lo, hi):
+    """A price someone typed: a number with at most 2 decimals between lo and hi, else None."""
+    try:
+        x = round(float(str(v).replace(',', '').strip()), 0 if SITE_CURRENCY in ZERO_DECIMAL_CURRENCIES else 2)
+    except (TypeError, ValueError):
+        return None
+    if x != x or not lo <= x <= hi:
+        return None
+    return int(x) if float(x).is_integer() else x
+
+
+@app.context_processor
+def _currency_context():
+    g = lambda v: int(v) if float(v).is_integer() else v
+    return {'CURRENCY': SITE_CURRENCY, 'LESSON_MIN': g(LESSON_PRICE_MIN), 'LESSON_MAX': g(LESSON_PRICE_MAX),
+            'LESSON_STEP': 50 if SITE_CURRENCY == 'KES' else (1 if SITE_CURRENCY in ZERO_DECIMAL_CURRENCIES else 0.01)}
+
+
+PLAN_PRICES = {            # in SITE_CURRENCY, for each length (days). Change them with PLAN_PRICES_JSON in payments.env
     'basic': {30: 300, 90: 800, 365: 3000},
     'pro':   {30: 600, 90: 1600, 365: 6000},
 }
+try:    # e.g. PLAN_PRICES_JSON={"basic": {"30": 4.99, "90": 12.99, "365": 45}, "pro": {"30": 9.99, "90": 25, "365": 90}}
+    _pp = json.loads(os.environ.get('PLAN_PRICES_JSON') or 'null')
+    if isinstance(_pp, dict):
+        for _k in ('basic', 'pro'):
+            if isinstance(_pp.get(_k), dict):
+                _new = {int(d): (int(a) if float(a).is_integer() else round(float(a), 2)) for d, a in _pp[_k].items() if float(a) > 0}
+                if _new:
+                    PLAN_PRICES[_k] = _new
+except (ValueError, TypeError) as _e:
+    print(f'PLAN_PRICES_JSON ignored: {_e}')
 PLAN_INFO = {              # shown on the Plans page, edit freely. "missing" shows what the plan doesn't have.
     'free':  {'name': 'Free', 'tagline': 'Start learning at no cost',
               'features': ['Courses except Mathematics', 'Daily Quiz Test and course quizzes',
@@ -3117,11 +3232,12 @@ def _payment_options():
                       'missing': info.get('missing', []),
                       'prices': [{'days': d, 'amount': a} for d, a in sorted(PLAN_PRICES[key].items())]})
     f = PLAN_INFO['free']
-    return {'ready': _payments_ready(), 'currency': 'KES', 'plans': plans,
+    return {'ready': _payments_ready(), 'currency': SITE_CURRENCY, 'plans': plans,
+            'any_ready': _payments_ready() or _stripe_ready(),
             'free_plan': {'key': 'free', 'name': f['name'], 'tagline': f['tagline'], 'features': f['features'], 'missing': f['missing'], 'ads': True},
             'paybill': PAYMENT_SETTINGS['paybill'], 'till': PAYMENT_SETTINGS['till'],
             'account_name': PAYMENT_SETTINGS['account_name'], 'confirm_time': PAYMENT_SETTINGS['confirm_time'],
-            'card': _stripe_ready(), 'mpesa_prompt': _stk_ready()}
+            'card': _stripe_ready(), 'mpesa_prompt': _stk_ready(), 'mpesa': _payments_ready() or _stk_ready()}
 
 
 def _extend_plan(conn, user_id, plan, days):
@@ -3136,20 +3252,98 @@ def _extend_plan(conn, user_id, plan, days):
     same_plan_running = (row['plan'] or '').lower() == plan and current_end and current_end > now
     start = _parse_iso(row['plan_started_at']) if same_plan_running else now
     end = (current_end if same_plan_running else now) + timedelta(days=days)
+    if (row['plan'] or '').lower() == 'basic' and plan == 'pro' and current_end and current_end > now:
+        # upgrade: the Basic time left isn't lost, it becomes Pro time of the same value (Basic costs half, so half the days)
+        rate = PLAN_PRICES['basic'][30] / PLAN_PRICES['pro'][30]
+        end += (current_end - now) * rate
     conn.execute('UPDATE users SET plan = ?, plan_started_at = ?, plan_expires_at = ? WHERE id = ?',
                  (plan, _iso(start or now), _iso(end), user_id))
     return end
 
 
 def _serialize_payment(r):
+    method = (r['method'] if 'method' in r.keys() else None) or 'mpesa'
     return {
         'id': r['id'], 'student_id': r['student_id'], 'parent_id': r['parent_id'],
         'student_name': _full_name(r['firstname'], r['lastname'], 'Student'),
         'plan': r['plan'], 'plan_name': PLAN_NAMES.get(r['plan'], r['plan']),
         'days': r['days'], 'amount': r['amount'], 'reference': r['reference'], 'phone': r['phone'] or '',
+        'method': method, 'method_label': 'Card' if method == 'stripe' else 'M-Pesa',
+        # what to show as "paid with": the M-Pesa code, or "Card" (Stripe's own ids mean nothing to families)
+        'paid_with': 'Card' if method == 'stripe' else r['reference'],
         'status': r['status'], 'note': r['note'] or '',
         'created_at': r['created_at'], 'decided_at': r['decided_at'],
     }
+
+
+def _plan_pay_columns(conn):
+    cols = {r[1] for r in conn.execute('PRAGMA table_info(plan_payments)').fetchall()}
+    if 'receipt' not in cols:
+        conn.execute('ALTER TABLE plan_payments ADD COLUMN receipt TEXT')
+
+
+def _plan_pay_check(conn, payer_id, data):
+    """Shared checks for paying a plan (M-Pesa code or card). Returns (student_id, plan, days, amount, learner row)
+    or raises ValueError(message, http status)."""
+    plan = (data.get('plan') or '').strip().lower()
+    if session.get('role') == 'student':
+        data['student_id'] = payer_id           # a learner without a parent pays for their own plan
+    try:
+        student_id = int(data.get('student_id'))
+        days = int(data.get('days'))
+    except (TypeError, ValueError):
+        raise ValueError('Choose a child and how long.', 400)
+    if plan not in PLAN_PRICES or days not in PLAN_PRICES[plan]:
+        raise ValueError('Choose Basic or Pro and how long.', 400)
+    _ensure_plan_columns(conn)
+    if session.get('role') == 'student':
+        link = conn.execute('SELECT firstname, lastname, plan, plan_started_at, plan_expires_at FROM users WHERE id = ?', (student_id,)).fetchone()
+    else:
+        link = conn.execute('''SELECT u.firstname, u.lastname, u.plan, u.plan_started_at, u.plan_expires_at
+                               FROM parent_links pl JOIN users u ON u.id = pl.student_id
+                               WHERE pl.parent_id = ? AND pl.student_id = ? AND pl.status = 'active' ''', (payer_id, student_id)).fetchone()
+    if not link:
+        raise ValueError('That child is not linked to you.', 404)
+    current = _current_plan(link['plan'], link['plan_started_at'], link['plan_expires_at'])
+    if current['key'] == 'pro' and plan == 'basic':      # Basic -> Pro is an upgrade; Pro -> Basic waits for Pro to end
+        first = (link['firstname'] or 'Your child').strip()
+        raise ValueError(f"{first} is on Pro until {current['expires_on']}. Renew Pro, or pay for Basic after Pro ends.", 409)
+    return student_id, plan, days, PLAN_PRICES[plan][days], link
+
+
+def _confirm_plan_payment(conn, p, by=None, note=None, receipt=None):
+    """Start or extend the plan for one plan payment and tell the family. Safe to call twice (only the first counts).
+    p: a PAYMENT_SELECT row. Returns the plan's new end, or None."""
+    cur = conn.execute('''UPDATE plan_payments SET status = 'confirmed', note = COALESCE(?, note), receipt = COALESCE(?, receipt),
+                          decided_at = ?, decided_by = ? WHERE id = ? AND status IN ('pending', 'started')''',
+                       (note, receipt, _iso(_utc_now()), by, p['id']))
+    if not cur.rowcount:
+        return None
+    end = _extend_plan(conn, p['student_id'], p['plan'], p['days'])
+    if end is None:
+        return None
+    plan_name = PLAN_NAMES.get(p['plan'], p['plan'])
+    child = _full_name(p['firstname'], p['lastname'], 'Your child')
+    ends = end.strftime('%b %d, %Y')
+    if p['parent_id'] == p['student_id']:       # a learner paid for their own plan
+        create_notification(conn, p['student_id'], 'Payment confirmed',
+                            f"Your payment is confirmed. You're on Eschool {plan_name} until {ends}.", icon='fa-crown', color='green')
+    else:
+        create_notification(conn, p['parent_id'], 'Payment confirmed',
+                            f"{child} is now on Eschool {plan_name} until {ends}.", icon='fa-circle-check', color='green')
+        create_notification(conn, p['student_id'], f'Eschool {plan_name} is on',
+                            f"Your parent paid for Eschool {plan_name}. It runs until {ends}.", icon='fa-crown', color='green')
+    return end
+
+
+def _plan_stripe_sync(conn, p):
+    """Ask Stripe how a plan card payment went and record it."""
+    cs = _stripe('GET', '/checkout/sessions/' + p['reference'])
+    if cs.get('payment_status') in ('paid', 'no_payment_required'):
+        _confirm_plan_payment(conn, p, receipt=cs.get('payment_intent'))
+    elif cs.get('status') == 'expired':
+        conn.execute("UPDATE plan_payments SET status = 'failed', note = 'Card payment not finished', decided_at = ? WHERE id = ? AND status = 'started'",
+                     (_iso(_utc_now()), p['id']))
 
 
 PAYMENT_SELECT = '''
@@ -3172,54 +3366,29 @@ def parent_payments():
         except sqlite3.Error:
             pass        # older duplicate codes: the check below still blocks new ones
         if request.method == 'GET':
-            rows = conn.execute(PAYMENT_SELECT + ' WHERE p.parent_id = ? ORDER BY p.id DESC LIMIT 50',
+            rows = conn.execute(PAYMENT_SELECT + " WHERE p.parent_id = ? AND p.status NOT IN ('started', 'failed') ORDER BY p.id DESC LIMIT 50",
                                 (parent_id,)).fetchall()
             return jsonify({'payments': [_serialize_payment(r) for r in rows], 'options': _payment_options()})
 
         if not _payments_ready():
-            return jsonify({'success': False, 'message': 'Payments are not set up yet. Please contact the school.'}), 503
+            return jsonify({'success': False, 'message': 'Paying with an M-Pesa code is not set up. Pay by card instead, or contact Eschool support.'}), 503
         data = request.get_json(silent=True) or {}
-        plan = (data.get('plan') or '').strip().lower()
         reference = re.sub(r'\s+', '', str(data.get('reference') or '')).upper()
         phone = re.sub(r'[^\d+]', '', str(data.get('phone') or ''))[:15] or None
-        if session.get('role') == 'student':
-            data['student_id'] = parent_id           # a learner without a parent pays for their own plan
         try:
-            student_id = int(data.get('student_id'))
-            days = int(data.get('days'))
-        except (TypeError, ValueError):
-            return jsonify({'success': False, 'message': 'Choose a child and how long.'}), 400
-        if plan not in PLAN_PRICES or days not in PLAN_PRICES[plan]:
-            return jsonify({'success': False, 'message': 'Choose Basic or Pro and how long.'}), 400
+            student_id, plan, days, amount, link = _plan_pay_check(conn, parent_id, data)
+        except ValueError as e:
+            return jsonify({'success': False, 'message': e.args[0]}), e.args[1]
         if not MPESA_CODE_RE.match(reference):
             return jsonify({'success': False, 'message': 'The M-Pesa code has 10 letters and numbers, like SJK3H7XQ2P.'}), 400
         if phone and not re.fullmatch(r'\+?\d{9,15}', phone):
             return jsonify({'success': False, 'message': 'Enter the phone number you paid from, e.g. 0712 345 678 or +254 712 345 678.'}), 400
-
-        if session.get('role') == 'student':
-            _ensure_plan_columns(conn)
-            link = conn.execute('SELECT firstname, lastname, plan, plan_started_at, plan_expires_at FROM users WHERE id = ?',
-                                (student_id,)).fetchone()
-        else:
-            link = conn.execute('''SELECT u.firstname, u.lastname, u.plan, u.plan_started_at, u.plan_expires_at
-                                   FROM parent_links pl JOIN users u ON u.id = pl.student_id
-                                   WHERE pl.parent_id = ? AND pl.student_id = ? AND pl.status = 'active' ''',
-                                (parent_id, student_id)).fetchone()
-        if not link:
-            return jsonify({'success': False, 'message': 'That child is not linked to you.'}), 404
-        current = _current_plan(link['plan'], link['plan_started_at'], link['plan_expires_at'])
-        child_first = (link['firstname'] or 'Your child').strip()
-        if current['key'] in ('basic', 'pro') and current['key'] != plan:
-            return jsonify({'success': False, 'message':
-                            f"{child_first} is on {current['name']} until {current['expires_on']}. "
-                            f"Renew {current['name']}, or pay for {PLAN_NAMES[plan]} after it ends."}), 409
         if conn.execute('SELECT 1 FROM plan_payments WHERE reference = ?', (reference,)).fetchone():
             return jsonify({'success': False, 'message': 'This M-Pesa code has already been used.'}), 409
         if conn.execute("SELECT COUNT(*) FROM plan_payments WHERE parent_id = ? AND status = 'pending'",
                         (parent_id,)).fetchone()[0] >= 3:
             return jsonify({'success': False, 'message': 'You have 3 payments waiting to be checked. Please wait for them first.'}), 429
 
-        amount = PLAN_PRICES[plan][days]
         cur = conn.execute('''INSERT INTO plan_payments (parent_id, student_id, plan, days, amount, reference, phone, created_at)
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
                            (parent_id, student_id, plan, days, amount, reference, phone, _iso(_utc_now())))
@@ -3227,11 +3396,99 @@ def parent_payments():
         child_name = _full_name(link['firstname'], link['lastname'], 'a learner')
         for (admin_id,) in conn.execute("SELECT id FROM users WHERE role = 'admin'").fetchall():
             create_notification(conn, admin_id, 'Payment to check',
-                                f"{parent_name} paid KES {amount:,} for {PLAN_NAMES[plan]} ({days} days) for {child_name}. "
+                                f"{parent_name} paid {_money(amount)} for {PLAN_NAMES[plan]} ({days} days) for {child_name}. "
                                 f"M-Pesa code {reference}.", icon='fa-money-bill-wave', color='#f59e0b')
         conn.commit()
         row = conn.execute(PAYMENT_SELECT + ' WHERE p.id = ?', (cur.lastrowid,)).fetchone()
         return jsonify({'success': True, 'payment': _serialize_payment(row)})
+    finally:
+        conn.close()
+
+
+@app.route('/api/parent/payments/online', methods=['POST'])
+def parent_payments_online():
+    """{"student_id", "plan", "days", "method": "card"} -> {"redirect": Stripe Checkout page}.
+    The plan starts as soon as Stripe says it is paid (webhook, or the page asking /api/parent/payments/<id>/status)."""
+    guard = _payer_guard()
+    if guard:
+        return guard
+    if not _stripe_ready():
+        return jsonify({'success': False, 'message': 'Card payments are not set up yet.'}), 503
+    payer = session['user_id']
+    data = request.get_json(silent=True) or {}
+    conn = _links_db()
+    try:
+        _payments_table(conn)
+        _plan_pay_columns(conn)
+        try:
+            student_id, plan, days, amount, link = _plan_pay_check(conn, payer, data)
+        except ValueError as e:
+            return jsonify({'success': False, 'message': e.args[0]}), e.args[1]
+        recent = conn.execute("SELECT COUNT(*) FROM plan_payments WHERE parent_id = ? AND method = 'stripe' AND created_at > ?",
+                              (payer, _iso(_utc_now() - timedelta(minutes=10)))).fetchone()[0]
+        if recent >= 5:
+            return jsonify({'success': False, 'message': 'You started several card payments just now. Please wait a few minutes.'}), 429
+        temp = 'NEW-' + uuid.uuid4().hex
+        cur = conn.execute('''INSERT INTO plan_payments (parent_id, student_id, plan, days, amount, method, reference, status, created_at)
+                              VALUES (?, ?, ?, ?, ?, 'stripe', ?, 'started', ?)''', (payer, student_id, plan, days, amount, temp, _iso(_utc_now())))
+        pid = cur.lastrowid
+        conn.commit()
+        child = _full_name(link['firstname'], link['lastname'], 'your child')
+        back = '/plans' if session.get('role') == 'student' else '/parent-children'
+        base = _site_url()
+        length = '1 year' if days == 365 else f'{days} days'
+        try:
+            cs = _stripe('POST', '/checkout/sessions', {
+                'mode': 'payment',
+                'success_url': f'{base}{back}?paid={pid}',
+                'cancel_url': f'{base}{back}?unpaid={pid}',
+                'client_reference_id': str(pid),
+                'customer_email': session.get('email') or None,
+                'line_items[0][quantity]': 1,
+                'line_items[0][price_data][currency]': ONLINE_PAY['stripe_currency'],
+                'line_items[0][price_data][unit_amount]': _stripe_amount(amount),
+                'line_items[0][price_data][product_data][name]': f'Eschool {PLAN_NAMES[plan]} · {length}',
+                'line_items[0][price_data][product_data][description]': 'For ' + child,
+                'metadata[kind]': 'plan', 'metadata[payment_id]': pid,
+                'payment_intent_data[metadata][kind]': 'plan', 'payment_intent_data[metadata][payment_id]': pid,
+                'expires_at': int(_ptime.time()) + 60 * 60,
+            }, idem=f'eschool-plan-{pid}')
+        except (ValueError, _rq.RequestException) as e:
+            conn.execute("UPDATE plan_payments SET status = 'failed', note = ? WHERE id = ?", (str(e)[:200], pid))
+            conn.commit()
+            return jsonify({'success': False, 'message': str(e) if isinstance(e, ValueError) else 'The card payment service is not answering. Try again in a minute.'}), 502
+        conn.execute('UPDATE plan_payments SET reference = ? WHERE id = ?', (cs['id'], pid))
+        conn.commit()
+        return jsonify({'success': True, 'payment_id': pid, 'redirect': cs['url']})
+    finally:
+        conn.close()
+
+
+@app.route('/api/parent/payments/<int:payment_id>/status')
+def parent_payment_status(payment_id):
+    """The page asks this after coming back from Stripe, until the plan is confirmed."""
+    guard = _payer_guard()
+    if guard:
+        return guard
+    conn = _links_db()
+    try:
+        _payments_table(conn)
+        _plan_pay_columns(conn)
+        p = conn.execute(PAYMENT_SELECT + ' WHERE p.id = ? AND p.parent_id = ?', (payment_id, session['user_id'])).fetchone()
+        if not p:
+            return jsonify({'success': False, 'message': 'Payment not found.'}), 404
+        if p['status'] == 'started' and p['method'] == 'stripe' and not p['reference'].startswith('NEW-') and _stripe_ready():
+            try:
+                _plan_stripe_sync(conn, p)
+                conn.commit()
+            except (ValueError, _rq.RequestException):
+                pass        # asked again on the next check
+            p = conn.execute(PAYMENT_SELECT + ' WHERE p.id = ?', (payment_id,)).fetchone()
+        out = _serialize_payment(p)
+        _ensure_plan_columns(conn)
+        u = conn.execute('SELECT plan, plan_started_at, plan_expires_at FROM users WHERE id = ?', (p['student_id'],)).fetchone()
+        current = _current_plan(u['plan'], u['plan_started_at'], u['plan_expires_at']) if u else None
+        return jsonify({'success': True, 'payment': out, 'current': current})
     finally:
         conn.close()
 
@@ -3300,22 +3557,19 @@ def admin_decide_payment(payment_id):
         plan_name = PLAN_NAMES.get(p['plan'], p['plan'])
         child = _full_name(p['firstname'], p['lastname'], 'Your child')
         if action == 'confirm':
-            end = _extend_plan(conn, p['student_id'], p['plan'], p['days'])
-            if end is None:
+            if not conn.execute('SELECT 1 FROM users WHERE id = ?', (p['student_id'],)).fetchone():
                 return jsonify({'success': False, 'message': 'The learner account no longer exists'}), 404
-            ends = end.strftime('%b %d, %Y')
-            create_notification(conn, p['parent_id'], 'Payment confirmed',
-                                f"{child} is now on Eschool {plan_name} until {ends}.", icon='fa-circle-check', color='green')
-            create_notification(conn, p['student_id'], f'Eschool {plan_name} is on',
-                                f"Your parent paid for Eschool {plan_name}. It runs until {ends}.", icon='fa-crown', color='green')
+            _plan_pay_columns(conn)
+            _confirm_plan_payment(conn, p, by=session['user_id'], note=note)
         else:
             create_notification(conn, p['parent_id'], 'Payment not confirmed',
                                 f"We couldn't confirm M-Pesa code {p['reference']} for {child}." + (f" {note}" if note else ''),
                                 icon='fa-triangle-exclamation', color='red')
-        conn.execute('UPDATE plan_payments SET status = ?, note = ?, decided_at = ?, decided_by = ? WHERE id = ?',
-                     ('confirmed' if action == 'confirm' else 'rejected', note, _iso(_utc_now()), session['user_id'], payment_id))
+        if action == 'reject':
+            conn.execute("UPDATE plan_payments SET status = 'rejected', note = ?, decided_at = ?, decided_by = ? WHERE id = ?",
+                         (note, _iso(_utc_now()), session['user_id'], payment_id))
         admin_log(conn, 'Confirmed plan payment' if action == 'confirm' else 'Rejected plan payment', 'payment', payment_id,
-                  f"{p['reference']} · KES {p['amount']} · {plan_name} for {child}" + (f" · {note}" if note else ''))
+                  f"{p['reference']} · {_money(p['amount'])} · {plan_name} for {child}" + (f" · {note}" if note else ''))
         conn.commit()
         return jsonify({'success': True})
     finally:
@@ -3778,6 +4032,45 @@ def api_teacher_rankings():
                                    for k, n, i, w, u, need, ex_ in TEACHER_BADGES]})
 
 
+@app.route('/api/users/<int:user_id>/teacher-badges')
+def api_teacher_badges_one(user_id):
+    """One teacher's badges and level, for their profile page (anyone signed in can see them)."""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please sign in again.'}), 401
+    conn = _links_db()
+    try:
+        _teacher_badges_table(conn)
+        cards = _teacher_cards(conn, [user_id])
+        card = next((c for c in cards if c['id'] == user_id), None)
+        if not card:
+            return jsonify({'success': False, 'message': 'Teacher not found.'}), 404
+        ex = _teacher_extra_metrics(conn, [user_id])[user_id]
+        kept = {r[0]: r[1] for r in conn.execute('SELECT badge, MAX(tier) FROM teacher_badges WHERE teacher_id = ? GROUP BY badge', (user_id,)).fetchall()}
+        badges = _teacher_badges(card, ex, kept)
+        dates = {(r[0], r[1]): r[2] for r in conn.execute('SELECT badge, tier, earned_at FROM teacher_badges WHERE teacher_id = ?', (user_id,)).fetchall()}
+        own = user_id == session['user_id']
+        for b in badges:
+            b['earned_at'] = _an_iso(dates.get((b['key'], b['tier']))) if b['tier'] else None
+            if not own and b.get('next'):
+                b['next'] = {k: v for k, v in b['next'].items() if k != 'missing'}   # what's missing is only for the teacher
+        level = _teacher_level(badges, card.get('score'))
+        # place among all teachers, the same order as the Rankings page
+        allc = _teacher_cards(conn)
+        allc.sort(key=lambda c: (-(c.get('score') or 0), -c.get('sessions_done', 0), -c.get('rating_count', 0), -c.get('experience_years', 0), c['name']))
+        rank = next((i for i, c in enumerate(allc, 1) if c['id'] == user_id), None)
+        subj_rank = {}
+        for sub in card.get('subjects') or []:
+            same = [c for c in allc if sub in (c.get('subjects') or [])]
+            subj_rank[sub] = {'rank': next((i for i, c in enumerate(same, 1) if c['id'] == user_id), None), 'of': len(same)}
+        return jsonify({'success': True, 'own': own, 'badges': badges, 'level': level, 'score': card.get('score') or 0,
+                        'earned': sum(1 for b in badges if b['tier']), 'tiers': TEACHER_TIERS,
+                        'rank': rank, 'of': len(allc), 'top_percent': max(1, round(rank / len(allc) * 100)) if rank and allc else None,
+                        'subjects': subj_rank,
+                        'lessons': card.get('sessions_done', 0), 'learners': card.get('students', 0), 'reviews': card.get('rating_count', 0)})
+    finally:
+        conn.close()
+
+
 # ----- the Eschool teacher score (out of 10) -----
 # One number families can trust, worked out from everything Eschool knows, not just reviews:
 #   quality     60%  every rating the teacher got: profile reviews, live class ratings and
@@ -3897,7 +4190,7 @@ def api_learner_plan_info():
         u = conn.execute('SELECT plan, plan_started_at, plan_expires_at FROM users WHERE id = ?', (uid,)).fetchone()
         independent = True                       # every learner can pay for themselves
         has_parent = _learner_has_parent(conn, uid)
-        rows = conn.execute(PAYMENT_SELECT + ' WHERE p.student_id = ? ORDER BY p.id DESC LIMIT 30', (uid,)).fetchall()
+        rows = conn.execute(PAYMENT_SELECT + " WHERE p.student_id = ? AND p.status NOT IN ('started', 'failed') ORDER BY p.id DESC LIMIT 30", (uid,)).fetchall()
         return jsonify({'success': True, 'independent': independent, 'has_parent': has_parent,
                         'current': _current_plan(u['plan'], u['plan_started_at'], u['plan_expires_at']),
                         'options': _payment_options(), 'payments': [_serialize_payment(r) for r in rows]})
@@ -4014,7 +4307,56 @@ def _tutoring_json(conn, r, with_detail=True):
             pass   # calls table not created yet
         out['interaction'] = {'messages': m[0] or 0, 'from_teacher': m[1] or 0, 'from_child': (m[0] or 0) - (m[1] or 0),
                               'last_message': to_iso_utc(m[2]) if m[2] else None, 'calls': calls}
+        out['grade_change'] = _tutoring_grade_change(conn, r)
     return out
+
+
+def _subject_course(subject):
+    """The Eschool course a lesson subject is about ('Maths' -> 'math'), or None."""
+    s = re.sub(r'[^a-z ]', '', str(subject or '').lower()).strip()
+    if not s:
+        return None
+    if s in ('math', 'maths', 'mathematics') or s.startswith('math'):
+        return 'math' if 'math' in EP_COURSE_MODULES else None
+    for key in EP_COURSE_MODULES:
+        name = EP_COURSE_NAMES.get(key, key).lower()
+        if s == key or s in name or name.replace('grade 10 ', '') in s:
+            return key
+    return None
+
+
+def _course_score_from_events(conn, sid, course, before=None):
+    """A course's score from Eschool module tests and quizzes (30% tests, 70% quizzes, like the Progress page),
+    counting only results before a time when one is given. None when there are no results."""
+    q = "SELECT kind, pct FROM ep_events WHERE user_id = ? AND kind IN ('module', 'quiz') AND ref LIKE ? AND pct IS NOT NULL"
+    args = [sid, course + ':%']
+    if before:
+        q += ' AND created_at < ?'
+        args.append(before)
+    rows = conn.execute(q, args).fetchall()
+    m = [r[1] for r in rows if r[0] == 'module']
+    z = [r[1] for r in rows if r[0] == 'quiz']
+    ma = sum(m) / len(m) if m else None
+    za = sum(z) / len(z) if z else None
+    score = (ma * SCORE_MODULE_WEIGHT + za * SCORE_QUIZ_WEIGHT) if (ma is not None and za is not None) else (ma if ma is not None else za)
+    return round(score) if score is not None else None
+
+
+def _tutoring_grade_change(conn, r):
+    """The child's grade in the lesson subject before the lessons started and now (only for subjects that are Eschool courses)."""
+    course = _subject_course(r['subject'])
+    if not course:
+        return None
+    try:
+        _ep_table(conn)
+        start = _iso(_parse_any(r['responded_at'] or r['created_at']) or _utc_now())
+        before = _course_score_from_events(conn, r['student_id'], course, start)
+        now = _course_score_from_events(conn, r['student_id'], course)
+    except sqlite3.Error:
+        return None
+    pack = lambda v: {'percent': v, 'letter': _grade_for_pct(v)[0]} if v is not None else None
+    return {'course': course, 'name': re.sub(r'^Grade \d+\s+', '', EP_COURSE_NAMES.get(course, course)), 'since': start,
+            'before': pack(before), 'now': pack(now), 'change': (now - before) if (now is not None and before is not None) else None}
 
 
 def _parse_any(v):
@@ -4115,6 +4457,10 @@ def _refunds_table(conn):
         teacher_id INTEGER NOT NULL, student_id INTEGER NOT NULL, sessions INTEGER NOT NULL, amount INTEGER NOT NULL,
         status TEXT NOT NULL DEFAULT 'owed',          -- owed | refunded
         note TEXT, created_at TEXT NOT NULL, decided_at TEXT, decided_by INTEGER)''')
+    cols = {r[1] for r in conn.execute('PRAGMA table_info(tutoring_refunds)').fetchall()}
+    if 'kind' not in cols:      # 'lesson' = one missed lesson paid back while lessons go on; 'end' = when lessons end
+        conn.execute("ALTER TABLE tutoring_refunds ADD COLUMN kind TEXT DEFAULT 'end'")
+        conn.execute("ALTER TABLE tutoring_refunds ADD COLUMN session_id INTEGER")
 
 
 def _unused_lessons(conn, r):
@@ -4122,13 +4468,15 @@ def _unused_lessons(conn, r):
     taught, the learner missed it (the teacher waited), or being checked."""
     used = conn.execute("SELECT COUNT(*) FROM tutoring_sessions WHERE tutoring_id = ? AND status IN ('completed', 'missed', 'review')",
                         (r['id'],)).fetchone()[0]
-    already = conn.execute('SELECT COALESCE(SUM(sessions), 0) FROM tutoring_refunds WHERE tutoring_id = ?', (r['id'],)).fetchone()[0]
+    _refunds_table(conn)
+    # a single missed lesson paid back ('lesson') already took one lesson off sessions_paid, so it isn't counted again
+    already = conn.execute("SELECT COALESCE(SUM(sessions), 0) FROM tutoring_refunds WHERE tutoring_id = ? AND COALESCE(kind, 'end') = 'end'", (r['id'],)).fetchone()[0]
     unused = max(0, (r['sessions_paid'] or 0) - used - already)
     # money: what was really paid per lesson (the confirmed payments), not the price today
     paid = conn.execute("SELECT COALESCE(SUM(amount), 0), COALESCE(SUM(sessions), 0) FROM tutoring_payments WHERE tutoring_id = ? AND status = 'confirmed'",
                         (r['id'],)).fetchone()
     per = (paid[0] / paid[1]) if paid[1] else (r['rate'] or 0)
-    return unused, int(round(unused * per))
+    return unused, _round_money(unused * per)
 
 
 @app.route('/api/tutoring/<int:tid>/end-preview')
@@ -4174,7 +4522,7 @@ def tutoring_family_cancel_lesson(sid):
                                                          'Message the teacher if something came up.'}), 409
         now = _iso(_utc_now())
         conn.execute("UPDATE tutoring_sessions SET status = 'cancelled', outcome = 'cancelled', updated_at = ? WHERE id = ?", (now, sid))
-        when = (start + timedelta(hours=3)).strftime('%a %b %d, %H:%M') if start else 'the booked time'
+        when = _when_for(s['teacher_id'], start) if start else 'the booked time'
         who = _full_name(session.get('firstname'), session.get('lastname'), 'The family')
         create_notification(conn, s['teacher_id'], 'Lesson cancelled',
                             f"{who} cancelled the {s['subject']} lesson on {when}. It goes back to the lessons to book.",
@@ -4183,6 +4531,39 @@ def tutoring_family_cancel_lesson(sid):
         return jsonify({'success': True, 'message': 'Lesson cancelled. It goes back to your lessons to book.'})
     finally:
         conn.close()
+
+
+def _card_refundable(conn, tutoring_id):
+    """How much of this arrangement's card payments can still go back to the card."""
+    if not _stripe_ready():
+        return 0
+    _pay_columns(conn)
+    r = conn.execute('''SELECT COALESCE(SUM(amount - COALESCE(refunded, 0)), 0) FROM tutoring_payments
+                        WHERE tutoring_id = ? AND method = 'stripe' AND status = 'confirmed' AND receipt LIKE 'pi_%' ''', (tutoring_id,)).fetchone()
+    return r[0] or 0
+
+
+def _refund_to_card(conn, f):
+    """Sends one owed refund back to the card(s) it was paid with, newest payment first. Returns the Stripe refund ids."""
+    left = float(f['amount'])
+    if _card_refundable(conn, f['tutoring_id']) + 0.001 < left:
+        raise ValueError('Not enough of this family\'s card payments is left to refund. Send it another way.')
+    ids = []
+    for p in conn.execute('''SELECT id, amount, COALESCE(refunded, 0) AS refunded, receipt FROM tutoring_payments
+                             WHERE tutoring_id = ? AND method = 'stripe' AND status = 'confirmed' AND receipt LIKE 'pi_%' ORDER BY id DESC''',
+                          (f['tutoring_id'],)).fetchall():
+        take = min(float(p['amount']) - float(p['refunded']), left)
+        if take <= 0.001:
+            continue
+        rf = _stripe('POST', '/refunds', {'payment_intent': p['receipt'], 'amount': _stripe_amount(take),
+                                          'metadata[refund_id]': f['id'], 'metadata[tutoring_id]': f['tutoring_id']},
+                     idem=f"eschool-refund-{f['id']}-{p['id']}")
+        conn.execute('UPDATE tutoring_payments SET refunded = COALESCE(refunded, 0) + ? WHERE id = ?', (_round_money(take), p['id']))
+        ids.append(rf.get('id'))
+        left -= take
+        if left <= 0.001:
+            break
+    return ids
 
 
 @app.route('/api/admin/refunds', methods=['GET'])
@@ -4207,29 +4588,39 @@ def admin_refunds():
             'id': r['id'], 'amount': r['amount'], 'sessions': r['sessions'], 'status': r['status'], 'note': r['note'] or '',
             'subject': r['subject'], 'payer': _full_name(r['p_first'], r['p_last'], 'Family'), 'payer_email': r['p_email'] or '',
             'learner': _full_name(r['s_first'], r['s_last'], 'Learner'), 'teacher': _full_name(r['t_first'], r['t_last'], 'Teacher'),
-            'self_paid': r['parent_id'] == r['student_id'], 'created_at': r['created_at'], 'decided_at': r['decided_at']} for r in rows]})
+            'self_paid': r['parent_id'] == r['student_id'], 'created_at': r['created_at'], 'decided_at': r['decided_at'],
+            'card': r['status'] == 'owed' and _card_refundable(conn, r['tutoring_id']) + 0.001 >= float(r['amount'] or 0)} for r in rows]})
     finally:
         conn.close()
 
 
 @app.route('/api/admin/refunds/<int:rid>', methods=['POST'])
 def admin_mark_refunded(rid):
-    """{"note": "M-Pesa reversal QWE..."}: the money was sent back."""
+    """{"note": "M-Pesa reversal QWE..."}: the money was sent back by hand.
+    {"method": "card"}: Eschool sends it back to the card it was paid with, through Stripe."""
     if session.get('role') != 'admin':
         return jsonify({'success': False, 'message': 'Admins only'}), 403
-    note = str((request.get_json(silent=True) or {}).get('note') or '').strip()[:300] or None
+    body = request.get_json(silent=True) or {}
+    note = str(body.get('note') or '').strip()[:300] or None
     conn = _links_db()
     try:
         _refunds_table(conn)
         f = conn.execute("SELECT * FROM tutoring_refunds WHERE id = ? AND status = 'owed'", (rid,)).fetchone()
         if not f:
             return jsonify({'success': False, 'message': 'No refund waiting with that id.'}), 404
+        if body.get('method') == 'card':
+            try:
+                ids = _refund_to_card(conn, f)
+            except (ValueError, _rq.RequestException) as e:
+                conn.commit()      # keep any part that did go back
+                return jsonify({'success': False, 'message': str(e) if isinstance(e, ValueError) else 'Stripe is not answering. Try again in a minute.'}), 502
+            note = 'Back to the card it was paid with (Stripe ' + ', '.join(i for i in ids if i) + '). Banks take 5 to 10 days to show it.'
         conn.execute("UPDATE tutoring_refunds SET status = 'refunded', note = ?, decided_at = ?, decided_by = ? WHERE id = ?",
                      (note, _iso(_utc_now()), session['user_id'], rid))
         create_notification(conn, f['parent_id'], 'Refund sent',
-                            f"Eschool sent back KES {f['amount']:,} for {f['sessions']} lesson{'s' if f['sessions'] != 1 else ''} that were not taught."
+                            f"Eschool sent back {_money(f['amount'])} for {f['sessions']} lesson{'s' if f['sessions'] != 1 else ''} that were not taught."
                             + (f" {note}" if note else ''), icon='fa-rotate-left', color='green', category='tutoring')
-        admin_log(conn, 'Refund sent', 'refund', rid, f"KES {f['amount']} · {f['sessions']} lessons" + (f" · {note}" if note else ''))
+        admin_log(conn, 'Refund sent', 'refund', rid, f"{_money(f['amount'])} · {f['sessions']} lessons" + (f" · {note}" if note else ''))
         conn.commit()
         return jsonify({'success': True})
     finally:
@@ -4263,10 +4654,10 @@ def tutoring_cancel(tid):
                 payer = _full_name(r['p_first'], r['p_last'], 'A family')
                 for (admin_id,) in conn.execute("SELECT id FROM users WHERE role = 'admin'").fetchall():
                     create_notification(conn, admin_id, 'Refund to send',
-                                        f"{payer} ended {r['subject']} lessons. Send back KES {refund[1]:,} for {refund[0]} paid lesson"
+                                        f"{payer} ended {r['subject']} lessons. Send back {_money(refund[1])} for {refund[0]} paid lesson"
                                         f"{'s' if refund[0] != 1 else ''} that were not taught.", icon='fa-rotate-left', color='#f59e0b')
                 create_notification(conn, r['parent_id'], 'Refund on its way',
-                                    f"You'll get back KES {refund[1]:,} for {refund[0]} paid {r['subject']} lesson{'s' if refund[0] != 1 else ''} "
+                                    f"You'll get back {_money(refund[1])} for {refund[0]} paid {r['subject']} lesson{'s' if refund[0] != 1 else ''} "
                                     "that were not taught. Eschool sends it back and tells you when it's done.",
                                     icon='fa-rotate-left', color='blue', category='tutoring')
         create_notification(conn, r['teacher_id'], 'Teaching ended' if new == 'ended' else 'Request withdrawn',
@@ -4315,7 +4706,7 @@ def tutoring_pay(tid):
                               VALUES (?, ?, ?, ?, ?, ?, ?)''', (tid, session['user_id'], sessions, amount, reference, phone, _iso(_utc_now())))
         for (admin_id,) in conn.execute("SELECT id FROM users WHERE role = 'admin'").fetchall():
             create_notification(conn, admin_id, 'Teaching payment to check',
-                                f"{_full_name(r['p_first'], r['p_last'], 'A parent')} paid KES {amount:,} for {sessions} {r['subject']} "
+                                f"{_full_name(r['p_first'], r['p_last'], 'A parent')} paid {_money(amount)} for {sessions} {r['subject']} "
                                 f"session{'s' if sessions != 1 else ''} with {_full_name(r['t_first'], r['t_last'], 'a teacher')}. M-Pesa code {reference}.",
                                 icon='fa-money-bill-wave', color='#f59e0b')
         conn.commit()
@@ -4411,6 +4802,8 @@ def tutor_profile_api():
             r = conn.execute('SELECT * FROM tutor_profiles WHERE teacher_id = ?', (session['user_id'],)).fetchone()
             return jsonify({'profile': dict(r) if r else None, 'subjects': TUTOR_SUBJECTS})
         d = request.get_json(silent=True) or {}
+        if str(d.get('rate') if d.get('rate') is not None else '').strip() and _parse_amount(d.get('rate'), LESSON_PRICE_MIN, LESSON_PRICE_MAX) is None:
+            return jsonify({'success': False, 'message': f'The lesson price must be from {_money(LESSON_PRICE_MIN)} to {_money(LESSON_PRICE_MAX)}, or left empty.'}), 400
         def num(k, lo, hi):
             try:
                 v = int(d.get(k))
@@ -4427,7 +4820,7 @@ def tutor_profile_api():
                         availability = excluded.availability, accepting = excluded.accepting, updated_at = excluded.updated_at''',
                      (session['user_id'], str(d.get('headline') or '')[:120], str(d.get('bio') or '')[:1500],
                       json.dumps(_clean_list(d.get('subjects'))), json.dumps(_clean_list(d.get('levels'))),
-                      num('rate', 50, 100000), 60,          # lessons are 60 minutes
+                      _parse_amount(d.get('rate'), LESSON_PRICE_MIN, LESSON_PRICE_MAX), 60,          # lessons are 60 minutes
                       'online', str(d.get('location') or '')[:80],   # lessons only happen on Eschool
                       None, json.dumps(_clean_list(d.get('qualifications'), 10, 120)),
                       str(d.get('availability') or '')[:200], 0 if d.get('accepting') is False else 1, _iso(_utc_now())))
@@ -4467,16 +4860,16 @@ def tutoring_respond(tid):
         teacher = _full_name(r['t_first'], r['t_last'], 'The teacher')
         if d.get('action') == 'accept':
             try:
-                rate = int(d.get('rate') or r['rate'] or 0)
+                rate = _parse_amount(d.get('rate') or r['rate'] or 0, LESSON_PRICE_MIN, LESSON_PRICE_MAX) or 0
                 minutes = int(d.get('session_minutes') or r['session_minutes'] or 60)
             except (TypeError, ValueError):
                 rate, minutes = 0, 60
-            if not 50 <= rate <= 100000:
-                return jsonify({'success': False, 'message': 'Set your price per session (KES).'}), 400
+            if not rate:
+                return jsonify({'success': False, 'message': f'Set your price per lesson ({SITE_CURRENCY} {LESSON_PRICE_MIN:g} to {LESSON_PRICE_MAX:,.0f}).'}), 400
             conn.execute("UPDATE tutoring SET status = 'accepted', rate = ?, session_minutes = ?, teacher_note = ?, responded_at = ? WHERE id = ?",
                          (rate, max(30, min(180, minutes)), note, _iso(_utc_now()), tid))
             create_notification(conn, r['parent_id'], 'Teacher accepted',
-                                f"{teacher} accepted to teach {child} {r['subject']} at KES {rate:,} a session. Pay for sessions to start.",
+                                f"{teacher} accepted to teach {child} {r['subject']} at {_money(rate)} a session. Pay for sessions to start.",
                                 icon='fa-circle-check', color='green', category='tutoring')
         elif d.get('action') == 'decline':
             conn.execute("UPDATE tutoring SET status = 'declined', teacher_note = ?, responded_at = ? WHERE id = ?", (note, _iso(_utc_now()), tid))
@@ -4515,12 +4908,20 @@ def tutoring_add_session(tid):
         except (TypeError, ValueError):
             minutes = 60
         topic = str(d.get('topic') or '').strip()[:160]
+        start_utc = start.astimezone(timezone.utc)
+        if start_utc < _utc_now() + timedelta(minutes=5):
+            return jsonify({'success': False, 'message': 'Choose a time in the future.'}), 400
+        end_utc = start_utc + timedelta(minutes=minutes)
+        for o in conn.execute('''SELECT s.starts_at, s.minutes, t.subject FROM tutoring_sessions s JOIN tutoring t ON t.id = s.tutoring_id
+                                 WHERE t.teacher_id = ? AND s.status = 'scheduled' ''', (session['user_id'],)).fetchall():
+            o_start = _parse_any(o['starts_at'])
+            if o_start and o_start < end_utc and start_utc < o_start + timedelta(minutes=int(o['minutes'] or 60)):
+                return jsonify({'success': False, 'message': f"You already have a {o['subject']} lesson at that time. Choose another time."}), 409
         conn.execute('INSERT INTO tutoring_sessions (tutoring_id, starts_at, minutes, topic, link, created_at) VALUES (?, ?, ?, ?, ?, ?)',
                      (tid, _iso(start.astimezone(timezone.utc)), minutes, topic or None, link or None, _iso(_utc_now())))
-        when = (start.astimezone(timezone.utc) + timedelta(hours=3)).strftime('%a %b %d, %H:%M')
         for uid in dict.fromkeys((r['parent_id'], r['student_id'])):
-            create_notification(conn, uid, 'Lesson booked', f"{r['subject']} with {_full_name(r['t_first'], r['t_last'], 'your teacher')}. "
-                                "See the day and time on the Schedule page. The teacher calls on Eschool at lesson time."
+            create_notification(conn, uid, 'Lesson booked', f"{r['subject']} with {_full_name(r['t_first'], r['t_last'], 'your teacher')} "
+                                f"on {_when_for(uid, start_utc)}. The teacher calls on Eschool at lesson time."
                                 + (f" Topic: {topic}." if topic else ''), icon='fa-calendar-check', color='#06b6d4', category='tutoring')
         conn.commit()
         return jsonify({'success': True})
@@ -4546,10 +4947,13 @@ def tutoring_update_session(sid):
         if not s:
             return jsonify({'success': False, 'message': 'Session not found'}), 404
         now = _iso(_utc_now())
-        # notes and homework can always be written
-        conn.execute('UPDATE tutoring_sessions SET teacher_notes = ?, homework = ?, updated_at = ? WHERE id = ?',
-                     (str(d.get('teacher_notes') or '').strip()[:1000] or None,
-                      str(d.get('homework') or '').strip()[:500] or None, now, sid))
+        # notes and homework can always be written; only what was sent changes
+        if 'teacher_notes' in d:
+            conn.execute('UPDATE tutoring_sessions SET teacher_notes = ?, updated_at = ? WHERE id = ?',
+                         (str(d.get('teacher_notes') or '').strip()[:1000] or None, now, sid))
+        if 'homework' in d:
+            conn.execute('UPDATE tutoring_sessions SET homework = ?, updated_at = ? WHERE id = ?',
+                         (str(d.get('homework') or '').strip()[:500] or None, now, sid))
         message = 'Saved.'
         if status == 'cancelled' and s['status'] == 'scheduled':
             start = _parse_any(s['starts_at'])
@@ -4569,6 +4973,76 @@ def tutoring_update_session(sid):
         return jsonify({'success': True, 'message': message})
     finally:
         conn.close()
+
+
+# ============ TIME ZONES: times in messages are shown in each person's own time ============
+# Every signed-in page tells the server the browser's time zone once (see add_call_script_to_pages);
+# without it, the country's zone is used, then Nairobi. The school day (streaks, daily quiz, the
+# monthly leaderboard) stays on one clock for everyone so nobody gets an unfair extra day.
+COUNTRY_TZ = {'KE': 'Africa/Nairobi', 'UG': 'Africa/Kampala', 'TZ': 'Africa/Dar_es_Salaam', 'RW': 'Africa/Kigali',
+              'ET': 'Africa/Addis_Ababa', 'NG': 'Africa/Lagos', 'GH': 'Africa/Accra', 'ZA': 'Africa/Johannesburg',
+              'ZM': 'Africa/Lusaka', 'ZW': 'Africa/Harare', 'EG': 'Africa/Cairo', 'IN': 'Asia/Kolkata',
+              'GB': 'Europe/London', 'US': 'America/New_York', 'CA': 'America/Toronto', 'AE': 'Asia/Dubai'}
+DEFAULT_TZ = 'Africa/Nairobi'
+
+
+def _tz_column(conn):
+    if 'timezone' not in {r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()}:
+        conn.execute('ALTER TABLE users ADD COLUMN timezone TEXT')
+
+
+def _zone_of(uid):
+    from zoneinfo import ZoneInfo
+    name = DEFAULT_TZ
+    try:
+        c = sqlite3.connect('users.db')
+        try:
+            _tz_column(c)
+            r = c.execute('SELECT timezone, country FROM users WHERE id = ?', (uid,)).fetchone()
+        finally:
+            c.close()
+        if r:
+            name = r[0] or COUNTRY_TZ.get((r[1] or '').upper(), DEFAULT_TZ)
+        return ZoneInfo(name)
+    except Exception:
+        return ZoneInfo(DEFAULT_TZ)
+
+
+def _when_for(uid, dt, fmt='%a %b %d, %H:%M'):
+    """A UTC time written in this person's own time zone, with the zone's short name (e.g. 'Tue Nov 17, 10:00 EAT')."""
+    if not dt:
+        return ''
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    local = dt.astimezone(_zone_of(uid))
+    abbr = local.strftime('%Z')
+    return local.strftime(fmt) + (f' {abbr}' if abbr and not abbr.startswith(('+', '-')) else f" (UTC{local.strftime('%z')[:3]})")
+
+
+@app.route('/api/me/timezone', methods=['POST'])
+def api_me_timezone():
+    if 'user_id' not in session:
+        return jsonify({'success': False}), 401
+    name = str((request.get_json(silent=True) or {}).get('tz') or '')[:64]
+    try:
+        from zoneinfo import ZoneInfo
+        ZoneInfo(name)
+    except Exception:
+        return jsonify({'success': False, 'message': 'Unknown time zone'}), 400
+    conn = sqlite3.connect('users.db')
+    try:
+        _tz_column(conn)
+        conn.execute('UPDATE users SET timezone = ? WHERE id = ?', (name, session['user_id']))
+        conn.commit()
+    finally:
+        conn.close()
+    session['tz_seen'] = name
+    return jsonify({'success': True})
+
+
+TZ_SCRIPT = ('<script>try{(function(){var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z)'
+             'fetch("/api/me/timezone",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},'
+             'body:JSON.stringify({tz:z})})})()}catch(e){}</script>')
 
 
 # ============ LESSONS: REMINDERS AND PROOF THAT A LESSON TOOK PLACE ============
@@ -4925,7 +5399,7 @@ def admin_decide_tutoring_payment(pay_id):
         conn.execute('UPDATE tutoring_payments SET status = ?, note = ?, decided_at = ?, decided_by = ? WHERE id = ?',
                      ('confirmed' if d['action'] == 'confirm' else 'rejected', note, now, session['user_id'], pay_id))
         admin_log(conn, 'Confirmed teaching payment' if d['action'] == 'confirm' else 'Rejected teaching payment', 'payment', pay_id,
-                  f"{p['reference']} · KES {p['amount']} · {r['subject']}" + (f" · {note}" if note else ''))
+                  f"{p['reference']} · {_money(p['amount'])} · {r['subject']}" + (f" · {note}" if note else ''))
         conn.commit()
         return jsonify({'success': True})
     finally:
@@ -5058,6 +5532,7 @@ def api_parent_child_progress(child_id):
             prev = [e['pct'] for e in scored if in_range(e, prev_s, start_s)] if rng != 'all' else []
             done_period = [e for e in events if in_range(e, start_s) and e['kind'] in ('module', 'quiz', 'daily_quiz', 'course')]
             courses = []
+            course_grades = _progress_page_course_grades(conn, child_id)
             for c in st['courses']:
                 if not isinstance(c, dict):
                     continue
@@ -5078,6 +5553,8 @@ def api_parent_child_progress(child_id):
                     'avg_score': round(sum(pcts) / len(pcts)) if pcts else None,
                     'best_score': max(pcts) if pcts else None,
                     'last_activity': last,
+                    # the course's grade the way the child's Progress page works it out (30% module tests, 70% quizzes)
+                    'grade': course_grades.get(cid),
                 })
             grades = []
             for e in reversed(events):
@@ -5118,6 +5595,7 @@ def api_parent_child_progress(child_id):
             out.update({
                 'summary': {
                     'overall_progress': st['avg_progress'], 'gpa': st['gpa'], 'overall_grade': st['overall_grade'],
+                    'progress_grade': _progress_page_grade(conn, child_id),
                     'modules_completed': st['modules_completed'],
                     'modules_total': sum(EP_COURSE_MODULES.get(c['id'], 0) for c in courses) or None,
                     'quizzes_passed': st['quizzes_passed'], 'courses_completed': st['courses_completed'],
@@ -5483,7 +5961,7 @@ def _apply_parental_controls():
         if state['reason'] == 'paused':
             until = _parse_iso(state['until']) if state['until'] else None
             title, icon = 'Your parent has paused Eschool', '⏸'
-            text = ('It opens again at ' + (until + timedelta(hours=3)).strftime('%H:%M on %a %d %b') + '.') if until else 'It opens again when your parent turns it back on.'
+            text = ('It opens again at ' + _when_for(session.get('user_id'), until, '%H:%M on %a %d %b') + '.') if until else 'It opens again when your parent turns it back on.'
         elif state['reason'] == 'quiet':
             title, icon = 'Quiet hours', '\U0001F319'
             text = f"Your parent set quiet hours. Eschool opens again at {state['until']}."
@@ -5614,7 +6092,7 @@ def api_child_pause(child_id):
                         ON CONFLICT(student_id) DO UPDATE SET until = excluded.until, message = excluded.message,
                         parent_id = excluded.parent_id, created_at = excluded.created_at''',
                      (child_id, until, msg or None, session['user_id'], _iso(_utc_now())))
-        when = (_parse_iso(until) + timedelta(hours=3)).strftime('%H:%M %a') if until else 'until your parent turns it back on'
+        when = _when_for(child_id, _parse_iso(until), '%H:%M %a') if until else 'until your parent turns it back on'
         _log_control(conn, child_id, f'Paused access ({when})')
         create_notification(conn, child_id, 'Eschool is paused', f"Your parent paused Eschool ({when})." + (f' "{msg}"' if msg else ''),
                             icon='fa-circle-pause', color='red')
@@ -6193,7 +6671,8 @@ def _server_progress(conn, sid):
     ms, m_last = _day_streak(module_days)
     return {
         'courses': courses, 'subjects': subjects, 'gpa': gpa,
-        'grade': _letter_for_gpa(gpa) if gpa is not None else None,
+        # the letter comes from the average score, exactly like the learner's Progress page (not from GPA)
+        'grade': _grade_for_pct(round(sum(s for _, s in subjects) / len(subjects)))[0] if subjects else None,
         'avg_score': round(sum(s for _, s in subjects) / len(subjects)) if subjects else None,
         'quizzes': quizzes, 'assessments': assessments, 'active_days': len(all_days),
         'quiz_streak': qs, 'quiz_last': q_last, 'module_streak': ms, 'module_last': m_last,
@@ -6202,6 +6681,73 @@ def _server_progress(conn, sid):
 
 
 _GRADE_LETTERS = {'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F', 'N/A'}
+
+
+def _progress_page_grade(conn, sid):
+    """The learner's grade exactly as their Progress page (Grades tab) shows it:
+    {'letter', 'percent', 'total', 'possible', 'subjects'}, or None when there are no grades yet.
+    The page sends its numbers with every sync; if the learner did more work since, the same
+    sum is done here from the server's record of that work."""
+    try:
+        row = conn.execute('SELECT score_grades FROM student_progress_summary WHERE student_id = ?', (sid,)).fetchone()
+        g = json.loads(row[0] or 'null') or {} if row else {}
+    except (TypeError, ValueError, sqlite3.Error):
+        g = {}
+    fresh = bool(g) and g.get('subjects', 0) > 0 and g.get('grade') not in (None, 'N/A') and g.get('percent') is not None
+    if fresh and g.get('at'):
+        try:
+            last_ep = conn.execute('SELECT MAX(created_at) FROM ep_events WHERE user_id = ?', (sid,)).fetchone()[0]
+        except sqlite3.Error:
+            last_ep = None
+        ga, la = _parse_any(g.get('at')), _parse_any(last_ep) if last_ep else None
+        if ga and la and la > ga + timedelta(seconds=30):
+            fresh = False
+    if fresh:
+        return {'letter': g['grade'], 'percent': int(g['percent']), 'total': g.get('total'),
+                'possible': g.get('possible') or g['subjects'] * 100, 'subjects': g['subjects']}
+    sp = _server_progress(conn, sid)
+    if not sp['subjects']:
+        return None
+    total = sum(sc for _, sc in sp['subjects'])
+    return {'letter': sp['grade'], 'percent': sp['avg_score'], 'total': total,
+            'possible': len(sp['subjects']) * 100, 'subjects': len(sp['subjects'])}
+
+
+def _progress_page_course_grades(conn, sid):
+    """{course id: {'percent', 'letter'}}: each course's grade as the child's Progress page shows it (Grades tab),
+    or worked out here the same way when the page's numbers are older than their latest work."""
+    try:
+        row = conn.execute('SELECT score_grades FROM student_progress_summary WHERE student_id = ?', (sid,)).fetchone()
+        g = (json.loads(row[0] or 'null') or {}) if row else {}
+    except (TypeError, ValueError, sqlite3.Error):
+        g = {}
+    fresh = bool(g) and isinstance(g.get('courses'), dict)
+    if fresh and g.get('at'):
+        try:
+            last_ep = conn.execute('SELECT MAX(created_at) FROM ep_events WHERE user_id = ?', (sid,)).fetchone()[0]
+        except sqlite3.Error:
+            last_ep = None
+        ga, la = _parse_any(g.get('at')), _parse_any(last_ep) if last_ep else None
+        if ga and la and la > ga + timedelta(seconds=30):
+            fresh = False
+    out = {}
+    if fresh:
+        for cid, c in g['courses'].items():
+            if isinstance(c, dict) and isinstance(c.get('avg'), (int, float)):
+                out[cid] = {'percent': int(round(c['avg'])), 'letter': _grade_for_pct(round(c['avg']))[0]}
+        return out
+    for cid in EP_COURSE_MODULES:
+        v = _course_score_from_events(conn, sid, cid)
+        if v is not None:
+            out[cid] = {'percent': v, 'letter': _grade_for_pct(v)[0]}
+    return out
+
+
+def _grade_band(pct):
+    """Colour band for a score: same cut-offs as the grade letters (A/A- excellent, B good, C average, below the pass mark poor)."""
+    if pct is None:
+        return ''
+    return 'excellent' if pct >= 85 else 'good' if pct >= 70 else 'average' if pct >= 60 else 'poor'
 
 
 def _save_score_grades(conn, sid, g):
@@ -6320,6 +6866,23 @@ def _rebuild_progress_summary(conn, sid, sync_courses=None, streaks=None):
     return True
 
 
+def _refresh_learner_progress(conn, sid):
+    """Rebuilds one learner's summary if it is missing or older than their latest recorded work."""
+    _progress_summary_table(conn)
+    _ep_table(conn)
+    r = conn.execute('''SELECT (SELECT updated_at FROM student_progress_summary WHERE student_id = ?) AS upd,
+                               (SELECT MAX(created_at) FROM ep_events WHERE user_id = ?) AS last_ep''', (sid, sid)).fetchone()
+    if not r or not r['last_ep']:
+        return False
+    upd = _parse_any(r['upd']) if r['upd'] else None
+    last = _parse_any(r['last_ep'])
+    if upd is None or (last and last > upd):
+        if _rebuild_progress_summary(conn, sid):
+            conn.commit()
+            return True
+    return False
+
+
 def _refresh_children_progress(conn, parent_id):
     """Rebuilds each linked child's summary if it is missing or older than their latest work."""
     _progress_summary_table(conn)
@@ -6340,8 +6903,7 @@ def _refresh_children_progress(conn, parent_id):
             last = None
         if upd is None or (last and last > upd):
             changed = _rebuild_progress_summary(conn, r['student_id']) or changed
-    if changed:
-        conn.commit()
+    conn.commit()   # always: an open write here made every other connection wait 10 s (slow parent pages)
 
 
 @app.route('/parent-teacher')
@@ -9393,8 +9955,7 @@ def admin_dashboard():
         return redirect(url_for('login'))
     if session.get('role') != 'admin':
         return redirect(url_for('dashboard'))
-    quote = get_daily_quote()                     # once (it was worked out three times)
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect('users.db')          # (no daily quote here: quotes are for learners)
     try:
         stats = _admin_dash_stats(conn)
         recent = _admin_recent_users(conn)
@@ -9404,7 +9965,6 @@ def admin_dashboard():
         'Admin/admin_dashboard.html',
         firstname=session.get('firstname') or 'Admin',
         lastname=session.get('lastname') or '',
-        quote_text=quote['text'], quote_author=quote['author'],
         recent_users=recent, **stats)
 
 
@@ -9638,7 +10198,7 @@ def admin_dashboard_overview():
                                f"AND {_dt('COALESCE(decided_at, created_at)')} >= datetime('now', ?)", (win,)).fetchone()
             ending = one(f"SELECT COUNT(*) FROM users WHERE COALESCE(plan, 'free') != 'free' AND {_dt('plan_expires_at')} BETWEEN datetime('now') AND datetime('now', '+7 days')")
             by_plan = dict(conn.execute(f"SELECT plan, COUNT(*) FROM plan_payments WHERE status = 'confirmed' AND {_dt('COALESCE(decided_at, created_at)')} >= datetime('now', ?) GROUP BY plan", (win,)).fetchall())
-            return {'currency': 'KES', 'confirmed': conf[1], 'confirmed_n': conf[0], 'confirmed_before': conf_before,
+            return {'currency': SITE_CURRENCY, 'confirmed': conf[1], 'confirmed_n': conf[0], 'confirmed_before': conf_before,
                     'pending_n': pend[0], 'pending': pend[1], 'tutoring': tut[1], 'tutoring_n': tut[0],
                     'ending_7d': ending, 'by_plan': by_plan}
         _dash_section(out, 'payments', payments)
@@ -9692,7 +10252,7 @@ def admin_dashboard_overview():
                 {'key': 'reports', 'n': reports + hidden, 'level': 'amber', 'href': '/admin-reviews',
                  'text': 'reported message or tip to review' if reports + hidden == 1 else 'reported messages and tips to review',
                  'zero': 'No reports waiting'},
-                {'key': 'sessions', 'n': review, 'level': 'amber', 'href': '/admin-payments',
+                {'key': 'sessions', 'n': review, 'level': 'amber', 'href': '/admin-payments?tab=missed',
                  'text': 'tutoring session to check' if review == 1 else 'tutoring sessions to check', 'zero': 'No sessions to check'},
                 {'key': 'files', 'n': len(_res_missing_ids(conn)), 'level': 'amber', 'href': '/admin_resources#all',
                  'text': 'resource file missing' if len(_res_missing_ids(conn)) == 1 else 'resource files missing', 'zero': 'All resource files present'},
@@ -9748,6 +10308,8 @@ def profile():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
+    if session.get('role') == 'parent':
+        return redirect('/parent-settings')     # parents have no profile on Eschool: their details live in Settings
     ctx = build_profile_context(session['user_id'])
     if ctx is None:
         session.clear()
@@ -10497,10 +11059,313 @@ def get_conversation(other_user_id):
         'timestamp': to_iso_utc(row[4]),
         'read': bool(row[5]),
         'is_broadcast': bool(row[6]),
-        'kind': row[7] or 'text'          # 'call' = a call record written by the server
+        'kind': row[7] or 'text'          # 'call' = a call record written by the server, 'file' = a shared document
     } for row in rows]
+    file_ids = [m['id'] for m in thread if m['kind'] == 'file']
+    if file_ids:
+        fconn = sqlite3.connect('users.db')
+        try:
+            info = _message_files_info(fconn, file_ids)
+        finally:
+            fconn.close()
+        for m in thread:
+            if m['id'] in info:
+                m['file'] = info[m['id']]
 
     return jsonify(thread)
+
+
+# ============ DOCUMENTS IN MESSAGES ============
+# A paperclip next to the message box sends a file (PDF, Word, Excel, PowerPoint, pictures, text).
+# Files are kept outside static/ under a random name, and only the two people in the chat
+# (and admins, for reports) can download them. The same blocks and parent rules as messages apply.
+MESSAGE_FILE_MAX = 10 * 1024 * 1024
+MESSAGE_FILE_TYPES = {
+    'pdf': 'application/pdf', 'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel', 'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt': 'application/vnd.ms-powerpoint', 'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'txt': 'text/plain', 'csv': 'text/csv', 'odt': 'application/vnd.oasis.opendocument.text',
+    'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'gif': 'image/gif', 'webp': 'image/webp',
+}
+
+
+def _message_files_dir():
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads', 'message_files')
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _message_files_table(conn):
+    conn.execute('''CREATE TABLE IF NOT EXISTS message_files (
+        message_id INTEGER PRIMARY KEY, stored TEXT NOT NULL, name TEXT NOT NULL, size INTEGER NOT NULL,
+        mime TEXT, created_at TEXT NOT NULL)''')
+
+
+def _file_size_text(n):
+    return f"{n / 1024 / 1024:.1f} MB" if n >= 1024 * 1024 else f"{max(1, round(n / 1024))} KB"
+
+
+def _message_files_info(conn, ids):
+    _message_files_table(conn)
+    ids = [int(i) for i in ids][:500]
+    if not ids:
+        return {}
+    rows = conn.execute(f"SELECT message_id, name, size, mime FROM message_files WHERE message_id IN ({','.join('?' * len(ids))})", ids).fetchall()
+    return {r[0]: {'name': r[1], 'size': r[2], 'size_text': _file_size_text(r[2]), 'mime': r[3] or '',
+                   'ext': (r[1].rsplit('.', 1)[-1].lower() if '.' in r[1] else ''), 'url': f'/messages/file/{r[0]}'} for r in rows}
+
+
+@app.route('/messages/send-file', methods=['POST'])
+def send_message_file():
+    """multipart form: receiver_id, file. Sends the file as a message."""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please sign in again.'}), 401
+    sender_id = session['user_id']
+    try:
+        receiver_id = int(request.form.get('receiver_id') or 0)
+    except ValueError:
+        receiver_id = 0
+    f = request.files.get('file')
+    if not receiver_id or not f or not f.filename:
+        return jsonify({'success': False, 'message': 'Choose a file to send.'}), 400
+    if receiver_id == sender_id:
+        return jsonify({'success': False, 'message': 'You can’t send a file to yourself.'}), 400
+    name = secure_filename(f.filename) or 'file'
+    ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+    if ext not in MESSAGE_FILE_TYPES:
+        return jsonify({'success': False, 'message': 'You can send PDF, Word, Excel, PowerPoint, text files and pictures.'}), 400
+    data = f.read(MESSAGE_FILE_MAX + 1)
+    if len(data) > MESSAGE_FILE_MAX:
+        return jsonify({'success': False, 'message': 'Files can be up to 10 MB.'}), 400
+    if not data:
+        return jsonify({'success': False, 'message': 'That file is empty.'}), 400
+    if _reset_rate_limited(f'msg-file:{sender_id}', limit=20, window=3600):
+        return jsonify({'success': False, 'message': 'You’ve sent a lot of files. Please wait a while and try again.'}), 429
+    conn = sqlite3.connect('users.db')
+    try:
+        if not conn.execute('SELECT 1 FROM users WHERE id = ?', (receiver_id,)).fetchone():
+            return jsonify({'success': False, 'message': 'Recipient not found'}), 404
+        allowed, reason = can_message(conn, sender_id, session.get('role'), receiver_id)
+        if not allowed:
+            return jsonify({'success': False, 'message': reason}), 403
+        _messages_tables(conn)
+        _message_files_table(conn)
+        stored = uuid.uuid4().hex + '.' + ext
+        with open(os.path.join(_message_files_dir(), stored), 'wb') as out:
+            out.write(data)
+        text = f"📎 {name} · {_file_size_text(len(data))}"
+        cur = conn.execute("INSERT INTO messages (sender_id, receiver_id, text, is_read, is_broadcast, kind) VALUES (?, ?, ?, 0, 0, 'file')",
+                           (sender_id, receiver_id, text))
+        mid = cur.lastrowid
+        conn.execute('INSERT INTO message_files (message_id, stored, name, size, mime, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                     (mid, stored, name, len(data), MESSAGE_FILE_TYPES[ext], _iso(_utc_now())))
+        if not _is_muted(conn, receiver_id, sender_id):
+            create_notification(conn, user_id=receiver_id,
+                                title=f"New file from {_full_name(session.get('firstname'), session.get('lastname'), 'someone')}",
+                                message=name[:120], icon='fa-paperclip', color='green', category='messages')
+        conn.commit()
+        row = conn.execute('SELECT id, sender_id, receiver_id, text, timestamp, is_read FROM messages WHERE id = ?', (mid,)).fetchone()
+        return jsonify({'success': True, 'message': {
+            'id': row[0], 'sender_id': row[1], 'receiver_id': row[2], 'text': row[3], 'timestamp': to_iso_utc(row[4]),
+            'read': bool(row[5]), 'is_broadcast': False, 'kind': 'file', 'file': _message_files_info(conn, [mid]).get(mid)}})
+    finally:
+        conn.close()
+
+
+@app.route('/messages/files')
+def message_files_list():
+    """?ids=1,2,3 or ?with=<user id>: the files in the signed-in person's chats (for the chat bubbles)."""
+    if 'user_id' not in session:
+        return jsonify({'success': False}), 401
+    me = session['user_id']
+    conn = sqlite3.connect('users.db')
+    try:
+        _messages_tables(conn)
+        _message_files_table(conn)
+        if request.args.get('with'):
+            try:
+                other = int(request.args['with'])
+            except ValueError:
+                return jsonify({'files': []})
+            rows = conn.execute('''SELECT id, text FROM messages WHERE kind = 'file' AND
+                                   ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) ORDER BY id''',
+                                (me, other, other, me)).fetchall()
+        else:
+            ids = [int(x) for x in re.findall(r'\d+', request.args.get('ids', ''))][:300]
+            rows = conn.execute(f'''SELECT id, text FROM messages WHERE kind = 'file' AND (sender_id = ? OR receiver_id = ?)
+                                    AND id IN ({','.join('?' * len(ids)) or 'NULL'})''', [me, me] + ids).fetchall() if ids else []
+        info = _message_files_info(conn, [r[0] for r in rows])
+        return jsonify({'files': [dict(info[r[0]], id=r[0], text=r[1]) for r in rows if r[0] in info]})
+    finally:
+        conn.close()
+
+
+@app.route('/messages/file/<int:mid>')
+def message_file_download(mid):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    conn = sqlite3.connect('users.db')
+    try:
+        _message_files_table(conn)
+        row = conn.execute('''SELECT f.stored, f.name, f.mime, m.sender_id, m.receiver_id FROM message_files f
+                              JOIN messages m ON m.id = f.message_id WHERE f.message_id = ?''', (mid,)).fetchone()
+    finally:
+        conn.close()
+    if not row or session['user_id'] not in (row[3], row[4]) and session.get('role') != 'admin':
+        abort(404)
+    resp = send_from_directory(_message_files_dir(), row[0], as_attachment=True, download_name=row[1], mimetype=row[2] or 'application/octet-stream')
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Cache-Control'] = 'private, no-store'
+    return resp
+
+
+MESSAGE_FILES_JS = r"""/* Eschool: documents in messages. Adds a paperclip next to the message box and turns file
+   messages into download cards. Works on every Messages page (learner, parent, teacher). */
+(function () {
+    var input = document.getElementById('messageInput');
+    if (!input || window.__esFiles) return;
+    window.__esFiles = true;
+    var ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.txt,.csv,.png,.jpg,.jpeg,.gif,.webp';
+    var MAX = 10 * 1024 * 1024;
+    var known = {};          // message id -> file
+    var byChat = {};         // other user id -> [file messages in order], for pages without data-mid
+    var other = null;
+
+    var css = document.createElement('style');
+    css.textContent =
+        '.es-attach{flex:0 0 auto;width:42px;height:42px;border-radius:12px;border:1px solid #dfe3ec;background:#fff;color:#4b5468;' +
+        'display:inline-grid;place-items:center;cursor:pointer;font-size:16px;margin-right:6px;transition:border-color .15s,color .15s}' +
+        '.es-attach:hover:not(:disabled){border-color:#4361ee;color:#4361ee}.es-attach:disabled{opacity:.45;cursor:not-allowed}' +
+        '.es-attach.busy i{animation:esSpin 1s linear infinite}@keyframes esSpin{to{transform:rotate(360deg)}}' +
+        '.es-file{display:flex;align-items:center;gap:10px;min-width:210px;max-width:300px;padding:9px 11px;margin:2px 0 4px;border-radius:12px;' +
+        'background:rgba(255,255,255,.92);border:1px solid rgba(15,23,42,.1);color:#1e293b!important;text-decoration:none!important;text-align:left}' +
+        '.es-file:hover{border-color:#4361ee}.es-file .ic{flex:0 0 auto;width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:#fff;font-size:15px}' +
+        '.es-file .tx{min-width:0;flex:1}.es-file b{display:block;font-size:.86rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+        '.es-file small{display:block;font-size:.74rem;color:#64748b}.es-file .dl{flex:0 0 auto;color:#4361ee;font-size:15px}' +
+        '.es-file-note{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;background:#1e293b;color:#fff;padding:10px 16px;' +
+        'border-radius:10px;font:500 14px system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:90vw}';
+    document.head.appendChild(css);
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function say(t) {
+        var n = document.createElement('div'); n.className = 'es-file-note'; n.setAttribute('role', 'status'); n.textContent = t;
+        document.body.appendChild(n); setTimeout(function () { n.remove(); }, 4000);
+    }
+    function look(ext) {
+        if (ext === 'pdf') return ['fa-file-pdf', '#dc2626'];
+        if (ext === 'doc' || ext === 'docx' || ext === 'odt') return ['fa-file-word', '#2563eb'];
+        if (ext === 'xls' || ext === 'xlsx' || ext === 'csv') return ['fa-file-excel', '#16a34a'];
+        if (ext === 'ppt' || ext === 'pptx') return ['fa-file-powerpoint', '#ea580c'];
+        if (/^(png|jpe?g|gif|webp)$/.test(ext)) return ['fa-file-image', '#7c3aed'];
+        return ['fa-file-lines', '#64748b'];
+    }
+    function card(f) {
+        var l = look(f.ext);
+        return '<a class="es-file" href="' + esc(f.url) + '" download title="Download ' + esc(f.name) + '">' +
+            '<span class="ic" style="background:' + l[1] + '"><i class="fas ' + l[0] + '" aria-hidden="true"></i></span>' +
+            '<span class="tx"><b>' + esc(f.name) + '</b><small>' + esc(f.size_text) + ' · Download</small></span>' +
+            '<span class="dl"><i class="fas fa-download" aria-hidden="true"></i></span></a>';
+    }
+
+    /* who the open chat is with: the page's ?user= or the chat it last loaded */
+    function chatWith() {
+        try { var u = Number(new URL(location.href).searchParams.get('user')); if (u) return u; } catch (e) {}
+        return other;
+    }
+    var realFetch = window.fetch;
+    window.fetch = function (u) {
+        try { var m = String((u && u.url) || u).match(/\/messages\/conversation\/(\d+)/); if (m) other = Number(m[1]); } catch (e) {}
+        return realFetch.apply(this, arguments);
+    };
+
+    /* ---- the paperclip ---- */
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'es-attach'; btn.title = 'Send a document'; btn.setAttribute('aria-label', 'Send a document');
+    btn.innerHTML = '<i class="fas fa-paperclip" aria-hidden="true"></i>';
+    var pick = document.createElement('input');
+    pick.type = 'file'; pick.accept = ACCEPT; pick.hidden = true;
+    input.parentNode.insertBefore(btn, input); input.parentNode.insertBefore(pick, input);
+    function sync() { btn.disabled = input.disabled || btn.classList.contains('busy'); }
+    sync(); new MutationObserver(sync).observe(input, { attributes: true, attributeFilter: ['disabled'] });
+    btn.addEventListener('click', function () { if (!chatWith()) { say('Open a chat first.'); return; } pick.value = ''; pick.click(); });
+    pick.addEventListener('change', function () {
+        var f = pick.files && pick.files[0], to = chatWith();
+        if (!f || !to) return;
+        if (f.size > MAX) { say('Files can be up to 10 MB.'); return; }
+        var fd = new FormData(); fd.append('receiver_id', to); fd.append('file', f);
+        btn.classList.add('busy'); btn.innerHTML = '<i class="fas fa-spinner" aria-hidden="true"></i>'; sync();
+        realFetch('/messages/send-file', { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (r) { return r.json().catch(function () { return { success: false, message: 'Could not send the file.' }; }); })
+            .then(function (d) {
+                if (!d.success) { say(d.message || 'Could not send the file.'); return; }
+                if (d.message && d.message.file) known[d.message.id] = d.message.file;
+                say('File sent. It shows in the chat in a moment.');
+            })
+            .catch(function () { say('No connection. The file was not sent.'); })
+            .then(function () { btn.classList.remove('busy'); btn.innerHTML = '<i class="fas fa-paperclip" aria-hidden="true"></i>'; sync(); });
+    });
+
+    /* ---- file messages become download cards ---- */
+    var asking = false, askedChat = {};
+    function paint() {
+        var need = [];
+        document.querySelectorAll('[data-mid]').forEach(function (el) {
+            if (el.dataset.esFile) return;
+            var id = Number(el.dataset.mid);
+            if (el.textContent.indexOf('📎') === -1) return;
+            if (known[id]) swap(el, known[id]); else need.push(id);
+        });
+        if (need.length && !asking) {
+            asking = true;
+            realFetch('/messages/files?ids=' + need.join(','), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+                .then(function (d) { (d.files || []).forEach(function (f) { known[f.id] = f; }); need.forEach(function (id) { if (!known[id]) known[id] = null; }); })
+                .catch(function () {}).then(function () { asking = false; paintKnown(); });
+        }
+        if (!document.querySelector('[data-mid]')) byText();
+    }
+    function paintKnown() {
+        document.querySelectorAll('[data-mid]').forEach(function (el) { var f = known[Number(el.dataset.mid)]; if (f && !el.dataset.esFile) swap(el, f); });
+    }
+    function swap(el, f) {
+        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), n;
+        while ((n = walker.nextNode())) {
+            if (n.nodeValue.indexOf('📎') !== -1) {
+                var span = document.createElement('span'); span.innerHTML = card(f);
+                n.parentNode.replaceChild(span.firstChild, n); el.dataset.esFile = '1'; return;
+            }
+        }
+    }
+    /* pages whose bubbles carry no message id: match the file messages of this chat in order */
+    function byText() {
+        var to = chatWith(); if (!to) return;
+        var list = byChat[to];
+        if (!list) {
+            if (askedChat[to]) return; askedChat[to] = true;
+            realFetch('/messages/files?with=' + to, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+                .then(function (d) { byChat[to] = d.files || []; setTimeout(function () { askedChat[to] = false; delete byChat[to]; }, 8000); byText(); })
+                .catch(function () { askedChat[to] = false; });
+            return;
+        }
+        var box = document.querySelector('[role="log"]') || document.getElementById('chatMessages') || document.body;
+        var used = {}, walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT), n, hits = [];
+        while ((n = walker.nextNode())) if (n.nodeValue.indexOf('📎 ') !== -1 && !(n.parentNode.closest && n.parentNode.closest('.es-file'))) hits.push(n);
+        hits.forEach(function (node) {
+            var t = node.nodeValue.trim();
+            var f = list.filter(function (x, i) { return !used[i] && t.indexOf(x.text) !== -1 && (used[i] = true); })[0];
+            if (f) { var span = document.createElement('span'); span.innerHTML = card(f); node.parentNode.replaceChild(span.firstChild, node); }
+        });
+    }
+    var timer = null;
+    new MutationObserver(function () { clearTimeout(timer); timer = setTimeout(paint, 120); }).observe(document.body, { childList: true, subtree: true });
+    paint();
+})();
+"""
+
+
+@app.route('/eschool-files.js')
+def eschool_files_script():
+    return Response(MESSAGE_FILES_JS, mimetype='application/javascript', headers={'Cache-Control': 'no-cache'})
 
 
 @app.route('/messages/conversations', methods=['GET'])
@@ -10653,12 +11518,19 @@ def get_notifications():
     except Exception as e:
         print(f"live reminders skipped: {e}")
     _friends_tables(conn)
+    try:
+        _admin_tables(conn)            # the announcements table, for announcement buttons
+        _announce_columns(conn)
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f'announcement columns skipped: {e}')
     cursor = conn.cursor()
     cursor.execute(f'''
         SELECT n.id, n.title, n.message, n.icon, n.color, n.is_read, n.created_at, n.action, n.ref_id,
-               fr.status, fr.from_id
+               fr.status, fr.from_id, an.link, an.link_label
         FROM notifications n
         LEFT JOIN friend_requests fr ON n.action = 'friend_request' AND fr.id = n.ref_id
+        LEFT JOIN announcements an ON n.action = 'announcement' AND an.id = n.ref_id
         WHERE n.user_id = ?{' AND n.is_read = 0' if only_unread else ''}
         ORDER BY n.created_at DESC, n.id DESC
         LIMIT ? OFFSET ?
@@ -10679,6 +11551,9 @@ def get_notifications():
         'ref_id': row[8],
         'request_status': row[9],          # pending | accepted | declined | cancelled
         'from_user_id': row[10],
+        # announcements can have a button that opens an Eschool page
+        'link': row[11] if row[11] and str(row[11]).startswith('/') and not str(row[11]).startswith('//') else None,
+        'link_label': row[12],
     } for row in rows]
 
     return jsonify(notifications)
@@ -10847,7 +11722,7 @@ VALID_COMPLAINT_CATEGORIES = {
     # parent tickets (Parent/parent-support.html)
     'linking', 'payments', 'safety', 'teachers', 'progress',
     # teacher tickets (Teacher/teacher-support.html)
-    'uploads', 'live', 'tutoring', 'profile',
+    'uploads', 'live', 'tutoring', 'profile', 'schedule',
 }
 VALID_COMPLAINT_PRIORITIES = {'low', 'medium', 'high', 'urgent'}
 # when a page doesn't ask for a priority, the category decides it (people can't all pick "Urgent")
@@ -10910,7 +11785,7 @@ def complaints():
             if pay:
                 pj = _serialize_payment(pay)
                 line = (f"About payment #{pj.get('id')}: {pj.get('plan_name') or pj.get('plan')} for {pj.get('days')} days, "
-                        f"KES {pj.get('amount')}, M-Pesa code {pj.get('reference')}, {pj.get('status')}")
+                        f"{_money(pj.get('amount'))}, M-Pesa code {pj.get('reference')}, {pj.get('status')}")
                 description = f"{line}\n\n{description}"[:5400]
 
         cursor.execute('''
@@ -11089,6 +11964,12 @@ def close_my_complaint(complaint_id):
         if row[1] == 'resolved':
             return jsonify({'success': False, 'message': 'This ticket is already resolved.'}), 409
         conn.execute("UPDATE complaints SET status = 'resolved' WHERE id = ?", (complaint_id,))
+        try:
+            _support_tables(conn)
+            conn.execute("INSERT INTO support_events (ticket_id, kind, detail, admin_id, created_at) VALUES (?, 'resolved', ?, NULL, ?)",
+                         (complaint_id, 'Marked solved by the person who sent it', _iso(_utc_now())))
+        except sqlite3.Error:
+            pass
         conn.commit()
         return jsonify({'success': True})
     finally:
@@ -11124,6 +12005,15 @@ def add_to_my_complaint(complaint_id):
         stamp = (datetime.utcnow() + timedelta(hours=3)).strftime('%d %b %Y, %H:%M')
         description = f"{row[2] or ''}\n\n--- Added {stamp} (Nairobi time) ---\n{text}"[:20000]
         conn.execute('UPDATE complaints SET description = ?, status = ?, is_read = 0 WHERE id = ?', (description, status, complaint_id))
+        try:
+            _support_tables(conn)
+            conn.execute("INSERT INTO support_events (ticket_id, kind, detail, admin_id, created_at) VALUES (?, 'added', '', NULL, ?)",
+                         (complaint_id, _iso(_utc_now())))
+            if row[1] == 'resolved':
+                conn.execute("INSERT INTO support_events (ticket_id, kind, detail, admin_id, created_at) VALUES (?, 'reopened', ?, NULL, ?)",
+                             (complaint_id, 'Reopened when they added more', _iso(_utc_now())))
+        except sqlite3.Error:
+            pass
         conn.commit()
     finally:
         conn.close()
@@ -11171,11 +12061,21 @@ def my_complaints():
     rows = cursor.fetchall()
     _complaints_columns(conn)
     seen = dict(conn.execute('SELECT id, user_seen_reply FROM complaints WHERE user_id = ?', (session['user_id'],)).fetchall())
+    try:
+        _support_tables(conn)
+        added = _support_added_times(conn)
+    except sqlite3.Error:
+        added = {}
     conn.close()
 
     out = []
     for row in rows:
         item = _serialize_complaint(row)
+        # the whole conversation, oldest first: what they wrote, what they added, every reply
+        try:
+            item['thread'] = _support_thread(row[3], row[10], row[8], row[9], added.get(row[0]))
+        except Exception:
+            item['thread'] = None
         # a reply the learner hasn't opened yet
         item['new_reply'] = bool(row[8]) and (not seen.get(row[0]) or (row[9] or '') > seen.get(row[0]))
         out.append(item)
@@ -11191,6 +12091,8 @@ def upload_profile_photo():
 
     if session.get('role', 'student') == 'student':
         return jsonify({'success': False, 'message': 'Learners use a badge as their picture. Choose it on your profile.'}), 403
+    if session.get('role') in ('parent', 'teacher'):
+        return jsonify({'success': False, 'message': 'Profile pictures can’t be changed on Eschool.'}), 403
     if 'photo' not in request.files:
         return jsonify({'success': False, 'message': 'No file part'}), 400
 
@@ -11449,6 +12351,18 @@ def upload_file():
         print(f"Upload error: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@app.before_request
+def _block_static_resource_files():
+    """Resource files sit in static/uploads/<id>/, which Flask would hand out to anyone at /static/uploads/<id>/...
+    Only /uploads/<id>/<file> (with its checks) may serve them. Profile pictures (static/uploads/avatars) are not affected."""
+    p = request.path
+    if p.startswith('/static/uploads/'):
+        first = p[len('/static/uploads/'):].split('/', 1)[0]
+        if first.isdigit():
+            return jsonify({'success': False, 'message': 'File not found'}), 404
+    return None
+
+
 @app.route('/uploads/<user_id>/<filename>')
 def serve_file(user_id, filename):
     """Serve uploaded files"""
@@ -11537,6 +12451,10 @@ def serve_file(user_id, filename):
         is_audio = file_ext in audio_exts
         is_image = file_ext in image_exts
         is_media = is_video or is_audio
+        # resources are watched and read on Eschool only: videos, sound and documents need a signed-in
+        # account (pictures stay open because cards and covers use them)
+        if not is_image and 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Please sign in to Eschool to watch or read this.'}), 401
         
         range_header = request.headers.get('Range')
         
@@ -11597,7 +12515,8 @@ def serve_file(user_id, filename):
                 as_attachment=False
             )
             response.headers.add('Accept-Ranges', 'bytes')
-            response.headers.add('Cache-Control', 'public, max-age=31536000')
+            response.headers.add('Cache-Control', 'private, max-age=86400')
+            response.headers['Content-Disposition'] = 'inline'
             return response
         
         if is_image:
@@ -11628,14 +12547,18 @@ def serve_file(user_id, filename):
         
         if file_info:
             privacy, owner_id = file_info
-            if privacy == 'public' or str(session['user_id']) == str(owner_id):
-                force_download = file_ext not in inline_exts
-                return send_from_directory(
-                    os.path.join(UPLOAD_FOLDER, user_id),
-                    filename,
-                    as_attachment=force_download,
-                    mimetype=mime_type
-                )
+            is_admin_user = session.get('role') == 'admin'
+            if privacy == 'public' or str(session['user_id']) == str(owner_id) or is_admin_user:
+                if file_ext not in inline_exts:
+                    # Word, slides, zip and the like would be saved to the device: only admins get those
+                    if not (is_admin_user or RESOURCE_DOWNLOADS_ALLOWED):
+                        return jsonify({'success': False, 'message': 'Eschool resources can be watched and read on Eschool, but not downloaded.'}), 403
+                    return send_from_directory(os.path.join(UPLOAD_FOLDER, user_id), filename, as_attachment=True, mimetype=mime_type)
+                response = send_from_directory(os.path.join(UPLOAD_FOLDER, user_id), filename, as_attachment=False, mimetype=mime_type)
+                response.headers['Content-Disposition'] = 'inline'
+                response.headers['Cache-Control'] = 'private, no-store'
+                response.headers['X-Content-Type-Options'] = 'nosniff'
+                return response
         
         return jsonify({'success': False, 'message': 'Access denied'}), 403
         
@@ -12025,9 +12948,14 @@ def get_user_resources(user_id):
         print(f"Error getting user resources: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+RESOURCE_DOWNLOADS_ALLOWED = False   # Eschool resources are watched and read on the site only
+
+
 @app.route('/api/resources/<int:resource_id>/download', methods=['GET'])
 def download_resource(resource_id):
-    """Download a resource file"""
+    """Download a resource file. Turned off: resources can only be viewed on Eschool."""
+    if not RESOURCE_DOWNLOADS_ALLOWED:
+        return jsonify({'success': False, 'message': 'Eschool resources can be watched and read on Eschool, but not downloaded.'}), 403
     try:
         if 'user_id' not in session:
             return jsonify({'success': False, 'message': 'Authentication required'}), 401
@@ -12044,34 +12972,44 @@ def download_resource(resource_id):
         
         row = cursor.fetchone()
         
-        if not row or (session.get('role') != 'admin' and not _is_eschool_uploader(cursor, row[1])):
+        is_admin_user = session.get('role') == 'admin'
+        if not row or (not is_admin_user and not _is_eschool_uploader(cursor, row[1])):
             conn.close()
             return jsonify({'success': False, 'message': 'Resource not found'}), 404
-        
-        cursor.execute('UPDATE resources SET downloads = downloads + 1 WHERE id = ?', (resource_id,))
-        try:
-            _res_admin_tables(conn)
-            cursor.execute('INSERT INTO resource_downloads (resource_id, user_id) VALUES (?, ?)', (resource_id, session['user_id']))
-        except sqlite3.Error as e:
-            print(f'download log skipped: {e}')
-        conn.commit()
-        
+
         user_id = row[1]
         file_name = row[6]
         privacy = row[11]
-        
-        conn.close()
-        
-        if privacy != 'public' and str(session['user_id']) != str(user_id):
+        # admins can download any resource, drafts included; everyone else only public ones
+        if privacy != 'public' and not is_admin_user and str(session['user_id']) != str(user_id):
+            conn.close()
             return jsonify({'success': False, 'message': 'Access denied'}), 403
-        
+
         file_dir = os.path.join(UPLOAD_FOLDER, str(user_id))
         file_path = os.path.join(file_dir, file_name)
-        
         if not os.path.exists(file_path):
+            conn.close()
             return jsonify({'success': False, 'message': 'File not found on server'}), 404
+
+        # only learners' (and parents' / teachers') downloads count; an admin checking a file doesn't change the numbers
+        if not is_admin_user:
+            cursor.execute('UPDATE resources SET downloads = downloads + 1 WHERE id = ?', (resource_id,))
+            try:
+                _res_admin_tables(conn)
+                cursor.execute('INSERT INTO resource_downloads (resource_id, user_id) VALUES (?, ?)', (resource_id, session['user_id']))
+            except sqlite3.Error as e:
+                print(f'download log skipped: {e}')
+            conn.commit()
+        conn.close()
         
-        return send_from_directory(file_dir, file_name, as_attachment=True)
+        # save it under the resource's title (e.g. "Cells and tissues.pdf"), not the stored file name
+        ext = os.path.splitext(file_name)[1]
+        nice = re.sub(r'[\\/:*?"<>|\r\n\t]+', ' ', str(row[2] or '')).strip()[:80] if len(row) > 2 else ''
+        nice = (nice or os.path.splitext(file_name)[0]) + ext
+        try:
+            return send_from_directory(file_dir, file_name, as_attachment=True, download_name=nice)
+        except TypeError:          # older Flask
+            return send_from_directory(file_dir, file_name, as_attachment=True)
         
     except Exception as e:
         print(f"Error downloading resource: {str(e)}")
@@ -12685,7 +13623,7 @@ def live_classes_api():
 
             if not title:
                 return jsonify({'success': False, 'message': 'Please enter a class title'}), 400
-            if subject not in VALID_LIVE_SUBJECTS:
+            if subject not in set(EP_COURSE_MODULES) | VALID_LIVE_SUBJECTS:
                 return jsonify({'success': False, 'message': 'Please choose a valid subject'}), 400
 
 
@@ -12732,6 +13670,7 @@ def live_classes_api():
             return jsonify({'success': True, 'live_class': serialize_live_class(row)})
 
                 # ---- GET ----
+        _live_autoend(conn)
         if request.args.get('mine') == '1':
             # A teacher's own list keeps every class they created
             query = LIVE_CLASS_SELECT + ' WHERE lc.teacher_id = ?'
@@ -12777,6 +13716,9 @@ LIVE_MAX_VIEWERS = 30
 LIVE_ACTIVE_SECS = 20          # a viewer who hasn't checked in for this long has left
 
 
+_LIVE_CLEANED = {'done': False}     # the one-time clean-up in _live_tables
+
+
 def _live_tables(conn):
     cols = {r[1] for r in conn.execute('PRAGMA table_info(live_classes)').fetchall()}
     for name, ddl in (('mode', "TEXT DEFAULT 'studio'"), ('state', "TEXT DEFAULT 'scheduled'"), ('went_live_at', 'TEXT'),
@@ -12785,9 +13727,11 @@ def _live_tables(conn):
                       ('audience', "TEXT DEFAULT 'everyone'")):
         if cols and name not in cols:
             conn.execute(f'ALTER TABLE live_classes ADD COLUMN {name} {ddl}')
-    if cols:   # outside links (Zoom, Meet, YouTube) are gone: old classes are taught in the studio too
+    if cols and not _LIVE_CLEANED['done']:   # outside links (Zoom, Meet, YouTube) are gone: old classes are taught in the studio too
         conn.execute("UPDATE live_classes SET mode = 'studio', platform = 'Eschool Live', stream_url = '', embed_url = '' "
                      "WHERE COALESCE(mode, '') != 'studio' OR COALESCE(stream_url, '') != ''")
+        conn.commit()
+        _LIVE_CLEANED['done'] = True        # once per server start, not on every read
     conn.execute('''CREATE TABLE IF NOT EXISTS live_viewers (
         class_id INTEGER NOT NULL, user_id INTEGER NOT NULL, joined_at TEXT, last_seen TEXT, hand INTEGER DEFAULT 0,
         PRIMARY KEY (class_id, user_id))''')
@@ -12970,6 +13914,23 @@ def _live_db():
     conn.row_factory = sqlite3.Row
     _live_tables(conn)
     return conn
+
+
+LIVE_ABANDONED_MINUTES = 15     # a class still "live" with the studio closed this long has ended
+
+
+def _live_autoend(conn):
+    """Ends classes left live when the teacher closed the studio without pressing End class
+    (closed the tab, lost power, lost the internet). Otherwise they stay LIVE for ever."""
+    try:
+        n = conn.execute(f"""UPDATE live_classes SET state = 'ended', ended_at = COALESCE(ended_at, teacher_seen, went_live_at)
+                              WHERE state = 'live' AND {_dt('COALESCE(teacher_seen, went_live_at)')} < datetime('now', ?)""",
+                         (f'-{LIVE_ABANDONED_MINUTES} minutes',)).rowcount
+        if n:
+            conn.commit()
+        return n
+    except sqlite3.Error:
+        return 0
 
 
 def _live_active_viewers(conn, cid):
@@ -13200,6 +14161,8 @@ def api_live_state(cid):
         me = session['user_id']
         now = _iso(_live_now())
         teacher = lc['teacher_id'] == me
+        if not teacher and _live_autoend(conn):
+            lc = _live_class(conn, cid)
         if teacher:
             conn.execute('UPDATE live_classes SET teacher_seen = ? WHERE id = ?', (now, cid))
         else:
@@ -14251,12 +15214,12 @@ def _review_allowed(me, teacher_id):
 
 
 def _can_review_teacher(conn, me, role, teacher_id):
-    """A learner who follows the teacher, joined one of their live classes or has lessons with
-    them; a parent who booked lessons with them, or whose linked child can review them."""
+    """Only people who really learned with the teacher: a learner who joined one of their live classes
+    or had a lesson with them; a parent whose child had a lesson with them, or whose linked child can review them."""
     def learner_ok(uid):
-        q = [('SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?', (uid, teacher_id)),
-             ('SELECT 1 FROM live_viewers v JOIN live_classes c ON c.id = v.class_id WHERE v.user_id = ? AND c.teacher_id = ?', (uid, teacher_id)),
-             ('SELECT 1 FROM tutoring WHERE student_id = ? AND teacher_id = ?', (uid, teacher_id))]
+        q = [('SELECT 1 FROM live_viewers v JOIN live_classes c ON c.id = v.class_id WHERE v.user_id = ? AND c.teacher_id = ?', (uid, teacher_id)),
+             ('''SELECT 1 FROM tutoring_sessions s JOIN tutoring t ON t.id = s.tutoring_id WHERE t.student_id = ? AND t.teacher_id = ?
+                 AND s.status IN ('completed', 'missed')''', (uid, teacher_id))]
         for sql, args in q:
             try:
                 if conn.execute(sql, args).fetchone():
@@ -14268,7 +15231,8 @@ def _can_review_teacher(conn, me, role, teacher_id):
         return learner_ok(me)
     if role == 'parent':
         try:
-            if conn.execute('SELECT 1 FROM tutoring WHERE parent_id = ? AND teacher_id = ?', (me, teacher_id)).fetchone():
+            if conn.execute('''SELECT 1 FROM tutoring_sessions s JOIN tutoring t ON t.id = s.tutoring_id WHERE t.parent_id = ? AND t.teacher_id = ?
+                               AND s.status IN ('completed', 'missed')''', (me, teacher_id)).fetchone():
                 return True
             kids = [r[0] for r in conn.execute("SELECT student_id FROM parent_links WHERE parent_id = ? AND status = 'active'", (me,))]
         except sqlite3.Error:
@@ -14341,7 +15305,7 @@ def api_post_user_rating(user_id):
         if target['role'] != 'teacher':
             return jsonify({'error': 'Only teachers can be rated.'}), 400
         if not _can_review_teacher(conn, me, session.get('role', 'student'), user_id):
-            return jsonify({'error': 'You can review a teacher after you follow them, join one of their live classes or have lessons with them.'}), 403
+            return jsonify({'error': 'You can review a teacher after a lesson or a live class with them.'}), 403
 
         # Update my existing review if there is one, otherwise add it.
         # (Done in two steps instead of ON CONFLICT, so it also works on a
@@ -14520,10 +15484,17 @@ def add_call_script_to_pages(response):
                 or request.path.startswith('/static/')):
             return response
         html = response.get_data(as_text=True)
-        if 'eschool-calls.js' in html or '<html' not in html.lower():
+        if '<html' not in html.lower():
+            return response
+        tags = '' if 'eschool-calls.js' in html else CALLS_SCRIPT_TAG
+        if not session.get('tz_seen'):
+            tags += TZ_SCRIPT
+        if 'id="messageInput"' in html and 'eschool-files.js' not in html:
+            tags += '<script src="/eschool-files.js?v=1" defer></script>'      # documents in messages
+        if not tags:
             return response
         idx = html.lower().rfind('</body>')
-        html = html[:idx] + CALLS_SCRIPT_TAG + html[idx:] if idx != -1 else html + CALLS_SCRIPT_TAG
+        html = html[:idx] + tags + html[idx:] if idx != -1 else html + tags
         response.set_data(html)
     except Exception as e:
         print(f"call script inject skipped: {e}")
@@ -14548,7 +15519,9 @@ def add_call_script_to_pages(response):
 STORAGE_MAX_VALUE = 1_000_000        # characters in one item
 STORAGE_MAX_TOTAL = 8_000_000        # characters for one person in total
 STORAGE_MAX_ITEMS = 3000
-STORAGE_SKIP = r'^(__es_|eschool[-_]?calls?|calls?[-_]|webrtc|rtc[-_])'
+# lastActivity / eschool_logout are about this device only: copying them to another device signed people out
+# the moment they opened Eschool there (the old 'last active' time looked like hours of no activity)
+STORAGE_SKIP = r'^(__es_|eschool[-_]?calls?|calls?[-_]|webrtc|rtc[-_]|lastActivity\.|eschool_logout)'
 _STORAGE_SKIP_RE = re.compile(STORAGE_SKIP, re.I)
 
 
@@ -14561,7 +15534,8 @@ def _storage_table(conn):
 def _storage_items(conn, uid):
     """{name: value or None (None = removed on purpose)} for one person."""
     _storage_table(conn)
-    return {k: v for k, v in conn.execute('SELECT k, v FROM user_storage WHERE user_id = ?', (uid,)).fetchall()}
+    return {k: v for k, v in conn.execute('SELECT k, v FROM user_storage WHERE user_id = ?', (uid,)).fetchall()
+            if not _STORAGE_SKIP_RE.match(k)}
 
 
 @app.route('/api/storage', methods=['GET', 'POST'])
@@ -15299,6 +16273,7 @@ def _module_test_passed(t):
 
 
 _EP_SYNC_LAST = {}   # learner id -> time of their last real EP sync
+EP_SYNC_GAP = 4      # seconds between two real syncs of one learner
 
 
 @app.route('/api/ep/sync', methods=['POST'])
@@ -15326,13 +16301,15 @@ def api_ep_sync():
     today = _nairobi_today()
     yesterday = (datetime.strptime(today, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
 
-    # at most one real sync every 10 seconds per learner; extra calls just get the current totals
+    # at most one real sync every few seconds per learner. A call that comes too soon is not lost:
+    # the answer says when to send it again (retry_in), and the Courses and Progress pages do.
     now_ts = _clock.time()
-    if now_ts - _EP_SYNC_LAST.get(uid, 0) < 10:
+    wait = EP_SYNC_GAP - (now_ts - _EP_SYNC_LAST.get(uid, 0))
+    if wait > 0:
         conn = _links_db()
         try:
             _ep_table(conn)
-            return jsonify({'success': True, 'added': 0, 'throttled': True, **_ep_summary(conn, uid)})
+            return jsonify({'success': True, 'added': 0, 'throttled': True, 'retry_in': round(wait, 1) + 0.5, **_ep_summary(conn, uid)})
         finally:
             conn.close()
     _EP_SYNC_LAST[uid] = now_ts
@@ -15630,8 +16607,17 @@ def get_privacy(conn, uid):
 def profile_hidden_parts(conn, viewer_id, viewer_role, target_id):
     """Parts of the target's profile this viewer may not see (Settings > Privacy > Your profile).
     You, admins and your linked parents always see everything."""
-    if not viewer_id or viewer_id == target_id or viewer_role == 'admin' or _is_linked_parent(conn, viewer_id, target_id):
+    if not viewer_id or viewer_id == target_id or viewer_role == 'admin':
         return []
+    if _is_linked_parent(conn, viewer_id, target_id):
+        # a linked parent sees what the child allowed on My Children: learning results only with "Grades & GPA" on
+        try:
+            r = conn.execute("SELECT permissions FROM parent_links WHERE parent_id = ? AND student_id = ? AND status = 'active'",
+                             (viewer_id, target_id)).fetchone()
+            perms = _clean_permissions(json.loads((r[0] if r else None) or '{}'))
+        except (ValueError, sqlite3.Error):
+            perms = _clean_permissions({})
+        return [] if perms.get('grades') else ['progress', 'streak', 'achievements']
     pv = get_privacy(conn, target_id)
     return [part for key, part in PROFILE_PRIVACY_PARTS.items() if not pv.get(key, True)]
 
@@ -16233,8 +17219,8 @@ def api_profile_details():
             if new_key != old_key:
                 after = _career_change_after(old) if old_key else None     # a first choice is never blocked
                 if after:
-                    nice = (after + timedelta(hours=3)).strftime('%A %d %B at %H:%M')
-                    msg = f"You can change your dream career once a week. You can choose a new one on {nice} (Nairobi time)."
+                    nice = _when_for(session.get('user_id'), after, '%A %d %B at %H:%M')
+                    msg = f"You can change your dream career once a week. You can choose a new one on {nice}."
                     return jsonify({'success': False, 'message': msg, 'code': 'career_locked', 'career_change_after': after.isoformat(),
                                     'errors': {'dream_career': msg}}), 400
                 career_changed = bool(old_key)          # the week starts when they switch from one career to another
@@ -16595,7 +17581,7 @@ def api_points_redeem():
             conn.execute('UPDATE users SET plan = ?, plan_started_at = ?, plan_expires_at = ? WHERE id = ?',
                          (reward['plan'], _iso(start), _iso(end), uid))
             message = (f"🎉 You now have Eschool {PLAN_NAMES[reward['plan']]} until "
-                       f"{(end + timedelta(hours=3)).strftime('%b %d, %Y %I:%M %p')} (Nairobi time).")
+                       f"{_when_for(uid, end, '%b %d, %Y %I:%M %p')}.")
         else:
             if conn.execute('SELECT 1 FROM ep_owned WHERE user_id = ? AND item_key = ?', (uid, reward['key'])).fetchone():
                 conn.rollback()
@@ -16726,10 +17712,10 @@ def account_on_login(user_id, notify=True, method='password'):
         if method != 'switch':
             _account_event(conn, user_id, 'signin' if (seen_before or method == 'signup') else 'signin_new',
                            label + (' · Google' if method == 'google' else ''))
-        if notify and acc['settings'].get('loginNotifications'):
-            when = (datetime.utcnow() + timedelta(hours=3)).strftime('%d %b %Y, %H:%M')
+        if notify and not seen_before and acc['settings'].get('loginNotifications'):     # only a new device
+            when = _when_for(user_id, _utc_now(), '%d %b %Y, %H:%M')
             create_notification(conn, user_id, 'New sign-in to your account' if seen_before else 'Sign-in from a new device',
-                                f"Signed in on {label} at {when} (Nairobi time). If this wasn't you, change your password "
+                                f"Signed in on {label} at {when}. If this wasn't you, change your password "
                                 f"and sign that device out in Settings > Account & Security.",
                                 icon='fa-right-to-bracket', color='blue' if seen_before else 'orange')
         conn.commit()
@@ -18417,7 +19403,7 @@ def api_teacher_dashboard():
             payer = 'paid' if x['parent_id'] == x['student_id'] else "'s parent paid"
             feed.append({'icon': 'fa-coins', 'color': '#16a34a', 'at': x['decided_at'] or x['created_at'],
                          'text': f"{_full_name(x['firstname'], x['lastname'], 'A learner')}{' ' if payer == 'paid' else ''}{payer} for "
-                                 f"{x['sessions']} {x['subject']} lesson{'s' if x['sessions'] != 1 else ''}: KES {int(x['amount'] or 0):,}"})
+                                 f"{x['sessions']} {x['subject']} lesson{'s' if x['sessions'] != 1 else ''}: {_money(int(x['amount'] or 0))}"})
         for l in sorted([l for l in lessons if l['status'] == 'completed'], key=lambda l: l['start'], reverse=True)[:10]:
             feed.append({'icon': 'fa-circle-check', 'color': '#0ea5e9', 'at': l['start'],
                          'text': f"You taught {l['student']} {l['subject']} (proved by the Eschool call)"})
@@ -18485,8 +19471,21 @@ def api_teacher_dashboard():
 
         todos = [dict(id=r['id'], text=r['text'], due=r['due'], done=bool(r['done']))
                  for r in conn.execute('SELECT * FROM teacher_todos WHERE teacher_id = ? ORDER BY done, COALESCE(due, "9999"), id DESC', (me,)).fetchall()]
+        # earnings for the last 6 months (the dashboard's small bar chart)
+        y0, m0 = int(today[:4]), int(today[5:7])
+        month_keys = []
+        for k in range(5, -1, -1):
+            yy, mm = y0, m0 - k
+            while mm < 1:
+                yy, mm = yy - 1, mm + 12
+            month_keys.append(f'{yy:04d}-{mm:02d}')
+        by_month = {k: 0 for k in month_keys}
+        for x in confirmed:
+            if (x.get('day') or '')[:7] in by_month:
+                by_month[x['day'][:7]] += float(x['amount'] or 0)
+        months = [{'month': k, 'amount': round(by_month[k], 2)} for k in month_keys]
         return jsonify({
-            'success': True, 'today': today, 'kpis': kpis,
+            'success': True, 'today': today, 'kpis': kpis, 'months': months,
             'chart': {'days': days30, 'earnings': per_day(confirmed, lambda r: int(r['amount'] or 0)),
                       'lessons': per_day(lessons_done),
                       'requests': per_day([{'day': _td_day(t['created_at'])} for t in tut])},
@@ -19458,6 +20457,7 @@ def api_learner_profile(user_id):
         if not can_view_profile(conn, session['user_id'], session.get('role'), user_id):
             return jsonify({'success': False, 'private': True, 'message': 'This profile is private.'}), 403
         hidden = profile_hidden_parts(conn, session['user_id'], session.get('role'), user_id)
+        _refresh_learner_progress(conn, user_id)      # up to date even if the learner hasn't opened their dashboard
 
         row = conn.execute(f'SELECT {SUMMARY_COLS} FROM student_progress_summary WHERE student_id = ?',
                            (user_id,)).fetchone()
@@ -19478,12 +20478,24 @@ def api_learner_profile(user_id):
         except (TypeError, ValueError, sqlite3.Error):
             g = {}
         has = bool(g) and g.get('subjects', 0) > 0
+        if has and g.get('at'):
+            # the Grades-tab numbers come from the learner's Progress page; if they did more work since,
+            # use the grade the server worked out from that newer work instead of an old one
+            last_ep = conn.execute('SELECT MAX(created_at) FROM ep_events WHERE user_id = ?', (user_id,)).fetchone()[0]
+            ga, la = _parse_any(g.get('at')), _parse_any(last_ep) if last_ep else None
+            if ga and la and la > ga + timedelta(seconds=30):
+                has = False
         st['score_grade'] = g.get('grade') if has and g.get('grade') != 'N/A' else None
         st['avg_score'] = g.get('percent') if st['score_grade'] else None
         st['total_score'] = g.get('total') if has else None
         st['total_possible'] = g.get('possible', 0) if has else 0
         st['score_subjects'] = g.get('subjects', 0) if has else 0
         st['grades_known'] = bool(g)
+        if not st['score_grade']:
+            pg = _progress_page_grade(conn, user_id)     # the same sum the Progress page does
+            if pg:
+                st['score_grade'], st['avg_score'] = pg['letter'], pg['percent']
+                st['total_score'], st['total_possible'], st['score_subjects'] = pg['total'], pg['possible'], pg['subjects']
         # this month's ranking (people hidden from the leaderboard are left out)
         ranked = _ranked_learners(conn, exclude_ids=_users_with_privacy(conn, 'show_on_leaderboard', 0) - {user_id})
         rank = next((t[0] for t in ranked if t[1] == user_id), None)
@@ -20471,7 +21483,7 @@ ADMIN_NAV = [
     ('Content',   [('/admin_resources', 'admin_resources', 'fa-folder-open', 'Resources', 'Admin/admin_resources.html', None),
                    ('/admin-live', 'admin_live_page', 'fa-tower-broadcast', 'Live classes', 'Admin/admin_live.html', 'live'),
                    ('/admin-planner', 'admin_planner_page', 'fa-calendar-days', 'Learning planner', 'Admin/admin_planner.html', None),
-                   ('/admin-reviews', 'admin_reviews_page', 'fa-star', 'Reviews', 'Admin/admin_reviews.html', None)]),
+                   ('/admin-reviews', 'admin_reviews_page', 'fa-star', 'Reviews & community', 'Admin/admin_reviews.html', 'reviews')]),
     ('Help desk', [('/admin_messages', 'admin_messages', 'fa-envelope', 'Messages', 'Admin/admin_messages.html', 'messages'),
                    ('/admin_support', 'admin_support', 'fa-headset', 'Support', 'Admin/admin_support.html', 'support'),
                    ('/admin-announcements', 'admin_announcements_page', 'fa-bullhorn', 'Announcements', 'Admin/admin_announcements.html', None)]),
@@ -20526,6 +21538,7 @@ def admin_badges():
             'notifications': one('SELECT COUNT(*) FROM notifications WHERE user_id = ? AND COALESCE(is_read, 0) = 0', (me,)),
         }
         out['live'] = one("SELECT COUNT(*) FROM live_classes WHERE state = 'live'")
+        out['reviews'] = _mod_needs_count(conn)
         out['payments'] = out['plan_payments'] + out['teaching_payments']
         out['success'] = True
         return jsonify(out)
@@ -20679,6 +21692,7 @@ def _people_aggregates(conn):
                                       WHERE s.outcome IN ('review', 'not_taught') GROUP BY t.teacher_id'''),
         'warned': grouped('''SELECT l.teacher_id, COUNT(*) FROM live_reviews r JOIN live_classes l ON l.id = r.class_id
                              WHERE r.status = 'warned' GROUP BY l.teacher_id'''),
+        'mod_warned': grouped('SELECT user_id, COUNT(*) FROM mod_warnings GROUP BY user_id'),
         'pays_for': grouped("SELECT parent_id, COUNT(DISTINCT student_id) FROM plan_payments WHERE status = 'confirmed' GROUP BY parent_id"),
         'phone': grouped("SELECT user_id, phone FROM user_details WHERE COALESCE(phone, '') != ''"),
     }
@@ -20705,6 +21719,9 @@ def _people_flags(p, agg):
         f.append(['lessons', f"{agg['lessons_flagged'][uid]} lesson{'s' if agg['lessons_flagged'][uid] != 1 else ''} flagged", 'bad'])
     if p['role'] == 'teacher' and agg['warned'].get(uid):
         f.append(['warned', 'Warned', 'warn'])
+    if agg.get('mod_warned', {}).get(uid):
+        n = agg['mod_warned'][uid]
+        f.append(['mod_warned', f"{n} community warning{'s' if n != 1 else ''}", 'bad' if n >= 3 else 'warn'])
     if agg['tickets_open'].get(uid):
         f.append(['tickets', f"{agg['tickets_open'][uid]} open ticket{'s' if agg['tickets_open'][uid] != 1 else ''}", 'grey'])
     return f
@@ -21068,16 +22085,16 @@ def admin_person_file(uid):
         for x in pays:
             x['payer'], x['for'] = who(x['parent_id']), who(x['student_id'])
             x['created_at'] = _an_iso(x['created_at'])
-            tl(x['created_at'], 'money', f"{x['plan'].title()} plan for {x['for']}, {x['days']} days: KES {x['amount']:,} ({x['status']})" + (f" · paid by {x['payer']}" if x['parent_id'] != uid else ''),
+            tl(x['created_at'], 'money', f"{x['plan'].title()} plan for {x['for']}, {x['days']} days: {_money(x['amount'])} ({x['status']})" + (f" · paid by {x['payer']}" if x['parent_id'] != uid else ''),
                'bad' if x['status'] == 'rejected' else '')
         tpays = rows('''SELECT p.id, p.amount, p.sessions, p.status, p.created_at, t.teacher_id, t.student_id, t.parent_id, t.subject FROM tutoring_payments p
                         JOIN tutoring t ON t.id = p.tutoring_id WHERE t.parent_id = ? OR t.teacher_id = ? OR t.student_id = ? ORDER BY p.id DESC LIMIT 50''', (uid, uid, uid))
         for x in tpays:
             x['teacher'], x['learner'], x['payer'] = who(x['teacher_id']), who(x['student_id']), who(x['parent_id'])
             x['created_at'] = _an_iso(x['created_at'])
-            tl(x['created_at'], 'money', f"Tutoring: {x['sessions']} {x['subject']} lessons, KES {x['amount']:,} ({x['status']}) · {x['payer']} → {x['teacher']}")
+            tl(x['created_at'], 'money', f"Tutoring: {x['sessions']} {x['subject']} lessons, {_money(x['amount'])} ({x['status']}) · {x['payer']} → {x['teacher']}")
         conf = lambda lst, f: sum(x['amount'] or 0 for x in lst if x['status'] == 'confirmed' and f(x))
-        out['money'] = {'plan_payments': pays, 'tutoring_payments': tpays, 'currency': 'KES',
+        out['money'] = {'plan_payments': pays, 'tutoring_payments': tpays, 'currency': SITE_CURRENCY,
                         'plans_paid': conf(pays, lambda x: x['parent_id'] == uid), 'plans_for_them': conf(pays, lambda x: x['student_id'] == uid),
                         'tutoring_paid': conf(tpays, lambda x: x['parent_id'] == uid), 'tutoring_earned': conf(tpays, lambda x: x['teacher_id'] == uid),
                         'tutoring_for_them': conf(tpays, lambda x: x['student_id'] == uid),
@@ -21373,11 +22390,14 @@ def admin_money():
             return names.get(i, ('Deleted account', ''))
         items = []
         if kind in ('', 'plan'):
-            for r in conn.execute('SELECT * FROM plan_payments ORDER BY id DESC LIMIT 500').fetchall():
+            _plan_pay_columns(conn)
+            for r in conn.execute("SELECT * FROM plan_payments WHERE status NOT IN ('started', 'failed') ORDER BY id DESC LIMIT 500").fetchall():
                 items.append({'kind': 'plan', 'id': r['id'], 'payer': nm(r['parent_id'])[0], 'payer_email': nm(r['parent_id'])[1], 'payer_id': r['parent_id'],
                               'for': nm(r['student_id'])[0], 'for_id': r['student_id'],
                               'what': f"Eschool {PLAN_NAMES.get(r['plan'], r['plan'])} · {r['days']} days", 'amount': r['amount'] or 0,
-                              'reference': r['reference'], 'phone': r['phone'] or '', 'status': r['status'], 'note': r['note'] or '',
+                              'reference': (r['receipt'] or r['reference']) if r['method'] == 'stripe' else r['reference'], 'phone': r['phone'] or '',
+                              'method': 'Card' if r['method'] == 'stripe' else 'M-Pesa code',
+                              'status': r['status'], 'note': r['note'] or '',
                               'created_at': _an_iso(r['created_at']), 'decided_at': _an_iso(r['decided_at']),
                               'decided_by': nm(r['decided_by'])[0] if r['decided_by'] else None})
         if kind in ('', 'teaching'):
@@ -21939,7 +22959,7 @@ def admin_lesson_report(sid):
                    'scheduled': ('info', 'This lesson has not happened yet.'), 'cancelled': ('info', 'This lesson was cancelled.')}.get(o, ('info', x.get('evidence') or ''))
         return jsonify({'success': True, 'lesson': x, 'calls': calls, 'recordings': recs,
                         'finding': {'level': finding[0], 'text': finding[1]},
-                        'payment': {'paid': pay[0], 'sessions': pay[1], 'rate': t['rate'] if t else None, 'currency': 'KES',
+                        'payment': {'paid': pay[0], 'sessions': pay[1], 'rate': t['rate'] if t else None, 'currency': SITE_CURRENCY,
                                     'plan_status': t['status'] if t else None},
                         'teacher_month': {'lessons': len(recent), 'flagged': sum(1 for r in recent if r[0] in ('review', 'not_taught'))}})
     finally:
@@ -22017,54 +23037,1160 @@ def admin_review_action(rid):
         conn.close()
 
 
+# ----- reviews & community (moderation) -----
+# One place for teacher reviews and community opinions (Learning Strategies Hub tips).
+# Harsh words are spotted on the server, admins can warn people (1st, 2nd, final, then suspend),
+# remove posts, or mark them fine. Every action goes to admin_log.
+MOD_DEFAULT_WORDS = [
+    'stupid', 'idiot', 'idiots', 'dumb', 'useless', 'rubbish', 'trash', 'garbage', 'nonsense', 'loser', 'losers',
+    'fool', 'foolish', 'moron', 'pathetic', 'ugly', 'liar', 'fraud', 'scam', 'scammer', 'shut up', 'hate you',
+    'waste of money', 'waste of time', 'worst teacher', 'kill yourself', 'go die', 'nobody likes you',
+    'fuck', 'fucking', 'shit', 'bitch', 'bastard', 'crap', 'damn', 'stfu', 'wtf',
+]
+MOD_REASONS = {
+    'harsh': 'used harsh or rude words',
+    'bullying': 'was unkind to or about another person',
+    'false': 'made claims that look false or unfair',
+    'spam': 'was off-topic or spam',
+}
+MOD_LEVELS = ['1st', '2nd', 'Final']
+_MOD_WORDS_CACHE = {'at': 0, 'words': None, 're': None}
+
+
+def _mod_tables(conn):
+    conn.execute('''CREATE TABLE IF NOT EXISTS mod_flags (
+        kind TEXT NOT NULL, item_id INTEGER NOT NULL, status TEXT NOT NULL,
+        admin_id INTEGER, decided_at TEXT, PRIMARY KEY (kind, item_id))''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS mod_warnings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, kind TEXT, item_id INTEGER,
+        reason TEXT, note TEXT, excerpt TEXT, level INTEGER, removed INTEGER DEFAULT 0,
+        told_parent INTEGER DEFAULT 0, admin_id INTEGER, created_at TEXT)''')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_mod_warn_user ON mod_warnings (user_id)')
+    conn.execute('CREATE TABLE IF NOT EXISTS mod_settings (key TEXT PRIMARY KEY, value TEXT)')
+    _opinion_tables(conn)
+    _tutor_tables(conn)
+    have = {r[1] for r in conn.execute('PRAGMA table_info(notifications)').fetchall()}
+    if 'action' not in have:
+        conn.execute('ALTER TABLE notifications ADD COLUMN action TEXT')
+    if 'ref_id' not in have:
+        conn.execute('ALTER TABLE notifications ADD COLUMN ref_id INTEGER')
+
+
+def _mod_words(conn):
+    now = _clock.time()
+    if _MOD_WORDS_CACHE['words'] is not None and now - _MOD_WORDS_CACHE['at'] < 30:
+        return _MOD_WORDS_CACHE['words'], _MOD_WORDS_CACHE['re']
+    r = conn.execute("SELECT value FROM mod_settings WHERE key = 'words'").fetchone()
+    try:
+        words = json.loads(r[0]) if r else list(MOD_DEFAULT_WORDS)
+    except (ValueError, TypeError):
+        words = list(MOD_DEFAULT_WORDS)
+    words = [w for w in words if w]
+    rx = None
+    if words:
+        parts = sorted({re.escape(w.lower()).replace(r'\ ', r'\s+') for w in words}, key=len, reverse=True)
+        rx = re.compile(r'(?<![\w])(' + '|'.join(parts) + r')(?![\w])', re.I)
+    _MOD_WORDS_CACHE.update(at=now, words=words, re=rx)
+    return words, rx
+
+
+def _mod_harsh(rx, text):
+    if not rx or not text:
+        return []
+    seen, out = set(), []
+    for m in rx.finditer(text):
+        w = m.group(1).lower()
+        if w not in seen:
+            seen.add(w)
+            out.append(w)
+    return out
+
+
+def _mod_seen_key():
+    return f"seen:{session.get('user_id')}"
+
+
+def _mod_items(conn):
+    """Every review and opinion with the facts the page needs."""
+    _, rx = _mod_words(conn)
+    flags = {(r[0], r[1]): r[2] for r in conn.execute('SELECT kind, item_id, status FROM mod_flags').fetchall()}
+    warned_items = {(r[0], r[1]) for r in conn.execute('SELECT kind, item_id FROM mod_warnings').fetchall()}
+    seen_r = conn.execute('SELECT value FROM mod_settings WHERE key = ?', (_mod_seen_key(),)).fetchone()
+    seen = seen_r[0] if seen_r else ''
+    items = []
+    for r in conn.execute('''SELECT r.*, t.firstname AS tf, t.lastname AS tl, w.firstname AS wf, w.lastname AS wl, w.role AS wrole
+                             FROM teacher_ratings r LEFT JOIN users t ON t.id = r.teacher_id LEFT JOIN users w ON w.id = r.reviewer_id
+                             ORDER BY r.id DESC LIMIT 1000''').fetchall():
+        keys = r.keys()
+        at = _an_iso(r['created_at']) or ''
+        reply = r['reply'] if 'reply' in keys else None
+        items.append({'kind': 'review', 'id': r['id'], 'text': r['comment'] or '', 'stars': r['stars'], 'created_at': at,
+                      'author': _full_name(r['wf'], r['wl'], 'Deleted account'), 'author_id': r['reviewer_id'],
+                      'author_role': r['wrole'] or 'student', 'target': _full_name(r['tf'], r['tl'], 'Deleted teacher'),
+                      'target_id': r['teacher_id'], 'reply': reply, 'reply_at': _an_iso(r['reply_at']) if 'reply_at' in keys else None,
+                      'reply_harsh': _mod_harsh(rx, reply or ''),
+                      'harsh': _mod_harsh(rx, r['comment'] or ''), 'reports': 0, 'hidden': False,
+                      'status': flags.get(('review', r['id'])) or ('warned' if ('review', r['id']) in warned_items else ''),
+                      'new': bool(at and at > seen)})
+    reports = {r[0]: r[1] for r in conn.execute('SELECT opinion_id, COUNT(DISTINCT user_id) FROM opinion_reports GROUP BY opinion_id').fetchall()}
+    reasons = {}
+    for r in conn.execute('SELECT opinion_id, reason FROM opinion_reports WHERE COALESCE(reason, "") != "" ORDER BY created_at DESC').fetchall():
+        reasons.setdefault(r[0], [])
+        if len(reasons[r[0]]) < 3:
+            reasons[r[0]].append(r[1])
+    for r in conn.execute('''SELECT o.id, o.user_id, o.text, o.tag, o.created_at, COALESCE(o.anonymous, 0) AS anon,
+                                    u.firstname, u.lastname, u.role,
+                                    (SELECT COUNT(*) FROM opinion_likes l WHERE l.opinion_id = o.id) AS likes
+                             FROM opinions o LEFT JOIN users u ON u.id = o.user_id ORDER BY o.id DESC LIMIT 1000''').fetchall():
+        at = _an_iso(r['created_at']) or ''
+        n = reports.get(r['id'], 0)
+        items.append({'kind': 'opinion', 'id': r['id'], 'text': r['text'] or '', 'tag': r['tag'] or 'general', 'created_at': at,
+                      'author': _full_name(r['firstname'], r['lastname'], 'Deleted account'), 'author_id': r['user_id'],
+                      'author_role': r['role'] or 'student', 'anonymous': bool(r['anon']), 'likes': r['likes'],
+                      'harsh': _mod_harsh(rx, r['text'] or ''), 'reports': n, 'report_reasons': reasons.get(r['id'], []),
+                      'hidden': n >= OPINION_HIDE_AT,
+                      'status': flags.get(('opinion', r['id'])) or ('warned' if ('opinion', r['id']) in warned_items else ''),
+                      'new': bool(at and at > seen)})
+    for x in items:
+        x['flagged'] = bool(x['harsh'] or x.get('reply_harsh') or x['reports'] or (x['kind'] == 'review' and x['stars'] <= 2))
+        x['needs'] = x['flagged'] and x['status'] not in ('fine', 'warned')
+    items.sort(key=lambda x: x['created_at'] or '', reverse=True)
+    return items
+
+
+def _mod_needs_count(conn):
+    try:
+        _mod_tables(conn)
+        return sum(1 for x in _mod_items(conn) if x['needs'])
+    except sqlite3.Error:
+        return 0
+
+
+@app.route('/api/admin/moderation')
+def admin_moderation_list():
+    """GET ?view=needs|reviews|opinions &filter=all|new|harsh|reported|low|hidden|fine &q= &sort=new|old|harsh"""
+    g = _admin_guard()
+    if g:
+        return g
+    view = request.args.get('view') or 'needs'
+    flt = request.args.get('filter') or 'all'
+    q = (request.args.get('q') or '').strip().lower()
+    sort = request.args.get('sort') or 'new'
+    conn = _links_db()
+    try:
+        _mod_tables(conn)
+        conn.commit()
+        items = _mod_items(conn)
+        week = _iso(_utc_now() - timedelta(days=7))
+        month = _iso(_utc_now() - timedelta(days=30))
+        reviews = [x for x in items if x['kind'] == 'review']
+        opinions = [x for x in items if x['kind'] == 'opinion']
+        warns_30 = conn.execute('SELECT COUNT(*) FROM mod_warnings WHERE created_at >= ?', (month,)).fetchone()[0]
+        repeat = conn.execute('SELECT COUNT(*) FROM (SELECT user_id FROM mod_warnings GROUP BY user_id HAVING COUNT(*) >= 2)').fetchone()[0]
+        kpis = {
+            'new': sum(1 for x in items if x['new']), 'new_reviews': sum(1 for x in reviews if x['new']),
+            'new_opinions': sum(1 for x in opinions if x['new']),
+            'harsh_7': sum(1 for x in items if (x['harsh'] or x.get('reply_harsh')) and x['created_at'] >= week),
+            'reported': sum(1 for x in opinions if x['reports']), 'hidden': sum(1 for x in opinions if x['hidden']),
+            'low': sum(1 for x in reviews if x['stars'] <= 2),
+            'avg': round(sum(x['stars'] for x in reviews) / len(reviews), 2) if reviews else None,
+            'reviews': len(reviews), 'opinions': len(opinions),
+            'warnings_30': warns_30, 'repeat': repeat, 'needs': sum(1 for x in items if x['needs']),
+        }
+        if view == 'needs':
+            pool = [x for x in items if x['needs']]
+        elif view == 'reviews':
+            pool = reviews
+        elif view == 'opinions':
+            pool = opinions
+        else:
+            pool = items
+        if q:
+            pool = [x for x in pool if q in ' '.join([x['text'], x['author'], x.get('target') or '', x.get('reply') or '', x.get('tag') or '']).lower()]
+        tests = {
+            'all': lambda x: True, 'new': lambda x: x['new'], 'harsh': lambda x: bool(x['harsh'] or x.get('reply_harsh')),
+            'reported': lambda x: x['reports'] > 0, 'low': lambda x: x['kind'] == 'review' and x['stars'] <= 2,
+            'hidden': lambda x: x['hidden'], 'fine': lambda x: x['status'] == 'fine', 'warned': lambda x: x['status'] == 'warned',
+        }
+        counts = {k: sum(1 for x in pool if t(x)) for k, t in tests.items()}
+        pool = [x for x in pool if tests.get(flt, tests['all'])(x)]
+        if sort == 'old':
+            pool.sort(key=lambda x: x['created_at'] or '')
+        elif sort == 'harsh':
+            pool.sort(key=lambda x: (len(x['harsh']) + len(x.get('reply_harsh') or []), x['reports'], x['created_at'] or ''), reverse=True)
+        return jsonify({'success': True, 'items': pool[:300], 'total': len(pool), 'counts': counts, 'kpis': kpis,
+                        'reasons': MOD_REASONS})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/moderation/seen', methods=['POST'])
+def admin_moderation_seen():
+    g = _admin_guard()
+    if g:
+        return g
+    conn = _links_db()
+    try:
+        _mod_tables(conn)
+        conn.execute('INSERT OR REPLACE INTO mod_settings (key, value) VALUES (?, ?)', (_mod_seen_key(), _iso(_utc_now())))
+        conn.commit()
+        return jsonify({'success': True})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/moderation/words', methods=['GET', 'PUT'])
+def admin_moderation_words():
+    """GET the harsh word list. PUT {"words": [...]} saves it; {"reset": true} goes back to the default list."""
+    g = _admin_guard()
+    if g:
+        return g
+    conn = _links_db()
+    try:
+        _mod_tables(conn)
+        if request.method == 'PUT':
+            d = request.get_json(silent=True) or {}
+            if d.get('reset'):
+                conn.execute("DELETE FROM mod_settings WHERE key = 'words'")
+                admin_log(conn, 'Reset harsh word list', 'moderation', None, '')
+            else:
+                raw = d.get('words') or []
+                if isinstance(raw, str):
+                    raw = re.split(r'[\n,]+', raw)
+                words, seen = [], set()
+                for w in raw:
+                    w = re.sub(r'\s+', ' ', str(w or '').strip().lower())[:40]
+                    if len(w) >= 2 and w not in seen:
+                        seen.add(w)
+                        words.append(w)
+                if len(words) > 400:
+                    return jsonify({'success': False, 'message': 'Keep the list under 400 words.'}), 400
+                conn.execute("INSERT OR REPLACE INTO mod_settings (key, value) VALUES ('words', ?)", (json.dumps(words),))
+                admin_log(conn, 'Changed harsh word list', 'moderation', None, f'{len(words)} words')
+            conn.commit()
+            _MOD_WORDS_CACHE['words'] = None
+        words, _ = _mod_words(conn)
+        return jsonify({'success': True, 'words': words, 'default': MOD_DEFAULT_WORDS})
+    finally:
+        conn.close()
+
+
+def _mod_person(conn, uid):
+    u = conn.execute('SELECT id, firstname, lastname, role FROM users WHERE id = ?', (uid,)).fetchone()
+    if not u:
+        return None
+    warns = conn.execute('''SELECT w.*, n.is_read FROM mod_warnings w
+                            LEFT JOIN notifications n ON n.action = 'mod_warning' AND n.ref_id = w.id AND n.user_id = w.user_id
+                            WHERE w.user_id = ? ORDER BY w.id DESC''', (uid,)).fetchall()
+    suspended = bool(_suspension(conn, uid))
+    return {'id': u['id'], 'name': _full_name(u['firstname'], u['lastname'], 'Deleted account'), 'role': u['role'] or 'student',
+            'joined': _iso(_user_joined(conn, uid)) if _user_joined(conn, uid) else None, 'suspended': suspended,
+            'opinions': conn.execute('SELECT COUNT(*) FROM opinions WHERE user_id = ?', (uid,)).fetchone()[0],
+            'reviews': conn.execute('SELECT COUNT(*) FROM teacher_ratings WHERE reviewer_id = ?', (uid,)).fetchone()[0],
+            'warnings': [{'id': w['id'], 'kind': w['kind'], 'reason': w['reason'], 'reason_label': MOD_REASONS.get(w['reason'], w['reason']),
+                          'note': w['note'] or '', 'excerpt': w['excerpt'] or '', 'level': w['level'], 'removed': bool(w['removed']),
+                          'told_parent': bool(w['told_parent']), 'read': bool(w['is_read']), 'created_at': _an_iso(w['created_at'])}
+                         for w in warns],
+            'next_level': min(len(warns) + 1, 4),
+            'parents': conn.execute("SELECT COUNT(*) FROM parent_links WHERE student_id = ? AND status = 'active'", (uid,)).fetchone()[0]
+            if (u['role'] or 'student') == 'student' else 0}
+
+
+@app.route('/api/admin/moderation/person/<int:uid>')
+def admin_moderation_person(uid):
+    g = _admin_guard()
+    if g:
+        return g
+    conn = _links_db()
+    try:
+        _mod_tables(conn)
+        p = _mod_person(conn, uid)
+        if not p:
+            return jsonify({'success': False, 'message': 'This account no longer exists.'}), 404
+        return jsonify({'success': True, 'person': p, 'levels': MOD_LEVELS, 'reasons': MOD_REASONS})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/moderation/warnings')
+def admin_moderation_warnings():
+    g = _admin_guard()
+    if g:
+        return g
+    q = (request.args.get('q') or '').strip().lower()
+    conn = _links_db()
+    try:
+        _mod_tables(conn)
+        rows = conn.execute('''SELECT w.*, u.firstname, u.lastname, u.role, a.firstname AS af, a.lastname AS al, n.is_read,
+                                      (SELECT COUNT(*) FROM mod_warnings x WHERE x.user_id = w.user_id) AS total
+                               FROM mod_warnings w LEFT JOIN users u ON u.id = w.user_id LEFT JOIN users a ON a.id = w.admin_id
+                               LEFT JOIN notifications n ON n.action = 'mod_warning' AND n.ref_id = w.id AND n.user_id = w.user_id
+                               ORDER BY w.id DESC LIMIT 500''').fetchall()
+        out = [{'id': r['id'], 'user_id': r['user_id'], 'name': _full_name(r['firstname'], r['lastname'], 'Deleted account'),
+                'role': r['role'] or 'student', 'kind': r['kind'], 'reason': r['reason'], 'reason_label': MOD_REASONS.get(r['reason'], r['reason']),
+                'note': r['note'] or '', 'excerpt': r['excerpt'] or '', 'level': r['level'], 'removed': bool(r['removed']),
+                'told_parent': bool(r['told_parent']), 'read': bool(r['is_read']), 'total': r['total'],
+                'by': _full_name(r['af'], r['al'], 'An admin'), 'created_at': _an_iso(r['created_at'])} for r in rows]
+        if q:
+            out = [x for x in out if q in (x['name'] + ' ' + x['excerpt'] + ' ' + x['note'] + ' ' + x['reason_label']).lower()]
+        people = {}
+        for x in out:
+            people.setdefault(x['user_id'], x)
+        repeat = sorted([p for p in people.values() if p['total'] >= 2], key=lambda p: -p['total'])
+        return jsonify({'success': True, 'warnings': out, 'repeat': repeat[:20],
+                        'unread': sum(1 for x in out if not x['read'])})
+    finally:
+        conn.close()
+
+
+def _mod_remove(conn, kind, row, reason):
+    """Delete a review or an opinion and tell the people involved."""
+    if kind == 'review':
+        teacher = _name_of(conn, row['teacher_id'], 'the teacher')
+        conn.execute('DELETE FROM teacher_ratings WHERE id = ?', (row['id'],))
+        create_notification(conn, row['reviewer_id'], 'Your review was removed',
+                            f"An Eschool admin removed your review of {teacher}. Reason: {reason}", icon='fa-star', color='red')
+        create_notification(conn, row['teacher_id'], 'A review was removed',
+                            'An Eschool admin removed a review on your profile after checking it.', icon='fa-star', color='blue')
+        admin_log(conn, 'Removed review', 'review', row['id'], f"{row['stars']}★ for {teacher}: {reason}")
+    else:
+        conn.execute('DELETE FROM opinion_likes WHERE opinion_id = ?', (row['id'],))
+        conn.execute('DELETE FROM opinion_reports WHERE opinion_id = ?', (row['id'],))
+        conn.execute('DELETE FROM opinions WHERE id = ?', (row['id'],))
+        create_notification(conn, row['user_id'], 'Your community opinion was removed',
+                            f"An Eschool admin removed your opinion: “{(row['text'] or '')[:80]}”. Reason: {reason}",
+                            icon='fa-comments', color='red')
+        admin_log(conn, 'Removed community opinion', 'opinion', row['id'], f"{(row['text'] or '')[:120]}: {reason}")
+    conn.execute('DELETE FROM mod_flags WHERE kind = ? AND item_id = ?', (kind, row['id']))
+
+
+@app.route('/api/admin/moderation/<kind>/<int:item_id>', methods=['POST'])
+def admin_moderation_action(kind, item_id):
+    """{"action": "fine" | "unfine" | "remove" | "show" | "remove_reply" | "warn", ...}
+       remove / remove_reply / show: {"reason"}
+       warn: {"reason": harsh|bullying|false|spam, "note", "remove": bool, "tell_parent": bool}"""
+    g = _admin_guard()
+    if g:
+        return g
+    if kind not in ('review', 'opinion'):
+        return jsonify({'success': False, 'message': 'Unknown item.'}), 404
+    d = request.get_json(silent=True) or {}
+    action = d.get('action') or ''
+    reason = str(d.get('reason') or '').strip()[:300]
+    conn = _links_db()
+    try:
+        _mod_tables(conn)
+        if kind == 'review':
+            row = conn.execute('SELECT * FROM teacher_ratings WHERE id = ?', (item_id,)).fetchone()
+        else:
+            row = conn.execute('SELECT * FROM opinions WHERE id = ?', (item_id,)).fetchone()
+        if not row:
+            return jsonify({'success': False, 'message': 'This was already removed.'}), 404
+        author = row['reviewer_id'] if kind == 'review' else row['user_id']
+        text = (row['comment'] if kind == 'review' else row['text']) or ''
+        now = _iso(_utc_now())
+        out = {'success': True}
+        if action in ('fine', 'unfine'):
+            if action == 'fine':
+                conn.execute('INSERT OR REPLACE INTO mod_flags (kind, item_id, status, admin_id, decided_at) VALUES (?, ?, ?, ?, ?)',
+                             (kind, item_id, 'fine', session.get('user_id'), now))
+                admin_log(conn, 'Marked post as fine', kind, item_id, text[:120])
+            else:
+                conn.execute('DELETE FROM mod_flags WHERE kind = ? AND item_id = ?', (kind, item_id))
+                admin_log(conn, 'Put post back to check', kind, item_id, text[:120])
+        elif action == 'show':
+            if kind != 'opinion':
+                return jsonify({'success': False, 'message': 'Only community opinions can be hidden.'}), 400
+            conn.execute('DELETE FROM opinion_reports WHERE opinion_id = ?', (item_id,))
+            conn.execute('INSERT OR REPLACE INTO mod_flags (kind, item_id, status, admin_id, decided_at) VALUES (?, ?, ?, ?, ?)',
+                         (kind, item_id, 'fine', session.get('user_id'), now))
+            admin_log(conn, 'Showed community opinion again', 'opinion', item_id, text[:120] + (f': {reason}' if reason else ''))
+        elif action == 'remove':
+            if len(reason) < 5:
+                return jsonify({'success': False, 'message': 'Write a short reason. The person will see it.'}), 400
+            _mod_remove(conn, kind, row, reason)
+        elif action == 'remove_reply':
+            if kind != 'review':
+                return jsonify({'success': False, 'message': 'Only reviews have replies.'}), 400
+            if len(reason) < 5:
+                return jsonify({'success': False, 'message': 'Write a short reason. The teacher will see it.'}), 400
+            conn.execute('UPDATE teacher_ratings SET reply = NULL, reply_at = NULL WHERE id = ?', (item_id,))
+            create_notification(conn, row['teacher_id'], 'Your reply was removed',
+                                f"An Eschool admin removed your reply to a review. Reason: {reason}", icon='fa-reply', color='red')
+            admin_log(conn, 'Removed review reply', 'review', item_id, f"Reply by {_name_of(conn, row['teacher_id'], 'the teacher')}: {reason}")
+        elif action == 'warn':
+            who = 'author'
+            if d.get('who') == 'teacher' and kind == 'review':
+                author, who, text = row['teacher_id'], 'teacher', (row['reply'] if 'reply' in row.keys() else '') or ''
+            code = d.get('reason') if d.get('reason') in MOD_REASONS else 'harsh'
+            note = str(d.get('note') or '').strip()[:300]
+            if note and note[-1] not in '.!?':
+                note += '.'
+            if not author or not conn.execute('SELECT 1 FROM users WHERE id = ?', (author,)).fetchone():
+                return jsonify({'success': False, 'message': 'This account no longer exists.'}), 404
+            level = conn.execute('SELECT COUNT(*) FROM mod_warnings WHERE user_id = ?', (author,)).fetchone()[0] + 1
+            label = MOD_LEVELS[min(level, 3) - 1]
+            excerpt = text[:140]
+            when = (_parse_any(row['created_at']) or _utc_now()).strftime('%-d %b')
+            what = ('reply to a review' if who == 'teacher' else 'review') if kind == 'review' else 'community opinion'
+            msg = (f"Your {what} on {when} {MOD_REASONS[code]}"
+                   + (f": “{excerpt[:80] + '…' if len(excerpt) > 80 else excerpt.rstrip('.!? ')}”." if excerpt else '.')
+                   + ' Eschool is a kind place to learn. Please share your views politely.'
+                   + (f' Note from Eschool: {note}' if note else '')
+                   + (' This is your final warning. Next time your account can be paused.' if level >= 3
+                      else ' More warnings can lead to your account being paused.'))
+            remove = bool(d.get('remove')) and who == 'author'
+            reason = f"It {MOD_REASONS[code]}." + (f' {note}' if note else '')
+            cur = conn.execute('''INSERT INTO mod_warnings (user_id, kind, item_id, reason, note, excerpt, level, removed, told_parent, admin_id, created_at)
+                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)''',
+                               (author, kind, item_id, code, note, excerpt, level, 1 if remove else 0, session.get('user_id'), now))
+            wid = cur.lastrowid
+            conn.execute('INSERT INTO notifications (user_id, title, message, icon, color, action, ref_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                         (author, f'⚠️ Warning from Eschool ({label})', msg, 'fa-triangle-exclamation', 'orange', 'mod_warning', wid))
+            told = 0
+            if d.get('tell_parent'):
+                name = _name_of(conn, author, 'Your child')
+                for (pid,) in conn.execute("SELECT parent_id FROM parent_links WHERE student_id = ? AND status = 'active'", (author,)).fetchall():
+                    create_notification(conn, pid, f'About {name} on Eschool',
+                                        f"{name} got a {label.lower()} warning because their {what} {MOD_REASONS[code]}. "
+                                        'Please talk with them about being kind online.' + (f' Note: {note}' if note else ''),
+                                        icon='fa-triangle-exclamation', color='orange')
+                    told += 1
+                if told:
+                    conn.execute('UPDATE mod_warnings SET told_parent = 1 WHERE id = ?', (wid,))
+            if who == 'author':
+                conn.execute('INSERT OR REPLACE INTO mod_flags (kind, item_id, status, admin_id, decided_at) VALUES (?, ?, ?, ?, ?)',
+                             (kind, item_id, 'warned', session.get('user_id'), now))
+            admin_log(conn, f'Warned ({label})', 'user', author,
+                      f"{what.capitalize()}: {MOD_REASONS[code]}" + (f' · {note}' if note else '') + (' · post removed' if remove else '')
+                      + (f' · told {told} parent' + ('s' if told != 1 else '') if told else ''))
+            if remove:
+                _mod_remove(conn, kind, row, reason)
+            out.update(level=level, label=label, suggest_suspend=level >= 3, parents_told=told)
+        else:
+            return jsonify({'success': False, 'message': 'Unknown action.'}), 400
+        conn.commit()
+        return jsonify(out)
+    finally:
+        conn.close()
+
+
+# ----- messages (admin inbox) -----
+# The admin Messages page: conversations of the signed-in admin with who is waiting for a reply,
+# reply-time numbers, a facts panel about the other person, and saved replies.
+INBOX_DEFAULT_REPLIES = [
+    'Thanks for your message. I am looking into it now.',
+    'Your payment is being checked. You will get a notification once it is confirmed.',
+    'Thanks, it is fixed now. Please refresh the page and try again.',
+    'Could you send a screenshot of what you see? It helps us fix it faster.',
+    'Glad we could help. Have a great day of learning!',
+]
+INBOX_ONLINE_SECONDS = 300
+
+
+def _inbox_tables(conn):
+    _messages_tables(conn)
+    conn.execute('''CREATE TABLE IF NOT EXISTS admin_saved_replies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, admin_id INTEGER NOT NULL, text TEXT NOT NULL, created_at TEXT)''')
+
+
+def _inbox_last_seen(conn, ids):
+    if not ids:
+        return {}
+    marks = ','.join('?' * len(ids))
+    out = {}
+    try:
+        for uid, seen in conn.execute(f'SELECT user_id, MAX({_dt("last_seen")}) FROM account_devices WHERE user_id IN ({marks}) '
+                                      'AND COALESCE(ended, 0) = 0 GROUP BY user_id', list(ids)).fetchall():
+            out[uid] = _an_iso(seen)
+    except sqlite3.Error:
+        pass
+    return out
+
+
+def _inbox_online(iso):
+    d = _parse_any(iso)
+    return bool(d and (_utc_now() - d).total_seconds() < INBOX_ONLINE_SECONDS)
+
+
+@app.route('/api/admin/inbox')
+def admin_inbox():
+    """GET ?q= &filter=all|unread|waiting|student|parent|teacher"""
+    g = _admin_guard()
+    if g:
+        return g
+    me = session['user_id']
+    q = (request.args.get('q') or '').strip().lower()[:80]
+    flt = request.args.get('filter') or 'all'
+    conn = _links_db()
+    try:
+        _inbox_tables(conn)
+        conn.commit()
+        rows = conn.execute('''SELECT id, sender_id, receiver_id, text, timestamp, is_read, COALESCE(kind, 'text') AS kind
+                               FROM messages WHERE COALESCE(is_broadcast, 0) = 0 AND (sender_id = ? OR receiver_id = ?)
+                               ORDER BY id ASC''', (me, me)).fetchall()
+        threads = {}
+        for r in rows:
+            other = r['receiver_id'] if r['sender_id'] == me else r['sender_id']
+            if other == me:
+                continue
+            threads.setdefault(other, []).append(r)
+        ids = list(threads)
+        users = {}
+        if ids:
+            marks = ','.join('?' * len(ids))
+            for u in conn.execute(f"SELECT id, firstname, lastname, avatar_filename, COALESCE(role, 'student') AS role FROM users WHERE id IN ({marks})", ids):
+                users[u['id']] = u
+        seen = _inbox_last_seen(conn, ids)
+        now = _utc_now()
+        week = now - timedelta(days=7)
+        month = now - timedelta(days=30)
+        convs, reply_secs, replied_7, replied_people = [], [], 0, set()
+        for other, msgs in threads.items():
+            u = users.get(other)
+            name = _full_name(u['firstname'], u['lastname'], 'Deleted account') if u else 'Deleted account'
+            last = msgs[-1]
+            unread = sum(1 for m in msgs if m['sender_id'] == other and not m['is_read'])
+            waiting_since = None
+            # reply-time numbers: first admin reply after a run of their messages
+            pending = None
+            for m in msgs:
+                t = _parse_any(m['timestamp'])
+                if m['sender_id'] == other:
+                    if pending is None:
+                        pending = t
+                else:
+                    if t and t >= week:
+                        replied_7 += 1
+                        replied_people.add(other)
+                    if pending and t and t >= month:
+                        reply_secs.append((t - pending).total_seconds())
+                    pending = None
+            if last['sender_id'] == other and last['kind'] == 'text':
+                waiting_since = _an_iso(pending.isoformat() if pending else last['timestamp'])
+            text = last['text'] or ''
+            c = {'id': other, 'name': name, 'role': u['role'] if u else 'student',
+                 'avatar_url': get_avatar_url(other, u['avatar_filename']) if u else None,
+                 'last': text[:140], 'last_from_me': last['sender_id'] == me, 'last_kind': last['kind'],
+                 'last_at': _an_iso(last['timestamp']), 'unread': unread, 'waiting_since': waiting_since,
+                 'count': len(msgs), 'last_seen': seen.get(other), 'online': _inbox_online(seen.get(other))}
+            if q and q not in name.lower() and not any(q in (m['text'] or '').lower() for m in msgs):
+                continue
+            if q:
+                hit = next((m['text'] for m in reversed(msgs) if q in (m['text'] or '').lower()), None)
+                if hit and q not in name.lower():
+                    c['match'] = hit[:140]
+            convs.append(c)
+        all_convs = convs
+        counts = {'all': len(all_convs), 'unread': sum(1 for c in all_convs if c['unread']),
+                  'waiting': sum(1 for c in all_convs if c['waiting_since']),
+                  'student': sum(1 for c in all_convs if c['role'] == 'student'),
+                  'parent': sum(1 for c in all_convs if c['role'] == 'parent'),
+                  'teacher': sum(1 for c in all_convs if c['role'] == 'teacher')}
+        if flt == 'unread':
+            convs = [c for c in convs if c['unread']]
+        elif flt == 'waiting':
+            convs = [c for c in convs if c['waiting_since']]
+        elif flt in ('student', 'parent', 'teacher'):
+            convs = [c for c in convs if c['role'] == flt]
+        convs.sort(key=lambda c: c['last_at'] or '', reverse=True)
+        waits = sorted(c['waiting_since'] for c in all_convs if c['waiting_since'])
+        reply_secs.sort()
+        median = reply_secs[len(reply_secs) // 2] if reply_secs else None
+        kpis = {'unread': sum(c['unread'] for c in all_convs), 'unread_convs': counts['unread'],
+                'waiting': counts['waiting'], 'oldest_wait': waits[0] if waits else None,
+                'replied_7': replied_7, 'replied_people_7': len(replied_people),
+                'median_reply_min': round(median / 60) if median is not None else None, 'reply_samples': len(reply_secs)}
+        return jsonify({'success': True, 'conversations': convs[:300], 'counts': counts, 'kpis': kpis, 'me': me})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/inbox/person/<int:uid>')
+def admin_inbox_person(uid):
+    """Facts about the other person, for the panel beside the chat."""
+    g = _admin_guard()
+    if g:
+        return g
+    me = session['user_id']
+    conn = _links_db()
+    try:
+        _inbox_tables(conn)
+        _mod_tables(conn)
+        u = conn.execute("SELECT id, firstname, lastname, avatar_filename, COALESCE(role, 'student') AS role, plan, plan_expires_at "
+                         'FROM users WHERE id = ?', (uid,)).fetchone()
+        if not u:
+            return jsonify({'success': False, 'message': 'This account no longer exists.'}), 404
+
+        def one(sql, args):
+            try:
+                r = conn.execute(sql, args).fetchone()
+                return (r[0] or 0) if r else 0
+            except sqlite3.Error:
+                return 0
+
+        def rows(sql, args):
+            try:
+                return conn.execute(sql, args).fetchall()
+            except sqlite3.Error:
+                return []
+        role = u['role']
+        joined = _user_joined(conn, uid)
+        seen = _inbox_last_seen(conn, [uid]).get(uid)
+        p = {'id': uid, 'name': _full_name(u['firstname'], u['lastname'], 'Deleted account'), 'role': role,
+             'avatar_url': get_avatar_url(uid, u['avatar_filename']), 'joined': _iso(joined) if joined else None,
+             'last_seen': seen, 'online': _inbox_online(seen),
+             'plan': (u['plan'] or None) if role == 'student' else None, 'plan_expires': _an_iso(u['plan_expires_at']) if role == 'student' else None,
+             'messages': one('SELECT COUNT(*) FROM messages WHERE COALESCE(is_broadcast, 0) = 0 AND ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))',
+                             (uid, me, me, uid))}
+        if role == 'parent':
+            p['children'] = [{'id': r[0], 'name': _full_name(r[1], r[2], 'Learner'), 'plan': r[3] or None}
+                             for r in rows('''SELECT u.id, u.firstname, u.lastname, u.plan FROM parent_links pl JOIN users u ON u.id = pl.student_id
+                                              WHERE pl.parent_id = ? AND pl.status = 'active' ORDER BY u.firstname''', (uid,))]
+        elif role == 'student':
+            p['parents'] = [{'id': r[0], 'name': _full_name(r[1], r[2], 'Parent')}
+                            for r in rows('''SELECT u.id, u.firstname, u.lastname FROM parent_links pl JOIN users u ON u.id = pl.parent_id
+                                             WHERE pl.student_id = ? AND pl.status = 'active' ORDER BY u.firstname''', (uid,))]
+        alerts = []
+        susp = _suspension(conn, uid)
+        if susp:
+            alerts.append({'level': 'bad', 'icon': 'fa-user-lock', 'text': 'Account suspended' + (f": {susp['reason']}" if susp['reason'] else ''), 'href': f'/admin-users?id={uid}'})
+        n = one("SELECT COUNT(*) FROM plan_payments WHERE status = 'pending' AND (parent_id = ? OR student_id = ?)", (uid, uid))
+        n += one("SELECT COUNT(*) FROM tutoring_payments WHERE status = 'pending' AND parent_id = ?", (uid,))
+        if n:
+            alerts.append({'level': 'warn', 'icon': 'fa-receipt', 'text': f"{n} payment{'s' if n != 1 else ''} waiting to be checked", 'href': '/admin-payments'})
+        for t in rows("SELECT id, subject FROM complaints WHERE user_id = ? AND COALESCE(status, 'pending') != 'resolved' ORDER BY id DESC LIMIT 3", (uid,)):
+            alerts.append({'level': 'info', 'icon': 'fa-headset', 'text': f"Open support ticket: “{(t[1] or 'No subject')[:60]}”", 'href': '/admin_support'})
+        n = one("SELECT COUNT(*) FROM message_reports WHERE reported_id = ? AND COALESCE(status, 'open') = 'open'", (uid,))
+        if n:
+            alerts.append({'level': 'bad', 'icon': 'fa-flag', 'text': f"Reported by others {n} time{'s' if n != 1 else ''} (open)", 'href': f'/admin-users?id={uid}'})
+        n = one('SELECT COUNT(*) FROM mod_warnings WHERE user_id = ?', (uid,))
+        if n:
+            alerts.append({'level': 'warn', 'icon': 'fa-triangle-exclamation', 'text': f"{n} community warning{'s' if n != 1 else ''}", 'href': '/admin-reviews'})
+        if one('SELECT 1 FROM message_blocks WHERE blocker_id = ? AND blocked_id = ?', (uid, me)):
+            alerts.append({'level': 'bad', 'icon': 'fa-ban', 'text': 'They blocked you, so they won’t get new messages from you', 'href': None})
+        p['alerts'] = alerts
+        return jsonify({'success': True, 'person': p})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/inbox/replies', methods=['GET', 'POST'])
+def admin_inbox_replies():
+    """Your saved replies. GET lists them (the starter set if you have none yet). POST {"text"} adds one."""
+    g = _admin_guard()
+    if g:
+        return g
+    me = session['user_id']
+    conn = _links_db()
+    try:
+        _inbox_tables(conn)
+        mine = conn.execute('SELECT id, text FROM admin_saved_replies WHERE admin_id = ? ORDER BY id', (me,)).fetchall()
+        _mod_tables(conn)
+        if not mine and not conn.execute('SELECT 1 FROM mod_settings WHERE key = ?', (f'replies_seeded:{me}',)).fetchone():
+            for t in INBOX_DEFAULT_REPLIES:
+                conn.execute('INSERT INTO admin_saved_replies (admin_id, text, created_at) VALUES (?, ?, ?)', (me, t, _iso(_utc_now())))
+            conn.execute('INSERT OR REPLACE INTO mod_settings (key, value) VALUES (?, ?)', (f'replies_seeded:{me}', '1'))
+            conn.commit()
+            mine = conn.execute('SELECT id, text FROM admin_saved_replies WHERE admin_id = ? ORDER BY id', (me,)).fetchall()
+        if request.method == 'POST':
+            text = re.sub(r'\s+', ' ', str((request.get_json(silent=True) or {}).get('text') or '')).strip()
+            if len(text) < 3:
+                return jsonify({'success': False, 'message': 'Write the reply first.'}), 400
+            if len(text) > 500:
+                return jsonify({'success': False, 'message': 'Keep a saved reply under 500 characters.'}), 400
+            if len(mine) >= 30:
+                return jsonify({'success': False, 'message': 'You can keep up to 30 saved replies. Delete one first.'}), 400
+            conn.execute('INSERT INTO admin_saved_replies (admin_id, text, created_at) VALUES (?, ?, ?)', (me, text, _iso(_utc_now())))
+            conn.commit()
+            mine = conn.execute('SELECT id, text FROM admin_saved_replies WHERE admin_id = ? ORDER BY id', (me,)).fetchall()
+        return jsonify({'success': True, 'replies': [{'id': r['id'], 'text': r['text']} for r in mine]})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/inbox/replies/<int:rid>', methods=['DELETE'])
+def admin_inbox_reply_delete(rid):
+    g = _admin_guard()
+    if g:
+        return g
+    conn = _links_db()
+    try:
+        _inbox_tables(conn)
+        conn.execute('DELETE FROM admin_saved_replies WHERE id = ? AND admin_id = ?', (rid, session['user_id']))
+        conn.commit()
+        return jsonify({'success': True})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/inbox/find')
+def admin_inbox_find():
+    """People to start a conversation with: ?q= (name or email, at least 2 letters)."""
+    g = _admin_guard()
+    if g:
+        return g
+    q = (request.args.get('q') or '').strip()[:60]
+    if len(q) < 2:
+        return jsonify({'success': True, 'people': []})
+    conn = _links_db()
+    try:
+        like = f'%{q.lower()}%'
+        rows = conn.execute("""SELECT id, firstname, lastname, avatar_filename, COALESCE(role, 'student') AS role FROM users
+                               WHERE id != ? AND (LOWER(COALESCE(firstname, '') || ' ' || COALESCE(lastname, '')) LIKE ? OR LOWER(COALESCE(email, '')) LIKE ?)
+                               ORDER BY firstname, lastname LIMIT 12""", (session['user_id'], like, like)).fetchall()
+        return jsonify({'success': True, 'people': [{'id': r['id'], 'name': _full_name(r['firstname'], r['lastname'], 'No name'), 'role': r['role'],
+                                                     'avatar_url': get_avatar_url(r['id'], r['avatar_filename'])} for r in rows]})
+    finally:
+        conn.close()
+
+
+# ----- support (admin tickets) -----
+# The admin Support page. A ticket's history lives in complaints.description: the first message, then blocks
+# "--- Added <time> (Nairobi time) ---" (the person) and "--- Support replied <time> (Nairobi time) ---" (an earlier
+# reply), and the newest reply in complaints.response. It is shown as one conversation, with admins' private notes
+# and status changes (support_notes, support_events) mixed in.
+SUPPORT_PRIORITY_ORDER = {'urgent': 0, 'high': 1, 'medium': 2, 'low': 3}
+_SUPPORT_SPLIT = re.compile(r'\n*--- (Added|Support replied) ([^()\n]*?) \(Nairobi time\) ---\n')
+
+
+def _support_tables(conn):
+    _complaints_columns(conn)
+    conn.execute('''CREATE TABLE IF NOT EXISTS support_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id INTEGER NOT NULL, admin_id INTEGER, text TEXT NOT NULL, created_at TEXT)''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS support_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id INTEGER NOT NULL, kind TEXT NOT NULL, detail TEXT, admin_id INTEGER, created_at TEXT)''')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_support_notes_t ON support_notes (ticket_id)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_support_events_t ON support_events (ticket_id)')
+
+
+def _support_stamp(text):
+    """'10 Nov 2026, 13:45' in Nairobi time -> UTC ISO string."""
+    try:
+        d = datetime.strptime(text.strip(), '%d %b %Y, %H:%M') - timedelta(hours=3)
+        return _iso(d.replace(tzinfo=timezone.utc))
+    except ValueError:
+        return None
+
+
+def _support_thread(desc, created_at, response, response_date, added_times=None):
+    """The person's messages and support's replies, oldest first. added_times: exact times of the person's
+    additions (the text only keeps the minute), used in order when known."""
+    parts = _SUPPORT_SPLIT.split(desc or '')
+    out = [{'who': 'person', 'kind': 'first', 'text': parts[0].strip(), 'at': _an_iso(created_at)}]
+    n_added = sum(1 for i in range(1, len(parts) - 2, 3) if parts[i] == 'Added')
+    exact = list(added_times or [])[-n_added:] if n_added else []
+    exact = [None] * (n_added - len(exact)) + exact
+    k = 0
+    for i in range(1, len(parts) - 2, 3):
+        kind, stamp, text = parts[i], parts[i + 1], parts[i + 2].strip()
+        at = _support_stamp(stamp)
+        if kind == 'Added':
+            if exact[k]:
+                at = exact[k]
+            elif at:
+                at = _iso(_parse_any(at) + timedelta(seconds=59))
+            k += 1
+        prev = out[-1]['at'] or ''
+        if not at or at < prev:
+            at = prev
+        out.append({'who': 'person' if kind == 'Added' else 'support', 'kind': 'added' if kind == 'Added' else 'reply',
+                    'text': text, 'at': at})
+    if response:
+        out.append({'who': 'support', 'kind': 'reply', 'text': response, 'at': _an_iso(response_date)})
+    return out
+
+
+def _support_added_times(conn, tid=None):
+    sql = "SELECT ticket_id, created_at FROM support_events WHERE kind = 'added'" + (' AND ticket_id = ?' if tid else '') + ' ORDER BY id'
+    out = {}
+    for t, at in conn.execute(sql, (tid,) if tid else ()).fetchall():
+        out.setdefault(t, []).append(at)
+    return out
+
+
+def _support_row_facts(r, added=None):
+    """Works out where a ticket stands from its thread."""
+    th = _support_thread(r['description'], r['created_at'], r['response'], r['response_date'], (added or {}).get(r['id']))
+    replies = [e for e in th if e['who'] == 'support']
+    last_person = max((e['at'] or '' for e in th if e['who'] == 'person'), default='')
+    last_support = max((e['at'] or '' for e in replies), default='')
+    resolved = r['status'] == 'resolved'
+    needs = not resolved and (not replies or last_person > last_support)
+    waiting_since = None
+    if needs:
+        later = [e['at'] for e in th if e['who'] == 'person' and (e['at'] or '') > last_support and e['at']]
+        waiting_since = min(later) if later else _an_iso(r['created_at'])
+    last = max(th, key=lambda e: e['at'] or '')
+    return {'thread': th, 'needs': needs, 'waiting_on_person': not resolved and not needs, 'waiting_since': waiting_since,
+            'first_reply_at': min((e['at'] for e in replies if e['at']), default=None),
+            'updated_by_person': bool(replies) and needs, 'replies': len(replies),
+            'last_at': max(last_person, last_support) or _an_iso(r['created_at']),
+            'preview': (('You: ' if last['who'] == 'support' else ('Added: ' if last['kind'] == 'added' else '')) + (last['text'] or ''))[:160]}
+
+
+def _support_rows(conn, where='', args=()):
+    return conn.execute(f'''SELECT c.id, c.user_id, c.subject, c.description, c.category, c.priority, c.status, c.is_read,
+                                   c.response, c.response_date, c.created_at, c.user_seen_reply,
+                                   u.firstname, u.lastname, u.email, COALESCE(u.role, 'student') AS role
+                            FROM complaints c LEFT JOIN users u ON u.id = c.user_id {where}
+                            ORDER BY c.id DESC''', args).fetchall()
+
+
+def _support_item(r, f):
+    return {'id': r['id'], 'user_id': r['user_id'], 'subject': r['subject'] or 'No subject', 'category': r['category'] or 'other',
+            'priority': r['priority'] or 'medium', 'status': r['status'] or 'pending', 'new': not r['is_read'],
+            'name': _full_name(r['firstname'], r['lastname'], 'Deleted account'), 'role': r['role'], 'email': r['email'] or '',
+            'created_at': _an_iso(r['created_at']), 'needs': f['needs'], 'waiting_on_person': f['waiting_on_person'],
+            'waiting_since': f['waiting_since'], 'updated_by_person': f['updated_by_person'], 'replies': f['replies'],
+            'last_at': f['last_at'], 'preview': f['preview'],
+            'seen_reply': bool(r['response'] and r['user_seen_reply'] and _an_iso(r['user_seen_reply']) >= (_an_iso(r['response_date']) or ''))}
+
+
+@app.route('/api/admin/support')
+def admin_support_list():
+    """GET ?tab=needs|waiting|resolved|all &q= &category= &priority= &sort=urgent|old|new"""
+    g = _admin_guard()
+    if g:
+        return g
+    tab = request.args.get('tab') or 'needs'
+    q = (request.args.get('q') or '').strip().lower().lstrip('#')
+    cat = request.args.get('category') or ''
+    pri = request.args.get('priority') or ''
+    sort = request.args.get('sort') or 'urgent'
+    conn = _links_db()
+    try:
+        _support_tables(conn)
+        conn.commit()
+        items, firsts = [], []
+        month = _iso(_utc_now() - timedelta(days=30))
+        added = _support_added_times(conn)
+        for r in _support_rows(conn):
+            f = _support_row_facts(r, added)
+            x = _support_item(r, f)
+            x['_text'] = ' '.join(e['text'] or '' for e in f['thread']).lower()
+            items.append(x)
+            if f['first_reply_at'] and x['created_at'] and x['created_at'] >= month:
+                d1, d2 = _parse_any(x['created_at']), _parse_any(f['first_reply_at'])
+                if d1 and d2 and d2 >= d1:
+                    firsts.append((d2 - d1).total_seconds())
+        week = _iso(_utc_now() - timedelta(days=7))
+        ev = {k: n for k, n in conn.execute('SELECT kind, COUNT(*) FROM support_events WHERE created_at >= ? GROUP BY kind', (week,)).fetchall()}
+        firsts.sort()
+        needs = [x for x in items if x['needs']]
+        waits = sorted(x['waiting_since'] for x in needs if x['waiting_since'])
+        urgent = [x for x in items if x['status'] != 'resolved' and x['priority'] == 'urgent']
+        open_ = [x for x in items if x['status'] != 'resolved']
+        kpis = {'needs': len(needs), 'oldest_wait': waits[0] if waits else None,
+                'urgent': len(urgent), 'urgent_cats': sorted({x['category'] for x in urgent}),
+                'open': len(open_), 'waiting_on_person': sum(1 for x in items if x['waiting_on_person']),
+                'first_reply_min': round(firsts[len(firsts) // 2] / 60) if firsts else None, 'first_reply_samples': len(firsts),
+                'resolved_7': ev.get('resolved', 0), 'reopened_7': ev.get('reopened', 0), 'total': len(items)}
+        counts = {'needs': len(needs), 'waiting': kpis['waiting_on_person'], 'resolved': sum(1 for x in items if x['status'] == 'resolved'), 'all': len(items)}
+        pool = {'needs': needs, 'waiting': [x for x in items if x['waiting_on_person']],
+                'resolved': [x for x in items if x['status'] == 'resolved']}.get(tab, items)
+        if cat:
+            pool = [x for x in pool if x['category'] == cat]
+        if pri:
+            pool = [x for x in pool if x['priority'] == pri]
+        if q:
+            pool = [x for x in pool if q == str(x['id']) or q.lstrip('0') == str(x['id']) or q in x['subject'].lower()
+                    or q in x['name'].lower() or q in x['email'].lower() or q in x['_text']]
+        if sort == 'old':
+            pool.sort(key=lambda x: x['waiting_since'] or x['last_at'] or '')
+        elif sort == 'new':
+            pool.sort(key=lambda x: x['last_at'] or '', reverse=True)
+        else:
+            pool.sort(key=lambda x: x['waiting_since'] or x['last_at'] or '')
+            pool.sort(key=lambda x: (x['status'] == 'resolved', SUPPORT_PRIORITY_ORDER.get(x['priority'], 2)))
+            if tab in ('resolved', 'all'):
+                pool.sort(key=lambda x: x['status'] == 'resolved')
+        cats = sorted({x['category'] for x in items} | {'technical', 'billing', 'payments', 'account', 'safety', 'other'})
+        for x in pool:
+            x.pop('_text', None)
+        return jsonify({'success': True, 'tickets': pool[:400], 'total': len(pool), 'counts': counts, 'kpis': kpis, 'categories': cats})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/support/<int:tid>')
+def admin_support_ticket(tid):
+    """One ticket: the whole conversation with private notes and status changes, and the sender's other tickets.
+    Opening it marks it as read."""
+    g = _admin_guard()
+    if g:
+        return g
+    conn = _links_db()
+    try:
+        _support_tables(conn)
+        rows = _support_rows(conn, 'WHERE c.id = ?', (tid,))
+        if not rows:
+            return jsonify({'success': False, 'message': 'This ticket no longer exists.'}), 404
+        r = rows[0]
+        conn.execute('UPDATE complaints SET is_read = 1 WHERE id = ?', (tid,))
+        conn.commit()
+        f = _support_row_facts(r, _support_added_times(conn, tid))
+        t = _support_item(r, f)
+        events = [dict(e, type='msg') for e in f['thread']]
+        for n in conn.execute('''SELECT n.id, n.text, n.created_at, u.firstname, u.lastname FROM support_notes n
+                                 LEFT JOIN users u ON u.id = n.admin_id WHERE n.ticket_id = ? ORDER BY n.id''', (tid,)).fetchall():
+            events.append({'type': 'note', 'id': n['id'], 'text': n['text'], 'at': n['created_at'], 'by': _full_name(n['firstname'], n['lastname'], 'An admin')})
+        for e in conn.execute('''SELECT e.kind, e.detail, e.created_at, u.firstname, u.lastname FROM support_events e
+                                 LEFT JOIN users u ON u.id = e.admin_id WHERE e.ticket_id = ? AND e.kind != 'added' ORDER BY e.id''', (tid,)).fetchall():
+            events.append({'type': 'event', 'kind': e['kind'], 'text': e['detail'] or '', 'at': e['created_at'],
+                           'by': _full_name(e['firstname'], e['lastname'], '') if e['firstname'] or e['lastname'] else ''})
+        events.sort(key=lambda e: (e['at'] or '', 0 if e['type'] == 'msg' else 1))
+        t['events'] = events
+        t['others'] = [{'id': o['id'], 'subject': o['subject'] or 'No subject', 'status': o['status'] or 'pending', 'created_at': _an_iso(o['created_at'])}
+                       for o in conn.execute('SELECT id, subject, status, created_at FROM complaints WHERE user_id = ? AND id != ? ORDER BY id DESC LIMIT 8',
+                                             (r['user_id'], tid)).fetchall()]
+        return jsonify({'success': True, 'ticket': t})
+    finally:
+        conn.close()
+
+
+def _support_event(conn, tid, kind, detail=''):
+    conn.execute('INSERT INTO support_events (ticket_id, kind, detail, admin_id, created_at) VALUES (?, ?, ?, ?, ?)',
+                 (tid, kind, detail, session.get('user_id'), _iso(_utc_now())))
+
+
+@app.route('/api/admin/support/<int:tid>', methods=['POST'])
+def admin_support_action(tid):
+    """{"action": "reply", "text", "resolve": bool} | {"action": "note", "text"} | {"action": "resolve"} | {"action": "reopen"}
+       | {"action": "set", "priority"?, "category"?}"""
+    g = _admin_guard()
+    if g:
+        return g
+    d = request.get_json(silent=True) or {}
+    action = d.get('action') or ''
+    text = str(d.get('text') or '').strip()
+    conn = _links_db()
+    try:
+        _support_tables(conn)
+        r = conn.execute('SELECT * FROM complaints WHERE id = ?', (tid,)).fetchone()
+        if not r:
+            return jsonify({'success': False, 'message': 'This ticket no longer exists.'}), 404
+        subject = r['subject'] or 'your ticket'
+        if action == 'reply':
+            if len(text) < 2:
+                return jsonify({'success': False, 'message': 'Write your reply first.'}), 400
+            if len(text) > 5000:
+                return jsonify({'success': False, 'message': 'Please keep a reply under 5,000 characters.'}), 400
+            desc = r['description'] or ''
+            if r['response']:
+                when_ = to_iso_utc(r['response_date']) or ''
+                try:
+                    stamp = (datetime.fromisoformat(when_.replace('Z', '+00:00')) + timedelta(hours=3)).strftime('%d %b %Y, %H:%M')
+                except ValueError:
+                    stamp = ''
+                desc = f"{desc}\n\n--- Support replied {stamp} (Nairobi time) ---\n{r['response']}"[:20000]
+            resolve = bool(d.get('resolve'))
+            was_resolved = r['status'] == 'resolved'
+            new_status = 'resolved' if resolve or was_resolved else 'in-progress'
+            conn.execute("UPDATE complaints SET description = ?, response = ?, response_date = CURRENT_TIMESTAMP, status = ?, is_read = 1 WHERE id = ?",
+                         (desc, text, new_status, tid))
+            create_notification(conn, r['user_id'], (f'Resolved: {subject}' if resolve else f'Support replied: {subject}')[:120], text[:120],
+                                icon='fa-check-circle' if resolve else 'fa-headset', color='green' if resolve else 'blue')
+            if resolve and not was_resolved:
+                _support_event(conn, tid, 'resolved', 'Resolved with a reply')
+            admin_log(conn, 'Replied to ticket' + (' and resolved it' if resolve else ''), 'ticket', tid, text[:200])
+        elif action == 'note':
+            if len(text) < 2:
+                return jsonify({'success': False, 'message': 'Write the note first.'}), 400
+            if len(text) > 3000:
+                return jsonify({'success': False, 'message': 'Please keep a note under 3,000 characters.'}), 400
+            conn.execute('INSERT INTO support_notes (ticket_id, admin_id, text, created_at) VALUES (?, ?, ?, ?)',
+                         (tid, session.get('user_id'), text, _iso(_utc_now())))
+        elif action == 'resolve':
+            if r['status'] == 'resolved':
+                return jsonify({'success': False, 'message': 'This ticket is already resolved.'}), 409
+            conn.execute("UPDATE complaints SET status = 'resolved', is_read = 1 WHERE id = ?", (tid,))
+            create_notification(conn, r['user_id'], f'Resolved: {subject}'[:120], 'Your ticket has been marked as resolved.',
+                                icon='fa-check-circle', color='green')
+            _support_event(conn, tid, 'resolved', 'Resolved without a reply')
+            admin_log(conn, 'Resolved ticket', 'ticket', tid, subject[:200])
+        elif action == 'reopen':
+            if r['status'] != 'resolved':
+                return jsonify({'success': False, 'message': 'This ticket is already open.'}), 409
+            conn.execute("UPDATE complaints SET status = 'in-progress' WHERE id = ?", (tid,))
+            _support_event(conn, tid, 'reopened', 'Reopened by an admin')
+            admin_log(conn, 'Reopened ticket', 'ticket', tid, subject[:200])
+        elif action == 'set':
+            changes = []
+            p, c = d.get('priority'), d.get('category')
+            if p:
+                if p not in VALID_COMPLAINT_PRIORITIES:
+                    return jsonify({'success': False, 'message': 'Unknown priority.'}), 400
+                if p != r['priority']:
+                    conn.execute('UPDATE complaints SET priority = ? WHERE id = ?', (p, tid))
+                    changes.append(f"Priority: {r['priority'] or 'medium'} → {p}")
+            if c:
+                if c not in VALID_COMPLAINT_CATEGORIES:
+                    return jsonify({'success': False, 'message': 'Unknown category.'}), 400
+                if c != r['category']:
+                    conn.execute('UPDATE complaints SET category = ? WHERE id = ?', (c, tid))
+                    changes.append(f"Category: {r['category'] or 'other'} → {c}")
+            for ch in changes:
+                _support_event(conn, tid, 'changed', ch)
+            if changes:
+                admin_log(conn, 'Changed ticket', 'ticket', tid, '; '.join(changes))
+        else:
+            return jsonify({'success': False, 'message': 'Unknown action.'}), 400
+        conn.commit()
+        return jsonify({'success': True})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/support/export.csv')
+def admin_support_export():
+    g = _admin_guard()
+    if g:
+        return g
+    import csv as _csv
+    import io as _io
+    conn = _links_db()
+    try:
+        _support_tables(conn)
+        buf = _io.StringIO()
+        w = _csv.writer(buf)
+        w.writerow(['Ticket', 'Subject', 'From', 'Role', 'Email', 'Category', 'Priority', 'Status', 'Sent (UTC)', 'First reply (UTC)',
+                    'Replies', 'Needs a reply', 'Last activity (UTC)'])
+        added = _support_added_times(conn)
+        for r in _support_rows(conn):
+            f = _support_row_facts(r, added)
+            x = _support_item(r, f)
+            row = [x['id'], x['subject'], x['name'], x['role'], x['email'], x['category'], x['priority'], x['status'], x['created_at'] or '',
+                   f['first_reply_at'] or '', x['replies'], 'yes' if x['needs'] else 'no', x['last_at'] or '']
+            w.writerow([("'" + v) if isinstance(v, str) and v[:1] in '=+-@' else v for v in row])
+        admin_log(conn, 'Exported tickets', 'ticket', None, '')
+        conn.commit()
+        return Response('﻿' + buf.getvalue(), mimetype='text/csv',
+                        headers={'Content-Disposition': f"attachment; filename=eschool-tickets-{_utc_now().strftime('%Y-%m-%d')}.csv"})
+    finally:
+        conn.close()
+
+
 # ----- announcements -----
-ANNOUNCE_AUDIENCES = {'all': 'Everyone', 'student': 'Learners', 'teacher': 'Teachers', 'parent': 'Parents'}
+ANNOUNCE_AUDIENCES = {'all': 'Everyone', 'student': 'Learners', 'teacher': 'Teachers', 'parent': 'Parents', 'person': 'One person'}
+
+
+# kind -> (bell icon, bell colour)
+ANNOUNCE_KINDS = {'news': ('fa-bullhorn', 'blue'), 'content': ('fa-book-open', 'orange'),
+                  'reminder': ('fa-bell', 'green'), 'important': ('fa-triangle-exclamation', 'red'),
+                  'warning': ('fa-scale-balanced', 'red')}     # a notice to one person, e.g. after a confirmed report
+# pages an announcement button may open
+ANNOUNCE_PAGES = {'/dashboard': 'Dashboard', '/courses': 'Courses', '/resourses': 'Resources', '/live': 'Live classes',
+                  '/strategies': 'Learning strategies', '/careerD': 'Career growth', '/schedule': 'Schedule', '/progres': 'Progress',
+                  '/plans': 'Plans', '/teachers': 'Teachers', '/leaderboard': 'Leaderboard', '/achievements': 'Achievements',
+                  '/support': 'Help & Support', '/settings': 'Settings'}
+
+
+def _announce_columns(conn):
+    cols = {r[1] for r in conn.execute('PRAGMA table_info(announcements)').fetchall()}
+    if 'kind' not in cols:
+        conn.execute("ALTER TABLE announcements ADD COLUMN kind TEXT DEFAULT 'news'")
+    if 'link_label' not in cols:
+        conn.execute('ALTER TABLE announcements ADD COLUMN link_label TEXT')
+    if 'target_id' not in cols:
+        conn.execute('ALTER TABLE announcements ADD COLUMN target_id INTEGER')
+
+
+def _announce_reach(conn, me):
+    """Who each group really reaches: learners, teachers and parents (not admins), not deactivated,
+    and not people who switched announcements off."""
+    _notify_prefs_table(conn)
+    off = {r[0] for r in conn.execute("SELECT user_id FROM notification_prefs WHERE category = 'announcements' AND enabled = 0").fetchall()}
+    gone = deactivated_user_ids(conn)
+    out = {k: {'ids': [], 'off': 0} for k in ('student', 'teacher', 'parent')}
+    for uid, role in conn.execute("SELECT id, COALESCE(role, 'student') FROM users WHERE id != ?", (me,)).fetchall():
+        if role not in out or uid in gone:
+            continue
+        if uid in off:
+            out[role]['off'] += 1
+        else:
+            out[role]['ids'].append(uid)
+    out['all'] = {'ids': out['student']['ids'] + out['teacher']['ids'] + out['parent']['ids'],
+                  'off': out['student']['off'] + out['teacher']['off'] + out['parent']['off']}
+    return out
 
 
 @app.route('/api/admin/announcements', methods=['GET', 'POST'])
 def admin_announcements():
+    """GET: history, how many each group reaches, pages a button can open.
+    POST {audience: all|student|teacher|parent, kind: news|content|reminder|important, title, message, link?, link_label?}"""
     g = _admin_guard()
     if g:
         return g
     conn = _links_db()
     try:
         _admin_tables(conn)
+        _announce_columns(conn)
+        reach = _announce_reach(conn, session['user_id'])
         if request.method == 'GET':
-            rows = conn.execute('''SELECT a.*, u.firstname, u.lastname,
+            rows = conn.execute('''SELECT a.*, u.firstname, u.lastname, t.firstname AS tf, t.lastname AS tl, t.role AS trole,
                                     (SELECT COUNT(*) FROM notifications n WHERE n.action = 'announcement' AND n.ref_id = a.id AND n.is_read = 1) AS seen
-                                   FROM announcements a LEFT JOIN users u ON u.id = a.admin_id ORDER BY a.id DESC LIMIT 100''').fetchall()
-            sizes = {k: conn.execute("SELECT COUNT(*) FROM users WHERE COALESCE(role, 'student') = ?", (k,)).fetchone()[0] for k in ('student', 'teacher', 'parent')}
-            sizes['all'] = sum(sizes.values())
-            return jsonify({'success': True, 'sizes': sizes, 'announcements': [{
-                'id': r['id'], 'audience': r['audience'], 'audience_label': ANNOUNCE_AUDIENCES.get(r['audience'], r['audience']),
-                'title': r['title'], 'message': r['message'], 'link': r['link'], 'recipients': r['recipients'], 'seen': r['seen'],
-                'by': _full_name(r['firstname'], r['lastname'], 'Admin'), 'created_at': r['created_at'], 'withdrawn_at': r['withdrawn_at']} for r in rows]})
+                                   FROM announcements a LEFT JOIN users u ON u.id = a.admin_id LEFT JOIN users t ON t.id = a.target_id
+                                   ORDER BY a.id DESC LIMIT 100''').fetchall()
+            conn.commit()
+            return jsonify({'success': True,
+                            'sizes': {k: len(v['ids']) for k, v in reach.items()}, 'off': {k: v['off'] for k, v in reach.items()},
+                            'pages': [{'path': p, 'label': l} for p, l in ANNOUNCE_PAGES.items()],
+                            'announcements': [{
+                                'id': r['id'], 'audience': r['audience'], 'target_id': r['target_id'],
+                                'target_name': _full_name(r['tf'], r['tl'], 'Deleted account') if r['audience'] == 'person' else None,
+                                'target_role': (r['trole'] or 'student') if r['audience'] == 'person' else None,
+                                'audience_label': _full_name(r['tf'], r['tl'], 'Deleted account') if r['audience'] == 'person' else ANNOUNCE_AUDIENCES.get(r['audience'], r['audience']),
+                                'kind': r['kind'] or 'news', 'title': r['title'], 'message': r['message'], 'link': r['link'], 'link_label': r['link_label'],
+                                'recipients': r['recipients'], 'seen': r['seen'], 'by': _full_name(r['firstname'], r['lastname'], 'Admin'),
+                                'created_at': _an_iso(r['created_at']), 'withdrawn_at': _an_iso(r['withdrawn_at'])} for r in rows]})
         d = request.get_json(silent=True) or {}
         aud = d.get('audience')
-        title = str(d.get('title') or '').strip()[:100]
+        kind = d.get('kind') if d.get('kind') in ANNOUNCE_KINDS else 'news'
+        title = re.sub(r'\s+', ' ', str(d.get('title') or '')).strip()[:100]
         msg = str(d.get('message') or '').strip()[:500]
         link = str(d.get('link') or '').strip()[:200]
+        label = re.sub(r'\s+', ' ', str(d.get('link_label') or '')).strip()[:30]
         if aud not in ANNOUNCE_AUDIENCES:
             return jsonify({'success': False, 'message': 'Choose who should get it.'}), 400
         if len(title) < 3 or len(msg) < 10:
             return jsonify({'success': False, 'message': 'Add a title and a message of at least 10 characters.'}), 400
-        if link and not link.startswith('/'):
-            return jsonify({'success': False, 'message': 'Links must be an Eschool page, starting with "/".'}), 400
+        if link and link not in ANNOUNCE_PAGES:
+            return jsonify({'success': False, 'message': 'Choose the page the button opens from the list.'}), 400
+        if link and not label:
+            label = 'Open ' + ANNOUNCE_PAGES[link]
+        target = None
+        if aud == 'person':
+            # a notice to one person always arrives, even if they switched announcements off
+            try:
+                target = int(d.get('user_id'))
+            except (TypeError, ValueError):
+                target = None
+            t = conn.execute("SELECT id, firstname, lastname, COALESCE(role, 'student') AS role FROM users WHERE id = ?", (target,)).fetchone() if target else None
+            if not t or t['id'] == session['user_id']:
+                return jsonify({'success': False, 'message': 'Choose the person to send it to.'}), 400
+            ids = [t['id']]
+            target_name = _full_name(t['firstname'], t['lastname'], 'this person')
+        else:
+            ids = reach[aud]['ids']
+        if not ids:
+            return jsonify({'success': False, 'message': 'Nobody in this group can get announcements right now.'}), 400
         now = _iso(_utc_now())
-        cur = conn.execute('INSERT INTO announcements (admin_id, audience, title, message, link, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-                           (session['user_id'], aud, title, msg, link or None, now))
+        cur = conn.execute('INSERT INTO announcements (admin_id, audience, kind, title, message, link, link_label, created_at, target_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                           (session['user_id'], aud, kind, title, msg, link or None, label or None, now, ids[0] if aud == 'person' else None))
         aid = cur.lastrowid
-        before = conn.execute('SELECT COALESCE(MAX(id), 0) FROM notifications').fetchone()[0]
-        sql = "SELECT id FROM users WHERE id != ?" + ("" if aud == 'all' else " AND COALESCE(role, 'student') = ?")
-        ids = [r[0] for r in conn.execute(sql, (session['user_id'],) if aud == 'all' else (session['user_id'], aud)).fetchall()]
-        for uid in ids:
-            create_notification(conn, uid, title, msg + (f' {link}' if link else ''), icon='fa-bullhorn', color='orange', category='announcements')
-        conn.execute("UPDATE notifications SET action = 'announcement', ref_id = ? WHERE id > ? AND title = ?", (aid, before, title))
-        sent = conn.execute("SELECT COUNT(*) FROM notifications WHERE action = 'announcement' AND ref_id = ?", (aid,)).fetchone()[0]
-        conn.execute('UPDATE announcements SET recipients = ? WHERE id = ?', (sent, aid))
-        admin_log(conn, 'Sent announcement', 'announcement', aid, f"\"{title}\" to {ANNOUNCE_AUDIENCES[aud]} ({sent} people)")
+        icon, color = ANNOUNCE_KINDS[kind]
+        conn.executemany('INSERT INTO notifications (user_id, title, message, icon, color, action, ref_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                         [(uid, title, msg, icon, color, 'announcement', aid) for uid in ids])
+        conn.execute('UPDATE announcements SET recipients = ? WHERE id = ?', (len(ids), aid))
+        if aud == 'person':
+            # shows in the person's file on the Users page
+            admin_log(conn, 'Sent a ' + ('warning' if kind == 'warning' else 'notice'), 'user', ids[0], f"\"{title}\": {msg[:300]}")
+        else:
+            admin_log(conn, 'Sent announcement', 'announcement', aid, f"\"{title}\" to {ANNOUNCE_AUDIENCES[aud]} ({len(ids)} people)")
         conn.commit()
-        return jsonify({'success': True, 'id': aid, 'recipients': sent, 'skipped': len(ids) - sent})
+        return jsonify({'success': True, 'id': aid, 'recipients': len(ids), 'skipped': 0 if aud == 'person' else reach[aud]['off'],
+                        'to': target_name if aud == 'person' else None})
     finally:
         conn.close()
 
@@ -22090,26 +24216,63 @@ def admin_withdraw_announcement(aid):
 
 
 # ----- activity log -----
+# groups on the Activity log page -> the target types they cover
+ADMIN_LOG_GROUPS = {
+    'user': ('user',), 'payment': ('payment', 'refund'), 'live': ('live', 'recording', 'lesson'),
+    'content': ('resource', 'planner', 'announcement'), 'community': ('review', 'opinion', 'moderation'), 'support': ('ticket',),
+}
+ADMIN_LOG_VIEW_ACTIONS = ('Viewed person file',)      # looking, not changing: hidden unless asked for
+
+
 @app.route('/api/admin/log')
 def admin_log_list():
+    """GET ?type=<group> &q= &admin=<id> &days=1|7|30|0 &views=1 &offset= (100 per page, newest first)"""
     g = _admin_guard()
     if g:
         return g
-    q = (request.args.get('q') or '').strip().lower()
-    kind = request.args.get('type') or ''
+    q = (request.args.get('q') or '').strip().lower()[:100]
+    group = request.args.get('type') or ''
+    try:
+        admin_id = int(request.args.get('admin') or 0)
+        days = int(request.args.get('days') or 0)
+        offset = max(0, int(request.args.get('offset') or 0))
+    except ValueError:
+        admin_id, days, offset = 0, 0, 0
+    views = request.args.get('views') == '1'
     conn = _links_db()
     try:
         _admin_tables(conn)
-        rows = conn.execute('''SELECT l.*, u.firstname, u.lastname FROM admin_log l LEFT JOIN users u ON u.id = l.admin_id
-                               ORDER BY l.id DESC LIMIT 1000''').fetchall()
+        where, args = [], []
+        if not views:
+            where.append('l.action NOT IN (%s)' % ','.join('?' * len(ADMIN_LOG_VIEW_ACTIONS)))
+            args += list(ADMIN_LOG_VIEW_ACTIONS)
+        if admin_id:
+            where.append('l.admin_id = ?'); args.append(admin_id)
+        if days > 0:
+            where.append(f"{_dt('l.created_at')} >= datetime('now', ?)"); args.append(f'-{days} days')
+        if q:
+            where.append("LOWER(l.action || ' ' || COALESCE(l.detail, '') || ' ' || COALESCE(u.firstname, '') || ' ' || COALESCE(u.lastname, '')) LIKE ?")
+            args.append(f'%{q}%')
+        base = 'FROM admin_log l LEFT JOIN users u ON u.id = l.admin_id' + (' WHERE ' + ' AND '.join(where) if where else '')
+        counts = {'': 0}
+        for t, n in conn.execute(f'SELECT COALESCE(l.target_type, \'\'), COUNT(*) {base} GROUP BY 1', args).fetchall():
+            counts[''] += n
+            for gk, types in ADMIN_LOG_GROUPS.items():
+                if t in types:
+                    counts[gk] = counts.get(gk, 0) + n
+        if group in ADMIN_LOG_GROUPS:
+            types = ADMIN_LOG_GROUPS[group]
+            base += (' AND ' if where else ' WHERE ') + 'l.target_type IN (%s)' % ','.join('?' * len(types))
+            args += list(types)
+        total = conn.execute(f'SELECT COUNT(*) {base}', args).fetchone()[0]
+        rows = conn.execute(f'SELECT l.*, u.firstname, u.lastname {base} ORDER BY l.id DESC LIMIT 100 OFFSET ?', args + [offset]).fetchall()
         out = [{'id': r['id'], 'admin': _full_name(r['firstname'], r['lastname'], 'Removed admin'), 'admin_id': r['admin_id'],
                 'action': r['action'], 'type': r['target_type'] or '', 'target_id': r['target_id'], 'detail': r['detail'] or '',
-                'at': r['created_at']} for r in rows]
-        if kind:
-            out = [x for x in out if x['type'] == kind]
-        if q:
-            out = [x for x in out if q in (x['action'] + ' ' + x['detail'] + ' ' + x['admin']).lower()]
-        return jsonify({'success': True, 'log': out[:400]})
+                'at': _an_iso(r['created_at'])} for r in rows]
+        admins = [{'id': r[0], 'name': _full_name(r[1], r[2], 'Removed admin')} for r in conn.execute(
+            'SELECT DISTINCT l.admin_id, u.firstname, u.lastname FROM admin_log l LEFT JOIN users u ON u.id = l.admin_id WHERE l.admin_id IS NOT NULL ORDER BY u.firstname').fetchall()]
+        return jsonify({'success': True, 'log': out, 'total': total, 'offset': offset, 'more': offset + len(out) < total,
+                        'counts': {k: counts.get(k, 0) for k in [''] + list(ADMIN_LOG_GROUPS)}, 'admins': admins})
     finally:
         conn.close()
 
@@ -22164,7 +24327,10 @@ ONLINE_PAY = {
     'site_url': os.environ.get('SITE_URL', '').rstrip('/'),
     'stripe_secret': os.environ.get('STRIPE_SECRET_KEY', ''),
     'stripe_webhook_secret': os.environ.get('STRIPE_WEBHOOK_SECRET', ''),
-    'stripe_currency': os.environ.get('STRIPE_CURRENCY', 'kes').lower(),
+    'stripe_currency': (os.environ.get('STRIPE_CURRENCY') or SITE_CURRENCY).lower(),
+    'stripe_api': (os.environ.get('STRIPE_API_BASE') or 'https://api.stripe.com').rstrip('/'),   # only changed for testing
+    'stripe_connect': os.environ.get('STRIPE_CONNECT', '1') != '0',       # pay teachers through Stripe Connect
+    'stripe_country': (os.environ.get('STRIPE_PLATFORM_COUNTRY') or '').upper()[:2],   # your Stripe account's country, e.g. US
     'mpesa_key': os.environ.get('MPESA_CONSUMER_KEY', ''),
     'mpesa_secret': os.environ.get('MPESA_CONSUMER_SECRET', ''),
     'mpesa_passkey': os.environ.get('MPESA_PASSKEY', ''),
@@ -22174,8 +24340,8 @@ ONLINE_PAY = {
     'mpesa_env': os.environ.get('MPESA_ENV', 'sandbox').lower(),
     'mpesa_callback_secret': os.environ.get('MPESA_CALLBACK_SECRET', ''),
 }
-# KES is shown everywhere on Eschool. If Stripe charges in another currency, set the rate: 1 KES = ? of that currency.
-STRIPE_RATE = float(os.environ.get('STRIPE_KES_RATE', '1') or 1)
+# Stripe charges in SITE_CURRENCY. Only if STRIPE_CURRENCY is set to something else, give the rate: 1 SITE_CURRENCY = ? STRIPE_CURRENCY.
+STRIPE_RATE = float(os.environ.get('STRIPE_RATE') or os.environ.get('STRIPE_KES_RATE') or 1)
 
 
 def _stripe_ready():
@@ -22206,6 +24372,8 @@ def _pay_columns(conn):
         conn.execute("ALTER TABLE tutoring_payments ADD COLUMN method TEXT DEFAULT 'mpesa_code'")
     if 'receipt' not in cols:
         conn.execute('ALTER TABLE tutoring_payments ADD COLUMN receipt TEXT')
+    if 'refunded' not in cols:      # how much of a card payment went back to the card
+        conn.execute('ALTER TABLE tutoring_payments ADD COLUMN refunded REAL NOT NULL DEFAULT 0')
 
 
 def _confirm_tutoring_payment(conn, p, by=None, receipt=None, note=None):
@@ -22257,17 +24425,36 @@ def _tutoring_pay_check(conn, tid, d):
 
 
 # ----- Stripe -----
-def _stripe(method, path, data=None):
-    res = _rq.request(method, 'https://api.stripe.com/v1' + path, auth=(ONLINE_PAY['stripe_secret'], ''), data=data, timeout=20)
-    j = res.json()
+def _stripe(method, path, data=None, idem=None):
+    """One call to the Stripe API. idem: an idempotency key, so a retried call never charges or pays twice."""
+    if isinstance(data, dict):
+        data = {k: v for k, v in data.items() if v is not None}
+    res = _rq.request(method, ONLINE_PAY['stripe_api'] + '/v1' + path, auth=(ONLINE_PAY['stripe_secret'], ''), data=data, timeout=25,
+                      headers={'Idempotency-Key': idem} if idem else None)
+    try:
+        j = res.json()
+    except ValueError:
+        j = {}
     if res.status_code >= 400:
         raise ValueError((j.get('error') or {}).get('message') or 'The card payment service said no.')
     return j
 
 
-def _stripe_amount(kes):
-    """Smallest currency unit for Stripe (cents)."""
-    return int(round(kes * STRIPE_RATE * 100))
+def _stripe_amount(amount):
+    """The amount in Stripe's smallest unit: cents for USD/EUR/KES..., whole units for JPY/UGX/RWF...."""
+    v = float(amount) * STRIPE_RATE
+    return int(round(v)) if ONLINE_PAY['stripe_currency'].upper() in ZERO_DECIMAL_CURRENCIES else int(round(v * 100))
+
+
+def _stripe_back(units):
+    """Stripe's smallest unit back to an amount in SITE_CURRENCY."""
+    v = units if ONLINE_PAY['stripe_currency'].upper() in ZERO_DECIMAL_CURRENCIES else units / 100
+    return _round_money(v / STRIPE_RATE)
+
+
+def _connect_ready():
+    """Teachers can be paid through Stripe Connect (Express accounts)."""
+    return _stripe_ready() and ONLINE_PAY['stripe_connect']
 
 
 def _stripe_sync(conn, p):
@@ -22391,7 +24578,7 @@ def tutoring_pay_online(tid):
                     'metadata[payment_id]': pid, 'metadata[tutoring_id]': tid,
                     'payment_intent_data[metadata][payment_id]': pid,
                     'expires_at': int(_ptime.time()) + 60 * 60,
-                })
+                }, idem=f'eschool-lessons-{pid}')
                 conn.execute('UPDATE tutoring_payments SET reference = ? WHERE id = ?', (cs['id'], pid))
                 conn.commit()
                 return jsonify({'success': True, 'payment_id': pid, 'redirect': cs['url']})
@@ -22473,7 +24660,7 @@ def mpesa_callback(secret):
                     _confirm_tutoring_payment(conn, p, receipt=receipt)
                 else:   # paid less than asked: leave it for an admin to sort out
                     conn.execute("UPDATE tutoring_payments SET status = 'pending', receipt = ?, note = ? WHERE id = ?",
-                                 (receipt, f'Paid KES {paid:,.0f} of KES {p["amount"]:,}', p['id']))
+                                 (receipt, f'Paid {_money(paid)} of {_money(p["amount"])}', p['id']))
             else:
                 _fail_tutoring_payment(conn, p, cb.get('ResultDesc'))
             conn.commit()
@@ -22485,8 +24672,9 @@ def mpesa_callback(secret):
 @app.route('/api/stripe/webhook', methods=['POST'])
 def stripe_webhook():
     """Stripe tells us about finished card payments, even if the parent closed the page."""
-    secret = ONLINE_PAY['stripe_webhook_secret']
-    if not secret:
+    # two endpoints can point here: your account's events, and (for paying teachers) the Connect events, each with its own secret
+    secrets = [x for x in (ONLINE_PAY['stripe_webhook_secret'], os.environ.get('STRIPE_CONNECT_WEBHOOK_SECRET', '')) if x]
+    if not secrets:
         return jsonify({'error': 'not set up'}), 503
     raw = request.get_data()
     parts = {}
@@ -22497,8 +24685,8 @@ def stripe_webhook():
         ts = int((parts.get('t') or ['0'])[0])
     except ValueError:
         ts = 0
-    good = _hmac.new(secret.encode(), f'{ts}.'.encode() + raw, hashlib.sha256).hexdigest()
-    if not ts or abs(_ptime.time() - ts) > 300 or not any(_hmac.compare_digest(good, s) for s in parts.get('v1', [])):
+    goods = [_hmac.new(sec.encode(), f'{ts}.'.encode() + raw, hashlib.sha256).hexdigest() for sec in secrets]
+    if not ts or abs(_ptime.time() - ts) > 300 or not any(_hmac.compare_digest(g, s) for g in goods for s in parts.get('v1', [])):
         return jsonify({'error': 'bad signature'}), 400
     ev = json.loads(raw or b'{}')
     obj = (ev.get('data') or {}).get('object') or {}
@@ -22506,8 +24694,34 @@ def stripe_webhook():
         pid = int((obj.get('metadata') or {}).get('payment_id') or obj.get('client_reference_id') or 0)
     except ValueError:
         pid = 0
+    if ev.get('type') == 'account.updated' and obj.get('id'):      # a teacher finished (or broke) their Stripe setup
+        conn = _links_db()
+        try:
+            _payout_tables(conn)
+            _teacher_stripe_store(conn, obj)
+            conn.commit()
+        finally:
+            conn.close()
+        return jsonify({'received': True})
     if not pid:
         return jsonify({'received': True})
+    if (obj.get('metadata') or {}).get('kind') == 'plan':
+        conn = _links_db()
+        try:
+            _payments_table(conn)
+            _plan_pay_columns(conn)
+            p = conn.execute(PAYMENT_SELECT + " WHERE p.id = ? AND p.method = 'stripe'", (pid,)).fetchone()
+            if p and p['status'] == 'started' and p['reference'] == obj.get('id'):
+                t = ev.get('type')
+                if t in ('checkout.session.completed', 'checkout.session.async_payment_succeeded') and obj.get('payment_status') in ('paid', 'no_payment_required'):
+                    _confirm_plan_payment(conn, p, receipt=obj.get('payment_intent'))
+                elif t in ('checkout.session.expired', 'checkout.session.async_payment_failed'):
+                    conn.execute("UPDATE plan_payments SET status = 'failed', note = 'Card payment not finished', decided_at = ? WHERE id = ?",
+                                 (_iso(_utc_now()), p['id']))
+                conn.commit()
+            return jsonify({'received': True})
+        finally:
+            conn.close()
     conn = _links_db()
     try:
         _tutor_tables(conn)
@@ -22523,6 +24737,1145 @@ def stripe_webhook():
         return jsonify({'received': True})
     finally:
         conn.close()
+
+
+# ============ TEACHER PAYOUTS ============
+# Parents pay Eschool for private lessons. Eschool holds the money until each lesson happens:
+#   taught (or the learner was absent and an admin agreed)  -> it counts for the teacher
+#   being checked / learner absent not yet decided           -> waits for an admin
+#   teacher missed                                            -> the parent gets that lesson's money back
+#   agreed to move                                            -> the lesson goes back to be booked again, no money moves
+# On the pay day of each month, teachers get last month's lessons minus Eschool's share.
+# Sending is automatic through M-Pesa B2C when these are in payments.env, otherwise an admin sends it and types the code:
+#     MPESA_B2C_SHORTCODE              the B2C (bulk payment) shortcode
+#     MPESA_B2C_INITIATOR              the API operator user name from the M-Pesa portal
+#     MPESA_B2C_SECURITY_CREDENTIAL    that operator's password, encrypted with Safaricom's certificate
+#     MPESA_B2C_CONSUMER_KEY / MPESA_B2C_CONSUMER_SECRET   only if the B2C product is on a different Daraja app
+#   It also needs SITE_URL (https) and MPESA_CALLBACK_SECRET, so Safaricom can report each result.
+PAYOUT_DEFAULTS = {'share_pct': '15', 'pay_day': '1', 'auto': '1'}
+B2C = {
+    'shortcode': os.environ.get('MPESA_B2C_SHORTCODE', ''),
+    'initiator': os.environ.get('MPESA_B2C_INITIATOR', ''),
+    'credential': os.environ.get('MPESA_B2C_SECURITY_CREDENTIAL', ''),
+    'key': os.environ.get('MPESA_B2C_CONSUMER_KEY', ''),
+    'secret': os.environ.get('MPESA_B2C_CONSUMER_SECRET', ''),
+}
+_b2c_token = {'value': None, 'expires': 0}
+_PAYOUT_TICK = {'at': 0.0}
+PAYOUT_TICK_SECONDS = 3600
+PAYOUT_DONE = ('completed',)                 # status of a taught lesson
+
+
+def _b2c_ready():
+    o = ONLINE_PAY
+    return bool(B2C['shortcode'] and B2C['initiator'] and B2C['credential']
+                and (B2C['key'] or o['mpesa_key']) and (B2C['secret'] or o['mpesa_secret'])
+                and o['site_url'].startswith('https://') and o['mpesa_callback_secret'])
+
+
+def _b2c_missing():
+    o, out = ONLINE_PAY, []
+    for k, name in (('shortcode', 'MPESA_B2C_SHORTCODE'), ('initiator', 'MPESA_B2C_INITIATOR'), ('credential', 'MPESA_B2C_SECURITY_CREDENTIAL')):
+        if not B2C[k]:
+            out.append(name)
+    if not (B2C['key'] or o['mpesa_key']):
+        out.append('MPESA_CONSUMER_KEY')
+    if not (B2C['secret'] or o['mpesa_secret']):
+        out.append('MPESA_CONSUMER_SECRET')
+    if not o['site_url'].startswith('https://'):
+        out.append('SITE_URL (https)')
+    if not o['mpesa_callback_secret']:
+        out.append('MPESA_CALLBACK_SECRET')
+    return out
+
+
+def _b2c_auth():
+    if not B2C['key']:
+        return _daraja_auth()            # same Daraja app as the payment prompts
+    if _b2c_token['value'] and _b2c_token['expires'] > _ptime.time() + 60:
+        return _b2c_token['value']
+    res = _rq.get(_daraja_base() + '/oauth/v1/generate?grant_type=client_credentials', auth=(B2C['key'], B2C['secret']), timeout=20)
+    if res.status_code != 200:
+        raise ValueError('M-Pesa is not answering right now. Try again in a minute.')
+    j = res.json()
+    _b2c_token.update(value=j['access_token'], expires=_ptime.time() + int(j.get('expires_in', 3599)))
+    return _b2c_token['value']
+
+
+def _payout_tables(conn):
+    _tutor_tables(conn)
+    _refunds_table(conn)
+    conn.execute('CREATE TABLE IF NOT EXISTS payout_settings (key TEXT PRIMARY KEY, value TEXT)')
+    conn.execute('''CREATE TABLE IF NOT EXISTS teacher_payout_info (
+        teacher_id INTEGER PRIMARY KEY, phone TEXT NOT NULL, name TEXT, updated_at TEXT, updated_by INTEGER)''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS teacher_payouts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, teacher_id INTEGER NOT NULL, month TEXT NOT NULL,
+        lessons INTEGER NOT NULL, gross INTEGER NOT NULL, share_pct INTEGER NOT NULL, fee INTEGER NOT NULL, net INTEGER NOT NULL,
+        phone TEXT, method TEXT NOT NULL,              -- auto | manual
+        status TEXT NOT NULL,                          -- sending | paid | failed
+        reference TEXT, conversation_id TEXT, note TEXT,
+        created_at TEXT NOT NULL, created_by INTEGER, paid_at TEXT)''')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_teacher_payouts_tm ON teacher_payouts (teacher_id, month)')
+    cols = {r[1] for r in conn.execute('PRAGMA table_info(tutoring_sessions)').fetchall()}
+    if 'payout_id' not in cols:
+        conn.execute('ALTER TABLE tutoring_sessions ADD COLUMN payout_id INTEGER')
+    # teachers paid through Stripe Connect: their Stripe account and whether Stripe lets it receive money yet
+    conn.execute('''CREATE TABLE IF NOT EXISTS teacher_stripe (
+        teacher_id INTEGER PRIMARY KEY, account_id TEXT UNIQUE NOT NULL, ready INTEGER NOT NULL DEFAULT 0,
+        details_due INTEGER NOT NULL DEFAULT 0, created_at TEXT, updated_at TEXT)''')
+
+
+def _teacher_stripe_store(conn, acct):
+    """Saves what Stripe says about a teacher's account (from the API or an account.updated event)."""
+    caps = acct.get('capabilities') or {}
+    ready = bool(acct.get('payouts_enabled')) and caps.get('transfers') in ('active', None) and not acct.get('requirements', {}).get('disabled_reason')
+    due = len(((acct.get('requirements') or {}).get('currently_due')) or [])
+    conn.execute('UPDATE teacher_stripe SET ready = ?, details_due = ?, updated_at = ? WHERE account_id = ?',
+                 (1 if ready else 0, due, _iso(_utc_now()), acct.get('id')))
+
+
+def _teacher_stripe(conn, teacher_id, refresh=False):
+    """{'account_id', 'ready', 'details_due'} or None. refresh: ask Stripe first (when it isn't ready yet)."""
+    r = conn.execute('SELECT account_id, ready, details_due FROM teacher_stripe WHERE teacher_id = ?', (teacher_id,)).fetchone()
+    if not r:
+        return None
+    if refresh and not r[1] and _stripe_ready():
+        try:
+            _teacher_stripe_store(conn, _stripe('GET', '/accounts/' + r[0]))
+            r = conn.execute('SELECT account_id, ready, details_due FROM teacher_stripe WHERE teacher_id = ?', (teacher_id,)).fetchone()
+        except (ValueError, _rq.RequestException):
+            pass
+    return {'account_id': r[0], 'ready': bool(r[1]), 'details_due': r[2]}
+
+
+def _teacher_stripe_ready_id(conn, teacher_id):
+    if not _connect_ready():
+        return None
+    t = _teacher_stripe(conn, teacher_id, refresh=True)
+    return t['account_id'] if t and t['ready'] else None
+
+
+def _payout_setting(conn, key):
+    r = conn.execute('SELECT value FROM payout_settings WHERE key = ?', (key,)).fetchone()
+    return r[0] if r else PAYOUT_DEFAULTS.get(key)
+
+
+def _pay_month(starts_at):
+    """The month a lesson belongs to, in Eschool's time (the same clock as the rest of the site)."""
+    d = _parse_any(starts_at)
+    return (d + timedelta(hours=3)).strftime('%Y-%m') if d else None
+
+
+def _this_month():
+    return _nairobi_dt().strftime('%Y-%m')
+
+
+def _prev_month(m):
+    y, mo = int(m[:4]), int(m[5:7])
+    return f'{y - 1}-12' if mo == 1 else f'{y}-{mo - 1:02d}'
+
+
+def _lesson_prices(conn):
+    """What a family really paid per lesson, per arrangement (confirmed payments), else the teacher's price."""
+    out = {}
+    for tid, amount, sessions, rate in conn.execute('''SELECT t.id, COALESCE(SUM(p.amount), 0), COALESCE(SUM(p.sessions), 0), t.rate
+                                                       FROM tutoring t LEFT JOIN tutoring_payments p ON p.tutoring_id = t.id AND p.status = 'confirmed'
+                                                       GROUP BY t.id''').fetchall():
+        out[tid] = (amount / sessions) if sessions else float(rate or 0)
+    return out
+
+
+def _payout_lessons(conn, where='1=1', args=()):
+    return conn.execute(f'''SELECT s.id, s.tutoring_id, s.starts_at, s.minutes, s.status, s.outcome, s.proof, s.decided_at, s.decision_note,
+                                   s.teacher_notes, s.parent_report, s.parent_comment, s.payout_id,
+                                   t.teacher_id, t.parent_id, t.student_id, t.subject,
+                                   tu.firstname AS t_first, tu.lastname AS t_last, su.firstname AS s_first, su.lastname AS s_last,
+                                   pu.firstname AS p_first, pu.lastname AS p_last
+                            FROM tutoring_sessions s JOIN tutoring t ON t.id = s.tutoring_id
+                            LEFT JOIN users tu ON tu.id = t.teacher_id LEFT JOIN users su ON su.id = t.student_id
+                            LEFT JOIN users pu ON pu.id = t.parent_id
+                            WHERE {where} ORDER BY s.starts_at''', args).fetchall()
+
+
+def _lesson_kind(s):
+    """paid: counts for the teacher | wait: an admin must decide | none: no money for the teacher"""
+    if s['status'] == 'completed':
+        return 'paid'
+    if s['status'] == 'missed':
+        return 'paid' if s['decided_at'] else 'wait'      # learner absent: agreed by an admin first
+    if s['status'] == 'review':
+        return 'wait'
+    return 'none'
+
+
+def _payout_due(conn, month):
+    """Per teacher, the lessons of one month that aren't paid out yet."""
+    prices = _lesson_prices(conn)
+    pct = int(_payout_setting(conn, 'share_pct') or 0)
+    rows = [s for s in _payout_lessons(conn, "s.status IN ('completed', 'missed', 'review') AND s.payout_id IS NULL")
+            if _pay_month(s['starts_at']) == month]
+    out = {}
+    for s in rows:
+        t = out.setdefault(s['teacher_id'], {'teacher_id': s['teacher_id'], 'name': _full_name(s['t_first'], s['t_last'], 'Teacher'),
+                                             'taught': 0, 'absent': 0, 'waiting': 0, 'gross': 0.0, 'lesson_ids': [], 'subjects': set(), 'families': set()})
+        k = _lesson_kind(s)
+        t['subjects'].add(s['subject'])
+        t['families'].add(s['parent_id'])
+        if k == 'paid':
+            t['taught' if s['status'] == 'completed' else 'absent'] += 1
+            t['gross'] += prices.get(s['tutoring_id'], 0)
+            t['lesson_ids'].append(s['id'])
+        elif k == 'wait':
+            t['waiting'] += 1
+    for t in out.values():
+        t['gross'] = _round_money(t['gross'])
+        t['fee'] = _round_money(t['gross'] * pct / 100)
+        t['net'] = _round_money(t['gross'] - t['fee'])
+        t['subjects'] = sorted(t['subjects'])
+        t['families'] = len(t['families'])
+    return out, pct
+
+
+def _payout_phone(conn, teacher_id):
+    r = conn.execute('SELECT phone FROM teacher_payout_info WHERE teacher_id = ?', (teacher_id,)).fetchone()
+    return r[0] if r else None
+
+
+def _mask_phone(p):
+    p = str(p or '')
+    if p.startswith('254') and len(p) == 12:
+        p = '0' + p[3:]                  # show it the way people write it: 0712 ••• 678
+    return (p[:4] + ' ••• ' + p[-3:]) if len(p) >= 9 else p
+
+
+def _payout_send(conn, teacher_id, month, by=None, reference=None):
+    """Pays one teacher for one month. reference given -> sent by hand (an admin typed the code).
+    Otherwise sends with M-Pesa B2C. Returns (ok, message)."""
+    due, pct = _payout_due(conn, month)
+    t = due.get(teacher_id)
+    if not t or not t['lesson_ids'] or t['net'] <= 0:
+        return False, 'Nothing to pay for that month.'
+    if month >= _this_month():
+        return False, 'A month can be paid once it is over.'
+    phone = _payout_phone(conn, teacher_id)
+    now = _iso(_utc_now())
+    manual = bool(reference)
+    acct = None if manual else _teacher_stripe_ready_id(conn, teacher_id)     # Stripe first, when the teacher set it up
+    if not manual and not acct:
+        if not _b2c_ready():
+            return False, (f"{t['name']} hasn't finished setting up Stripe, and M-Pesa sending isn't set up. "
+                           'Send the money yourself and type the transaction code.' if _connect_ready() else
+                           'Automatic sending is not set up yet. Send the money yourself and type the transaction code.')
+        if not phone:
+            return False, f"{t['name']} has no payout number yet" + (' and hasn\'t set up Stripe.' if _connect_ready() else '.')
+    cur = conn.execute('''INSERT INTO teacher_payouts (teacher_id, month, lessons, gross, share_pct, fee, net, phone, method, status,
+                          reference, created_at, created_by, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                       (teacher_id, month, len(t['lesson_ids']), t['gross'], pct, t['fee'], t['net'], None if acct else phone,
+                        'manual' if manual else 'stripe' if acct else 'auto', 'paid' if manual else 'sending', reference, now, by, now if manual else None))
+    pid = cur.lastrowid
+    marks = ','.join('?' * len(t['lesson_ids']))
+    conn.execute(f'UPDATE tutoring_sessions SET payout_id = ? WHERE id IN ({marks}) AND payout_id IS NULL', [pid] + t['lesson_ids'])
+    label = datetime.strptime(month + '-01', '%Y-%m-%d').strftime('%B %Y')
+    if acct:
+        try:
+            tr = _stripe('POST', '/transfers', {'amount': _stripe_amount(t['net']), 'currency': ONLINE_PAY['stripe_currency'],
+                                                'destination': acct, 'transfer_group': f'eschool-payout-{pid}',
+                                                'description': f'Eschool lessons {label}', 'metadata[payout_id]': pid,
+                                                'metadata[teacher_id]': teacher_id, 'metadata[month]': month},
+                         idem=f'eschool-payout-{pid}')
+        except (ValueError, _rq.RequestException) as e:
+            why = str(e) if isinstance(e, ValueError) else 'Stripe is not answering'
+            _payout_failed(conn, pid, f'Stripe: {why}')
+            return False, f"Stripe didn't send it to {t['name']}: {why}"
+        conn.execute("UPDATE teacher_payouts SET status = 'paid', reference = ?, paid_at = ? WHERE id = ?", (tr.get('id'), now, pid))
+        n = len(t['lesson_ids'])
+        create_notification(conn, teacher_id, 'You have been paid',
+                            f"Eschool sent you {_money(t['net'])} for {n} lesson{'s' if n != 1 else ''} in {label} (Eschool's {pct}% share taken off). "
+                            'It is in your Stripe account, and Stripe pays it into your bank on its usual schedule.', icon='fa-money-bill-wave', color='green')
+        admin_log(conn, 'Paid teacher', 'payout', pid, f"{t['name']} · {label} · {_money(t['net'])} · Stripe {tr.get('id')}")
+        return True, f"Sent {_money(t['net'])} to {t['name']} through Stripe."
+    if manual:
+        create_notification(conn, teacher_id, 'You have been paid',
+                            f"Eschool sent you {_money(t['net'])} for {len(t['lesson_ids'])} lesson{'s' if len(t['lesson_ids']) != 1 else ''} in {label}"
+                            f" (Eschool's {pct}% share taken off). Transaction code {reference}.", icon='fa-money-bill-wave', color='green')
+        admin_log(conn, 'Paid teacher', 'payout', pid, f"{t['name']} · {label} · {_money(t['net'])} · code {reference}")
+        return True, f"Marked as paid: {t['name']}, {_money(t['net'])}."
+    # automatic: ask M-Pesa to send it; the result comes back to /api/mpesa/b2c/result
+    o = ONLINE_PAY
+    body = {'OriginatorConversationID': f'eschool-payout-{pid}', 'InitiatorName': B2C['initiator'], 'SecurityCredential': B2C['credential'],
+            'CommandID': 'BusinessPayment', 'Amount': t['net'], 'PartyA': B2C['shortcode'], 'PartyB': phone,
+            'Remarks': f'Eschool lessons {label}'[:100], 'Occasion': f'Payout {pid}',
+            'QueueTimeOutURL': o['site_url'] + '/api/mpesa/b2c/timeout/' + o['mpesa_callback_secret'],
+            'ResultURL': o['site_url'] + '/api/mpesa/b2c/result/' + o['mpesa_callback_secret']}
+    try:
+        res = _rq.post(_daraja_base() + '/mpesa/b2c/v3/paymentrequest', json=body,
+                       headers={'Authorization': 'Bearer ' + _b2c_auth()}, timeout=30)
+        j = res.json() if res.content else {}
+    except (ValueError, _rq.RequestException) as e:
+        j = {'errorMessage': str(e)[:200]}
+    if str(j.get('ResponseCode')) == '0':
+        conn.execute('UPDATE teacher_payouts SET conversation_id = ? WHERE id = ?', (j.get('ConversationID') or j.get('OriginatorConversationID'), pid))
+        admin_log(conn, 'Sent teacher payout', 'payout', pid, f"{t['name']} · {label} · {_money(t['net'])} to {_mask_phone(phone)}")
+        return True, f"Sending {_money(t['net'])} to {t['name']}."
+    _payout_failed(conn, pid, j.get('errorMessage') or j.get('ResponseDescription') or 'M-Pesa refused the payment.')
+    return False, f"M-Pesa didn't send it to {t['name']}: {j.get('errorMessage') or j.get('ResponseDescription') or 'refused'}"
+
+
+def _payout_failed(conn, pid, why):
+    """The money didn't go: the lessons become payable again."""
+    conn.execute("UPDATE teacher_payouts SET status = 'failed', note = ? WHERE id = ? AND status != 'paid'", (str(why)[:300], pid))
+    conn.execute('UPDATE tutoring_sessions SET payout_id = NULL WHERE payout_id = ?', (pid,))
+    for (admin_id,) in conn.execute("SELECT id FROM users WHERE role = 'admin'").fetchall():
+        create_notification(conn, admin_id, 'Teacher payout failed', f'A payout could not be sent: {str(why)[:150]}. See Payments.',
+                            icon='fa-triangle-exclamation', color='red')
+
+
+def _b2c_result(timeout=False):
+    d = request.get_json(silent=True) or {}
+    r = d.get('Result') or {}
+    oid = str(r.get('OriginatorConversationID') or '')
+    pid = int(oid.rsplit('-', 1)[-1]) if oid.startswith('eschool-payout-') and oid.rsplit('-', 1)[-1].isdigit() else None
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        p = conn.execute('SELECT * FROM teacher_payouts WHERE id = ?', (pid,)).fetchone() if pid else None
+        if not p and r.get('ConversationID'):
+            p = conn.execute('SELECT * FROM teacher_payouts WHERE conversation_id = ?', (r.get('ConversationID'),)).fetchone()
+        if not p or p['status'] != 'sending':
+            return jsonify({'ResultCode': 0, 'ResultDesc': 'Accepted'})
+        if timeout or str(r.get('ResultCode')) != '0':
+            _payout_failed(conn, p['id'], 'M-Pesa timed out' if timeout else (r.get('ResultDesc') or 'M-Pesa did not send it'))
+        else:
+            params = {i.get('Key'): i.get('Value') for i in ((r.get('ResultParameters') or {}).get('ResultParameter') or [])}
+            code = params.get('TransactionReceipt') or r.get('TransactionID')
+            conn.execute("UPDATE teacher_payouts SET status = 'paid', reference = ?, paid_at = ? WHERE id = ?", (code, _iso(_utc_now()), p['id']))
+            label = datetime.strptime(p['month'] + '-01', '%Y-%m-%d').strftime('%B %Y')
+            create_notification(conn, p['teacher_id'], 'You have been paid',
+                                f"Eschool sent you {_money(p['net'])} for {p['lessons']} lesson{'s' if p['lessons'] != 1 else ''} in {label}"
+                                f" (Eschool's {p['share_pct']}% share taken off). M-Pesa code {code}.", icon='fa-money-bill-wave', color='green')
+        conn.commit()
+        return jsonify({'ResultCode': 0, 'ResultDesc': 'Accepted'})
+    finally:
+        conn.close()
+
+
+@app.route('/api/mpesa/b2c/result/<secret>', methods=['POST'])
+def mpesa_b2c_result(secret):
+    if not ONLINE_PAY['mpesa_callback_secret'] or not _hmac_cmp.compare_digest(secret, ONLINE_PAY['mpesa_callback_secret']):
+        return jsonify({'ResultCode': 1, 'ResultDesc': 'Unknown'}), 404
+    return _b2c_result()
+
+
+@app.route('/api/mpesa/b2c/timeout/<secret>', methods=['POST'])
+def mpesa_b2c_timeout(secret):
+    if not ONLINE_PAY['mpesa_callback_secret'] or not _hmac_cmp.compare_digest(secret, ONLINE_PAY['mpesa_callback_secret']):
+        return jsonify({'ResultCode': 1, 'ResultDesc': 'Unknown'}), 404
+    return _b2c_result(timeout=True)
+
+
+@app.before_request
+def _payouts_tick():
+    """Once an hour: on pay day, send last month's payouts (automatic) or tell the admins they are ready (by hand)."""
+    if request.endpoint in (None, 'static'):
+        return None
+    now = _clock.time()
+    if now - _PAYOUT_TICK['at'] < PAYOUT_TICK_SECONDS:
+        return None
+    _PAYOUT_TICK['at'] = now
+    try:
+        conn = _links_db()
+        try:
+            _payout_tables(conn)
+            day = int(_payout_setting(conn, 'pay_day') or 1)
+            today = _nairobi_dt()
+            if today.day < day:
+                return None
+            month = _prev_month(_this_month())
+            key = f'run:{month}'
+            if conn.execute('SELECT 1 FROM payout_settings WHERE key = ?', (key,)).fetchone():
+                return None
+            due, _ = _payout_due(conn, month)
+            ready = [t for t in due.values() if t['net'] > 0]
+            label = datetime.strptime(month + '-01', '%Y-%m-%d').strftime('%B %Y')
+            if ready and (_b2c_ready() or _connect_ready()) and _payout_setting(conn, 'auto') == '1':
+                sent = 0
+                for t in ready:
+                    if _teacher_stripe_ready_id(conn, t['teacher_id']) or (_b2c_ready() and _payout_phone(conn, t['teacher_id'])):
+                        ok, _ = _payout_send(conn, t['teacher_id'], month)
+                        sent += 1 if ok else 0
+                msg = f"{sent} teacher payout{'s' if sent != 1 else ''} for {label} sent automatically."
+            elif ready:
+                msg = f"Teacher payouts for {label} are ready: {len(ready)} teacher{'s' if len(ready) != 1 else ''}. Open Payments to send them."
+            else:
+                msg = None
+            if msg:
+                for (admin_id,) in conn.execute("SELECT id FROM users WHERE role = 'admin'").fetchall():
+                    create_notification(conn, admin_id, 'Teacher payouts', msg, icon='fa-money-bill-wave', color='green')
+            conn.execute('INSERT OR REPLACE INTO payout_settings (key, value) VALUES (?, ?)', (key, _iso(_utc_now())))
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:      # never break a page because of this
+        print(f'payout tick skipped: {e}')
+    return None
+
+
+# ----- admin API -----
+def _money_month_bounds(month):
+    first = datetime.strptime(month + '-01', '%Y-%m-%d').replace(tzinfo=timezone(timedelta(hours=3)))
+    nxt = (first + timedelta(days=32)).replace(day=1)
+    return _iso(first.astimezone(timezone.utc)), _iso(nxt.astimezone(timezone.utc))
+
+
+@app.route('/api/admin/payouts/summary')
+def admin_payouts_summary():
+    """The money flow: received this month -> held -> owed to teachers -> Eschool's share, plus counts for the tabs."""
+    g = _admin_guard()
+    if g:
+        return g
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        _payments_table(conn)
+        conn.commit()
+        month = _this_month()
+        a, b = _money_month_bounds(month)
+        received = 0
+        for tbl in ('plan_payments', 'tutoring_payments'):
+            received += conn.execute(f"SELECT COALESCE(SUM(amount), 0) FROM {tbl} WHERE status = 'confirmed' AND {_dt('COALESCE(decided_at, created_at)')} >= {_dt('?')} AND {_dt('COALESCE(decided_at, created_at)')} < {_dt('?')}",
+                                     (a, b)).fetchone()[0]
+        prices = _lesson_prices(conn)
+        held_lessons, held = 0, 0.0
+        for t in conn.execute("SELECT id, sessions_paid FROM tutoring WHERE COALESCE(sessions_paid, 0) > 0").fetchall():
+            used = conn.execute("SELECT COUNT(*) FROM tutoring_sessions WHERE tutoring_id = ? AND status IN ('completed', 'missed', 'review')", (t[0],)).fetchone()[0]
+            ref = conn.execute("SELECT COALESCE(SUM(sessions), 0) FROM tutoring_refunds WHERE tutoring_id = ? AND COALESCE(kind, 'end') = 'end'", (t[0],)).fetchone()[0]
+            n = max(0, (t[1] or 0) - used - ref)
+            held_lessons += n
+            held += n * prices.get(t[0], 0)
+        # owed: every finished lesson not paid out yet, any month
+        owed, fee_due, teachers = 0, 0, set()
+        months = sorted({_pay_month(s['starts_at']) for s in _payout_lessons(conn, "s.status IN ('completed', 'missed') AND s.payout_id IS NULL")} - {None})
+        for m in months:
+            due, _ = _payout_due(conn, m)
+            for t in due.values():
+                if t['net'] > 0:
+                    owed += t['net']; fee_due += t['fee']; teachers.add(t['teacher_id'])
+        share_month = conn.execute("SELECT COALESCE(SUM(fee), 0) FROM teacher_payouts WHERE status = 'paid' AND month = ?", (_prev_month(month),)).fetchone()[0]
+        refunds = conn.execute("SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM tutoring_refunds WHERE status = 'owed'").fetchone()
+        waiting = sum(1 for s in _payout_lessons(conn, "s.status IN ('review', 'missed') AND s.payout_id IS NULL") if _lesson_kind(s) == 'wait')
+        pending_in = conn.execute("SELECT (SELECT COUNT(*) FROM plan_payments WHERE status = 'pending') + (SELECT COUNT(*) FROM tutoring_payments WHERE status = 'pending')").fetchone()[0]
+        day = int(_payout_setting(conn, 'pay_day') or 1)
+        nd = _nairobi_dt()
+        nxt = nd.replace(day=day) if nd.day < day else (nd.replace(day=1) + timedelta(days=32)).replace(day=day)
+        return jsonify({'success': True, 'month': month, 'received': received, 'held': int(round(held)), 'held_lessons': held_lessons,
+                        'owed': owed, 'owed_teachers': len(teachers), 'fee_due': fee_due, 'share_last_month': share_month,
+                        'refunds_owed': refunds[1], 'refunds_count': refunds[0], 'missed': waiting, 'money_in_pending': pending_in,
+                        'share_pct': int(_payout_setting(conn, 'share_pct') or 0), 'pay_day': day, 'next_pay_day': nxt.strftime('%Y-%m-%d'),
+                        'auto': _payout_setting(conn, 'auto') == '1', 'b2c_ready': _b2c_ready(), 'b2c_missing': _b2c_missing(),
+                        'auto_ready': _b2c_ready() or _connect_ready(), 'currency': SITE_CURRENCY,
+                        'methods': {'card': _stripe_ready(), 'stripe_payouts': _connect_ready(), 'mpesa_code': _payments_ready(),
+                                    'mpesa_prompt': _stk_ready(), 'mpesa_payouts': _b2c_ready(),
+                                    'webhook': bool(ONLINE_PAY['stripe_webhook_secret']), 'site_url': ONLINE_PAY['site_url']}})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/payouts')
+def admin_payouts_month():
+    """GET ?month=YYYY-MM: every teacher with lessons that month, what is due and what was paid."""
+    g = _admin_guard()
+    if g:
+        return g
+    month = (request.args.get('month') or _prev_month(_this_month()))[:7]
+    if not re.match(r'^\d{4}-\d{2}$', month):
+        return jsonify({'success': False, 'message': 'month must look like 2026-10'}), 400
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        conn.commit()
+        due, pct = _payout_due(conn, month)
+        paid = conn.execute('''SELECT p.*, u.firstname, u.lastname FROM teacher_payouts p LEFT JOIN users u ON u.id = p.teacher_id
+                               WHERE p.month = ? ORDER BY p.id''', (month,)).fetchall()
+        rows = {}
+        for t in due.values():
+            rows[t['teacher_id']] = dict(t, lesson_ids=None, payouts=[])
+        for p in paid:
+            r = rows.setdefault(p['teacher_id'], {'teacher_id': p['teacher_id'], 'name': _full_name(p['firstname'], p['lastname'], 'Teacher'),
+                                                  'taught': 0, 'absent': 0, 'waiting': 0, 'gross': 0, 'fee': 0, 'net': 0, 'subjects': [], 'families': 0, 'payouts': []})
+            r['payouts'].append({'id': p['id'], 'lessons': p['lessons'], 'gross': p['gross'], 'fee': p['fee'], 'net': p['net'], 'share_pct': p['share_pct'],
+                                 'status': p['status'], 'method': p['method'], 'reference': p['reference'], 'note': p['note'] or '',
+                                 'phone': _mask_phone(p['phone']), 'paid_at': _an_iso(p['paid_at']), 'created_at': _an_iso(p['created_at'])})
+        for r in rows.values():
+            phone = _payout_phone(conn, r['teacher_id'])
+            r['phone'] = _mask_phone(phone) if phone else None
+            r['has_phone'] = bool(phone)
+            st = _teacher_stripe(conn, r['teacher_id']) if _connect_ready() else None
+            r['stripe'] = bool(st and st['ready'])
+            r['stripe_started'] = bool(st) and not r['stripe']
+            r['can_auto'] = r['stripe'] or (bool(phone) and _b2c_ready())
+            r.pop('lesson_ids', None)
+        over = month < _this_month()
+        months = sorted({_pay_month(s[0]) for s in conn.execute("SELECT starts_at FROM tutoring_sessions WHERE status IN ('completed', 'missed', 'review')").fetchall()} - {None}
+                        | {r[0] for r in conn.execute('SELECT DISTINCT month FROM teacher_payouts').fetchall()} | {_this_month(), _prev_month(_this_month())})
+        return jsonify({'success': True, 'month': month, 'over': over, 'share_pct': pct, 'months': months,
+                        'teachers': sorted(rows.values(), key=lambda r: (-r['net'], r['name'])), 'currency': SITE_CURRENCY,
+                        'b2c_ready': _b2c_ready(), 'stripe_ready': _connect_ready(), 'auto_ready': _b2c_ready() or _connect_ready(),
+                        'auto': _payout_setting(conn, 'auto') == '1'})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/payouts/lessons')
+def admin_payouts_lessons():
+    """?teacher_id= &month=: each lesson of one teacher in one month, and how it counts."""
+    g = _admin_guard()
+    if g:
+        return g
+    month = (request.args.get('month') or '')[:7]
+    try:
+        tid = int(request.args.get('teacher_id') or 0)
+    except ValueError:
+        tid = 0
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        prices = _lesson_prices(conn)
+        out = []
+        for s in _payout_lessons(conn, 't.teacher_id = ?', (tid,)):
+            if _pay_month(s['starts_at']) != month:
+                continue
+            k = _lesson_kind(s)
+            out.append({'id': s['id'], 'starts_at': _an_iso(s['starts_at']), 'subject': s['subject'], 'status': s['status'], 'outcome': s['outcome'],
+                        'learner': _full_name(s['s_first'], s['s_last'], 'Learner'), 'counts': k, 'paid_out': bool(s['payout_id']),
+                        'price': int(round(prices.get(s['tutoring_id'], 0)))})
+        return jsonify({'success': True, 'lessons': out})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/payouts/pay', methods=['POST'])
+def admin_payouts_pay():
+    """{"month", "teacher_id"?, "reference"?}. With a reference: one teacher, sent by hand. Without: send automatically
+    to every ready teacher that month (or just teacher_id)."""
+    g = _admin_guard()
+    if g:
+        return g
+    d = request.get_json(silent=True) or {}
+    month = str(d.get('month') or '')[:7]
+    ref = re.sub(r'\s+', '', str(d.get('reference') or '')).upper()[:30]
+    try:
+        tid = int(d.get('teacher_id') or 0)
+    except (TypeError, ValueError):
+        tid = 0
+    if not re.match(r'^\d{4}-\d{2}$', month):
+        return jsonify({'success': False, 'message': 'Choose the month.'}), 400
+    if ref and (not tid or not re.match(r'^[A-Z0-9]{6,30}$', ref)):
+        return jsonify({'success': False, 'message': 'Type the transaction code you got when you sent the money (letters and numbers).'}), 400
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        if ref:
+            ok, msg = _payout_send(conn, tid, month, by=session['user_id'], reference=ref)
+            conn.commit()
+            return jsonify({'success': ok, 'message': msg}), (200 if ok else 409)
+        due, _ = _payout_due(conn, month)
+        targets = [t for t in due.values() if t['net'] > 0 and (not tid or t['teacher_id'] == tid)]
+        results = []
+        for t in targets:
+            ok, msg = _payout_send(conn, t['teacher_id'], month, by=session['user_id'])
+            results.append({'teacher_id': t['teacher_id'], 'ok': ok, 'message': msg})
+        conn.commit()
+        if not results:
+            return jsonify({'success': False, 'message': 'Nobody is ready to be paid for that month.'}), 409
+        return jsonify({'success': any(r['ok'] for r in results), 'results': results,
+                        'message': '; '.join(r['message'] for r in results)})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/payouts/missed')
+def admin_payouts_missed():
+    """Lessons that need a decision before any money moves: being checked, and learner absent not agreed yet."""
+    g = _admin_guard()
+    if g:
+        return g
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        prices = _lesson_prices(conn)
+        out = []
+        for s in _payout_lessons(conn, "s.status IN ('review', 'missed') AND s.payout_id IS NULL"):
+            if _lesson_kind(s) != 'wait':
+                continue
+            try:
+                why = (json.loads(s['proof'] or '{}') or {}).get('why')
+            except (TypeError, ValueError):
+                why = None
+            out.append({'id': s['id'], 'starts_at': _an_iso(s['starts_at']), 'subject': s['subject'], 'kind': 'learner' if s['status'] == 'missed' else 'check',
+                        'teacher': _full_name(s['t_first'], s['t_last'], 'Teacher'), 'teacher_id': s['teacher_id'],
+                        'learner': _full_name(s['s_first'], s['s_last'], 'Learner'), 'parent': _full_name(s['p_first'], s['p_last'], 'Parent'),
+                        'parent_id': s['parent_id'], 'why': why, 'teacher_note': s['teacher_notes'] or '',
+                        'parent_note': ' '.join(x for x in (s['parent_report'], s['parent_comment']) if x) or '',
+                        'price': int(round(prices.get(s['tutoring_id'], 0)))})
+        return jsonify({'success': True, 'lessons': out})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/payouts/lessons/<int:sid>/decide', methods=['POST'])
+def admin_payouts_decide(sid):
+    """{"decision": "taught" | "learner_absent" | "moved" | "refund", "note"}
+       taught / learner_absent -> counts for the teacher; moved -> book it again, no money moves;
+       refund -> the teacher missed it: the parent gets this lesson's money back."""
+    g = _admin_guard()
+    if g:
+        return g
+    d = request.get_json(silent=True) or {}
+    dec = d.get('decision')
+    note = str(d.get('note') or '').strip()[:400]
+    if dec not in ('taught', 'learner_absent', 'moved', 'refund'):
+        return jsonify({'success': False, 'message': 'Choose what happened.'}), 400
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        rows = _payout_lessons(conn, 's.id = ?', (sid,))
+        if not rows:
+            return jsonify({'success': False, 'message': 'Lesson not found.'}), 404
+        s = rows[0]
+        if s['payout_id']:
+            return jsonify({'success': False, 'message': 'This lesson was already paid to the teacher.'}), 409
+        if s['status'] not in ('review', 'missed', 'completed'):
+            return jsonify({'success': False, 'message': 'This lesson was already decided.'}), 409
+        now = _iso(_utc_now())
+        status, outcome = {'taught': ('completed', 'taught'), 'learner_absent': ('missed', 'learner_absent'),
+                           'moved': ('cancelled', 'moved'), 'refund': ('cancelled', 'not_taught')}[dec]
+        conn.execute('''UPDATE tutoring_sessions SET status = ?, outcome = ?, decided_by = ?, decided_at = ?, decision_note = ?, updated_at = ?
+                        WHERE id = ?''', (status, outcome, session['user_id'], now, note or None, now, sid))
+        teacher = _full_name(s['t_first'], s['t_last'], 'the teacher')
+        learner = _full_name(s['s_first'], s['s_last'], 'your child')
+        start = _parse_any(s['starts_at'])
+        when = _when_for(s['parent_id'], start, '%a %d %b, %H:%M') if start else 'the booked time'
+        extra = f' Note: {note}' if note else ''
+        price = int(round(_lesson_prices(conn).get(s['tutoring_id'], 0)))
+        if dec == 'refund':
+            conn.execute("UPDATE tutoring SET sessions_paid = MAX(0, sessions_paid - 1) WHERE id = ?", (s['tutoring_id'],))
+            conn.execute('''INSERT INTO tutoring_refunds (tutoring_id, parent_id, teacher_id, student_id, sessions, amount, created_at, kind, session_id)
+                            VALUES (?, ?, ?, ?, 1, ?, ?, 'lesson', ?)''', (s['tutoring_id'], s['parent_id'], s['teacher_id'], s['student_id'], price, now, sid))
+            create_notification(conn, s['parent_id'], 'Money back for a missed lesson',
+                                f"{teacher} missed {learner}'s {s['subject']} lesson on {when}. Eschool will send you back {_money(price)} for it.{extra}",
+                                icon='fa-rotate-left', color='green', category='tutoring')
+            create_notification(conn, s['teacher_id'], 'Missed lesson',
+                                f"Your {s['subject']} lesson with {learner} on {when} counts as missed by you, so the family gets the money back.{extra}",
+                                icon='fa-scale-balanced', color='red', category='tutoring')
+        elif dec == 'moved':
+            for uid in dict.fromkeys((s['parent_id'], s['teacher_id'])):
+                create_notification(conn, uid, 'Lesson to book again',
+                                    f"The {s['subject']} lesson on {when} ({teacher} with {learner}) was moved as agreed. Book a new time; nothing is lost.{extra}",
+                                    icon='fa-calendar-plus', color='blue', category='tutoring')
+        else:
+            create_notification(conn, s['teacher_id'], 'Lesson counted',
+                                f"Your {s['subject']} lesson with {learner} on {when} counts " +
+                                ('as taught.' if dec == 'taught' else 'as missed by the learner, so you are paid for it.') + extra,
+                                icon='fa-scale-balanced', color='blue', category='tutoring')
+            create_notification(conn, s['parent_id'], 'Lesson checked',
+                                f"Eschool checked {learner}'s {s['subject']} lesson on {when}: " +
+                                ('it was taught.' if dec == 'taught' else 'the learner missed it, so it is used up.') + extra,
+                                icon='fa-scale-balanced', color='blue', category='tutoring')
+        admin_log(conn, 'Decided lesson', 'lesson', sid, f"{s['subject']} · {teacher} → {learner}: {dec}" + (f' · {note}' if note else ''))
+        conn.commit()
+        return jsonify({'success': True})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/payouts/held')
+def admin_payouts_held():
+    """Money held for lessons not taught yet, per family and teacher."""
+    g = _admin_guard()
+    if g:
+        return g
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        prices = _lesson_prices(conn)
+        out = []
+        for r in conn.execute('''SELECT t.id, t.subject, t.status, t.sessions_paid, t.teacher_id, t.parent_id, t.student_id,
+                                        tu.firstname AS tf, tu.lastname AS tl, su.firstname AS sf, su.lastname AS sl, pu.firstname AS pf, pu.lastname AS pl
+                                 FROM tutoring t LEFT JOIN users tu ON tu.id = t.teacher_id LEFT JOIN users su ON su.id = t.student_id
+                                 LEFT JOIN users pu ON pu.id = t.parent_id WHERE COALESCE(t.sessions_paid, 0) > 0''').fetchall():
+            c = {k: n for k, n in conn.execute('SELECT status, COUNT(*) FROM tutoring_sessions WHERE tutoring_id = ? GROUP BY status', (r['id'],)).fetchall()}
+            used = c.get('completed', 0) + c.get('missed', 0) + c.get('review', 0)
+            ref = conn.execute("SELECT COALESCE(SUM(sessions), 0) FROM tutoring_refunds WHERE tutoring_id = ? AND COALESCE(kind, 'end') = 'end'", (r['id'],)).fetchone()[0]
+            left = max(0, (r['sessions_paid'] or 0) - used - ref)
+            if not left:
+                continue
+            price = prices.get(r['id'], 0)
+            out.append({'id': r['id'], 'subject': r['subject'], 'status': r['status'], 'teacher': _full_name(r['tf'], r['tl'], 'Teacher'),
+                        'teacher_id': r['teacher_id'], 'learner': _full_name(r['sf'], r['sl'], 'Learner'), 'parent': _full_name(r['pf'], r['pl'], 'Parent'),
+                        'parent_id': r['parent_id'], 'paid': r['sessions_paid'] or 0, 'used': used, 'booked': c.get('scheduled', 0),
+                        'left': left, 'price': int(round(price)), 'held': int(round(left * price))})
+        out.sort(key=lambda x: -x['held'])
+        return jsonify({'success': True, 'held': out})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/payouts/settings', methods=['GET', 'PUT'])
+def admin_payouts_settings():
+    """{"share_pct": 0-50, "pay_day": 1-28, "auto": bool}"""
+    g = _admin_guard()
+    if g:
+        return g
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        if request.method == 'PUT':
+            d = request.get_json(silent=True) or {}
+            changes = []
+            if 'share_pct' in d:
+                try:
+                    v = int(d['share_pct'])
+                except (TypeError, ValueError):
+                    v = -1
+                if not 0 <= v <= 50:
+                    return jsonify({'success': False, 'message': "Eschool's share must be between 0% and 50%."}), 400
+                conn.execute("INSERT OR REPLACE INTO payout_settings (key, value) VALUES ('share_pct', ?)", (str(v),)); changes.append(f'share {v}%')
+            if 'pay_day' in d:
+                try:
+                    v = int(d['pay_day'])
+                except (TypeError, ValueError):
+                    v = 0
+                if not 1 <= v <= 28:
+                    return jsonify({'success': False, 'message': 'Pay day must be between the 1st and the 28th.'}), 400
+                conn.execute("INSERT OR REPLACE INTO payout_settings (key, value) VALUES ('pay_day', ?)", (str(v),)); changes.append(f'pay day {v}')
+            if 'auto' in d:
+                conn.execute("INSERT OR REPLACE INTO payout_settings (key, value) VALUES ('auto', ?)", ('1' if d['auto'] else '0',))
+                changes.append('automatic ' + ('on' if d['auto'] else 'off'))
+            if changes:
+                admin_log(conn, 'Changed payment settings', 'payment', None, ', '.join(changes))
+            conn.commit()
+        return jsonify({'success': True, 'share_pct': int(_payout_setting(conn, 'share_pct') or 0), 'pay_day': int(_payout_setting(conn, 'pay_day') or 1),
+                        'auto': _payout_setting(conn, 'auto') == '1', 'b2c_ready': _b2c_ready(), 'b2c_missing': _b2c_missing()})
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/payouts/teacher/<int:tid>/number', methods=['PUT'])
+def admin_payouts_teacher_number(tid):
+    """{"phone"}: the number a teacher is paid on (admins can fill it in for them)."""
+    g = _admin_guard()
+    if g:
+        return g
+    phone = _ke_phone((request.get_json(silent=True) or {}).get('phone'))
+    if not phone:
+        return jsonify({'success': False, 'message': 'Type an M-Pesa number like 0712 345 678.'}), 400
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        if not conn.execute("SELECT 1 FROM users WHERE id = ? AND role = 'teacher'", (tid,)).fetchone():
+            return jsonify({'success': False, 'message': 'Teacher not found.'}), 404
+        conn.execute('INSERT OR REPLACE INTO teacher_payout_info (teacher_id, phone, updated_at, updated_by) VALUES (?, ?, ?, ?)',
+                     (tid, phone, _iso(_utc_now()), session['user_id']))
+        create_notification(conn, tid, 'Payout number saved', f'Eschool will pay your lessons to {_mask_phone(phone)}. Tell support if this is wrong.',
+                            icon='fa-mobile-screen', color='blue')
+        admin_log(conn, 'Set teacher payout number', 'user', tid, _mask_phone(phone))
+        conn.commit()
+        return jsonify({'success': True, 'phone': _mask_phone(phone)})
+    finally:
+        conn.close()
+
+
+@app.route('/api/teacher/stripe/connect', methods=['POST'])
+def teacher_stripe_connect():
+    """Starts (or continues) the teacher's Stripe setup. Returns {"url": Stripe's own page}; Stripe brings them back to Settings."""
+    if session.get('role') != 'teacher':
+        return jsonify({'success': False, 'message': 'Teachers only'}), 403
+    if not _connect_ready():
+        return jsonify({'success': False, 'message': 'Getting paid through Stripe is not set up on Eschool yet.'}), 503
+    uid = session['user_id']
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        row = _teacher_stripe(conn, uid)
+        try:
+            if not row:
+                u = conn.execute('SELECT email, firstname, lastname, country FROM users WHERE id = ?', (uid,)).fetchone()
+                country = (u['country'] or '').strip().upper() if u and len((u['country'] or '').strip()) == 2 else ''
+                data = {'type': 'express', 'email': u['email'] if u else None, 'business_type': 'individual',
+                        'capabilities[transfers][requested]': 'true',
+                        'business_profile[product_description]': 'Private lessons taught on Eschool',
+                        'business_profile[mcc]': '8299',          # schools and educational services
+                        'metadata[eschool_user_id]': uid}
+                if country:
+                    data['country'] = country
+                    if ONLINE_PAY['stripe_country'] and country != ONLINE_PAY['stripe_country']:
+                        data['tos_acceptance[service_agreement]'] = 'recipient'     # paying someone in another country
+                acct = _stripe('POST', '/accounts', data, idem=f'eschool-teacher-acct-{uid}')
+                conn.execute('INSERT OR IGNORE INTO teacher_stripe (teacher_id, account_id, created_at, updated_at) VALUES (?, ?, ?, ?)',
+                             (uid, acct['id'], _iso(_utc_now()), _iso(_utc_now())))
+                conn.commit()
+                row = _teacher_stripe(conn, uid)
+            base = _site_url()
+            link = _stripe('POST', '/account_links', {'account': row['account_id'], 'type': 'account_onboarding',
+                                                       'refresh_url': base + '/teacher/stripe/again',
+                                                       'return_url': base + '/teacher-settings?stripe=back#earnings'})
+        except (ValueError, _rq.RequestException) as e:
+            return jsonify({'success': False, 'message': (str(e) if isinstance(e, ValueError) else 'Stripe is not answering. Try again in a minute.')}), 502
+        return jsonify({'success': True, 'url': link['url']})
+    finally:
+        conn.close()
+
+
+@app.route('/teacher/stripe/again')
+def teacher_stripe_again():
+    """Stripe sends the teacher here when a setup link has expired: make a fresh one."""
+    if session.get('role') != 'teacher':
+        return redirect(url_for('login'))
+    resp = teacher_stripe_connect()
+    try:
+        data = (resp[0] if isinstance(resp, tuple) else resp).get_json() or {}
+    except Exception:
+        data = {}
+    return redirect(data.get('url') or '/teacher-settings?stripe=error#earnings')
+
+
+@app.route('/api/teacher/stripe/dashboard', methods=['POST'])
+def teacher_stripe_dashboard():
+    """A sign-in link to the teacher's own Stripe Express dashboard (bank details, payouts, tax forms)."""
+    if session.get('role') != 'teacher':
+        return jsonify({'success': False, 'message': 'Teachers only'}), 403
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        row = _teacher_stripe(conn, session['user_id'])
+    finally:
+        conn.close()
+    if not row or not _stripe_ready():
+        return jsonify({'success': False, 'message': 'Connect Stripe first.'}), 409
+    try:
+        link = _stripe('POST', f"/accounts/{row['account_id']}/login_links")
+    except (ValueError, _rq.RequestException) as e:
+        return jsonify({'success': False, 'message': str(e) if isinstance(e, ValueError) else 'Stripe is not answering.'}), 502
+    return jsonify({'success': True, 'url': link['url']})
+
+
+@app.route('/api/teacher/payout-info', methods=['GET', 'POST'])
+def teacher_payout_info():
+    """A teacher's own payout number and earnings. POST {"phone"}."""
+    if session.get('role') != 'teacher':
+        return jsonify({'success': False, 'message': 'Teachers only'}), 403
+    uid = session['user_id']
+    conn = _links_db()
+    try:
+        _payout_tables(conn)
+        if request.method == 'POST':
+            phone = _ke_phone((request.get_json(silent=True) or {}).get('phone'))
+            if not phone:
+                return jsonify({'success': False, 'message': 'Type an M-Pesa number like 0712 345 678.'}), 400
+            conn.execute('INSERT OR REPLACE INTO teacher_payout_info (teacher_id, phone, updated_at, updated_by) VALUES (?, ?, ?, ?)',
+                         (uid, phone, _iso(_utc_now()), uid))
+            conn.commit()
+        phone = _payout_phone(conn, uid)
+        due, pct = _payout_due(conn, _this_month())
+        mine = due.get(uid) or {'taught': 0, 'absent': 0, 'waiting': 0, 'gross': 0, 'fee': 0, 'net': 0}
+        paid = [{'month': p['month'], 'net': p['net'], 'lessons': p['lessons'], 'reference': p['reference'], 'paid_at': _an_iso(p['paid_at'])}
+                for p in conn.execute("SELECT * FROM teacher_payouts WHERE teacher_id = ? AND status = 'paid' ORDER BY id DESC LIMIT 12", (uid,)).fetchall()]
+        owed, m = [], _this_month()
+        for _ in range(6):                       # earlier months still waiting to be sent
+            m = _prev_month(m)
+            d_, _p = _payout_due(conn, m)
+            t_ = d_.get(uid)
+            if t_ and t_['net'] > 0:
+                owed.append({'month': m, 'net': t_['net'], 'lessons': t_['taught'] + t_['absent']})
+        st = _teacher_stripe(conn, uid, refresh=True) if _connect_ready() else None
+        conn.commit()
+        return jsonify({'success': True, 'phone': _mask_phone(phone) if phone else None, 'share_pct': pct, 'currency': SITE_CURRENCY,
+                        'stripe': {'available': _connect_ready(), 'connected': bool(st), 'ready': bool(st and st['ready']),
+                                   'details_due': st['details_due'] if st else 0},
+                        'mpesa_available': _b2c_ready() or _payments_ready() or SITE_CURRENCY == 'KES',
+                        'this_month': {k: mine[k] for k in ('taught', 'absent', 'waiting', 'gross', 'fee', 'net')}, 'paid': paid, 'owed': owed,
+                        'pay_day': int(_payout_setting(conn, 'pay_day') or 1)})
+    finally:
+        conn.close()
+
+
+# ============ NOTHING STAYS STUCK: one check an hour ============
+# Things that used to wait for ever now get reminders and time limits:
+#   requests a teacher never answers, payments and tickets nobody checks, teacher payouts not sent,
+#   live classes that never started. Families also hear when a plan is about to end, get a short
+#   weekly summary of their child's learning, and an alert after 7 days without any learning.
+# Every message is sent once (care_flags remembers what was sent).
+CARE_TICK_SECONDS = 3600
+_CARE_LAST = {'at': 0.0}
+REQUEST_REMIND_DAYS = 2          # remind the teacher about an unanswered request
+REQUEST_CLOSE_DAYS = 7           # then close it and tell the family to choose another teacher
+PAYMENT_LATE_HOURS = 24          # remind the admins (every day) about payments not checked
+TICKET_LATE_HOURS = 48           # and about tickets not answered
+LIVE_NO_SHOW_MINUTES = 60        # a live class that never started, this long after its end
+IDLE_ALERT_DAYS = 7              # tell the parent when a child hasn't learned for this long
+
+
+def _care_tables(conn):
+    conn.execute('CREATE TABLE IF NOT EXISTS care_flags (key TEXT PRIMARY KEY, at TEXT NOT NULL)')
+
+
+def _care_once(conn, key):
+    """True the first time a key is seen (so each reminder is sent once)."""
+    return conn.execute('INSERT OR IGNORE INTO care_flags (key, at) VALUES (?, ?)', (key, _iso(_utc_now()))).rowcount == 1
+
+
+def _care_admins(conn):
+    return [r[0] for r in conn.execute("SELECT id FROM users WHERE role = 'admin'").fetchall()]
+
+
+def _care_parents(conn, child_id, perm=None):
+    out = []
+    for r in conn.execute("SELECT id, parent_id, permissions FROM parent_links WHERE student_id = ? AND status = 'active'", (child_id,)).fetchall():
+        try:
+            perms = json.loads(r[2] or '{}')
+        except ValueError:
+            perms = {}
+        if perm is None or any(perms.get(p) for p in (perm if isinstance(perm, tuple) else (perm,))):
+            out.append((r[0], r[1]))
+    return out
+
+
+def _care_requests(conn, now):
+    _tutor_tables(conn)
+    for r in conn.execute(TUTORING_SELECT + " WHERE t.status = 'pending'").fetchall():
+        made = _parse_any(r['created_at'])
+        if not made:
+            continue
+        teacher = _full_name(r['t_first'], r['t_last'], 'The teacher')
+        child = _full_name(r['s_first'], r['s_last'], 'your child')
+        if now - made > timedelta(days=REQUEST_CLOSE_DAYS):
+            conn.execute("UPDATE tutoring SET status = 'declined', teacher_note = ?, responded_at = ? WHERE id = ? AND status = 'pending'",
+                         (f'Closed by Eschool: no answer in {REQUEST_CLOSE_DAYS} days.', _iso(now), r['id']))
+            create_notification(conn, r['parent_id'], 'Request closed',
+                                f"{teacher} didn't answer the {r['subject']} request for {child} in {REQUEST_CLOSE_DAYS} days, so it was closed. "
+                                "Nothing was paid. Choose another teacher on the Teachers page.", icon='fa-circle-xmark', color='orange', category='tutoring')
+            create_notification(conn, r['teacher_id'], 'Request closed',
+                                f"The {r['subject']} request for {child} was closed because it wasn't answered in {REQUEST_CLOSE_DAYS} days.",
+                                icon='fa-circle-xmark', color='#64748b', category='tutoring')
+        elif now - made > timedelta(days=REQUEST_REMIND_DAYS) and _care_once(conn, f"req-remind:{r['id']}"):
+            create_notification(conn, r['teacher_id'], 'A family is waiting for your answer',
+                                f"Please accept or decline the {r['subject']} request for {child}. "
+                                f"It closes by itself {REQUEST_CLOSE_DAYS} days after it was sent.",
+                                icon='fa-hourglass-half', color='#f59e0b', category='tutoring')
+
+
+def _care_payments(conn, now, today):
+    _payments_table(conn)
+    admins = _care_admins(conn)
+    late = _iso(now - timedelta(hours=PAYMENT_LATE_HOURS))
+    plan = conn.execute(PAYMENT_SELECT + " WHERE p.status = 'pending' AND p.created_at < ?", (late,)).fetchall()
+    try:
+        lessons = conn.execute("SELECT * FROM tutoring_payments WHERE status = 'pending' AND created_at < ?", (late,)).fetchall()
+    except sqlite3.Error:
+        lessons = []
+    waiting = len(plan) + len(lessons)
+    if waiting and _care_once(conn, f'pay-late:{today}'):
+        for a in admins:
+            create_notification(conn, a, 'Payments waiting over a day',
+                                f"{waiting} payment{'s are' if waiting != 1 else ' is'} still waiting to be checked. Families are waiting: "
+                                "open Payments and confirm or reject them.", icon='fa-clock', color='#ef4444')
+    for p in plan:
+        if now - (_parse_any(p['created_at']) or now) > timedelta(hours=48) and _care_once(conn, f"pay-late-family:{p['id']}"):
+            create_notification(conn, p['parent_id'], 'Your payment is still being checked',
+                                f"Checking M-Pesa code {p['reference']} is taking longer than usual. We've reminded the team. "
+                                "If it's urgent, open Help & Support.", icon='fa-clock', color='orange')
+    for p in lessons:
+        if now - (_parse_any(p['created_at']) or now) > timedelta(hours=48) and _care_once(conn, f"tpay-late-family:{p['id']}"):
+            create_notification(conn, p['parent_id'], 'Your payment is still being checked',
+                                f"Checking M-Pesa code {p['reference']} for lessons is taking longer than usual. We've reminded the team.",
+                                icon='fa-clock', color='orange', category='tutoring')
+
+
+def _care_tickets(conn, now, today):
+    late = (now - timedelta(hours=TICKET_LATE_HOURS)).strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        rows = conn.execute("""SELECT id, subject FROM complaints WHERE (response IS NULL OR response = '')
+                               AND COALESCE(status, 'pending') NOT IN ('resolved', 'closed') AND REPLACE(created_at, 'T', ' ') < ?""",
+                            (late,)).fetchall()
+    except sqlite3.Error:
+        return
+    if rows and _care_once(conn, f'tickets-late:{today}'):
+        for a in _care_admins(conn):
+            create_notification(conn, a, 'Tickets waiting over 2 days',
+                                f"{len(rows)} support ticket{'s have' if len(rows) != 1 else ' has'} no answer after 2 days, e.g. \"{rows[0][1][:60]}\". "
+                                "Open Support to answer.", icon='fa-headset', color='#ef4444')
+
+
+def _care_payouts(conn, now, today):
+    _payout_tables(conn)
+    pay_day = int(_payout_setting(conn, 'pay_day') or 1)
+    day = _nairobi_dt().day
+    if day < pay_day:
+        return
+    month = _prev_month(_this_month())
+    label = datetime.strptime(month + '-01', '%Y-%m-%d').strftime('%B %Y')
+    due, _ = _payout_due(conn, month)
+    ready = [t for t in due.values() if t['net'] > 0]
+    for t in ready:            # each teacher hears what they earned and when it comes
+        if _care_once(conn, f"payout-teacher:{month}:{t['teacher_id']}"):
+            st = _teacher_stripe(conn, t['teacher_id']) if _connect_ready() else None
+            has_way = bool(_payout_phone(conn, t['teacher_id'])) or bool(st and st['ready'])
+            create_notification(conn, t['teacher_id'], f'Your {label} earnings',
+                                f"{_money(t['net'])} for your {label} lessons is being sent to you."
+                                + ('' if has_way else ' Set up how you get paid in Settings > Earnings so Eschool can pay you.'),
+                                icon='fa-money-bill-wave', color='green')
+    if ready and day >= pay_day + 2 and _care_once(conn, f'payout-late:{month}:{day // 3}'):
+        for a in _care_admins(conn):
+            create_notification(conn, a, 'Teacher payouts not sent yet',
+                                f"{len(ready)} teacher{'s are' if len(ready) != 1 else ' is'} still waiting for {label} pay. "
+                                "Open Payments > Teacher payouts to send it.", icon='fa-money-bill-wave', color='#ef4444')
+
+
+def _care_live(conn, now):
+    try:
+        rows = conn.execute("SELECT id, teacher_id, title, start_time, duration_min FROM live_classes WHERE state = 'scheduled'").fetchall()
+    except sqlite3.Error:
+        return
+    for c in rows:
+        start = _parse_any(c[3])
+        if not start:
+            continue
+        end = start + timedelta(minutes=int(c[4] or 60) + LIVE_NO_SHOW_MINUTES)
+        if not (now - timedelta(days=3) < end < now) or not _care_once(conn, f'live-noshow:{c[0]}'):
+            continue
+        try:
+            waiting = [r[0] for r in conn.execute('SELECT user_id FROM live_reminders WHERE class_id = ?', (c[0],)).fetchall()]
+        except sqlite3.Error:
+            waiting = []
+        for uid in waiting:
+            create_notification(conn, uid, "Live class didn't take place",
+                                f"\"{c[2]}\" didn't start. Your teacher may plan it again; you'll see it on Live classes.",
+                                icon='fa-video-slash', color='orange')
+        create_notification(conn, c[1], "Your live class didn't start",
+                            f"\"{c[2]}\" never started" + (f" and {len(waiting)} learner{'s' if len(waiting) != 1 else ''} were told" if waiting else '')
+                            + ". Plan it again from Live classes.", icon='fa-video-slash', color='orange')
+
+
+def _care_plans(conn, now):
+    _ensure_plan_columns(conn)
+    lo, hi = _iso(now - timedelta(days=2)), _iso(now + timedelta(days=3))
+    for u in conn.execute("""SELECT id, firstname, plan, plan_expires_at FROM users WHERE plan IN ('basic', 'pro')
+                             AND plan_expires_at > ? AND plan_expires_at <= ?""", (lo, hi)).fetchall():
+        exp = _parse_iso(u['plan_expires_at'])
+        if not exp:
+            continue
+        left = exp - now
+        stage = 'ended' if left <= timedelta(0) else ('1d' if left <= timedelta(days=1) else '3d')
+        if not _care_once(conn, f"plan:{u['id']}:{u['plan_expires_at']}:{stage}"):
+            continue
+        name = PLAN_NAMES.get(u['plan'], u['plan'])
+        first = (u['firstname'] or 'Your child').strip()
+        if stage == 'ended':
+            mine = f"Your Eschool {name} plan has ended, so you're on Free now. Renew it on the Plans page."
+            theirs = f"{first}'s Eschool {name} plan has ended. Renew it on My Children to keep {name} features."
+        else:
+            when = 'tomorrow' if stage == '1d' else 'in 3 days'
+            day = _when_for(u['id'], exp, '%b %d')
+            mine = f"Your Eschool {name} plan ends {when} ({day}). Renew it on the Plans page so nothing stops."
+            theirs = f"{first}'s Eschool {name} plan ends {when}. Renew it on My Children so nothing stops."
+        create_notification(conn, u['id'], f'{name} plan ' + ('ended' if stage == 'ended' else 'ending soon'), mine, icon='fa-crown', color='orange')
+        for _link, parent in _care_parents(conn, u['id']):
+            create_notification(conn, parent, f"{first}'s plan " + ('ended' if stage == 'ended' else 'ends soon'), theirs, icon='fa-crown', color='orange')
+
+
+def _care_last_learned(conn, uid):
+    """When the learner last earned EP (finished a module, passed a quiz ...); None if never."""
+    try:
+        return _parse_any(conn.execute('SELECT MAX(created_at) FROM ep_events WHERE user_id = ?', (uid,)).fetchone()[0])
+    except (sqlite3.Error, TypeError):
+        return None
+
+
+def _care_families(conn, now, today):
+    _ep_table(conn)
+    monday = _nairobi_dt().weekday() == 0
+    week = _week_start(today) if monday else None
+    since = _iso(now - timedelta(days=7))
+    kids = {r[0]: r[1] for r in conn.execute("""SELECT DISTINCT u.id, u.firstname FROM parent_links pl JOIN users u ON u.id = pl.student_id
+                                               WHERE pl.status = 'active'""").fetchall()}
+    for kid, first in kids.items():
+        first = (first or 'Your child').strip()
+        last = _care_last_learned(conn, kid)
+        joined = _parse_any((conn.execute('SELECT joined_at FROM users WHERE id = ?', (kid,)).fetchone() or [None])[0])
+        since_when = last or joined
+        if since_when and now - since_when > timedelta(days=IDLE_ALERT_DAYS):
+            text = (f"{first} hasn't learned on Eschool for {(now - last).days} days (no modules or quizzes finished)." if last else
+                    f"{first} hasn't started learning on Eschool yet.") + ' A short chat or a small goal can help.'
+            for link, parent in _care_parents(conn, kid, ('activity', 'grades')):
+                if _care_once(conn, f"idle:{link}:{last.date().isoformat() if last else 'never'}"):     # once each quiet spell
+                    create_notification(conn, parent, f"{first} hasn't been learning", text, icon='fa-bed', color='orange')
+        if not monday:
+            continue
+        ev = conn.execute('SELECT kind, COUNT(*), COALESCE(SUM(ep), 0) FROM ep_events WHERE user_id = ? AND created_at >= ? GROUP BY kind', (kid, since)).fetchall()
+        ep = sum(r[2] for r in ev)
+        counts = {r[0]: r[1] for r in ev}
+        try:
+            lessons = conn.execute("""SELECT COUNT(*) FROM tutoring_sessions s JOIN tutoring t ON t.id = s.tutoring_id
+                                      WHERE t.student_id = ? AND s.status = 'completed' AND s.starts_at >= ?""", (kid, since)).fetchone()[0]
+        except sqlite3.Error:
+            lessons = 0
+        parts = [f'{ep} EP']
+        if counts.get('module'):
+            parts.append(f"{counts['module']} module{'s' if counts['module'] != 1 else ''}")
+        quizzes = counts.get('quiz', 0) + counts.get('daily_quiz', 0) + counts.get('daily', 0)
+        if quizzes:
+            parts.append(f"{quizzes} quiz{'zes' if quizzes != 1 else ''}")
+        if lessons:
+            parts.append(f"{lessons} lesson{'s' if lessons != 1 else ''} taught")
+        text = (f"{first}'s week on Eschool: " + ', '.join(parts) + '.') if ep or lessons else f"{first} didn't learn on Eschool last week."
+        for link, parent in _care_parents(conn, kid, 'grades'):
+            if _care_once(conn, f'weekly:{week}:{link}'):
+                create_notification(conn, parent, f"{first}'s week", text + ' See more on My Children.', icon='fa-chart-line', color='#4361ee')
+
+
+def _care_school_year(conn, now):
+    for u in conn.execute("SELECT id, joined_at FROM users WHERE COALESCE(role, 'student') = 'student' AND joined_at IS NOT NULL").fetchall():
+        joined = _parse_any(u[1])
+        if not joined:
+            continue
+        years = (now - joined).days // 365
+        if years >= 1 and _care_once(conn, f'grade-year:{u[0]}:{years}'):
+            create_notification(conn, u[0], 'A new school year?',
+                                'If you moved up a grade, change it in Settings so your courses, teachers and quizzes match your class.',
+                                icon='fa-graduation-cap', color='#4361ee')
+
+
+def _care_check(conn):
+    _care_tables(conn)
+    now, today = _utc_now(), _nairobi_today()
+    for step in (lambda: _care_requests(conn, now), lambda: _care_payments(conn, now, today), lambda: _care_tickets(conn, now, today),
+                 lambda: _care_payouts(conn, now, today), lambda: _care_live(conn, now), lambda: _care_plans(conn, now),
+                 lambda: _care_families(conn, now, today), lambda: _care_school_year(conn, now)):
+        try:
+            step()
+            conn.commit()
+        except Exception as e:       # one part failing never stops the others
+            conn.rollback()
+            print(f'care check part skipped: {e}')
+
+
+@app.before_request
+def _care_tick():
+    if request.endpoint in (None, 'static'):
+        return None
+    now = _clock.time()
+    if now - _CARE_LAST['at'] < CARE_TICK_SECONDS:
+        return None
+    _CARE_LAST['at'] = now
+    try:
+        conn = _links_db()
+        try:
+            _care_check(conn)
+        finally:
+            conn.close()
+    except Exception as e:
+        print(f'care check skipped: {e}')
+    return None
 
 
 # ============ PUBLIC HOME PAGE: LIVE NUMBERS ============
@@ -23180,11 +26533,9 @@ def _career_state(conn, uid, local_grades=None):
     stories = {r['area']: r['score'] for r in conn.execute('SELECT area, score FROM career_stories WHERE user_id = ?', (uid,)).fetchall()}
     career_ep = conn.execute("SELECT COALESCE(SUM(ep), 0) FROM ep_events WHERE user_id = ? AND kind LIKE 'career_%'", (uid,)).fetchone()[0]
 
-    featured_c, featured_m = _career_featured(week)
+    featured_c, _ = _career_featured(week)
     next_c, _ = _career_featured((datetime.strptime(week, '%Y-%m-%d') + timedelta(days=7)).strftime('%Y-%m-%d'))
-    fm = None
-    if featured_m:
-        fm = _career_mission_json(featured_m, done_rows.get((featured_m[0], week)), True)
+    fm = None      # the Career of the week is an explanation now, not a question
     out = {
         'careers': [_career_public(CAREER_PATHS[k]) for k in CAREER_ORDER],
         'areas': CAREER_AREAS_INFO,
@@ -23192,6 +26543,7 @@ def _career_state(conn, uid, local_grades=None):
         'career': _career_public(career) if career else None,
         'week': week, 'week_ends': (datetime.strptime(week, '%Y-%m-%d') + timedelta(days=7)).strftime('%Y-%m-%d'),
         'featured': {'career': _career_public(featured_c), 'mission': fm, 'next': _career_public(next_c),
+                     'info': _career_info(conn, featured_c['key']),
                      'note': _planner_week_row(week)['note'],
                      'learners': sum(1 for k in _career_keys(conn).values() if k == featured_c['key']),
                      'shared': [CAREER_SUBJECTS.get(x, x) for x, _ in featured_c['subjects']
@@ -23407,7 +26759,7 @@ def api_career_me():
         conn.close()
 
 
-CAREER_MISSION_EP_WEEK = 4      # your 3 career missions + the Career of the week mission
+CAREER_MISSION_EP_WEEK = 3      # your 3 career missions a week
 
 
 # =====================================================================
@@ -23608,7 +26960,7 @@ def _planned_quiz_for(conn, uid, day):
     q = _quiz_row_json(r)
     if q['countries']:
         u = conn.execute('SELECT country FROM users WHERE id = ?', (uid,)).fetchone()
-        if not u or (u[0] or '').upper() not in [c.upper() for c in q['countries']]:
+        if u and (u[0] or '').strip() and (u[0] or '').upper() not in [c.upper() for c in q['countries']]:
             return None
     return q
 
@@ -23711,6 +27063,8 @@ def admin_planner_overview():
         lo = min(grid0, t0 - timedelta(days=14)).strftime('%Y-%m-%d')
         hi = max(grid1, t0 + timedelta(days=60)).strftime('%Y-%m-%d')
         planned = {r['day']: _quiz_row_json(r) for r in conn.execute('SELECT * FROM planner_quizzes WHERE day BETWEEN ? AND ?', (lo, hi))}
+        # every question already planned around now, so Auto-fill doesn't repeat them
+        used_q = sorted({qq['question'] for pq in planned.values() for qq in pq['questions'] if qq.get('question')})
         takers = {r[0]: (r[1], r[2]) for r in conn.execute(
             "SELECT day, COUNT(*), AVG(pct) FROM ep_events WHERE kind = 'daily_quiz' AND day BETWEEN ? AND ? GROUP BY day", (lo, hi))}
         active = max(1, _planner_active_learners(conn, 7))
@@ -23818,7 +27172,8 @@ def admin_planner_overview():
                                  'missions_weeks_planned': planned_weeks,
                                  'missions_right': round((m_rows[1] or 0) * 100 / m_rows[0]) if m_rows[0] else None,
                                  'admin_questions': conn.execute('SELECT COUNT(*) FROM planner_questions').fetchone()[0]},
-                        'series': series, 'hardest': hardest, 'queue': queue, 'careers': careers,
+                        'series': series, 'hardest': hardest, 'queue': queue, 'careers': careers, 'used_questions': used_q,
+                        'planned_days': {k: {'status': v['status'], 'modules': sorted({x.get('course', '') + '|' + x.get('module', '') for x in v['questions']})} for k, v in planned.items()},
                         'areas': [{'key': k, 'label': v['label'], 'emoji': v['emoji'], 'missions': len(CAREER_MISSIONS.get(k) or []),
                                    'admin': sum(1 for m in (CAREER_MISSIONS.get(k) or []) if m[0] in _PM['ids'])} for k, v in CAREER_AREAS_INFO.items()],
                         'coverage': {'courses': cov_c, 'strategies': cov_s},
@@ -23941,6 +27296,33 @@ def admin_planner_bulk():
         conn.close()
 
 
+@app.route('/api/admin/planner/publish', methods=['POST'])
+def admin_planner_publish():
+    """{"days": [...]} (or nothing = every draft from today on): drafts become Ready, so learners get them."""
+    g = _admin_guard()
+    if g:
+        return g
+    days = (request.get_json(silent=True) or {}).get('days')
+    today = _nairobi_today()
+    conn = _planner_db()
+    try:
+        if isinstance(days, list) and days:
+            days = [str(d) for d in days if _planner_day_ok(str(d)) and str(d) >= today][:62]
+            marks = ','.join('?' * len(days)) or "''"
+            cur = conn.execute(f"UPDATE planner_quizzes SET status = 'ready', updated_by = ?, updated_at = ? WHERE status = 'draft' AND day IN ({marks})",
+                               [session['user_id'], _iso(_utc_now())] + days)
+        else:
+            cur = conn.execute("UPDATE planner_quizzes SET status = 'ready', updated_by = ?, updated_at = ? WHERE status = 'draft' AND day >= ?",
+                               (session['user_id'], _iso(_utc_now()), today))
+        n = cur.rowcount
+        if n:
+            admin_log(conn, 'Made daily quizzes ready', 'planner', None, f'{n} day{"s" if n != 1 else ""}')
+        conn.commit()
+        return jsonify({'success': True, 'ready': n})
+    finally:
+        conn.close()
+
+
 # ---------------- admin: question bank (admin-written) ----------------
 @app.route('/api/admin/planner/questions', methods=['GET', 'POST'])
 def admin_planner_questions():
@@ -23981,6 +27363,175 @@ def admin_planner_question_delete(qid):
         conn.execute('DELETE FROM planner_questions WHERE id = ?', (qid,))
         conn.commit()
         return jsonify({'success': True})
+    finally:
+        conn.close()
+
+
+# ----- Career of the week: an explanation of the career (no question) -----
+# Starter text for every career. Admins can change any part in Admin > Learning planner > Plan the week;
+# their version is kept in career_info and used every time that career is featured.
+#   key: (what they do, a day at work, [skills], where they work, [steps to become one])
+CAREER_INFO_DEFAULTS = {
+    'doctor': ('Doctors find out why people are sick and decide how to treat them. They examine patients, order tests, prescribe medicine and, for surgeons, operate.',
+               'Seeing patients one after another, reading test results, explaining a diagnosis to a worried family, writing prescriptions and notes, and sometimes being called in at night for an emergency.',
+               ['Careful thinking under pressure', 'Strong memory for facts', 'Listening and explaining kindly', 'Patience: learning never stops'],
+               'Hospitals, clinics, their own practice, research labs, the army and charities working in remote areas.',
+               ['Finish secondary school with strong sciences', 'Medical school (about 6 years)', 'Work as an intern doctor for a year', 'Get a licence, then specialise (e.g. surgeon, children’s doctor)']),
+    'nurse': ('Nurses look after patients day and night: they check how sick people are doing, give medicines, clean and dress wounds, and explain to families how to care for someone at home. In many clinics the nurse is the first health worker a patient meets.',
+              'Morning handover from the night team, a round of the ward checking temperature and blood pressure, medicines at set times, helping a doctor with a procedure, and writing notes on each patient.',
+              ['Staying calm when things are busy', 'Careful with numbers (doses)', 'Kind, clear talking', 'Working well in a team'],
+              'Hospitals, village clinics, schools, the army, home care, and abroad.',
+              ['Finish secondary school', 'Nursing diploma or degree (3–4 years)', 'Pass the nursing licence exam', 'Work, then specialise (e.g. midwife)']),
+    'pharmacist': ('Pharmacists are the medicine experts. They prepare and hand out medicines, check that a patient’s medicines are safe together, and explain how and when to take them.',
+                   'Checking prescriptions from doctors, counting and labelling medicines, answering customers’ questions, spotting a dangerous mix of medicines and calling the doctor about it.',
+                   ['Accuracy: one mistake can harm someone', 'Chemistry and biology knowledge', 'Explaining simply', 'Honesty and responsibility'],
+                   'Pharmacies, hospitals, medicine factories, research labs and health agencies that check medicine quality.',
+                   ['Finish secondary school with chemistry and biology', 'Pharmacy degree (4–5 years)', 'A year of supervised practice', 'Pass the licence exam']),
+    'engineer': ('Engineers design and build the things we use every day: roads, bridges, machines, power lines, water systems. They use maths and science to make sure things are strong, safe and work well.',
+                 'Drawing and checking designs on a computer, visiting a building site in a helmet, testing materials, meeting the team to solve a problem, and checking the budget.',
+                 ['Maths and physics', 'Solving problems step by step', 'Drawing and planning', 'Safety first'],
+                 'Construction companies, factories, power and water companies, mines, government projects, or their own firm.',
+                 ['Finish secondary school with strong maths and physics', 'Engineering degree (4–5 years)', 'Work under an experienced engineer', 'Register as a professional engineer']),
+    'software_dev': ('Software developers write the code behind apps, websites and computer systems. They turn an idea into instructions a computer can follow, then test and improve it.',
+                     'A short team meeting, writing and testing code, fixing a bug a user reported, reviewing a teammate’s code, and learning a new tool.',
+                     ['Logical thinking', 'Patience to find and fix mistakes', 'Teamwork', 'Learning new things on your own'],
+                     'Tech companies, banks, hospitals, schools, startups, or from home for companies anywhere in the world.',
+                     ['Start coding now with free online lessons', 'Computer Science degree or a coding bootcamp (1–4 years)', 'Build small projects to show your skills', 'Get a first job or internship']),
+    'data_scientist': ('Data scientists find answers hidden in large amounts of information. They use maths and computers to spot patterns and make predictions that help people decide.',
+                       'Cleaning messy data, writing code to look for patterns, making charts, building a model that predicts something, and explaining the results to people who are not experts.',
+                       ['Statistics and maths', 'Coding', 'Curiosity: asking good questions', 'Explaining numbers clearly'],
+                       'Banks, phone companies, hospitals, farming companies, shops, government offices and research groups.',
+                       ['Finish secondary school with strong maths', 'Degree in statistics, maths or computer science (3–4 years)', 'Practise with real data projects', 'Start as a data analyst']),
+    'pilot': ('Pilots fly aeroplanes safely from one place to another, carrying passengers or goods. They plan each flight, control the plane and stay in touch with air traffic control.',
+              'Checking the weather and the flight plan, inspecting the plane, flying with the co-pilot, talking to air traffic control, and writing a report after landing.',
+              ['Staying calm and focused', 'Maths and physics', 'Quick decisions', 'Clear communication'],
+              'Airlines, cargo companies, air ambulances, the air force, and companies that fly tourists or doctors to remote places.',
+              ['Finish secondary school with maths and physics', 'Pass a medical check', 'Flight school (2–3 years)', 'Get a pilot licence and build flying hours']),
+    'architect': ('Architects design buildings: homes, schools, hospitals, offices. They decide how a building looks, how people move through it and how it stays cool, bright and safe.',
+                  'Sketching ideas, drawing plans on a computer, meeting clients to hear what they need, visiting a site, and working with engineers and builders.',
+                  ['Drawing and imagination', 'Maths and space', 'Listening to clients', 'Paying attention to detail'],
+                  'Architecture firms, building companies, city planning offices, or their own studio.',
+                  ['Finish secondary school with maths and art', 'Architecture degree (about 5 years)', 'Work under a registered architect', 'Pass the exams to register']),
+    'accountant': ('Accountants keep track of money for people and businesses. They record what comes in and goes out, prepare reports and taxes, and help owners decide what they can afford.',
+                   'Checking records and receipts, preparing monthly reports, working out taxes, meeting a client about their business, and checking that nothing is missing.',
+                   ['Accuracy with numbers', 'Honesty', 'Organisation', 'Explaining money simply'],
+                   'Accounting firms, banks, businesses of every size, government offices, or on their own.',
+                   ['Finish secondary school with strong maths', 'Accounting or business degree (3–4 years)', 'Pass professional accounting exams', 'Gain experience, then become certified']),
+    'entrepreneur': ('Entrepreneurs start and run their own businesses. They spot a problem people have, come up with a product or service that solves it, and find customers who will pay for it.',
+                     'Talking to customers, checking sales and costs, solving a supplier problem, planning how to grow, and leading a small team. No two days are the same.',
+                     ['Spotting opportunities', 'Handling money', 'Not giving up after failure', 'Talking to people and selling'],
+                     'Anywhere: a shop, a farm, an office, online, or from home.',
+                     ['Start small now: sell something, fix something', 'Learn business, money and marketing (a degree helps)', 'Test your idea with real customers', 'Grow step by step and learn from mistakes']),
+    'lawyer': ('Lawyers know the law and use it to help people. They give advice, write agreements, and speak for their clients in court.',
+               'Reading case files, researching laws, meeting a client, writing a contract or a letter, and arguing a case in front of a judge.',
+               ['Reading and writing well', 'Arguing with evidence', 'Speaking confidently', 'Honesty and fairness'],
+               'Law firms, courts, companies, government offices, human rights groups, or their own practice.',
+               ['Finish secondary school with strong languages', 'Law degree (4–5 years)', 'Law school and the bar exam', 'Become an advocate, then specialise']),
+    'teacher': ('Teachers help young people learn. They plan lessons, explain new ideas, check work, and help every learner find what they are good at.',
+                'Teaching several classes, marking books, helping a learner who is stuck, meeting parents, and planning tomorrow’s lessons.',
+                ['Explaining clearly', 'Patience', 'Organisation', 'Caring about every learner'],
+                'Primary and secondary schools, colleges, universities, tutoring centres and online schools.',
+                ['Finish secondary school', 'Teaching diploma or degree (3–4 years)', 'Teaching practice in a real school', 'Register as a teacher']),
+    'journalist': ('Journalists find out what is happening and tell the public. They interview people, check facts, and write or record news stories for newspapers, radio, TV and online.',
+                   'Searching for a story, calling people for interviews, checking every fact twice, writing to a deadline, and sometimes reporting live from where something is happening.',
+                   ['Writing and speaking well', 'Curiosity', 'Checking facts', 'Meeting deadlines'],
+                   'Newspapers, radio and TV stations, news websites, magazines, or as a freelancer.',
+                   ['Finish secondary school with strong languages', 'Journalism or communication degree (3–4 years)', 'Write for a school or local paper now', 'Start with an internship']),
+    'graphic_designer': ('Graphic designers create the pictures and layouts that share a message: logos, posters, book covers, websites and adverts.',
+                         'Meeting a client to understand what they want, sketching ideas, designing on a computer, showing drafts, and changing the design until it is just right.',
+                         ['Drawing and creativity', 'Using design software', 'Listening to feedback', 'An eye for colour and detail'],
+                         'Design studios, advertising companies, newspapers, tech companies, or from home as a freelancer.',
+                         ['Practise drawing and design now', 'Design diploma or degree (2–4 years)', 'Build a portfolio of your work', 'Find clients or a first job']),
+    'musician': ('Musicians create and perform music. Some write songs, some play instruments, some sing, and many also record, teach or produce music for others.',
+                 'Practising for hours, rehearsing with a band, writing or recording a song, performing in the evening, and sharing music online.',
+                 ['Practice every day', 'Listening carefully', 'Confidence on stage', 'Running your own small business'],
+                 'Concerts and events, studios, churches, schools, radio and TV, and online platforms.',
+                 ['Start practising now', 'Learn music theory (music school helps)', 'Perform wherever you can', 'Share your music and build an audience']),
+    'farmer': ('Farmers and agronomists grow food and raise animals. Agronomists study soil, crops and weather to help farms grow more food with less water and fewer chemicals.',
+               'Checking crops for pests, testing soil, planning planting with the weather, advising other farmers, and finding the best market prices.',
+               ['Biology and chemistry', 'Planning ahead', 'Hard work outdoors', 'Using technology (phones, sensors)'],
+               'Farms, agricultural companies, research stations, government farming offices and food factories.',
+               ['Finish secondary school with agriculture and biology', 'Agriculture diploma or degree (2–4 years)', 'Practise on a real farm', 'Start your own farm or advise others']),
+    'vet': ('Vets are doctors for animals. They keep pets, farm animals and wild animals healthy, treat them when they are sick, and help stop animal diseases from spreading to people.',
+            'Examining a dog at the clinic, vaccinating cows on a farm, operating on an injured animal, and advising farmers on keeping their herds healthy.',
+            ['Love and respect for animals', 'Biology and chemistry', 'Calm hands', 'Talking with worried owners'],
+            'Animal clinics, farms, wildlife parks, zoos, research labs and government animal health offices.',
+            ['Finish secondary school with strong sciences', 'Veterinary school (about 5 years)', 'Supervised practice', 'Get a licence']),
+    'scientist': ('Scientists ask questions about how the world works and test ideas with experiments. Their work leads to new medicines, better crops, cleaner energy and much more.',
+                  'Planning an experiment, working in the lab, recording results carefully, reading what other scientists found, and writing up what they learned.',
+                  ['Curiosity', 'Careful, patient work', 'Maths for analysing results', 'Not giving up when experiments fail'],
+                  'Universities, research institutes, hospitals, medicine and food companies, and government labs.',
+                  ['Finish secondary school with strong sciences', 'Science degree (3–4 years)', 'Master’s or PhD for research (2–6 years)', 'Join a research team']),
+    'footballer': ('Professional footballers play the game at the top level for clubs and countries. Behind every match are years of training, fitness work and studying the game.',
+                   'Morning training with the team, gym and fitness work, watching videos of the next opponent, rest and healthy food, and matches at weekends.',
+                   ['Fitness and skill', 'Discipline', 'Teamwork', 'Handling pressure'],
+                   'Football clubs, national teams, and later as coaches, scouts, commentators or sports managers.',
+                   ['Play and train as much as you can now', 'Join a school or local team', 'Get spotted by an academy', 'Keep learning: studies help after your playing career']),
+    'content_creator': ('Content creators make videos, photos, podcasts or posts that teach, entertain or inspire people online. Many run it as a business with sponsors and their own products.',
+                        'Planning ideas, writing a script, filming and editing, replying to comments, checking which posts did well, and talking to brands.',
+                        ['Storytelling', 'Filming and editing', 'Consistency', 'Understanding your audience'],
+                        'From home or a small studio, for media companies, brands and agencies.',
+                        ['Start creating now (even with a phone)', 'Learn editing and storytelling (a media course helps)', 'Post regularly and learn from your numbers', 'Work with brands as you grow']),
+}
+
+
+def _career_info_table(conn):
+    conn.execute('''CREATE TABLE IF NOT EXISTS career_info (
+        career_key TEXT PRIMARY KEY, does TEXT, day TEXT, skills TEXT, where_work TEXT, steps TEXT, updated_by INTEGER, updated_at TEXT)''')
+
+
+def _career_info(conn, key):
+    """The explanation learners read for one career: the admin's version, else the starter text."""
+    d = CAREER_INFO_DEFAULTS.get(key) or ('', '', [], '', [])
+    out = {'does': d[0], 'day': d[1], 'skills': list(d[2]), 'where': d[3], 'steps': list(d[4]), 'edited': False}
+    try:
+        _career_info_table(conn)
+        r = conn.execute('SELECT * FROM career_info WHERE career_key = ?', (key,)).fetchone()
+    except sqlite3.Error:
+        r = None
+    if r:
+        for k, col in (('does', 'does'), ('day', 'day'), ('where', 'where_work')):
+            if (r[col] or '').strip():
+                out[k] = r[col]
+        for k in ('skills', 'steps'):
+            try:
+                v = json.loads(r[k] or '[]')
+            except ValueError:
+                v = []
+            if v:
+                out[k] = v
+        out['edited'] = True
+    return out
+
+
+@app.route('/api/admin/planner/career/<key>', methods=['GET', 'PUT', 'DELETE'])
+def admin_planner_career_info(key):
+    """The explanation of one career. PUT {does, day, skills: [...], where, steps: [...]}; DELETE = back to the starter text."""
+    g = _admin_guard()
+    if g:
+        return g
+    if key not in CAREER_PATHS:
+        return jsonify({'success': False, 'message': 'Career not found.'}), 404
+    conn = _planner_db()
+    try:
+        _career_info_table(conn)
+        if request.method == 'PUT':
+            d = request.get_json(silent=True) or {}
+            text = lambda v, n: ' '.join(str(v or '').split())[:n]
+            lines = lambda v, n: [text(x, 160) for x in (v if isinstance(v, list) else str(v or '').split('\n')) if text(x, 160)][:n]
+            does = text(d.get('does'), 700)
+            if len(does) < 20:
+                return jsonify({'success': False, 'message': 'Write what this career does (at least a sentence).'}), 400
+            conn.execute('''INSERT OR REPLACE INTO career_info (career_key, does, day, skills, where_work, steps, updated_by, updated_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                         (key, does, text(d.get('day'), 600), json.dumps(lines(d.get('skills'), 6)), text(d.get('where'), 300),
+                          json.dumps(lines(d.get('steps'), 6)), session['user_id'], _iso(_utc_now())))
+            admin_log(conn, 'Edited a career explanation', 'planner', None, CAREER_PATHS[key]['name'])
+        elif request.method == 'DELETE':
+            conn.execute('DELETE FROM career_info WHERE career_key = ?', (key,))
+            admin_log(conn, 'Reset a career explanation', 'planner', None, CAREER_PATHS[key]['name'])
+        conn.commit()
+        return jsonify({'success': True, 'info': _career_info(conn, key)})
     finally:
         conn.close()
 

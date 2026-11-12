@@ -2,119 +2,410 @@
 {% block title %}Payments{% endblock %}
 {% block allcontent %}
 {#
-    ADMIN - Payments  (templates/Admin/admin_payments.html)   Route: /admin-payments
-    GET  /api/admin/money?status=pending|confirmed|rejected|all&kind=plan|teaching&q=
-    POST /api/admin/payments/<id>            plan payments      {action: confirm|reject, note}
-    POST /api/admin/tutoring-payments/<id>   teaching payments  {action: confirm|reject, note}
-    Confirming a plan starts the learner's plan; confirming teaching adds paid sessions.
+    ADMIN - Payments  (templates/Admin/admin_payments.html)   Route: /admin-payments   (?tab=in|held|payouts|missed|refunds)
+    Parents pay Eschool. Eschool holds the money until each lesson happens, keeps its share,
+    and pays teachers at the start of every month. Lessons the teacher missed go back to the parent unless everyone agreed to move them.
+    APIs: /api/admin/payouts/summary · /api/admin/money · /api/admin/payments/<id> · /api/admin/tutoring-payments/<id>
+          /api/admin/payouts/held · /api/admin/payouts?month= · /api/admin/payouts/lessons · /api/admin/payouts/pay
+          /api/admin/payouts/missed · /api/admin/payouts/lessons/<id>/decide · /api/admin/refunds · /api/admin/payouts/settings
+          /api/admin/payouts/teacher/<id>/number
 #}
-<div class="ad-page-h">
-    <div><h1>Payments</h1><p>M-Pesa payments from parents for plans and private lessons. Check each code in your M-Pesa statement before confirming.</p></div>
-    <div class="ad-actions"><button type="button" class="ad-btn" id="pCsv" disabled><i class="fas fa-file-csv"></i> Export</button></div>
-</div>
-
-<div class="ad-kpis" id="pKpis"><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div></div>
-
-<div class="ad-card">
-    <div class="ad-tabs" role="group" aria-label="Status" id="pStatus">
-        <button type="button" class="ad-tab" data-s="pending" aria-pressed="true"><i class="fas fa-hourglass-half"></i> To check</button>
-        <button type="button" class="ad-tab" data-s="confirmed" aria-pressed="false"><i class="fas fa-circle-check"></i> Confirmed</button>
-        <button type="button" class="ad-tab" data-s="rejected" aria-pressed="false"><i class="fas fa-circle-xmark"></i> Not confirmed</button>
-        <button type="button" class="ad-tab" data-s="all" aria-pressed="false">All</button>
-    </div>
-    <div class="ad-toolbar">
-        <input type="search" class="ad-input" id="pQ" placeholder="Search M-Pesa code, phone, parent, learner or teacher" aria-label="Search payments">
-        <select class="ad-select" id="pKind" aria-label="Payment type"><option value="">Plans and lessons</option><option value="plan">Plans only</option><option value="teaching">Private lessons only</option></select>
-    </div>
-    <div class="ad-note" id="pNote" role="status" aria-live="polite"></div>
-    <div id="pList"><div class="ad-skel"></div><div class="ad-skel"></div><div class="ad-skel"></div></div>
-</div>
-
-<div class="ad-card">
-    <div class="ad-card-h"><h2>Confirmed by month</h2><p>Last six months, in KES.</p></div>
-    <div id="pMonths"></div>
-</div>
-
 <style>
-.pm-row { border: 1px solid var(--ab-border); border-radius: 12px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 10px 16px; align-items: center; }
-.pm-row + .pm-row { margin-top: 10px; }
-.pm-row.dup { border-color: #f59e0b; }
-.pm-main b { color: var(--ab-text); font-size: .92rem; }
-.pm-main small, .pm-ref small { display: block; color: var(--ab-text-3); font-size: .76rem; margin-top: 2px; }
-.pm-ref .ad-mono { font-size: .95rem; color: var(--ab-text); font-weight: 700; }
-.pm-amt { font-family: 'Poppins', sans-serif; font-size: 1.1rem; color: var(--ab-text); font-weight: 700; text-align: right; white-space: nowrap; }
-.pm-acts { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.pm-bars { display: flex; flex-direction: column; gap: 8px; }
-.pm-bar { display: grid; grid-template-columns: 70px 1fr 110px; gap: 10px; align-items: center; font-size: .8rem; color: var(--ab-text-2); }
-.pm-bar .t { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: var(--ab-hover); gap: 2px; }
-.pm-bar .t i { display: block; height: 100%; }
-.pm-bar b { text-align: right; color: var(--ab-text); }
-.pm-key { display: flex; gap: 14px; font-size: .76rem; color: var(--ab-text-3); margin-top: 10px; }
-.pm-key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
-@media (max-width: 640px) { .pm-row { grid-template-columns: minmax(0, 1fr) auto; } .pm-ref { grid-column: 1 / -1; order: 3; } }
+    .pm-flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-bottom: 16px; background: var(--ab-surface); border: 1px solid var(--ab-border); border-radius: 14px; box-shadow: var(--card-shadow); overflow: hidden; }
+    .pm-flow > div { padding: 14px 18px; position: relative; min-width: 0; }
+    .pm-flow > div + div { border-left: 1px solid var(--ab-border); }
+    .pm-flow > div + div::before { content: '\f054'; font-family: 'Font Awesome 6 Free', 'Font Awesome 5 Free'; font-weight: 900; position: absolute; left: -9px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border-radius: 50%; background: var(--ab-surface); border: 1px solid var(--ab-border); font-size: .5rem; color: var(--ab-text-3); display: flex; align-items: center; justify-content: center; }
+    .pm-flow span { font-size: .74rem; font-weight: 600; color: var(--ab-text-3); display: flex; gap: 6px; align-items: center; }
+    .pm-flow span i { color: var(--c); }
+    .pm-flow b { display: block; font-family: 'Poppins', sans-serif; font-size: 1.3rem; color: var(--ab-text); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pm-flow small { font-size: .74rem; color: var(--ab-text-3); }
+    .pm-banner { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 12px; background: var(--ab-accent-soft); color: var(--ab-accent-text); font-size: .85rem; margin-bottom: 12px; }
+    .pm-banner > span { flex: 1; min-width: 220px; }
+    .pm-banner.warn { background: #fffbeb; color: #92400e; }
+    body.dark-mode .pm-banner.warn { background: rgba(245, 158, 11, .14); color: #fcd34d; }
+    .pm-miss { border: 1px solid var(--ab-border); border-radius: 12px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 16px; }
+    .pm-miss + .pm-miss { margin-top: 10px; }
+    .pm-miss h3 { font-size: .92rem; color: var(--ab-text); }
+    .pm-miss .says { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; grid-column: 1 / -1; }
+    .pm-miss .says div { background: var(--ab-surface-2); border-radius: 10px; padding: 8px 10px; font-size: .8rem; color: var(--ab-text-2); line-height: 1.45; }
+    .pm-miss .says b { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ab-text-3); margin-bottom: 2px; }
+    .pm-miss .acts { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+    .pm-bars { display: flex; align-items: flex-end; gap: 10px; height: 120px; padding-top: 6px; }
+    .pm-bars > div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 0; height: 100%; justify-content: flex-end; }
+    .pm-bars i { display: block; width: 100%; max-width: 42px; border-radius: 6px 6px 0 0; background: var(--primary-color); min-height: 2px; }
+    .pm-bars i.t { background: #059669; border-radius: 0; }
+    .pm-bars small { font-size: .68rem; color: var(--ab-text-3); margin-top: 4px; }
+    .pm-set { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; align-items: end; }
+    .pm-sub td { background: var(--ab-surface-2); font-size: .8rem; }
+    @media (max-width: 900px) { .pm-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pm-flow > div:nth-child(3) { border-left: 0; border-top: 1px solid var(--ab-border); } .pm-flow > div:nth-child(4) { border-top: 1px solid var(--ab-border); } .pm-flow > div:nth-child(3)::before { display: none; } }
+    @media (max-width: 640px) { .pm-flow { grid-template-columns: minmax(0, 1fr); } .pm-flow > div + div { border-left: 0; border-top: 1px solid var(--ab-border); } .pm-flow > div + div::before { display: none; } .pm-miss .says, .pm-set { grid-template-columns: minmax(0, 1fr); } }
 </style>
+
+<div class="ad-page-h">
+    <div><h1>Payments</h1><p>Parents pay Eschool. Eschool holds the money until each lesson happens, keeps its share, and pays teachers every month. Lessons a teacher missed go back to the parent unless everyone agreed to move them.</p></div>
+    <div class="ad-actions"><button type="button" class="ad-btn" id="pSetBtn" aria-expanded="false"><i class="fas fa-sliders"></i> Payment settings</button></div>
+</div>
+
+<div class="ad-card" id="pSet" hidden style="margin-bottom:16px">
+    <div class="ad-card-h"><h2>Payment settings</h2></div>
+    <div class="pm-set">
+        <div class="ad-field"><label for="sPct">Eschool's share of each lesson (%)</label><input type="number" class="ad-input" id="sPct" min="0" max="50" step="1"><small>Taken off before the teacher is paid.</small></div>
+        <div class="ad-field"><label for="sDay">Pay day (day of the month)</label><input type="number" class="ad-input" id="sDay" min="1" max="28" step="1"><small>Teachers get the month before on this day.</small></div>
+        <div class="ad-field"><span class="lbl">Sending</span><label style="display:flex;gap:8px;align-items:center;font-weight:500;cursor:pointer"><input type="checkbox" id="sAuto"> Send to teachers automatically on pay day</label><small id="sAutoHelp"></small></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap"><button type="button" class="ad-btn primary" id="sSave"><i class="fas fa-check"></i> Save</button><div class="ad-note" id="sNote" role="status" style="flex:1"></div></div>
+</div>
+
+<div class="pm-flow" id="pFlow" aria-label="Where the money is">
+    <div style="--c:#2563eb"><span><i class="fas fa-arrow-down"></i> Received this month</span><b>…</b><small></small></div>
+    <div style="--c:#d97706"><span><i class="fas fa-lock"></i> Held for lessons not taught yet</span><b>…</b><small></small></div>
+    <div style="--c:#059669"><span><i class="fas fa-chalkboard-user"></i> Owed to teachers</span><b>…</b><small></small></div>
+    <div style="--c:#7c3aed"><span><i class="fas fa-building-columns"></i> Eschool's share</span><b>…</b><small></small></div>
+</div>
+
+<div class="ad-card">
+    <div class="ad-tabs" role="group" aria-label="Section" id="pTabs"></div>
+    <div class="ad-note" id="pNote" role="status"></div>
+    <div id="pBody"><div class="ad-skel"></div><div class="ad-skel"></div></div>
+</div>
 
 <script>
 (function () {
     'use strict';
-    var A = window.AD, $ = function (id) { return document.getElementById(id); };
-    var S = { status: 'pending', kind: '', q: '', data: null };
+    var A = window.AD, $ = function (id) { return document.getElementById(id); }, esc = A.esc, money = A.money;
+    var TABS = [['in', 'Money in', 'fa-arrow-down'], ['held', 'Held for lessons', 'fa-lock'], ['payouts', 'Teacher payouts', 'fa-chalkboard-user'],
+                ['missed', 'Missed lessons', 'fa-calendar-xmark'], ['refunds', 'Refunds', 'fa-rotate-left']];
+    var q = new URLSearchParams(location.search);
+    var S = { tab: TABS.some(function (t) { return t[0] === q.get('tab'); }) ? q.get('tab') : 'in', sum: null,
+              inStatus: 'pending', inKind: '', inQ: '', month: null, open: null, refStatus: 'owed' };
 
-    async function load() {
-        document.querySelectorAll('#pStatus [data-s]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.s === S.status)); });
-        try { S.data = await A.api('/api/admin/money?' + new URLSearchParams({ status: S.status, kind: S.kind, q: S.q })); render(); $('pCsv').disabled = false; }
-        catch (e) { A.note('pNote', e.message, 'bad'); $('pList').innerHTML = ''; }
+    function when(iso) { return A.when(iso, true); }
+    function monthName(m) { var d = new Date(m + '-01T00:00:00'); return isNaN(d) ? m : d.toLocaleString('en-GB', { month: 'long', year: 'numeric' }); }
+    function empty(icon, title, text) { return '<div class="ad-empty"><i class="fas ' + icon + '"></i><b>' + esc(title) + '</b>' + esc(text || '') + '</div>'; }
+
+    // ---------- top: the money flow ----------
+    async function loadSummary() {
+        try {
+            var s = S.sum = await A.api('/api/admin/payouts/summary');
+            var box = $('pFlow').children;
+            function put(i, big, small) { box[i].querySelector('b').textContent = big; box[i].querySelector('small').textContent = small; }
+            put(0, money(s.received), s.money_in_pending ? s.money_in_pending + ' payment' + (s.money_in_pending === 1 ? '' : 's') + ' waiting to be checked' : 'All payments checked');
+            put(1, money(s.held), s.held_lessons + ' paid lesson' + (s.held_lessons === 1 ? '' : 's') + ' still to happen');
+            put(2, money(s.owed), s.owed ? s.owed_teachers + ' teacher' + (s.owed_teachers === 1 ? '' : 's') + ' · paid on ' + A.when(s.next_pay_day) : 'Nothing owed right now');
+            put(3, money(s.fee_due), s.share_pct + '% of taught lessons' + (s.refunds_owed ? ' · ' + money(s.refunds_owed) + ' to refund' : ''));
+            $('sPct').value = s.share_pct; $('sDay').value = s.pay_day; $('sAuto').checked = !!s.auto;
+            var mt = s.methods || {}, on = function (x) { return x ? 'on' : 'off'; };
+            $('sAutoHelp').textContent = (s.auto_ready ? 'Automatic sending is set up' + (mt.stripe_payouts ? ': teachers who set up Stripe are paid through Stripe' + (mt.mpesa_payouts ? ', the others by M-Pesa.' : '.') : ' (M-Pesa).') :
+                'Not set up yet, so you send it yourself and type the code.') +
+                ' Currency ' + (s.currency || '') + ' · Card payments (Stripe) ' + on(mt.card) + (mt.card && !mt.webhook ? ' (add STRIPE_WEBHOOK_SECRET)' : '') +
+                ' · M-Pesa code ' + on(mt.mpesa_code) + ' · M-Pesa prompt ' + on(mt.mpesa_prompt) + '.';
+            drawTabs();
+        } catch (e) { A.note('pNote', e.message, 'bad'); }
     }
-    function render() {
-        var d = S.data, s = d.summary;
-        $('pKpis').innerHTML = [['fa-hourglass-half', '#f59e0b', 'Waiting to be checked', s.pending, A.money(s.pending_amount)], ['fa-calendar-check', '#10b981', 'Confirmed this month', A.money(s.confirmed_month), ''],
-            ['fa-crown', '#8b5cf6', 'Plans, all time', A.money(s.plan_total), ''], ['fa-chalkboard-user', '#0ea5e9', 'Private lessons, all time', A.money(s.teaching_total), ''],
-            ['fa-circle-xmark', '#ef4444', 'Not confirmed', s.rejected, '']]
-            .map(function (k) { return '<div class="ad-kpi" style="--c:' + k[1] + '"><span><i class="fas ' + k[0] + '"></i>' + k[2] + '</span><b>' + k[3] + '</b>' + (k[4] ? '<small>' + k[4] + '</small>' : '') + '</div>'; }).join('');
-        $('pList').innerHTML = d.items.length ? d.items.map(row).join('') : '<div class="ad-empty"><i class="fas fa-receipt"></i><b>' + (S.status === 'pending' && !S.q ? 'Nothing to check' : 'No payments found') + '</b>' + (S.status === 'pending' && !S.q ? 'New M-Pesa payments from parents show up here.' : 'Try another filter or search.') + '</div>';
-        var max = Math.max.apply(null, d.monthly.map(function (m) { return m.plan + m.teaching; }).concat([1]));
-        $('pMonths').innerHTML = d.monthly.length ? '<div class="pm-bars">' + d.monthly.map(function (m) {
-            var dt = new Date(m.month + '-01T00:00:00'), lbl = dt.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-            return '<div class="pm-bar" title="Plans ' + A.money(m.plan) + ', lessons ' + A.money(m.teaching) + '"><span>' + lbl + '</span><span class="t"><i style="width:' + (m.plan / max * 100) + '%;background:#8b5cf6"></i><i style="width:' + (m.teaching / max * 100) + '%;background:#0ea5e9"></i></span><b>' + A.money(m.plan + m.teaching) + '</b></div>';
-        }).join('') + '</div><div class="pm-key"><span><i style="background:#8b5cf6"></i>Plans</span><span><i style="background:#0ea5e9"></i>Private lessons</span></div>' : '<div class="ad-empty" style="padding:16px"><i class="fas fa-chart-column"></i>No confirmed payments yet.</div>';
+    function drawTabs() {
+        var s = S.sum || {}, n = { in: s.money_in_pending, missed: s.missed, refunds: s.refunds_count };
+        $('pTabs').innerHTML = TABS.map(function (t) {
+            return '<button type="button" class="ad-tab" data-t="' + t[0] + '" aria-pressed="' + (S.tab === t[0]) + '"><i class="fas ' + t[2] + '"></i> ' + esc(t[1]) + (n[t[0]] ? ' <em>' + n[t[0]] + '</em>' : '') + '</button>';
+        }).join('');
     }
-    function row(it) {
-        var st = { pending: ['warn', 'To check'], confirmed: ['ok', 'Confirmed'], rejected: ['bad', 'Not confirmed'], cancelled: ['', 'Cancelled'] }[it.status] || ['', it.status];
-        var key = it.kind + '-' + it.id;
-        return '<div class="pm-row' + (it.duplicate ? ' dup' : '') + '" data-key="' + key + '">' +
-            '<div class="pm-main"><span class="ad-pill ' + (it.kind === 'plan' ? 'info' : 'ok') + '" style="margin-bottom:5px">' + (it.kind === 'plan' ? 'Plan' : 'Private lessons') + '</span> <span class="ad-pill ' + st[0] + '">' + st[1] + '</span>' +
-            '<div style="margin-top:6px"><b>' + A.esc(it.what) + '</b><small>For ' + A.esc(it.for) + ' · paid by <a href="/admin-users?id=' + it.payer_id + '" style="color:var(--ab-accent-text);text-decoration:none">' + A.esc(it.payer) + '</a> · ' + A.esc(A.when(it.created_at, true)) + '</small></div></div>' +
-            '<div class="pm-ref"><span class="ad-mono">' + A.esc(it.reference) + '</span><small>' + (it.phone ? 'From ' + A.esc(it.phone) : 'No phone given') + (it.duplicate ? ' · <b style="color:#b45309">Same code used more than once</b>' : '') + '</small>' +
-            (it.status !== 'pending' ? '<small>' + st[1] + (it.decided_by ? ' by ' + A.esc(it.decided_by) : '') + (it.decided_at ? ' · ' + A.esc(A.when(it.decided_at)) : '') + (it.note ? ' · "' + A.esc(it.note) + '"' : '') + '</small>' : '') + '</div>' +
-            '<div class="pm-amt">' + A.money(it.amount) + '</div>' +
-            (it.status === 'pending' ? '<div class="pm-acts"><button type="button" class="ad-btn sm ok" data-do="confirm"><i class="fas fa-check"></i> Confirm</button><button type="button" class="ad-btn sm danger" data-do="reject"><i class="fas fa-xmark"></i> Not confirmed</button>' +
-                '<button type="button" class="ad-btn sm" data-copy="' + A.esc(it.reference) + '"><i class="fas fa-copy"></i> Copy code</button><div data-box style="flex-basis:100%"></div></div>' : '') + '</div>';
+    function show(tab) {
+        S.tab = tab; drawTabs(); A.note('pNote', '');
+        history.replaceState(null, '', tab === 'in' ? location.pathname : '?tab=' + tab);
+        $('pBody').innerHTML = '<div class="ad-skel"></div><div class="ad-skel"></div>';
+        ({ in: loadIn, held: loadHeld, payouts: loadPayouts, missed: loadMissed, refunds: loadRefunds })[tab]();
     }
-    $('pStatus').addEventListener('click', function (e) { var b = e.target.closest('[data-s]'); if (b) { S.status = b.dataset.s; load(); } });
-    $('pKind').addEventListener('change', function () { S.kind = this.value; load(); });
-    var qt; $('pQ').addEventListener('input', function () { clearTimeout(qt); var v = this.value.trim(); qt = setTimeout(function () { S.q = v; load(); }, 250); });
-    $('pList').addEventListener('click', function (e) {
-        var c = e.target.closest('[data-copy]'); if (c) { try { navigator.clipboard.writeText(c.dataset.copy); c.innerHTML = '<i class="fas fa-check"></i> Copied'; } catch (err) { /* ignore */ } return; }
-        var b = e.target.closest('[data-do]'); if (!b) return;
-        var card = b.closest('[data-key]'), k = card.dataset.key.split('-'), it = S.data.items.filter(function (x) { return x.kind === k[0] && String(x.id) === k[1]; })[0];
-        var url = it.kind === 'plan' ? '/api/admin/payments/' + it.id : '/api/admin/tutoring-payments/' + it.id;
-        if (b.dataset.do === 'confirm') A.confirmIn(card.querySelector('[data-box]'), {
-            title: 'Confirm ' + A.money(it.amount) + ' with code ' + it.reference + '?',
-            text: it.kind === 'plan' ? 'The plan starts for ' + it.for + ' straight away, and the parent and learner are told.' : 'The sessions are added for the family and the teacher can book them.',
-            yes: 'Yes, I found it in M-Pesa', run: async function () { await A.api(url, { method: 'POST', body: { action: 'confirm' } }); A.note('pNote', 'Payment ' + it.reference + ' confirmed.', 'ok'); A.refreshBadges(); load(); } });
-        else A.confirmIn(card.querySelector('[data-box]'), {
-            title: 'Mark ' + it.reference + ' as not confirmed?', danger: true, text: 'The parent is told we couldn\'t find this payment. Nothing is started.',
-            reason: true, reasonLabel: 'What to tell the parent (e.g. "Code not found in our M-Pesa statement")', yes: 'Not confirmed',
-            run: async function (v) { await A.api(url, { method: 'POST', body: { action: 'reject', note: v.reason } }); A.note('pNote', 'Payment ' + it.reference + ' marked as not confirmed. The parent was told.', 'ok'); A.refreshBadges(); load(); } });
+    function refresh() { loadSummary(); show(S.tab); A.refreshBadges(); }
+
+    // ---------- Money in ----------
+    var inData = null;
+    async function loadIn() {
+        try {
+            inData = await A.api('/api/admin/money?' + new URLSearchParams({ status: S.inStatus, kind: S.inKind, q: S.inQ }));
+            drawIn();
+        } catch (e) { A.note('pNote', e.message, 'bad'); }
+    }
+    function drawIn() {
+        var d = inData, mx = Math.max.apply(null, (d.monthly || []).map(function (m) { return m.plan + m.teaching; }).concat([1]));
+        var bars = (d.monthly || []).length ? '<div class="ad-sec-t">Confirmed each month <span style="text-transform:none;letter-spacing:0;font-weight:500">· <i class="fas fa-square" style="color:var(--primary-color)"></i> plans <i class="fas fa-square" style="color:#059669"></i> lessons</span></div><div class="pm-bars">' +
+            d.monthly.map(function (m) {
+                return '<div title="' + esc(monthName(m.month) + ': ' + money(m.plan + m.teaching)) + '">' + (m.plan ? '<i style="height:' + (m.plan / mx * 100) + '%;border-radius:' + (m.teaching ? '6px 6px 0 0' : '6px') + '"></i>' : '') + (m.teaching ? '<i class="t" style="height:' + (m.teaching / mx * 100) + '%;border-radius:' + (m.plan ? '0 0 6px 6px' : '6px') + '"></i>' : '') + '<small>' + esc(monthName(m.month).slice(0, 3)) + '</small></div>';
+            }).join('') + '</div>' : '';
+        $('pBody').innerHTML =
+            '<div class="ad-toolbar">' +
+            '<select class="ad-select" id="iSt" aria-label="Status">' + [['pending', 'Waiting to check'], ['confirmed', 'Confirmed'], ['rejected', 'Rejected'], ['all', 'All']].map(function (o) { return '<option value="' + o[0] + '"' + (S.inStatus === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+            '<select class="ad-select" id="iKind" aria-label="What for">' + [['', 'Plans and lessons'], ['plan', 'Plans'], ['teaching', 'Lessons']].map(function (o) { return '<option value="' + o[0] + '"' + (S.inKind === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+            '<input type="search" class="ad-input" id="iQ" placeholder="Search name, code or phone" value="' + esc(S.inQ) + '" aria-label="Search">' +
+            '<button type="button" class="ad-btn" id="iCsv"' + (d.items.length ? '' : ' disabled') + '><i class="fas fa-file-csv"></i> Export</button></div>' +
+            '<div class="ad-tbl-wrap"><table class="ad-tbl" style="min-width:760px"><thead><tr><th>Paid by</th><th>For</th><th class="num">Amount</th><th>Code</th><th>When</th><th>Status</th><th></th></tr></thead><tbody>' +
+            (d.items.length ? d.items.map(function (it) {
+                var key = it.kind + '-' + it.id;
+                return '<tr><td><div class="ad-who">' + A.avatar(it.payer) + '<span><b>' + esc(it.payer) + '</b><small>' + esc(it.phone || it.payer_email) + '</small></span></div></td>' +
+                    '<td>' + esc(it.what) + '<br><span class="ad-muted">for ' + esc(it.for) + (it.method ? ' · ' + esc(it.method) : '') + '</span></td>' +
+                    '<td class="num"><b>' + money(it.amount) + '</b></td>' +
+                    '<td><span class="ad-mono">' + esc(it.reference || '—') + '</span>' + (it.duplicate ? ' <span class="ad-pill bad" title="The same code was used more than once">Used twice</span>' : '') + '</td>' +
+                    '<td class="ad-muted" style="white-space:nowrap">' + esc(when(it.created_at)) + '</td>' +
+                    '<td>' + ({ pending: '<span class="ad-pill warn">Waiting</span>' + (Date.now() - new Date(String(it.created_at || '').replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(it.created_at || '') ? '' : 'Z')).getTime() > 864e5 ? ' <span class="ad-pill bad" title="Waiting more than a day: the family is waiting">Overdue</span>' : ''), confirmed: '<span class="ad-pill ok">Confirmed</span>', rejected: '<span class="ad-pill bad">Rejected</span>' }[it.status] || '<span class="ad-pill">' + esc(it.status) + '</span>') +
+                    (it.decided_by ? '<br><span class="ad-muted">by ' + esc(it.decided_by) + '</span>' : '') + (it.note ? '<br><span class="ad-muted">' + esc(it.note) + '</span>' : '') + '</td>' +
+                    '<td class="num">' + (it.status === 'pending' ? '<button type="button" class="ad-btn sm ok" data-ok="' + key + '"><i class="fas fa-check"></i> Confirm</button> <button type="button" class="ad-btn sm danger" data-no="' + key + '">Reject</button>' : '') + '</td></tr>' +
+                    '<tr hidden data-box="' + key + '"><td colspan="7" style="padding-top:0"></td></tr>';
+            }).join('') : '<tr><td colspan="7">' + empty('fa-receipt', S.inStatus === 'pending' ? 'No payments waiting' : 'No payments here', S.inStatus === 'pending' ? 'When a family pays with an M-Pesa code, it shows here for you to check.' : '') + '</td></tr>') +
+            '</tbody></table></div>' + bars;
+    }
+    function decidePayment(key, action) {
+        var it = inData.items.find(function (x) { return x.kind + '-' + x.id === key; }), row = document.querySelector('[data-box="' + key + '"]');
+        row.hidden = false;
+        A.confirmIn(row.firstChild, {
+            title: action === 'confirm' ? 'Confirm ' + money(it.amount) + ' from ' + it.payer + '?' : 'Reject this payment?',
+            text: action === 'confirm' ? 'Check that code ' + (it.reference || '') + ' really arrived in the Eschool account first.' : it.payer + ' will see your reason.',
+            danger: action === 'reject', reason: action === 'reject', reasonLabel: 'Why (the family will see it)', yes: action === 'confirm' ? 'Yes, confirm' : 'Reject',
+            run: async function (v) {
+                await A.api((it.kind === 'plan' ? '/api/admin/payments/' : '/api/admin/tutoring-payments/') + it.id, { method: 'POST', body: { action: action, note: v.reason || '' } });
+                A.note('pNote', action === 'confirm' ? 'Confirmed. ' + it.payer + ' has been told.' : 'Rejected. ' + it.payer + ' has been told.', 'ok'); refresh();
+            }
+        });
+    }
+
+    // ---------- Held for lessons ----------
+    async function loadHeld() {
+        try {
+            var d = await A.api('/api/admin/payouts/held'), total = d.held.reduce(function (a, h) { return a + h.held; }, 0);
+            $('pBody').innerHTML = '<p class="ad-muted" style="margin-bottom:10px">Money families paid for lessons that haven\'t happened yet. It stays with Eschool until each lesson is taught. Total: <b>' + money(total) + '</b></p>' +
+                '<div class="ad-tbl-wrap"><table class="ad-tbl" style="min-width:700px"><thead><tr><th>Family</th><th>Teacher</th><th>Subject</th><th class="num">Paid</th><th class="num">Done</th><th class="num">Booked</th><th class="num">Still to happen</th><th class="num">Held</th></tr></thead><tbody>' +
+                (d.held.length ? d.held.map(function (h) {
+                    return '<tr><td><b>' + esc(h.parent) + '</b><br><span class="ad-muted">for ' + esc(h.learner) + '</span></td><td>' + esc(h.teacher) + '</td><td>' + esc(h.subject) + (h.status !== 'active' ? ' <span class="ad-pill">' + esc(h.status) + '</span>' : '') + '</td>' +
+                        '<td class="num">' + h.paid + '</td><td class="num">' + h.used + '</td><td class="num">' + h.booked + '</td><td class="num"><b>' + h.left + '</b></td><td class="num"><b>' + money(h.held) + '</b><br><span class="ad-muted">' + money(h.price) + ' each</span></td></tr>';
+                }).join('') : '<tr><td colspan="8">' + empty('fa-lock-open', 'Nothing held', 'Every paid lesson has happened.') + '</td></tr>') + '</tbody></table></div>';
+        } catch (e) { A.note('pNote', e.message, 'bad'); }
+    }
+
+    // ---------- Teacher payouts ----------
+    var po = null;
+    async function loadPayouts() {
+        try {
+            po = await A.api('/api/admin/payouts' + (S.month ? '?month=' + S.month : ''));
+            S.month = po.month; drawPayouts();
+        } catch (e) { A.note('pNote', e.message, 'bad'); }
+    }
+    function payStatus(t) {
+        var last = t.payouts[t.payouts.length - 1];
+        if (t.net > 0) {
+            if (last && last.status === 'failed') return '<span class="ad-pill bad" title="' + esc(last.note) + '">Couldn\'t send</span>';
+            if (!po.over) return '<span class="ad-pill info">Month not over</span>';
+            if (t.waiting) return '<span class="ad-pill warn">' + t.waiting + ' to decide</span>';
+            return (t.can_auto || t.has_phone) ? '<span class="ad-pill ok">Ready</span>' : t.stripe_started ? '<span class="ad-pill warn">Stripe not finished</span>' : '<span class="ad-pill warn">No way to pay yet</span>';
+        }
+        if (last && last.status === 'sending') return '<span class="ad-pill info">Sending…</span>';
+        if (last && last.status === 'paid') return '<span class="ad-pill ok"><i class="fas fa-check"></i> Paid</span><br><span class="ad-mono">' + esc(last.reference || '') + '</span>';
+        if (t.waiting) return '<span class="ad-pill warn">' + t.waiting + ' to decide</span>';
+        return '<span class="ad-pill">Nothing due</span>';
+    }
+    function drawPayouts() {
+        var d = po, ready = d.teachers.filter(function (t) { return t.net > 0 && t.can_auto && d.over; });
+        var sumNet = d.teachers.reduce(function (a, t) { return a + t.net; }, 0), sumFee = d.teachers.reduce(function (a, t) { return a + t.fee; }, 0);
+        var paid = d.teachers.reduce(function (a, t) { return a + t.payouts.filter(function (p) { return p.status === 'paid'; }).reduce(function (b, p) { return b + p.net; }, 0); }, 0);
+        $('pBody').innerHTML =
+            '<div class="ad-toolbar"><select class="ad-select" id="poM" aria-label="Month">' + d.months.slice().reverse().map(function (m) { return '<option value="' + m + '"' + (m === d.month ? ' selected' : '') + '>' + esc(monthName(m)) + '</option>'; }).join('') + '</select>' +
+            '<span class="ad-muted" style="flex:1">To pay: <b>' + money(sumNet) + '</b> · Eschool keeps <b>' + money(sumFee) + '</b> (' + d.share_pct + '%) · Already paid: <b>' + money(paid) + '</b></span>' +
+            (d.auto_ready ? '<button type="button" class="ad-btn primary" id="poAll"' + (ready.length ? '' : ' disabled') + '><i class="fas fa-paper-plane"></i> Pay ' + ready.length + ' ready teacher' + (ready.length === 1 ? '' : 's') + ' now</button>' : '') + '</div>' +
+            (!d.auto_ready ? '<div class="pm-banner warn"><i class="fas fa-hand-holding-dollar"></i><span>Automatic sending isn\'t set up yet, so send each teacher\'s money yourself (bank, M-Pesa or Stripe), then press <b>Mark paid</b> and type the transaction code. The teacher is told straight away.</span></div>' : '') +
+            (!d.over ? '<div class="pm-banner"><i class="fas fa-hourglass-half"></i><span>' + esc(monthName(d.month)) + ' isn\'t over yet. These numbers grow as lessons happen and are paid on pay day.</span></div>' : '') +
+            '<div id="poBox"></div><div class="ad-tbl-wrap"><table class="ad-tbl" style="min-width:820px"><thead><tr><th>Teacher</th><th>Lessons</th><th class="num">Earned</th><th class="num">Eschool ' + d.share_pct + '%</th><th class="num">To pay</th><th>Pay to</th><th>Status</th><th></th></tr></thead><tbody>' +
+            (d.teachers.length ? d.teachers.map(function (t) {
+                var can = d.over && t.net > 0;
+                return '<tr><td><div class="ad-who">' + A.avatar(t.name) + '<span><b>' + esc(t.name) + '</b><small>' + esc((t.subjects || []).join(', ')) + '</small></span></div></td>' +
+                    '<td style="white-space:nowrap">' + t.taught + ' taught' + (t.absent ? '<br><span class="ad-muted">' + t.absent + ' learner absent</span>' : '') + (t.waiting ? '<br><a href="?tab=missed" data-go="missed" style="color:#b45309;font-weight:700;font-size:.78rem">' + t.waiting + ' to decide</a>' : '') + '</td>' +
+                    '<td class="num">' + money(t.gross) + '</td><td class="num ad-muted">− ' + money(t.fee) + '</td><td class="num"><b>' + money(t.net) + '</b></td>' +
+                    '<td style="white-space:nowrap">' + (t.stripe ? '<span class="ad-pill ok"><i class="fab fa-stripe-s"></i> Stripe</span><br>' : t.stripe_started ? '<span class="ad-pill warn">Stripe not finished</span><br>' : '') + (t.phone ? '<span class="ad-mono">' + esc(t.phone) + '</span><br><button type="button" class="ad-btn sm" data-num="' + t.teacher_id + '" style="margin-top:4px">Change</button>' : '<button type="button" class="ad-btn sm" data-num="' + t.teacher_id + '"><i class="fas fa-plus"></i> Add number</button>') + '</td>' +
+                    '<td>' + payStatus(t) + '</td>' +
+                    '<td class="num" style="white-space:nowrap"><button type="button" class="ad-btn sm" data-each="' + t.teacher_id + '">Each lesson</button> ' +
+                    (can ? (t.can_auto ? '<button type="button" class="ad-btn sm primary" data-send="' + t.teacher_id + '">Send</button> ' : '') + '<button type="button" class="ad-btn sm ok" data-mark="' + t.teacher_id + '">Mark paid</button>' : '') + '</td></tr>' +
+                    '';
+            }).join('') : '<tr><td colspan="8">' + empty('fa-chalkboard-user', 'No lessons in ' + monthName(d.month), 'Teachers show here once they teach a paid lesson.') + '</td></tr>') +
+            '</tbody></table></div>';
+    }
+    function pbox() { var h = $('poBox'); h._open = null; h._each = null; h.innerHTML = ''; return h; }
+    async function seeEach(tid) {
+        var h = $('poBox');
+        if (h._each === tid) { pbox(); return; }
+        var host = pbox(); host._each = tid; host.innerHTML = '<div class="ad-skel"></div>';
+        var who = po.teachers.find(function (x) { return x.teacher_id === tid; });
+        try {
+            var d = await A.api('/api/admin/payouts/lessons?' + new URLSearchParams({ teacher_id: tid, month: S.month }));
+            var label = { paid: ['ok', 'Counts'], wait: ['warn', 'To decide'], none: ['', 'No pay'] };
+            host.innerHTML = '<div class="ad-confirm" style="margin:0 0 12px"><b>' + esc(who.name) + ' · ' + esc(monthName(S.month)) + '</b><div class="ad-tbl-wrap"><table class="ad-tbl"><thead><tr><th>Lesson</th><th>Learner</th><th>What happened</th><th class="num">Price</th><th>For the teacher</th></tr></thead><tbody>' +
+                (d.lessons.length ? d.lessons.map(function (l) {
+                    var what = { completed: 'Taught', missed: 'Learner absent', review: 'Being checked', cancelled: l.outcome === 'moved' ? 'Moved' : l.outcome === 'not_taught' ? 'Teacher missed (refunded)' : 'Cancelled', scheduled: 'Booked' }[l.status] || l.status;
+                    return '<tr><td style="white-space:nowrap">' + esc(when(l.starts_at)) + '<br><span class="ad-muted">' + esc(l.subject) + '</span></td><td>' + esc(l.learner) + '</td><td>' + esc(what) + '</td><td class="num">' + money(l.price) + '</td>' +
+                        '<td><span class="ad-pill ' + label[l.counts][0] + '">' + label[l.counts][1] + '</span>' + (l.paid_out ? ' <span class="ad-pill ok">Paid</span>' : '') + '</td></tr>';
+                }).join('') : '<tr><td colspan="5" class="ad-muted">No lessons.</td></tr>') + '</tbody></table></div><div class="row"><button type="button" class="ad-btn sm" data-each="' + tid + '">Close</button></div></div>';
+        } catch (e) { host.innerHTML = ''; A.note('pNote', e.message, 'bad'); }
+    }
+    function markPaid(tid) {
+        var t = po.teachers.find(function (x) { return x.teacher_id === tid; }), host = pbox();
+        A.confirmIn(host, {
+            title: 'Mark ' + money(t.net) + ' to ' + t.name + ' as paid',
+            text: 'Send the money first' + (t.phone ? ' to ' + t.phone : '') + ', then type the M-Pesa or bank transaction code you got. ' + t.name + ' will be told.',
+            extra: '<div class="ad-field"><label>Transaction code</label><input class="ad-input ad-mono" data-v="code" maxlength="30" autocomplete="off" placeholder="e.g. SJK4H2L9QX"></div>',
+            yes: 'Mark paid',
+            run: async function (v) {
+                if (!/^[A-Za-z0-9 ]{6,30}$/.test(v.code || '')) throw new Error('Type the transaction code (letters and numbers).');
+                var r = await A.api('/api/admin/payouts/pay', { method: 'POST', body: { month: S.month, teacher_id: tid, reference: v.code } });
+                A.note('pNote', r.message, 'ok'); refresh();
+            }
+        });
+    }
+    function send(tid) {
+        var list = tid ? po.teachers.filter(function (t) { return t.teacher_id === tid; }) : po.teachers.filter(function (t) { return t.net > 0 && t.can_auto; });
+        var total = list.reduce(function (a, t) { return a + t.net; }, 0), host = pbox();
+        A.confirmIn(host, {
+            title: 'Send ' + money(total) + ' to ' + (tid ? list[0].name : list.length + ' teacher' + (list.length === 1 ? '' : 's')) + '?',
+            text: 'The money leaves Eschool now: through Stripe for teachers who set it up, otherwise by M-Pesa. Each teacher is told when it arrives.', yes: 'Send now',
+            run: async function () {
+                var r = await A.api('/api/admin/payouts/pay', { method: 'POST', body: { month: S.month, teacher_id: tid || 0 } });
+                A.note('pNote', r.message, (r.results || []).every(function (x) { return x.ok; }) ? 'ok' : 'bad'); refresh();
+            }
+        });
+    }
+    function setNumber(tid) {
+        var t = po.teachers.find(function (x) { return x.teacher_id === tid; }), host = pbox();
+        A.confirmIn(host, {
+            title: 'Number to pay ' + t.name + ' on',
+            text: 'The M-Pesa number this teacher\'s money goes to. They are told it changed. Teachers can also set it themselves.',
+            extra: '<div class="ad-field"><label>M-Pesa number</label><input class="ad-input" data-v="phone" inputmode="tel" maxlength="16" placeholder="0712 345 678"></div>',
+            yes: 'Save number',
+            run: async function (v) {
+                await A.api('/api/admin/payouts/teacher/' + tid + '/number', { method: 'PUT', body: { phone: v.phone } });
+                A.note('pNote', 'Saved ' + t.name + '\'s number.', 'ok'); loadPayouts();
+            }
+        });
+    }
+
+    // ---------- Missed lessons ----------
+    var missed = [];
+    async function loadMissed() {
+        try {
+            missed = (await A.api('/api/admin/payouts/missed')).lessons;
+            $('pBody').innerHTML = '<p class="ad-muted" style="margin-bottom:12px">Lessons that didn\'t go as booked. No money moves until you decide. Read what the teacher and the parent said, and check the timetable everyone agreed.</p>' +
+                (missed.length ? missed.map(function (l) {
+                    var teacherSide = l.kind === 'check';
+                    return '<div class="pm-miss" data-l="' + l.id + '"><div><h3>' + esc(l.subject) + ' · ' + esc(when(l.starts_at)) + '</h3><span class="ad-muted">' + esc(l.teacher) + ' with ' + esc(l.learner) + ' · paid by ' + esc(l.parent) + ' · ' + money(l.price) + '</span></div>' +
+                        '<div>' + (teacherSide ? '<span class="ad-pill bad">Teacher may have missed it</span>' : '<span class="ad-pill warn">Learner absent</span>') + '</div>' +
+                        '<div class="says"><div><b>The teacher said</b>' + esc(l.why || l.teacher_note || 'Nothing yet.') + (l.why && l.teacher_note ? '<br>' + esc(l.teacher_note) : '') + '</div><div><b>The parent said</b>' + esc(l.parent_note || 'Nothing yet.') + '</div></div>' +
+                        '<div class="acts">' + (teacherSide ?
+                            '<button type="button" class="ad-btn sm" data-d="moved"><i class="fas fa-calendar-plus"></i> Agreed to move: book it again</button>' +
+                            '<button type="button" class="ad-btn sm danger" data-d="refund"><i class="fas fa-rotate-left"></i> Teacher missed: refund parent</button>' +
+                            '<button type="button" class="ad-btn sm" data-d="taught"><i class="fas fa-check"></i> It was taught: pay teacher</button>' :
+                            '<button type="button" class="ad-btn sm ok" data-d="learner_absent"><i class="fas fa-check"></i> Count as learner absent: teacher is paid</button>' +
+                            '<button type="button" class="ad-btn sm" data-d="moved"><i class="fas fa-calendar-plus"></i> Agreed to move: book it again</button>') +
+                        '<a class="ad-btn sm" href="/admin-messages?to=' + l.parent_id + '"><i class="fas fa-comment"></i> Ask the parent</a><a class="ad-btn sm" href="/admin-messages?to=' + l.teacher_id + '"><i class="fas fa-comment"></i> Ask the teacher</a></div>' +
+                        '<div data-c style="grid-column:1/-1"></div></div>';
+                }).join('') : empty('fa-calendar-check', 'Nothing to decide', 'Every lesson went as booked.'));
+        } catch (e) { A.note('pNote', e.message, 'bad'); }
+    }
+    var DEC = {
+        moved: ['Move this lesson?', 'Everyone agreed to a new time. The lesson goes back to be booked again. No money moves.', 'Move it', false],
+        refund: ['Refund the parent for this lesson?', 'The teacher missed it. The teacher isn\'t paid for it and the parent is owed the money back (it shows under Refunds).', 'Refund parent', true],
+        taught: ['Count it as taught?', 'The teacher is paid for this lesson on pay day.', 'Count as taught', false],
+        learner_absent: ['Count it as learner absent?', 'The teacher waited, so the teacher is paid and the lesson is used up.', 'Count it', false]
+    };
+    function decide(card, dec) {
+        var l = missed.find(function (x) { return String(x.id) === card.dataset.l; }), c = DEC[dec];
+        A.confirmIn(card.querySelector('[data-c]'), {
+            title: c[0], text: c[1] + ' The teacher and the parent are told.', danger: c[3], yes: c[2],
+            extra: '<div class="ad-field"><label>Note for them (optional)</label><input class="ad-input" data-v="note" maxlength="300" placeholder="e.g. Agreed on the phone with both"></div>',
+            run: async function (v) {
+                await A.api('/api/admin/payouts/lessons/' + l.id + '/decide', { method: 'POST', body: { decision: dec, note: v.note || '' } });
+                A.note('pNote', 'Done. ' + l.subject + ' on ' + when(l.starts_at) + ' is decided.', 'ok'); refresh();
+            }
+        });
+    }
+
+    // ---------- Refunds ----------
+    async function loadRefunds() {
+        try {
+            var d = await A.api('/api/admin/refunds?status=' + S.refStatus);
+            $('pBody').innerHTML = '<div class="ad-toolbar"><select class="ad-select" id="rSt" aria-label="Status">' + [['owed', 'To send back'], ['refunded', 'Sent back'], ['all', 'All']].map(function (o) { return '<option value="' + o[0] + '"' + (S.refStatus === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+                '<span class="ad-muted">Money for lessons that weren\'t taught. Paid by card: refund it to the card in one click. Otherwise send it back yourself, then mark it sent.</span></div>' +
+                '<div class="ad-tbl-wrap"><table class="ad-tbl" style="min-width:700px"><thead><tr><th>Family</th><th>Lessons</th><th class="num">Amount</th><th>Since</th><th>Status</th><th></th></tr></thead><tbody>' +
+                (d.refunds.length ? d.refunds.map(function (r) {
+                    return '<tr><td><b>' + esc(r.payer) + '</b><br><span class="ad-muted">' + esc(r.payer_email) + '</span></td><td>' + r.sessions + ' × ' + esc(r.subject) + '<br><span class="ad-muted">' + esc(r.teacher) + ' with ' + esc(r.learner) + '</span></td>' +
+                        '<td class="num"><b>' + money(r.amount) + '</b></td><td class="ad-muted">' + esc(A.when(r.created_at)) + '</td>' +
+                        '<td>' + (r.status === 'owed' ? '<span class="ad-pill warn">To send</span>' : '<span class="ad-pill ok">Sent</span>' + (r.note ? '<br><span class="ad-muted">' + esc(r.note) + '</span>' : '')) + '</td>' +
+                        '<td class="num" style="white-space:nowrap">' + (r.status === 'owed' ? (r.card ? '<button type="button" class="ad-btn sm primary" data-cardref="' + r.id + '" data-amt="' + r.amount + '" data-who="' + esc(r.payer) + '"><i class="fas fa-credit-card"></i> Refund to card</button> ' : '') + '<button type="button" class="ad-btn sm ok" data-ref="' + r.id + '" data-amt="' + r.amount + '" data-who="' + esc(r.payer) + '">Mark sent</button>' : '') + '</td></tr>' +
+                        '<tr hidden data-rbox="' + r.id + '"><td colspan="6" style="padding-top:0"></td></tr>';
+                }).join('') : '<tr><td colspan="6">' + empty('fa-rotate-left', S.refStatus === 'owed' ? 'No refunds to send' : 'No refunds here', '') + '</td></tr>') + '</tbody></table></div>';
+        } catch (e) { A.note('pNote', e.message, 'bad'); }
+    }
+    function cardRefund(b) {
+        var row = document.querySelector('[data-rbox="' + b.dataset.cardref + '"]'); row.hidden = false;
+        A.confirmIn(row.firstChild, {
+            title: 'Refund ' + money(b.dataset.amt) + ' to ' + b.dataset.who + '\'s card?', text: 'Stripe sends it back to the card they paid with. Banks take 5 to 10 days to show it. The family is told now.',
+            yes: 'Refund to card',
+            run: async function () {
+                await A.api('/api/admin/refunds/' + b.dataset.cardref, { method: 'POST', body: { method: 'card' } });
+                A.note('pNote', 'Refunded to the card.', 'ok'); refresh();
+            }
+        });
+    }
+    function markRefund(b) {
+        var row = document.querySelector('[data-rbox="' + b.dataset.ref + '"]'); row.hidden = false;
+        A.confirmIn(row.firstChild, {
+            title: 'Mark ' + money(b.dataset.amt) + ' to ' + b.dataset.who + ' as sent back', text: 'Send it first, then type the transaction code. The family is told.',
+            extra: '<div class="ad-field"><label>Transaction code or note</label><input class="ad-input" data-v="code" maxlength="200"></div>', yes: 'Mark sent',
+            run: async function (v) {
+                await A.api('/api/admin/refunds/' + b.dataset.ref, { method: 'POST', body: { note: v.code || '' } });
+                A.note('pNote', 'Marked as sent back.', 'ok'); refresh();
+            }
+        });
+    }
+
+    // ---------- events ----------
+    $('pTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-t]'); if (b) show(b.dataset.t); });
+    var qt;
+    $('pBody').addEventListener('input', function (e) { if (e.target.id === 'iQ') { clearTimeout(qt); var v = e.target.value.trim(); qt = setTimeout(function () { S.inQ = v; loadIn().then(function () { var i = $('iQ'); i.focus(); i.setSelectionRange(v.length, v.length); }); }, 300); } });
+    $('pBody').addEventListener('change', function (e) {
+        var id = e.target.id;
+        if (id === 'iSt') { S.inStatus = e.target.value; loadIn(); }
+        else if (id === 'iKind') { S.inKind = e.target.value; loadIn(); }
+        else if (id === 'poM') { S.month = e.target.value; loadPayouts(); }
+        else if (id === 'rSt') { S.refStatus = e.target.value; loadRefunds(); }
     });
-    $('pCsv').addEventListener('click', function () {
-        var rows = [['Type', 'Status', 'M-Pesa code', 'Phone', 'Amount (KES)', 'What', 'For', 'Paid by', 'Email', 'Sent', 'Decided', 'Decided by', 'Note']];
-        S.data.items.forEach(function (i) { rows.push([i.kind === 'plan' ? 'Plan' : 'Private lessons', i.status, i.reference, i.phone, i.amount, i.what, i.for, i.payer, i.payer_email, i.created_at || '', i.decided_at || '', i.decided_by || '', i.note]); });
-        var csv = rows.map(function (r) { return r.map(function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','); }).join('\r\n');
-        var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = 'eschool-payments-' + S.status + '.csv';
+    $('pBody').addEventListener('click', function (e) {
+        var b = e.target.closest('button, a[data-go]'); if (!b) return;
+        if (b.dataset.go) { e.preventDefault(); show(b.dataset.go); }
+        else if (b.dataset.ok) decidePayment(b.dataset.ok, 'confirm');
+        else if (b.dataset.no) decidePayment(b.dataset.no, 'reject');
+        else if (b.id === 'iCsv') exportIn();
+        else if (b.dataset.each) seeEach(Number(b.dataset.each));
+        else if (b.dataset.mark) markPaid(Number(b.dataset.mark));
+        else if (b.dataset.send) send(Number(b.dataset.send));
+        else if (b.id === 'poAll') send(0);
+        else if (b.dataset.num) setNumber(Number(b.dataset.num));
+        else if (b.dataset.d) decide(b.closest('[data-l]'), b.dataset.d);
+        else if (b.dataset.cardref) cardRefund(b);
+        else if (b.dataset.ref) markRefund(b);
+    });
+    function exportIn() {
+        var rows = [['Date', 'Paid by', 'Email', 'Phone', 'For', 'What', 'Amount ({{ CURRENCY }})', 'Code', 'Status', 'Checked by', 'Note']].concat(inData.items.map(function (it) {
+            return [it.created_at, it.payer, it.payer_email, it.phone, it.for, it.what, it.amount, it.reference, it.status, it.decided_by, it.note];
+        }));
+        var csv = rows.map(function (r) { return r.map(function (v) { v = v == null ? '' : String(v); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','); }).join('\r\n');
+        var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = 'eschool-payments.csv';
         document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    }
+
+    // settings
+    $('pSetBtn').addEventListener('click', function () { var h = $('pSet').hidden; $('pSet').hidden = !h; this.setAttribute('aria-expanded', String(h)); });
+    $('sSave').addEventListener('click', async function () {
+        var b = this; b.disabled = true;
+        try {
+            await A.api('/api/admin/payouts/settings', { method: 'PUT', body: { share_pct: Number($('sPct').value), pay_day: Number($('sDay').value), auto: $('sAuto').checked } });
+            A.note('sNote', 'Saved. New shares apply to payouts made from now on.', 'ok'); loadSummary(); if (S.tab === 'payouts') loadPayouts();
+        } catch (e) { A.note('sNote', e.message, 'bad'); }
+        b.disabled = false;
     });
-    load();
+
+    drawTabs(); loadSummary(); show(S.tab);
 })();
 </script>
 {% endblock %}

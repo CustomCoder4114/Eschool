@@ -101,7 +101,7 @@ body.dark-mode .pd {
 .pd-hero h1 { font-family: 'Poppins', sans-serif; font-size: 1.6rem; font-weight: 700; line-height: 1.2; color: #fff; }
 .pd-hero p { margin-top: 5px; opacity: .93; font-size: .94rem; line-height: 1.55; color: #fff; max-width: 620px; }
 .pd-hero-date { font-size: .8rem; opacity: .85; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 4px; }
-.pd-hero-stats { display: grid; grid-template-columns: repeat(4, minmax(92px, 1fr)); gap: 10px; position: relative; z-index: 1; }
+.pd-hero-stats { display: grid; grid-template-columns: repeat(2, minmax(110px, 1fr)); gap: 10px; position: relative; z-index: 1; }
 .pd-hero-stat {
     background: rgba(255, 255, 255, .15); border: 1px solid rgba(255, 255, 255, .25); color: #fff;
     border-radius: 12px; padding: 10px 12px; text-align: center;
@@ -493,7 +493,7 @@ body.pd-lock { overflow: hidden; }
 /* ---------- responsive ---------- */
 @media (max-width: 1100px) {
     .pd-grid, .pd-grid.even { grid-template-columns: minmax(0, 1fr); }
-    .pd-hero-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+    .pd-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
 }
 @media (max-width: 640px) {
     .pd { padding-top: 0; }
@@ -550,9 +550,7 @@ body.pd-lock { overflow: hidden; }
         </div>
         <div class="pd-hero-stats">
             <div class="pd-hero-stat"><strong>{{ st.children_count or 0 }}</strong><span>{{ 'Child' if (st.children_count or 0) == 1 else 'Children' }} linked</span></div>
-            <div class="pd-hero-stat"><strong>{{ st.recent_activity_count or 0 }}</strong><span>Done today</span></div>
-            <div class="pd-hero-stat"><strong>{{ perf.ep_month or 0 }}</strong><span>EP this month</span></div>
-            <div class="pd-hero-stat"><strong>{% if st.best_rank %}#{{ st.best_rank }}{% else %}-{% endif %}</strong><span>Best rank</span></div>
+            <a class="pd-hero-stat" href="/parent-teacher" style="text-decoration:none"><strong>{{ st.teachers_count or 0 }}</strong><span>{{ 'Teacher' if (st.teachers_count or 0) == 1 else 'Teachers' }} hired</span></a>
         </div>
     </section>
 
@@ -650,8 +648,8 @@ body.pd-lock { overflow: hidden; }
                 </div>
                 <div class="pd-kt-cell" role="cell" data-label="Grade">
                     {% if c.has_data and c.letter != '-' %}
-                    <span class="pd-grade {{ 'g-excellent' if c.gpa >= 3.7 else 'g-good' if c.gpa >= 3.0 else 'g-average' if c.gpa >= 2.0 else 'g-poor' }}">{{ c.letter }}</span>
-                    <small>GPA {{ '%.2f'|format(c.gpa) }}</small>
+                    <span class="pd-grade g-{{ c.band }}">{{ c.letter }}</span>
+                    <small>{{ c.score_pct }}% · {{ c.total_score }} / {{ c.total_possible }}</small>
                     {% elif not c.can_see_grades %}<span class="pd-kt-none"><i class="fas fa-lock"></i></span><small>Not shared</small>
                     {% else %}<span class="pd-kt-none">-</span><small>No grades yet</small>{% endif %}
                 </div>
@@ -695,7 +693,6 @@ body.pd-lock { overflow: hidden; }
             <div class="pd-cal-events" id="calEvents" aria-live="polite"></div>
         </section>
 
-        {% set g = perf.gpa or 0 %}
         <section class="pd-card pd-tall" aria-labelledby="pdProgTitle">
             <div class="pd-card-head">
                 <h2 class="pd-card-title" id="pdProgTitle"><span class="ic"><i class="fas fa-chart-line"></i></span>Progress</h2>
@@ -714,8 +711,8 @@ body.pd-lock { overflow: hidden; }
             <div data-prog-overview hidden>
             <div class="pd-prog-stats">
                 <div class="pd-prog-stat"><strong>{{ perf.avg_progress or 0 }}%</strong><span>Course progress</span></div>
-                <div class="pd-prog-stat"><strong class="{% if perf.has_data %}{{ 'g-excellent' if g >= 3.7 else 'g-good' if g >= 3.0 else 'g-average' if g >= 2.0 else 'g-poor' }}{% endif %}">{% if perf.has_data %}{{ '%.2f'|format(g) }}{% else %}-{% endif %}</strong><span>Average GPA</span></div>
-                <div class="pd-prog-stat"><strong>{{ perf.overall_average or 0 }}%</strong><span>Average score</span></div>
+                <div class="pd-prog-stat"><strong class="{% if perf.has_data %}g-{{ perf.overall_band }}{% endif %}">{{ perf.overall_letter if perf.has_data else '-' }}</strong><span>Average grade</span></div>
+                <div class="pd-prog-stat"><strong>{{ (perf.overall_average ~ '%') if perf.has_data else '-' }}</strong><span>Average score</span></div>
             </div>
             <div class="pd-cmp">
                 {% for c in kids %}
@@ -724,7 +721,7 @@ body.pd-lock { overflow: hidden; }
                     <span class="pd-cmp-name"><b>{{ c.first_name }}</b><small>{% if c.prog %}{{ c.modules_completed }} modules · {{ c.prog.courses|length }} course{{ '' if c.prog.courses|length == 1 else 's' }}{% elif not c.can_see_grades %}Not shared{% else %}Not started yet{% endif %}</small></span>
                     {% if c.prog %}
                     <span class="pd-cmp-bar" title="Course progress"><span class="pd-bar {{ 'ok' if c.avg_progress >= 100 else ('warn' if c.avg_progress < 25 else '') }}"><i style="width: {{ c.avg_progress }}%"></i></span><small>{{ c.avg_progress }}%</small></span>
-                    {% if c.has_gpa %}<span class="pd-letter {{ 'g-bg-excellent' if c.gpa >= 3.7 else 'g-bg-good' if c.gpa >= 3.0 else 'g-bg-average' if c.gpa >= 2.0 else 'g-bg-poor' }}" title="Overall grade">{{ c.letter }}</span>{% else %}<span class="pd-letter">-</span>{% endif %}
+                    {% if c.has_grade %}<span class="pd-letter g-bg-{{ c.band }}" title="Overall grade: {{ c.score_pct }}%">{{ c.letter }}</span>{% else %}<span class="pd-letter">-</span>{% endif %}
                     {% else %}<span class="pd-cmp-bar"></span><span class="pd-letter"><i class="fas {{ 'fa-lock' if not c.can_see_grades else 'fa-seedling' }}" aria-hidden="true"></i></span>{% endif %}
                     <i class="fas fa-chevron-right pd-cmp-go" aria-hidden="true"></i>
                 </button>
@@ -743,7 +740,7 @@ body.pd-lock { overflow: hidden; }
                             <b>{{ c.full_name }}</b>
                             <small>{% if p %}Updated {{ c.updated_ago or 'just now' }}{% elif not c.can_see_grades %}Progress not shared{% else %}Not started yet{% endif %}</small>
                         </div>
-                        {% if p and c.has_gpa %}<span class="pd-letter {{ 'g-bg-excellent' if c.gpa >= 3.7 else 'g-bg-good' if c.gpa >= 3.0 else 'g-bg-average' if c.gpa >= 2.0 else 'g-bg-poor' }}" title="Overall grade">{{ c.letter }}</span>{% endif %}
+                        {% if p and c.has_grade %}<span class="pd-letter g-bg-{{ c.band }}" title="Overall grade: {{ c.score_pct }}%">{{ c.letter }}</span>{% endif %}
                         <a class="pd-link pd-prog-more" href="/parent-progress?child={{ c.id }}">Full report <i class="fas fa-arrow-right"></i></a>
                     </div>
 
@@ -753,8 +750,8 @@ body.pd-lock { overflow: hidden; }
                             <div class="pd-ring" style="--p:{{ c.avg_progress }}"><span>{{ c.avg_progress }}%</span></div>
                             <div><b>Course progress</b><small>{{ c.modules_completed }} modules · {{ c.courses_completed }} finished</small></div>
                         </div>
-                        <div class="pd-pk"><strong class="{% if c.has_gpa %}{{ 'g-excellent' if c.gpa >= 3.7 else 'g-good' if c.gpa >= 3.0 else 'g-average' if c.gpa >= 2.0 else 'g-poor' }}{% endif %}">{{ '%.2f'|format(c.gpa) if c.has_gpa else '-' }}</strong><div><b>GPA</b><small>out of 4.0</small></div></div>
-                        <div class="pd-pk"><strong>{{ p.avg_score ~ '%' if p.avg_score is not none else '-' }}</strong><div><b>Average score</b><small>{{ p.subjects }} subject{{ '' if p.subjects == 1 else 's' }}</small></div></div>
+                        <div class="pd-pk"><strong class="{% if c.has_grade %}g-{{ c.band }}{% endif %}">{{ c.letter if c.has_grade else '-' }}</strong><div><b>Overall grade</b><small>{{ (c.score_pct ~ '%') if c.has_grade else 'No grades yet' }}</small></div></div>
+                        <div class="pd-pk"><strong>{{ (c.total_score ~ ' / ' ~ c.total_possible) if c.has_grade else '-' }}</strong><div><b>Total score</b><small>{{ (c.total_possible // 100) if c.has_grade else 0 }} subject{{ '' if c.total_possible == 100 else 's' }}</small></div></div>
                         <div class="pd-pk"><strong>{{ c.quiz_streak }}</strong><div><b>Quiz streak</b><small>day{{ '' if c.quiz_streak == 1 else 's' }} in a row</small></div></div>
                     </div>
 
@@ -1109,7 +1106,7 @@ body.pd-lock { overflow: hidden; }
         } else {
             $('pdReportDownload').hidden = false;
             b += '<div><div class="pd-r-h">Overview</div><div class="pd-r-grid">' +
-                 stat(c.letter, 'Overall grade') + stat(c.has_gpa ? num(c.gpa).toFixed(2) : '-', 'GPA (4.0)') +
+                 stat(c.letter, 'Overall grade' + (c.has_grade ? ' · ' + c.score_pct + '%' : '')) + stat(c.has_grade ? c.total_score + ' / ' + c.total_possible : '-', 'Total score') +
                  stat(c.avg_progress + '%', 'Course progress') + stat(c.rank ? '#' + c.rank : '-', 'Monthly rank') +
                  stat(c.modules_completed, 'Modules passed') + stat(c.quizzes_passed, 'Quizzes passed') +
                  stat(c.courses_completed, 'Courses finished') + stat(c.assessments, 'Assessments') +
@@ -1162,7 +1159,7 @@ body.pd-lock { overflow: hidden; }
         L.push('Eschool progress report: ' + c.full_name);
         L.push('Date: ' + new Date().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }));
         L.push('Grade level: ' + c.grade, '');
-        L.push('Overall grade: ' + c.letter + '   GPA: ' + (c.has_gpa ? num(c.gpa).toFixed(2) : '-'));
+        L.push('Overall grade: ' + c.letter + (c.has_grade ? ' (' + c.score_pct + '%)   Total score: ' + c.total_score + ' / ' + c.total_possible : ''));
         L.push('Course progress: ' + c.avg_progress + '%');
         L.push('Modules passed: ' + c.modules_completed + '   Quizzes passed: ' + c.quizzes_passed + '   Courses finished: ' + c.courses_completed);
         L.push('Quiz streak: ' + c.quiz_streak + ' days   Module streak: ' + c.module_streak);

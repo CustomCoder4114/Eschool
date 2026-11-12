@@ -1,70 +1,442 @@
 {% extends "Admin/admin_body.html" %}
-{% block title %}Reviews{% endblock %}
+{% block title %}Reviews & community{% endblock %}
 {% block allcontent %}
 {#
-    ADMIN - Reviews  (templates/Admin/admin_reviews.html)   Route: /admin-reviews
-    GET    /api/admin/reviews?stars=low|1..5&q=
-    DELETE /api/admin/reviews/<id>   {reason}                          removes a review (reviewer and teacher are told)
-    POST   /api/admin/reviews/<id>   {action: "remove_reply", reason}  removes only the teacher's reply
+    ADMIN - Reviews & community  (templates/Admin/admin_reviews.html)   Route: /admin-reviews
+    GET  /api/admin/moderation?view=needs|reviews|opinions&filter=&q=&sort=
+    POST /api/admin/moderation/seen
+    GET  /api/admin/moderation/person/<uid>
+    GET  /api/admin/moderation/warnings
+    GET|PUT /api/admin/moderation/words
+    POST /api/admin/moderation/<review|opinion>/<id>  {action: fine|unfine|show|remove|remove_reply|warn, ...}
 #}
-<div class="ad-page-h">
-    <div><h1>Reviews</h1><p>What learners and parents say about teachers. Remove anything abusive, false, or about the wrong person.</p></div>
-</div>
-<div class="ad-kpis" id="rKpis"><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div></div>
-<div class="ad-card">
-    <div class="ad-tabs" role="group" aria-label="Stars" id="rTabs"></div>
-    <div class="ad-toolbar"><input type="search" class="ad-input" id="rQ" placeholder="Search words, teacher or reviewer" aria-label="Search reviews"></div>
-    <div class="ad-note" id="rNote" role="status" aria-live="polite"></div>
-    <div id="rList"><div class="ad-skel"></div><div class="ad-skel"></div></div>
-</div>
 <style>
-.rv { border: 1px solid var(--ab-border); border-radius: 12px; padding: 14px; }
-.rv + .rv { margin-top: 10px; }
-.rv.low { border-left: 4px solid #ef4444; }
-.rv-h { display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; font-size: .8rem; color: var(--ab-text-3); }
-.rv-h .st { color: #f59e0b; letter-spacing: 1px; }
-.rv-h a { color: var(--ab-accent-text); text-decoration: none; font-weight: 600; }
-.rv p { margin-top: 8px; font-size: .88rem; color: var(--ab-text); line-height: 1.55; overflow-wrap: anywhere; }
-.rv .reply { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--ab-surface-2); border: 1px solid var(--ab-border); font-size: .82rem; color: var(--ab-text-2); }
-.rv .reply b { color: var(--ab-text); }
-.rv-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.mr-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; background: var(--ab-surface); border: 1px solid var(--ab-border); border-radius: 12px; padding: 4px; margin-bottom: 14px; max-width: 100%; }
+.mr-seg button { border: 0; background: none; padding: 8px 14px; border-radius: 9px; font: inherit; font-size: .85rem; font-weight: 600; color: var(--ab-text-2); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.mr-seg button:hover { background: var(--ab-hover); color: var(--ab-text); }
+.mr-seg button[aria-pressed="true"] { background: var(--ab-accent-soft); color: var(--ab-accent-text); }
+.mr-seg em { font-style: normal; background: #ef4444; color: #fff; border-radius: 99px; padding: 1px 7px; font-size: .68rem; }
+.mr-seg em:empty { display: none; }
+.mr-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+.mr-side { position: sticky; top: calc(var(--ab-header-h) + 20px); max-height: calc(100vh - var(--ab-header-h) - 40px); overflow-y: auto; }
+@media (max-width: 1150px) { .mr-grid { grid-template-columns: minmax(0, 1fr); } .mr-side { position: static; max-height: none; } }
+.mr-it { border: 1px solid var(--ab-border); border-radius: 12px; padding: 12px 14px; }
+.mr-it + .mr-it { margin-top: 10px; }
+.mr-it.bad { border-left: 4px solid #ef4444; }
+.mr-it.new { background: color-mix(in srgb, var(--primary-color) 3%, var(--ab-surface)); }
+.mr-it.sel { outline: 2px solid var(--primary-color); outline-offset: -1px; }
+.mr-h { display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap; font-size: .78rem; color: var(--ab-text-3); }
+.mr-h a { color: var(--ab-accent-text); font-weight: 600; text-decoration: none; }
+.mr-h a:hover { text-decoration: underline; }
+.mr-st { color: #f59e0b; letter-spacing: 1px; }
+.mr-it p.tx { margin-top: 7px; font-size: .88rem; line-height: 1.55; color: var(--ab-text); overflow-wrap: anywhere; white-space: pre-wrap; }
+.mr-it mark { background: #fee2e2; color: #b91c1c; border-radius: 4px; padding: 0 3px; }
+body.dark-mode .mr-it mark { background: rgba(239, 68, 68, .22); color: #fca5a5; }
+.mr-reply { margin-top: 9px; padding: 9px 12px; border-radius: 10px; background: var(--ab-surface-2); border: 1px solid var(--ab-border); font-size: .82rem; color: var(--ab-text-2); overflow-wrap: anywhere; }
+.mr-reply b { color: var(--ab-text); }
+.mr-why { margin-top: 6px; font-size: .76rem; color: var(--ab-text-3); }
+.mr-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.ad-btn.warn { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+.ad-btn.warn:hover:not(:disabled) { background: #d97706; border-color: #d97706; color: #fff; }
+.mr-pill-new { background: var(--primary-color) !important; color: #fff !important; }
+.mr-who { display: flex; gap: 10px; align-items: center; }
+.mr-who h3 { font-size: .98rem; color: var(--ab-text); }
+.mr-lad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.mr-lad span { font-size: .68rem; text-align: center; padding: 6px 2px; border-radius: 7px; background: var(--ab-hover); color: var(--ab-text-3); font-weight: 700; }
+.mr-lad span.done { background: #fde68a; color: #92400e; }
+.mr-lad span.next { outline: 2px solid #f59e0b; outline-offset: -2px; background: var(--ab-surface); color: #b45309; }
+body.dark-mode .mr-lad span.done { background: rgba(245, 158, 11, .3); color: #fcd34d; }
+.mr-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mr-opts button { border: 1px solid var(--ab-border); background: var(--ab-surface); border-radius: 9px; padding: 8px 10px; font: inherit; font-size: .78rem; font-weight: 600; color: var(--ab-text-2); cursor: pointer; text-align: left; }
+.mr-opts button[aria-pressed="true"] { border-color: #f59e0b; background: #fffbeb; color: #92400e; }
+body.dark-mode .mr-opts button[aria-pressed="true"] { background: rgba(245, 158, 11, .15); color: #fcd34d; }
+.mr-prev { background: var(--ab-surface-2); border: 1px dashed var(--ab-border); border-radius: 10px; padding: 10px 12px; font-size: .8rem; color: var(--ab-text-2); line-height: 1.5; overflow-wrap: anywhere; }
+.mr-prev b { color: var(--ab-text); }
+.mr-chk { display: flex; gap: 8px; align-items: flex-start; font-size: .8rem; color: var(--ab-text-2); margin-top: 8px; cursor: pointer; }
+.mr-chk input { margin-top: 3px; accent-color: var(--primary-color); }
+.mr-hist > div { display: flex; gap: 8px; font-size: .78rem; color: var(--ab-text-2); padding: 7px 0; border-bottom: 1px solid var(--ab-border); }
+.mr-hist > div:last-child { border-bottom: 0; }
+.mr-hist i { color: #f59e0b; margin-top: 3px; }
+.mr-words { display: flex; flex-wrap: wrap; gap: 6px; max-height: 220px; overflow-y: auto; padding: 2px; }
+.mr-words span { display: inline-flex; gap: 6px; align-items: center; font-size: .76rem; padding: 4px 6px 4px 10px; border-radius: 99px; background: var(--ab-hover); color: var(--ab-text-2); }
+.mr-words button { border: 0; background: none; color: var(--ab-text-3); cursor: pointer; padding: 0 3px; font-size: .8rem; }
+.mr-words button:hover { color: #dc2626; }
 </style>
+
+<div class="ad-page-h">
+    <div><h1>Reviews &amp; community</h1><p>Teacher reviews and community opinions in one place. Harsh words are spotted for you. Warn the person, remove the post, or mark it fine.</p></div>
+    <div class="ad-actions">
+        <button type="button" class="ad-btn" id="mWordsBtn"><i class="fas fa-spell-check"></i> Harsh word list</button>
+        <button type="button" class="ad-btn primary" id="mSeenBtn"><i class="fas fa-check-double"></i> Mark all as seen</button>
+    </div>
+</div>
+
+<div class="mr-seg" role="group" aria-label="Show" id="mSeg">
+    <button type="button" data-v="needs"><i class="fas fa-inbox"></i> Needs a look <em id="mNeedsN"></em></button>
+    <button type="button" data-v="reviews"><i class="fas fa-star"></i> Teacher reviews</button>
+    <button type="button" data-v="opinions"><i class="fas fa-comments"></i> Community opinions</button>
+    <button type="button" data-v="warnings"><i class="fas fa-triangle-exclamation"></i> Warnings sent</button>
+</div>
+
+<div class="ad-kpis" id="mKpis"><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div><div class="ad-kpi"><div class="ad-skel"></div></div></div>
+
+<div class="mr-grid">
+    <div class="ad-card" id="mMain">
+        <div class="ad-tabs" role="group" aria-label="Filter" id="mTabs"></div>
+        <div class="ad-toolbar">
+            <input type="search" class="ad-input" id="mQ" placeholder="Search words, names, teachers..." aria-label="Search">
+            <select class="ad-select" id="mSort" aria-label="Order">
+                <option value="new">Newest first</option><option value="old">Oldest first</option><option value="harsh">Harshest first</option>
+            </select>
+        </div>
+        <div class="ad-note" id="mNote" role="status" aria-live="polite"></div>
+        <div id="mList"><div class="ad-skel"></div><div class="ad-skel"></div><div class="ad-skel"></div></div>
+    </div>
+    <aside class="ad-card mr-side" id="mSide" aria-live="polite"></aside>
+</div>
+
 <script>
 (function () {
     'use strict';
-    var A = window.AD, $ = function (id) { return document.getElementById(id); };
-    var S = { stars: '', q: '', data: null };
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    async function api(url, opt) {
+        opt = opt || {};
+        var init = { credentials: 'same-origin', cache: 'no-store', method: opt.method || 'GET', headers: {} };
+        if (opt.body !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(opt.body); }
+        var r; try { r = await fetch(url, init); } catch (e) { throw new Error('No connection. Check your internet and try again.'); }
+        var d = null; try { d = await r.json(); } catch (e) { /* not json */ }
+        if (r.status === 401) { setTimeout(function () { location.replace('/Login'); }, 1200); throw new Error('Please sign in again.'); }
+        if (!r.ok || (d && d.success === false)) throw new Error((d && (d.message || d.error)) || ('Something went wrong (' + r.status + ').'));
+        return d || {};
+    }
+    function toDate(iso) { return iso ? new Date(String(iso).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? '' : 'Z')) : null; }
+    function when(iso) { var d = toDate(iso); return d && !isNaN(d) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
+    function ago(iso) {
+        var d = toDate(iso); if (!d || isNaN(d)) return '';
+        var s = (Date.now() - d) / 1000;
+        if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+        if (s < 172800) return 'yesterday'; if (s < 604800) return Math.floor(s / 86400) + ' days ago';
+        return when(iso);
+    }
+    function initials(n) { return String(n || '?').split(/\s+/).filter(Boolean).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(); }
+    function note(msg, type) {
+        var el = $('mNote'); el.className = 'ad-note ' + (type || 'info');
+        el.innerHTML = msg ? '<i class="fas ' + (type === 'ok' ? 'fa-circle-check' : type === 'bad' ? 'fa-circle-exclamation' : 'fa-circle-info') + '" style="margin-top:2px"></i><span></span>' : '';
+        if (msg) el.querySelector('span').textContent = msg;
+        clearTimeout(el._t); if (msg && type !== 'bad') el._t = setTimeout(function () { el.innerHTML = ''; }, 6000);
+    }
+    function badges() { if (window.adminRefreshBadges) window.adminRefreshBadges(); }
+    function role(r) { return r === 'parent' ? 'parent' : r === 'teacher' ? 'teacher' : r === 'admin' ? 'admin' : 'learner'; }
     function stars(n) { return '★★★★★'.slice(0, n) + '<span style="opacity:.3">' + '★★★★★'.slice(n) + '</span>'; }
-    async function load() {
-        try { S.data = await A.api('/api/admin/reviews?' + new URLSearchParams({ stars: S.stars, q: S.q })); render(); }
-        catch (e) { A.note('rNote', e.message, 'bad'); }
+    function store(k, v) { try { if (v === undefined) return localStorage.getItem('adm.rev.' + k); localStorage.setItem('adm.rev.' + k, v); } catch (e) { return null; } }
+
+    var S = { view: store('view') || 'needs', filter: 'all', q: '', sort: 'new', data: null, warnData: null, sel: null, person: null,
+              form: null, reasons: {}, words: null, side: 'hint' };
+    if (['needs', 'reviews', 'opinions', 'warnings'].indexOf(S.view) < 0) S.view = 'needs';
+    var LEVELS = ['1st warning', '2nd warning', 'Final warning', 'Suspend'];
+    var REASON_ICONS = { harsh: 'fa-fire', bullying: 'fa-user-slash', false: 'fa-scale-unbalanced', spam: 'fa-ban' };
+    var REASON_SHORT = { harsh: 'Harsh or rude words', bullying: 'Bullying someone', false: 'False or unfair claims', spam: 'Off-topic or spam' };
+    var TAGS = { reading: 'Reading', memorization: 'Memorization', mastery: 'Mastery', general: 'General' };
+
+    /* ---------- highlight harsh words safely ---------- */
+    function highlight(text, words) {
+        text = String(text || '');
+        if (!words || !words.length) return esc(text);
+        var rx = new RegExp('(^|[^\\w])(' + words.map(function (w) { return w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+'); }).join('|') + ')(?=$|[^\\w])', 'gi');
+        var out = '', last = 0, m;
+        while ((m = rx.exec(text))) {
+            var start = m.index + m[1].length;
+            out += esc(text.slice(last, start)) + '<mark>' + esc(m[2]) + '</mark>';
+            last = start + m[2].length;
+            if (m[0].length === 0) rx.lastIndex++;
+        }
+        return out + esc(text.slice(last));
     }
+
+    /* ---------- loading ---------- */
+    async function load(quiet) {
+        try {
+            if (S.view === 'warnings') {
+                var w = await api('/api/admin/moderation/warnings?' + new URLSearchParams({ q: S.q }));
+                S.warnData = w;
+                if (!S.data) S.data = await api('/api/admin/moderation?view=needs');
+            } else {
+                S.data = await api('/api/admin/moderation?' + new URLSearchParams({ view: S.view, filter: S.filter, q: S.q, sort: S.sort }));
+            }
+            S.reasons = S.data.reasons || S.reasons;
+            render();
+        } catch (e) { if (!quiet) note(e.message, 'bad'); }
+    }
+
+    function renderKpis() {
+        var k = S.data.kpis;
+        $('mNeedsN').textContent = k.needs ? (k.needs > 99 ? '99+' : k.needs) : '';
+        $('mKpis').innerHTML = [
+            ['fa-bolt', '#4361ee', 'New since you last looked', k.new, k.new_reviews + ' review' + (k.new_reviews === 1 ? '' : 's') + ' · ' + k.new_opinions + ' opinion' + (k.new_opinions === 1 ? '' : 's')],
+            ['fa-fire', '#ef4444', 'Harsh words spotted', k.harsh_7, 'last 7 days'],
+            ['fa-flag', '#f59e0b', 'Opinions reported', k.reported, k.hidden ? k.hidden + ' hidden automatically' : 'none hidden'],
+            ['fa-star-half-stroke', '#ef4444', '1–2 star reviews', k.low, k.avg != null ? 'average ' + k.avg.toFixed(1) + ' ★ from ' + k.reviews : 'no reviews yet'],
+            ['fa-paper-plane', '#10b981', 'Warnings sent', k.warnings_30, 'last 30 days · ' + k.repeat + ' warned more than once']
+        ].map(function (x) { return '<div class="ad-kpi" style="--c:' + x[1] + '"><span><i class="fas ' + x[0] + '"></i>' + x[2] + '</span><b>' + x[3] + '</b><small>' + esc(x[4]) + '</small></div>'; }).join('');
+    }
+
     function render() {
-        var d = S.data, c = d.counts;
-        $('rKpis').innerHTML = [['fa-star', '#f59e0b', 'Reviews', c.all], ['fa-star-half-stroke', '#4361ee', 'Average', d.avg != null ? d.avg.toFixed(2) + ' ★' : '–'], ['fa-triangle-exclamation', '#ef4444', '1 or 2 stars', c.low], ['fa-reply', '#10b981', 'No reply from the teacher', c.no_reply]]
-            .map(function (k) { return '<div class="ad-kpi" style="--c:' + k[1] + '"><span><i class="fas ' + k[0] + '"></i>' + k[2] + '</span><b>' + k[3] + '</b></div>'; }).join('');
-        $('rTabs').innerHTML = [['', 'All'], ['low', 'Low (1–2★)'], ['5', '5★'], ['4', '4★'], ['3', '3★'], ['2', '2★'], ['1', '1★']]
-            .map(function (t) { return '<button type="button" class="ad-tab" data-s="' + t[0] + '" aria-pressed="' + (S.stars === t[0]) + '">' + t[1] + '</button>'; }).join('');
-        $('rList').innerHTML = d.reviews.length ? d.reviews.map(function (r) {
-            return '<div class="rv' + (r.stars <= 2 ? ' low' : '') + '" data-id="' + r.id + '"><div class="rv-h"><span class="st" aria-label="' + r.stars + ' stars">' + stars(r.stars) + '</span>' +
-                '<span><a href="/admin-users?id=' + r.reviewer_id + '">' + A.esc(r.reviewer) + '</a> (' + (r.reviewer_role === 'parent' ? 'parent' : 'learner') + ') reviewed <a href="/admin-users?id=' + r.teacher_id + '">' + A.esc(r.teacher) + '</a></span><span>' + A.esc(A.ago(r.created_at)) + '</span></div>' +
-                (r.comment ? '<p>' + A.esc(r.comment) + '</p>' : '<p class="ad-muted">No written comment, stars only.</p>') +
-                (r.reply ? '<div class="reply"><b>Teacher\'s reply</b> · ' + A.esc(A.ago(r.reply_at)) + '<br>' + A.esc(r.reply) + '</div>' : '') +
-                '<div class="rv-acts"><a class="ad-btn sm" href="/profile/' + r.teacher_id + '#reviews"><i class="fas fa-up-right-from-square"></i> See on profile</a>' +
-                (r.reply ? '<button type="button" class="ad-btn sm danger" data-do="reply"><i class="fas fa-comment-slash"></i> Remove reply</button>' : '') +
-                '<button type="button" class="ad-btn sm danger" data-do="remove"><i class="fas fa-trash"></i> Remove review</button></div><div data-box></div></div>';
-        }).join('') : '<div class="ad-empty"><i class="fas fa-star"></i><b>No reviews here</b></div>';
+        document.querySelectorAll('#mSeg [data-v]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === S.view)); });
+        if (S.data) renderKpis();
+        if (S.view === 'warnings') { renderWarnings(); return; }
+        var c = S.data.counts, tabs = [['all', 'All'], ['new', 'New'], ['harsh', 'Harsh words'], ['reported', 'Reported'], ['low', 'Low stars'], ['hidden', 'Hidden'], ['fine', 'Marked fine'], ['warned', 'Warned']];
+        if (S.view === 'opinions') tabs = tabs.filter(function (t) { return t[0] !== 'low'; });
+        if (S.view === 'reviews') tabs = tabs.filter(function (t) { return t[0] !== 'reported' && t[0] !== 'hidden'; });
+        if (S.view === 'needs') tabs = tabs.filter(function (t) { return t[0] !== 'fine' && t[0] !== 'warned'; });
+        $('mTabs').innerHTML = tabs.map(function (t) { return '<button type="button" class="ad-tab" data-f="' + t[0] + '" aria-pressed="' + (S.filter === t[0]) + '">' + t[1] + ' <em>' + (c[t[0]] || 0) + '</em></button>'; }).join('');
+        $('mSort').disabled = false; $('mSort').value = S.sort; $('mTabs').style.display = '';
+        var items = S.data.items;
+        $('mList').innerHTML = items.length ? items.map(card).join('') + (S.data.total > items.length ? '<p class="ad-muted" style="margin-top:10px">Showing the first ' + items.length + ' of ' + S.data.total + '. Search to narrow it down.</p>' : '')
+            : '<div class="ad-empty"><i class="fas ' + (S.view === 'needs' ? 'fa-face-smile' : 'fa-inbox') + '"></i><b>' + (S.view === 'needs' && S.filter === 'all' && !S.q ? 'Nothing needs a look' : 'Nothing here') + '</b>' + (S.view === 'needs' && S.filter === 'all' && !S.q ? 'Every flagged review and opinion has been checked.' : 'Try another filter or search.') + '</div>';
+        renderSide();
     }
-    $('rTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-s]'); if (b) { S.stars = b.dataset.s; load(); } });
-    var qt; $('rQ').addEventListener('input', function () { clearTimeout(qt); var v = this.value.trim(); qt = setTimeout(function () { S.q = v; load(); }, 250); });
-    $('rList').addEventListener('click', function (e) {
-        var b = e.target.closest('[data-do]'); if (!b) return;
-        var card = b.closest('[data-id]'), r = S.data.reviews.filter(function (x) { return String(x.id) === card.dataset.id; })[0], reply = b.dataset.do === 'reply';
-        A.confirmIn(card.querySelector('[data-box]'), { title: reply ? 'Remove ' + r.teacher + '\'s reply?' : 'Remove this ' + r.stars + '★ review?', danger: true,
-            text: reply ? 'The review stays; only the reply goes. The teacher is told why and can reply again.' : 'The review disappears from ' + r.teacher + '\'s profile and their rating is worked out again. ' + r.reviewer + ' is told why.',
-            reason: true, yes: reply ? 'Remove reply' : 'Remove review',
-            run: async function (v) { await A.api('/api/admin/reviews/' + r.id, reply ? { method: 'POST', body: { action: 'remove_reply', reason: v.reason } } : { method: 'DELETE', body: { reason: v.reason } }); A.note('rNote', reply ? 'Reply removed.' : 'Review removed.', 'ok'); load(); } });
+
+    function key(x) { return x.kind + ':' + x.id; }
+    function card(x) {
+        var pills = [];
+        if (x.new) pills.push('<span class="ad-pill mr-pill-new">NEW</span>');
+        pills.push(x.kind === 'review' ? '<span class="ad-pill"><i class="fas fa-star"></i> Teacher review</span><span class="mr-st" aria-label="' + x.stars + ' stars">' + stars(x.stars) + '</span>'
+            : '<span class="ad-pill info"><i class="fas fa-comments"></i> Community opinion</span>');
+        if (x.harsh.length) pills.push('<span class="ad-pill bad"><i class="fas fa-fire"></i> Harsh words</span>');
+        if (x.reply_harsh && x.reply_harsh.length) pills.push('<span class="ad-pill bad"><i class="fas fa-reply"></i> Harsh reply</span>');
+        if (x.reports) pills.push('<span class="ad-pill warn"><i class="fas fa-flag"></i> Reported by ' + x.reports + (x.hidden ? ' · hidden' : '') + '</span>');
+        if (x.status === 'fine') pills.push('<span class="ad-pill ok"><i class="fas fa-check"></i> Marked fine</span>');
+        else if (x.status === 'warned') pills.push('<span class="ad-pill warn"><i class="fas fa-triangle-exclamation"></i> Warned</span>');
+        else if (!x.flagged) pills.push('<span class="ad-pill ok">Looks fine</span>');
+        var who = '<a href="/admin-users?id=' + x.author_id + '">' + esc(x.author) + '</a> <span>(' + role(x.author_role) + ')</span>';
+        if (x.kind === 'opinion' && x.anonymous) who = '<b style="color:var(--ab-text)">Anonymous</b> <span>(only you can see: <a href="/admin-users?id=' + x.author_id + '">' + esc(x.author) + '</a>)</span>';
+        var meta = x.kind === 'review' ? who + ' <span>reviewed</span> <a href="/admin-users?id=' + x.target_id + '">' + esc(x.target) + '</a>'
+            : who + ' <span>· ' + esc(TAGS[x.tag] || x.tag) + ' · ' + x.likes + ' like' + (x.likes === 1 ? '' : 's') + '</span>';
+        var bad = x.harsh.length || (x.reply_harsh && x.reply_harsh.length) || x.reports || (x.kind === 'review' && x.stars <= 2);
+        var acts = [];
+        acts.push('<button type="button" class="ad-btn sm warn" data-do="warn"><i class="fas fa-triangle-exclamation"></i> Warn ' + (x.kind === 'review' ? 'reviewer' : '') + '</button>');
+        if (x.reply_harsh && x.reply_harsh.length) acts.push('<button type="button" class="ad-btn sm warn" data-do="warnt"><i class="fas fa-reply"></i> Warn teacher</button>');
+        acts.push('<button type="button" class="ad-btn sm danger" data-do="remove"><i class="fas fa-trash"></i> Remove</button>');
+        if (x.reply) acts.push('<button type="button" class="ad-btn sm danger" data-do="reply"><i class="fas fa-comment-slash"></i> Remove reply</button>');
+        if (x.hidden) acts.push('<button type="button" class="ad-btn sm" data-do="show"><i class="fas fa-eye"></i> Show again</button>');
+        else if (x.status === 'fine') acts.push('<button type="button" class="ad-btn sm" data-do="unfine"><i class="fas fa-rotate-left"></i> Check again</button>');
+        else if (x.flagged && x.status !== 'warned') acts.push('<button type="button" class="ad-btn sm" data-do="fine"><i class="fas fa-check"></i> It\'s fine</button>');
+        if (x.kind === 'review') acts.push('<a class="ad-btn sm" href="/profile/' + x.target_id + '#reviews"><i class="fas fa-up-right-from-square"></i> See on profile</a>');
+        return '<div class="mr-it' + (bad && x.status !== 'fine' ? ' bad' : '') + (x.new ? ' new' : '') + (S.sel === key(x) ? ' sel' : '') + '" data-k="' + key(x) + '">' +
+            '<div class="mr-h">' + pills.join('') + '<span>' + meta + '</span><span>· ' + esc(ago(x.created_at)) + '</span></div>' +
+            (x.text ? '<p class="tx">' + highlight(x.text, x.harsh) + '</p>' : '<p class="tx ad-muted">No written comment, stars only.</p>') +
+            (x.report_reasons && x.report_reasons.length ? '<div class="mr-why"><i class="fas fa-flag"></i> Why people reported it: ' + x.report_reasons.map(function (r) { return '“' + esc(r) + '”'; }).join(', ') + '</div>' : '') +
+            (x.reply ? '<div class="mr-reply"><b>' + esc(x.target) + '\'s reply</b> · ' + esc(ago(x.reply_at)) + '<br>' + highlight(x.reply, x.reply_harsh) + '</div>' : '') +
+            '<div class="mr-acts">' + acts.join('') + '</div><div data-box></div></div>';
+    }
+    function find(k) { return (S.data.items || []).filter(function (x) { return key(x) === k; })[0]; }
+
+    /* ---------- side panel ---------- */
+    function renderSide() {
+        var el = $('mSide');
+        if (S.side === 'words') { renderWords(); return; }
+        if (S.side === 'warn' && S.form) { renderWarn(); return; }
+        if (S.view === 'warnings') return;
+        el.innerHTML = '<div class="ad-empty" style="padding:22px 6px"><i class="fas fa-hand-pointer"></i><b>Pick a post</b>Press <b style="display:inline">Warn</b> on any review or opinion to see who wrote it, their earlier warnings, and the exact message they will get.</div>' +
+            '<div class="ad-sec-t">How posts get flagged</div><div class="ad-muted" style="line-height:1.6">A post needs a look when it has a word from the <a href="#" data-words style="color:var(--ab-accent-text)">harsh word list</a>, someone reported it, or it is a 1–2 star review. Opinions reported by 3 people hide themselves until you check them.</div>' +
+            '<div class="ad-sec-t">Warning steps</div><div class="mr-lad"><span>1st warning</span><span>2nd warning</span><span>Final warning</span><span>Suspend</span></div>';
+    }
+
+    async function openWarn(x, who) {
+        var uid = who === 'teacher' ? x.target_id : x.author_id;
+        S.sel = key(x); S.side = 'warn';
+        S.form = { item: x, who: who, uid: uid, reason: (who === 'teacher' ? x.reply_harsh : x.harsh).length ? 'harsh' : (x.reports ? 'bullying' : 'false'), note: '', remove: !!(who !== 'teacher' && x.harsh.length), parent: false, busy: false, msg: '' };
+        S.person = null;
+        render();
+        $('mSide').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        try { var d = await api('/api/admin/moderation/person/' + uid); if (S.form && S.form.uid === uid) { S.person = d.person; renderWarn(); } }
+        catch (e) { if (S.form) { S.form.msg = e.message; renderWarn(); } }
+    }
+
+    function preview(f, p) {
+        var x = f.item, level = p ? p.next_level : 1, label = ['1st', '2nd', 'Final'][Math.min(level, 3) - 1];
+        var what = x.kind === 'review' ? (f.who === 'teacher' ? 'reply to a review' : 'review') : 'community opinion';
+        var text = (f.who === 'teacher' ? x.reply : x.text) || '', ex = text.length > 80 ? text.slice(0, 80) + '…' : text.replace(/[.!?\s]+$/, '');
+        var d = toDate(x.created_at), day = d && !isNaN(d) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'recently';
+        return '<b>⚠️ Warning from Eschool (' + label + ')</b><br>Your ' + what + ' on ' + esc(day) + ' ' + esc((S.reasons[f.reason] || '')) +
+            (ex ? ': “' + esc(ex) + '”.' : '.') + ' Eschool is a kind place to learn. Please share your views politely.' +
+            (f.note ? ' Note from Eschool: ' + esc(f.note) + (/[.!?]$/.test(f.note) ? '' : '.') : '') +
+            (level >= 3 ? ' This is your final warning. Next time your account can be paused.' : ' More warnings can lead to your account being paused.');
+    }
+
+    function renderWarn() {
+        var f = S.form, p = S.person, x = f.item, el = $('mSide');
+        var name = f.who === 'teacher' ? x.target : x.author;
+        var head = '<div class="mr-who"><span class="ad-avatar" style="width:40px;height:40px">' + esc(initials(name)) + '</span><div style="min-width:0"><h3>Warn ' + esc(name) + '</h3><div class="ad-muted">' +
+            (p ? esc(role(p.role)) + (p.joined ? ' · joined ' + esc(when(p.joined)) : '') + ' · ' + p.opinions + ' opinion' + (p.opinions === 1 ? '' : 's') + ' · ' + p.reviews + ' review' + (p.reviews === 1 ? '' : 's') : 'Loading...') + '</div></div></div>';
+        if (!p) { el.innerHTML = head + (f.msg ? '<div class="ad-note bad" style="margin-top:12px">' + esc(f.msg) + '</div>' : '<div class="ad-skel" style="margin-top:16px"></div><div class="ad-skel"></div>'); return; }
+        var lvl = p.next_level, warns = p.warnings;
+        var hist = warns.length ? '<div class="mr-hist">' + warns.slice(0, 5).map(function (w) {
+            return '<div><i class="fas fa-triangle-exclamation"></i><span><b>' + esc(REASON_SHORT[w.reason] || w.reason_label) + '</b> on a ' + (w.kind === 'review' ? 'review' : 'community opinion') + ' · ' + esc(when(w.created_at)) + ' · ' + (w.read ? 'read ✓' : 'not read yet') + (w.removed ? ' · post removed' : '') + (w.note ? '<br><span class="ad-muted">“' + esc(w.note) + '”</span>' : '') + '</span></div>';
+        }).join('') + (warns.length > 5 ? '<div class="ad-muted">and ' + (warns.length - 5) + ' more</div>' : '') + '</div>' : '<div class="ad-muted">No earlier warnings. This would be their first.</div>';
+        var lad = '<div class="mr-lad">' + LEVELS.map(function (l, i) { return '<span class="' + (i + 1 < lvl ? 'done' : i + 1 === lvl ? 'next' : '') + '">' + l + '</span>'; }).join('') + '</div>';
+        var suspend = lvl >= 4 ? '<div class="ad-note bad" style="margin-top:10px"><i class="fas fa-user-lock" style="margin-top:2px"></i><span>' + esc(name) + ' already had a final warning. ' + (p.suspended ? 'Their account is suspended now.' : 'Think about suspending their account from their person file.') + ' <a href="/admin-users?id=' + p.id + '" style="color:inherit;font-weight:700">Open person file</a></span></div>' : '';
+        el.innerHTML = head +
+            '<div class="ad-sec-t">Earlier warnings</div>' + hist + '<div style="margin-top:8px">' + lad + '</div>' + suspend +
+            '<div class="ad-sec-t">Why</div><div class="mr-opts" role="group" aria-label="Reason">' + Object.keys(REASON_SHORT).map(function (k) {
+                return '<button type="button" data-r="' + k + '" aria-pressed="' + (f.reason === k) + '"><i class="fas ' + REASON_ICONS[k] + '"></i> ' + REASON_SHORT[k] + '</button>'; }).join('') + '</div>' +
+            '<div class="ad-sec-t"><label for="mWarnNote">Add a note (optional)</label></div><textarea class="ad-textarea" id="mWarnNote" maxlength="300" style="min-height:62px" placeholder="e.g. Please disagree politely and say what didn\'t work for you.">' + esc(f.note) + '</textarea>' +
+            '<div class="ad-sec-t">What ' + esc(name.split(' ')[0]) + ' will see</div><div class="mr-prev" id="mPrev">' + preview(f, p) + '</div>' +
+            (f.who !== 'teacher' ? '<label class="mr-chk"><input type="checkbox" id="mRemove"' + (f.remove ? ' checked' : '') + '> Also remove the ' + (x.kind === 'review' ? 'review' : 'opinion') + '</label>' : '<div class="ad-muted" style="margin-top:8px">Use “Remove reply” on the review to take the reply down.</div>') +
+            (p.role === 'student' ? (p.parents ? '<label class="mr-chk"><input type="checkbox" id="mParent"' + (f.parent ? ' checked' : '') + '> Tell the parent' + (p.parents > 1 ? 's' : '') + ' linked to this learner (' + p.parents + ')</label>' : '<div class="ad-muted" style="margin-top:8px">No parent is linked to this learner.</div>') : '') +
+            '<div class="ad-note" id="mWarnMsg" style="margin-top:10px"></div>' +
+            '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;flex-wrap:wrap"><a class="ad-btn" href="/admin-users?id=' + p.id + '"><i class="fas fa-user"></i> Person file</a><button type="button" class="ad-btn" id="mWarnCancel">Cancel</button><button type="button" class="ad-btn warn" id="mWarnSend"' + (f.busy ? ' disabled' : '') + '><i class="fas fa-paper-plane"></i> Send warning</button></div>';
+    }
+
+    $('mSide').addEventListener('click', async function (e) {
+        if (e.target.closest('[data-words]')) { e.preventDefault(); openWords(); return; }
+        var r = e.target.closest('[data-r]');
+        if (r && S.form) { S.form.reason = r.dataset.r; this.querySelectorAll('[data-r]').forEach(function (b) { b.setAttribute('aria-pressed', String(b === r)); }); $('mPrev').innerHTML = preview(S.form, S.person); return; }
+        if (e.target.closest('#mWarnCancel')) { S.side = 'hint'; S.form = null; S.sel = null; render(); return; }
+        if (e.target.closest('#mWarnSend')) { sendWarn(); return; }
+        var wd = e.target.closest('[data-wdel]');
+        if (wd) { S.words.splice(Number(wd.dataset.wdel), 1); S.wordsDirty = true; renderWords(); return; }
+        if (e.target.closest('#mWAdd')) { addWords(); return; }
+        if (e.target.closest('#mWSave')) { saveWords(false); return; }
+        if (e.target.closest('#mWReset')) { saveWords(true); return; }
+        if (e.target.closest('#mWClose')) { S.side = S.form ? 'warn' : 'hint'; renderSide(); return; }
     });
+    $('mSide').addEventListener('input', function (e) {
+        if (e.target.id === 'mWarnNote' && S.form) { S.form.note = e.target.value.trim(); $('mPrev').innerHTML = preview(S.form, S.person); }
+    });
+    $('mSide').addEventListener('change', function (e) {
+        if (!S.form) return;
+        if (e.target.id === 'mRemove') S.form.remove = e.target.checked;
+        if (e.target.id === 'mParent') S.form.parent = e.target.checked;
+    });
+    $('mSide').addEventListener('keydown', function (e) { if (e.target.id === 'mWAddIn' && e.key === 'Enter') { e.preventDefault(); addWords(); } });
+
+    async function sendWarn() {
+        var f = S.form; if (!f || f.busy) return;
+        f.busy = true; $('mWarnSend').disabled = true;
+        var msgEl = $('mWarnMsg'); msgEl.className = 'ad-note info'; msgEl.textContent = 'Sending...';
+        try {
+            var d = await api('/api/admin/moderation/' + f.item.kind + '/' + f.item.id, { method: 'POST', body: {
+                action: 'warn', who: f.who === 'teacher' ? 'teacher' : 'author', reason: f.reason, note: f.note, remove: f.who !== 'teacher' && f.remove, tell_parent: f.parent } });
+            var name = f.who === 'teacher' ? f.item.target : f.item.author;
+            note(d.label + ' warning sent to ' + name + '.' + (f.remove && f.who !== 'teacher' ? ' The post was removed.' : '') + (d.parents_told ? ' Their parent was told.' : '') + (d.suggest_suspend ? ' That was their final warning.' : ''), 'ok');
+            S.side = 'hint'; S.form = null; S.sel = null; badges(); load();
+        } catch (e) { f.busy = false; $('mWarnSend').disabled = false; msgEl.className = 'ad-note bad'; msgEl.textContent = e.message; }
+    }
+
+    /* ---------- harsh word list ---------- */
+    async function openWords() {
+        S.side = 'words'; $('mSide').innerHTML = '<div class="ad-skel"></div><div class="ad-skel"></div>';
+        try { var d = await api('/api/admin/moderation/words'); S.words = d.words.slice(); S.wordsDirty = false; renderWords(); }
+        catch (e) { $('mSide').innerHTML = '<div class="ad-note bad">' + esc(e.message) + '</div>'; }
+    }
+    function renderWords() {
+        if (!S.words) return;
+        $('mSide').innerHTML = '<div class="ad-card-h" style="margin-bottom:6px"><h2><i class="fas fa-spell-check"></i> Harsh word list</h2><button type="button" class="ad-btn sm" id="mWClose" aria-label="Close"><i class="fas fa-xmark"></i></button></div>' +
+            '<p class="ad-muted" style="line-height:1.55">New and old reviews and opinions with any of these words or phrases get the <b>Harsh words</b> flag. Whole words only, so “class” doesn’t match “ass”.</p>' +
+            '<div class="ad-toolbar" style="margin-top:10px"><input class="ad-input" id="mWAddIn" placeholder="Add words, separated by commas" maxlength="400" aria-label="Add words"><button type="button" class="ad-btn sm" id="mWAdd"><i class="fas fa-plus"></i> Add</button></div>' +
+            '<div class="mr-words">' + (S.words.length ? S.words.map(function (w, i) { return '<span>' + esc(w) + '<button type="button" data-wdel="' + i + '" aria-label="Remove ' + esc(w) + '">×</button></span>'; }).join('') : '<div class="ad-muted">The list is empty, so nothing gets the Harsh words flag.</div>') + '</div>' +
+            '<div class="ad-muted" style="margin-top:8px">' + S.words.length + ' word' + (S.words.length === 1 ? '' : 's') + (S.wordsDirty ? ' · not saved yet' : '') + '</div>' +
+            '<div class="ad-note" id="mWMsg" style="margin-top:8px"></div>' +
+            '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap"><button type="button" class="ad-btn sm" id="mWReset"><i class="fas fa-rotate-left"></i> Use the default list</button><button type="button" class="ad-btn sm primary" id="mWSave"' + (S.wordsDirty ? '' : ' disabled') + '><i class="fas fa-floppy-disk"></i> Save list</button></div>';
+    }
+    function addWords() {
+        var inp = $('mWAddIn'), added = 0;
+        inp.value.split(/[,\n]+/).forEach(function (w) { w = w.trim().toLowerCase().replace(/\s+/g, ' '); if (w.length >= 2 && S.words.indexOf(w) < 0) { S.words.unshift(w); added++; } });
+        if (added) { S.wordsDirty = true; renderWords(); $('mWAddIn').focus(); } else inp.focus();
+    }
+    async function saveWords(reset) {
+        var m = $('mWMsg'); m.className = 'ad-note info'; m.textContent = 'Saving...';
+        try { var d = await api('/api/admin/moderation/words', { method: 'PUT', body: reset ? { reset: true } : { words: S.words } }); S.words = d.words.slice(); S.wordsDirty = false; renderWords(); $('mWMsg').className = 'ad-note ok'; $('mWMsg').textContent = reset ? 'Back to the default list.' : 'Saved. Flags are worked out again.'; badges(); load(true); }
+        catch (e) { m.className = 'ad-note bad'; m.textContent = e.message; }
+    }
+    $('mWordsBtn').addEventListener('click', function () { if (S.side === 'words') { S.side = S.form ? 'warn' : 'hint'; renderSide(); } else openWords(); });
+
+    /* ---------- warnings sent ---------- */
+    function renderWarnings() {
+        var d = S.warnData;
+        $('mTabs').style.display = 'none'; $('mSort').disabled = true;
+        $('mList').innerHTML = d.warnings.length ? '<div class="ad-tbl-wrap"><table class="ad-tbl"><thead><tr><th>Person</th><th>Warning</th><th>Why</th><th>Read</th><th>Sent</th></tr></thead><tbody>' +
+            d.warnings.map(function (w) {
+                return '<tr><td><div class="ad-who"><span class="ad-avatar">' + esc(initials(w.name)) + '</span><span><b><a href="/admin-users?id=' + w.user_id + '" style="text-decoration:none">' + esc(w.name) + '</a></b><small>' + esc(role(w.role)) + ' · ' + w.total + ' warning' + (w.total === 1 ? '' : 's') + ' in all</small></span></div></td>' +
+                    '<td><span class="ad-pill ' + (w.level >= 3 ? 'bad' : 'warn') + '">' + (['1st', '2nd', 'Final'][Math.min(w.level, 3) - 1]) + (w.level > 3 ? ' (' + w.level + ')' : '') + '</span>' + (w.removed ? ' <span class="ad-pill">post removed</span>' : '') + (w.told_parent ? ' <span class="ad-pill info">parent told</span>' : '') + '</td>' +
+                    '<td style="min-width:220px;white-space:normal"><b>' + esc(REASON_SHORT[w.reason] || w.reason_label) + '</b> · ' + (w.kind === 'review' ? 'review' : 'opinion') + (w.excerpt ? '<br><span class="ad-muted">“' + esc(w.excerpt.slice(0, 90)) + (w.excerpt.length > 90 ? '…' : '') + '”</span>' : '') + (w.note ? '<br><span class="ad-muted">Note: ' + esc(w.note) + '</span>' : '') + '</td>' +
+                    '<td>' + (w.read ? '<span class="ad-pill ok">Read</span>' : '<span class="ad-pill">Not yet</span>') + '</td>' +
+                    '<td style="white-space:nowrap">' + esc(ago(w.created_at)) + '<br><span class="ad-muted">by ' + esc(w.by) + '</span></td></tr>';
+            }).join('') + '</tbody></table></div>'
+            : '<div class="ad-empty"><i class="fas fa-paper-plane"></i><b>No warnings sent' + (S.q ? ' that match' : ' yet') + '</b>Warnings you send from a review or an opinion show up here.</div>';
+        $('mSide').innerHTML = S.side === 'words' ? $('mSide').innerHTML : '<div class="ad-card-h"><h2><i class="fas fa-user-clock"></i> Warned more than once</h2></div>' +
+            (d.repeat.length ? d.repeat.map(function (p) {
+                return '<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--ab-border)"><span class="ad-avatar">' + esc(initials(p.name)) + '</span><span style="flex:1;min-width:0"><b style="color:var(--ab-text);font-size:.86rem">' + esc(p.name) + '</b><br><span class="ad-muted">' + p.total + ' warnings · last ' + esc(ago(p.created_at)) + '</span></span>' +
+                    (p.total >= 3 ? '<a class="ad-btn sm danger" href="/admin-users?id=' + p.user_id + '"><i class="fas fa-user-lock"></i> Review</a>' : '<a class="ad-btn sm" href="/admin-users?id=' + p.user_id + '">File</a>') + '</div>';
+            }).join('') : '<div class="ad-muted">Nobody has been warned twice. Good sign.</div>') +
+            '<div class="ad-sec-t">Read by the person</div><div class="ad-muted">' + (d.warnings.length - d.unread) + ' of ' + d.warnings.length + ' warnings have been opened.</div>';
+        if (S.side === 'words') renderWords();
+    }
+
+    /* ---------- list actions ---------- */
+    $('mList').addEventListener('click', async function (e) {
+        var b = e.target.closest('[data-do]'); if (!b) return;
+        var el = b.closest('[data-k]'), x = find(el.dataset.k); if (!x) return;
+        var act = b.dataset.do, box = el.querySelector('[data-box]');
+        if (act === 'warn') { openWarn(x, 'author'); return; }
+        if (act === 'warnt') { openWarn(x, 'teacher'); return; }
+        if (act === 'fine' || act === 'unfine' || act === 'show') {
+            b.disabled = true;
+            try { await api('/api/admin/moderation/' + x.kind + '/' + x.id, { method: 'POST', body: { action: act } });
+                note(act === 'fine' ? 'Marked as fine. It leaves “Needs a look”.' : act === 'show' ? 'The opinion shows again for everyone.' : 'Put back to check.', 'ok'); badges(); load(); }
+            catch (err) { b.disabled = false; note(err.message, 'bad'); }
+            return;
+        }
+        if (act === 'remove' || act === 'reply') confirmBox(box, x, act);
+    });
+
+    function confirmBox(box, x, act) {
+        var reply = act === 'reply';
+        if (box.dataset.open === act) { box.innerHTML = ''; box.dataset.open = ''; return; }
+        box.dataset.open = act;
+        var title = reply ? 'Remove ' + x.target + '\'s reply?' : x.kind === 'review' ? 'Remove this ' + x.stars + '★ review?' : 'Remove this opinion?';
+        var text = reply ? 'The review stays; only the reply goes. The teacher is told why and can reply again.'
+            : x.kind === 'review' ? 'It disappears from ' + x.target + '\'s profile and their rating is worked out again. ' + x.author + ' is told why.'
+            : 'It disappears from the community for everyone. ' + x.author + ' is told why.';
+        box.innerHTML = '<div class="ad-confirm danger"><b>' + esc(title) + '</b><p>' + esc(text) + '</p><div class="ad-field"><label>Reason (they will see it)</label><textarea class="ad-textarea" data-reason maxlength="300" style="min-height:60px"></textarea></div>' +
+            '<div class="ad-note" data-n></div><div class="row"><button type="button" class="ad-btn sm" data-no>Cancel</button><button type="button" class="ad-btn sm danger solid" data-yes>' + (reply ? 'Remove reply' : 'Remove') + '</button></div></div>';
+        var ta = box.querySelector('[data-reason]'), n = box.querySelector('[data-n]'); ta.focus();
+        box.querySelector('[data-no]').onclick = function () { box.innerHTML = ''; box.dataset.open = ''; };
+        box.querySelector('[data-yes]').onclick = async function () {
+            var reason = ta.value.trim();
+            if (reason.length < 5) { n.className = 'ad-note bad'; n.textContent = 'Write a short reason (at least 5 characters).'; ta.focus(); return; }
+            this.disabled = true; n.className = 'ad-note info'; n.textContent = 'Working...';
+            try { await api('/api/admin/moderation/' + x.kind + '/' + x.id, { method: 'POST', body: { action: reply ? 'remove_reply' : 'remove', reason: reason } });
+                note(reply ? 'Reply removed.' : (x.kind === 'review' ? 'Review' : 'Opinion') + ' removed. ' + (reply ? x.target : x.author) + ' was told why.', 'ok');
+                if (S.form && S.form.item === x) { S.form = null; S.side = 'hint'; S.sel = null; }
+                badges(); load(); }
+            catch (err) { this.disabled = false; n.className = 'ad-note bad'; n.textContent = err.message; }
+        };
+    }
+
+    /* ---------- controls ---------- */
+    $('mSeg').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-v]'); if (!b || b.dataset.v === S.view) return;
+        S.view = b.dataset.v; S.filter = 'all'; store('view', S.view);
+        if (S.side === 'warn') { S.side = 'hint'; S.form = null; S.sel = null; }
+        $('mList').innerHTML = '<div class="ad-skel"></div><div class="ad-skel"></div>'; load();
+    });
+    $('mTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-f]'); if (b) { S.filter = b.dataset.f; load(); } });
+    var qt; $('mQ').addEventListener('input', function () { clearTimeout(qt); var v = this.value.trim(); qt = setTimeout(function () { S.q = v; load(); }, 250); });
+    $('mSort').addEventListener('change', function () { S.sort = this.value; load(); });
+    $('mSeenBtn').addEventListener('click', async function () {
+        this.disabled = true;
+        try { await api('/api/admin/moderation/seen', { method: 'POST' }); note('Everything is marked as seen. Only posts that come in from now on will say NEW.', 'ok'); load(); }
+        catch (e) { note(e.message, 'bad'); }
+        this.disabled = false;
+    });
+    /* refresh quietly every minute, unless you're in the middle of something */
+    setInterval(function () {
+        if (document.hidden || S.side === 'warn' || S.side === 'words' || document.querySelector('#mList [data-box] .ad-confirm')) return;
+        load(true);
+    }, 60000);
     load();
 })();
 </script>
