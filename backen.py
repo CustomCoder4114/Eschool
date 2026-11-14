@@ -583,6 +583,12 @@ def _learner_dp_key(user_id):
                 c.close()
             if r and r[0] == 'student':
                 key = r[1] or 'starter'
+            elif r and r[0] == 'teacher':
+                c = sqlite3.connect('users.db')
+                try:
+                    key = 't:' + _teacher_dp_key(c, user_id)       # teachers: newest Legend or the Educator starter
+                finally:
+                    c.close()
         except sqlite3.Error:
             key = None
         cache[user_id] = key
@@ -594,6 +600,8 @@ def get_avatar_url(user_id, avatar_filename):
     Learners don't use photos: their picture is a badge (see /badge-dp/<id>.svg), so every
     page that shows a learner (header, leaderboard, friends, messages...) shows their badge."""
     dp = _learner_dp_key(user_id)
+    if dp and dp.startswith('t:'):
+        return f"/teacher-dp/{user_id}.svg?v={dp[2:]}&d={BADGE_ART_VERSION}"
     if dp:
         crown = _learner_crown(user_id)          # top 3 this month: the picture changes when the place changes
         plan = _learner_plan(user_id)            # Basic / Pro: swirl of light
@@ -2246,8 +2254,8 @@ def jsettings():
         stats['resources'] = one('SELECT COUNT(*) FROM resources WHERE user_id = ?')
         _tutor_tables(conn)
         stats['reviews'] = one('SELECT COUNT(*) FROM teacher_ratings WHERE teacher_id = ?')
-        avg = one('SELECT AVG(stars) FROM teacher_ratings WHERE teacher_id = ?')
-        stats['rating'] = round(avg, 1) if stats['reviews'] else None
+        rt = _rating_summary(conn, [uid])[uid]
+        stats['rating'], stats['ratings'] = rt['avg'], rt['count']
         stats['requests'] = one("SELECT COUNT(*) FROM tutoring WHERE teacher_id = ? AND status = 'pending'")
     finally:
         conn.close()
@@ -3786,6 +3794,7 @@ def _teacher_cards(conn, teacher_ids=None):
                       FROM tutoring_sessions s JOIN tutoring t ON t.id = s.tutoring_id
                       WHERE t.teacher_id IN ({marks}) GROUP BY t.teacher_id''')
 
+    overall = _rating_summary(conn, [r['id'] for r in rows])
     out = []
     for r in rows:
         tid = r['id']
@@ -3819,11 +3828,15 @@ def _teacher_cards(conn, teacher_ids=None):
             'qualifications': _jlist(r['qualifications']),
             'availability': r['availability'] or '',
             'accepting': bool(r['accepting']) if has_profile else True,
-            'rating_count': rc[1] if rc else 0,
+            # the one rating (all sources, 1-5 stars): see _rating_summary
+            'rating_count': overall[tid]['count'],
+            'rating': overall[tid],
+            'review_count': rc[1] if rc else 0,
             # learners rate every live class they join (1-5, shown out of 10)
             'class_rating_count': class_ratings[tid][1] if tid in class_ratings else 0,
             'class_rating_avg': round(class_ratings[tid][2], 2) if tid in class_ratings and class_ratings[tid][2] else None,
-            'rating_avg': round(rc[2], 2) if rc and rc[2] else 0,
+            'rating_avg': overall[tid]['avg'],
+            'review_avg': round(rc[2], 2) if rc and rc[2] else 0,
             'live_classes': sum(n for _, n in live.get(tid, [])),
             'resources': res[tid][1] if tid in res else 0,
             'followers': followers[tid][1] if tid in followers else 0,
@@ -3833,7 +3846,7 @@ def _teacher_cards(conn, teacher_ids=None):
             'lessons_booked': (dn[2] or 0) if dn else 0,
             'session_rating': round(dn[3], 1) if dn and dn[3] else None,
         })
-        out[-1].update(_teacher_score(rc, class_ratings.get(tid), dn, years, joined))
+        out[-1].update(_teacher_score(overall[tid], dn, years, joined))
     return out
 
 
@@ -3937,11 +3950,11 @@ def _teacher_badges(card, ex, kept=None):
                                f"{left} more days on Eschool" if key == 'veteran' else
                                f"{need[i]}% of lessons held (now {value}%)" if key == 'reliable' else f"{left} more {unit}")
             if key == 'trusted' and (ex['parent_avg'] or 0) < extra[i]:
-                missing.append(f"parent reviews averaging {extra[i] * 2:g}/10" + (f" (now {ex['parent_avg'] * 2:.1f})" if ex['parent_avg'] else ''))
+                missing.append(f"parent reviews averaging {extra[i]:g} stars" + (f" (now {ex['parent_avg']:.1f})" if ex['parent_avg'] else ''))
             if key == 'reliable' and card.get('lessons_booked', 0) < extra[i]:
                 missing.append(f"{extra[i] - card.get('lessons_booked', 0)} more booked lessons")
             if key == 'host' and extra[i] is not None and (ex['live_rating'] or 0) < extra[i]:
-                missing.append(f"live classes rated {extra[i] * 2:g}/10 on average" + (f" (now {ex['live_rating'] * 2:.1f})" if ex['live_rating'] else ''))
+                missing.append(f"live classes rated {extra[i]:g} stars on average" + (f" (now {ex['live_rating']:.1f})" if ex['live_rating'] else ''))
             if score < tier['min_score']:
                 missing.append(f"an Eschool score of {tier['min_score']} (now {score})")
             nxt = {'tier': tier['key'], 'label': tier['label'], 'need': need[i], 'percent': max(0, min(100, round(value / need[i] * 100))) if need[i] else 100,
@@ -3964,6 +3977,197 @@ def _teacher_level(badges, score):
     return {'index': level, 'name': TEACHER_LEVELS[level][0], 'points': points,
             'next': {'name': nxt[0], 'points': nxt[1], 'score': nxt[2],
                      'percent': min(100, round(points / nxt[1] * 100)) if nxt[1] else 100} if nxt else None}
+
+
+# ----- teacher Legend drawings (metal emblems) -----
+import math as _tl_math
+def _tl_pt(r, deg): return f"{100 + r*_tl_math.cos(_tl_math.radians(deg)):.1f} {100 + r*_tl_math.sin(_tl_math.radians(deg)):.1f}"
+_TL_POLY = lambda n, r, rot: 'M' + ' L'.join(_tl_pt(r, rot + i*360/n) for i in range(n)) + ' Z'
+_TL_STAR = lambda n, R, r: 'M' + ' L'.join(_tl_pt(r if i % 2 else R, -90 + i*180/n) for i in range(n*2)) + ' Z'
+TL_SHAPE = {'shield': 'M100 6 L184 36 V98 C184 150 148 182 100 196 C52 182 16 150 16 98 V36 Z',
+         'hex': _TL_POLY(6, 96, -90), 'star8': _TL_STAR(8, 98, 74), 'oct': _TL_POLY(8, 96, 22.5),
+         'spark': _TL_STAR(4, 99, 52), 'star12': _TL_STAR(12, 98, 82), 'clock': 'M100 4 A96 96 0 1 1 99.9 4 Z',
+         'circle': 'M100 4 A96 96 0 1 1 99.9 4 Z'}
+def _tl_laurel():
+    s = ''
+    for side in (1, -1):
+        for i in range(8):
+            a = 90 + side*(30 + i*17)
+            x, y = 100 + 44*_tl_math.cos(_tl_math.radians(a)), 100 + 44*_tl_math.sin(_tl_math.radians(a))
+            s += f'<ellipse cx="{x:.1f}" cy="{y:.1f}" rx="11" ry="4.6" transform="rotate({a + 90 + side*40:.1f} {x:.1f} {y:.1f})" fill="#fff"/>'
+    return s + '<path d="M100 72 l8 17 19 2 -14 13 4 19 -17 -10 -17 10 4 -19 -14 -13 19 -2 Z" fill="#fde68a"/>'
+TL_GLYPH = {
+ 'bookpen': '<path d="M42 78 C62 66 86 68 100 82 C114 68 138 66 158 78 V146 C138 134 114 136 100 150 C86 136 62 134 42 146 Z" fill="#fff"/><path d="M100 82 V150" stroke="#a16207" stroke-width="5"/><path d="M58 92 C70 88 82 89 90 94 M58 106 C70 102 82 103 90 108 M58 120 C70 116 82 117 90 122" stroke="#d4a937" stroke-width="3.5" fill="none" stroke-linecap="round"/><g transform="rotate(40 128 76)"><rect x="121" y="34" width="14" height="62" rx="3" fill="#fde68a"/><rect x="121" y="34" width="14" height="10" rx="3" fill="#a16207"/><path d="M121 96 L128 112 L135 96 Z" fill="#fff7d6"/><path d="M126 107 L128 112 L130 107 Z" fill="#0f172a"/></g>',
+ 'anchor': '<circle cx="100" cy="60" r="11" fill="none" stroke="#fff" stroke-width="7"/><path d="M100 71 V144" stroke="#fff" stroke-width="10" stroke-linecap="round"/><path d="M76 90 H124" stroke="#fff" stroke-width="9" stroke-linecap="round"/><path d="M60 116 C64 138 84 148 100 148 C116 148 136 138 140 116" stroke="#fff" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M48 122 L60 102 L72 122 Z M152 122 L140 102 L128 122 Z" fill="#fff"/><circle cx="100" cy="60" r="4" fill="#fde68a"/>',
+ 'cap': '<path d="M100 56 L160 84 L100 112 L40 84 Z" fill="#fff"/><path d="M66 98 V124 C66 138 134 138 134 124 V98 L100 114 Z" fill="#fff"/><path d="M152 88 V122" stroke="#fde68a" stroke-width="5" stroke-linecap="round"/><circle cx="152" cy="128" r="7" fill="#fde68a"/>',
+ 'lantern': '<path d="M88 56 C88 38 112 38 112 56" stroke="#fff" stroke-width="7" fill="none"/><path d="M80 58 H120 L126 70 H74 Z" fill="#fff"/><path d="M78 74 H122 L128 132 H72 Z" fill="#fff"/><rect x="66" y="134" width="68" height="14" rx="5" fill="#fff"/><path d="M100 84 C111 98 116 105 116 114 C116 123 109 128 100 128 C91 128 84 123 84 114 C84 105 89 98 100 84 Z" fill="#fbbf24"/><path d="M100 102 C105 109 107 112 107 117 C107 121 104 124 100 124 C96 124 93 121 93 117 C93 112 95 109 100 102 Z" fill="#fff7d6"/>',
+ 'atom': '<g fill="none" stroke="#fff" stroke-width="7"><ellipse cx="100" cy="100" rx="52" ry="19"/><ellipse cx="100" cy="100" rx="52" ry="19" transform="rotate(60 100 100)"/><ellipse cx="100" cy="100" rx="52" ry="19" transform="rotate(-60 100 100)"/></g><circle cx="100" cy="100" r="12" fill="#67e8f9"/><circle cx="152" cy="100" r="6" fill="#fff"/>',
+ 'apple': '<path d="M100 76 C88 64 58 64 56 98 C54 128 76 150 92 148 C96 147 98 145 100 145 C102 145 104 147 108 148 C124 150 146 128 144 98 C142 64 112 64 100 76 Z" fill="#fff"/><path d="M100 76 C100 62 104 54 112 48" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M107 62 C118 46 138 48 142 55 C131 66 116 68 107 62 Z" fill="#facc15"/><path d="M72 92 C74 82 80 78 86 78" stroke="#facc15" stroke-width="6" fill="none" stroke-linecap="round"/>',
+ 'tree': '<path d="M100 44 C126 44 142 62 140 84 C156 90 158 116 140 124 C132 136 112 136 104 130 H96 C88 136 68 136 60 124 C42 116 44 90 60 84 C58 62 74 44 100 44 Z" fill="#fff"/><path d="M100 112 V152" stroke="#fff" stroke-width="11" stroke-linecap="round"/><path d="M100 132 L84 120 M100 124 L116 112" stroke="#fff" stroke-width="7" stroke-linecap="round"/><circle cx="84" cy="84" r="5" fill="#4ade80"/><circle cx="112" cy="76" r="5" fill="#4ade80"/><circle cx="120" cy="104" r="5" fill="#4ade80"/>',
+ 'laurel': _tl_laurel(),
+}
+def _tl_svg(key, c, shape, glyph, earned=True, size=None, ribbon=None):
+    c1, c2, c3, c4 = c if earned else ['#1e2530', '#3b4352', '#6b7280', '#cbd5e1']
+    d = TL_SHAPE[shape]; inner = 'translate(100 100) scale(.8) translate(-100 -100)'
+    ticks = ''
+    if shape == 'clock':
+        for i in range(12):
+            a = i*30
+            ticks += f'<line x1="{_tl_pt(78,a).split()[0]}" y1="{_tl_pt(78,a).split()[1]}" x2="{_tl_pt(70 if i%3 else 64,a).split()[0]}" y2="{_tl_pt(70 if i%3 else 64,a).split()[1]}" stroke="{c4}" stroke-width="{2 if i%3 else 4}" stroke-linecap="round" opacity=".85"/>'
+    sp = ''.join(f'<path d="M{x} {y-6} L{x+1.6} {y-1.6} L{x+6} {y} L{x+1.6} {y+1.6} L{x} {y+6} L{x-1.6} {y+1.6} L{x-6} {y} L{x-1.6} {y-1.6} Z" fill="{c4}" opacity="{.9-i*.15:.2f}"/>' for i,(x,y) in enumerate(((30,40),(168,52),(160,160),(42,158)))) if earned else ''
+    k = key
+    g = TL_GLYPH[glyph] if earned else f'<g opacity=".55">{TL_GLYPH[glyph]}</g>'
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs>
+<linearGradient id="r{k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{c4}"/><stop offset=".35" stop-color="{c3}"/><stop offset=".55" stop-color="{c2}"/><stop offset=".75" stop-color="{c3}"/><stop offset="1" stop-color="{c4}"/></linearGradient>
+<radialGradient id="f{k}" cx=".38" cy=".3" r=".85"><stop offset="0" stop-color="{c3}"/><stop offset=".45" stop-color="{c2}"/><stop offset="1" stop-color="{c1}"/></radialGradient>
+<linearGradient id="g{k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<clipPath id="c{k}"><path d="{d}" transform="{inner}"/></clipPath>
+<filter id="w{k}" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity=".45"/><feDropShadow dx="0" dy="0" stdDeviation="{6 if earned else 0}" flood-color="{c3}" flood-opacity=".9"/></filter></defs>
+<path d="{d}" fill="url(#r{k})"/><path d="{d}" fill="none" stroke="{c1}" stroke-opacity=".55" stroke-width="2"/>
+<path d="{d}" transform="{inner}" fill="url(#f{k})" stroke="{c4}" stroke-opacity=".7" stroke-width="2"/>
+<g clip-path="url(#c{k})"><circle cx="100" cy="100" r="58" fill="none" stroke="{c4}" stroke-opacity=".28" stroke-width="1.5" stroke-dasharray="2 6"/><circle cx="100" cy="100" r="46" fill="{c1}" fill-opacity=".35"/><ellipse cx="100" cy="46" rx="90" ry="54" fill="url(#g{k})"/></g>
+{ticks}{sp}<g filter="url(#w{k})"><g transform="translate(100 100) scale(.6) translate(-100 -100)">{g}</g></g>{_tl_ribbon(ribbon, c) if ribbon else ''}</svg>'''
+
+
+def _tl_ribbon(text, c):
+    w = 30 + 8.2 * len(text)
+    x = 100 - w / 2
+    return (f'<path d="M{x - 12:.1f} 152 H{x + w + 12:.1f} L{x + w + 4:.1f} 165 L{x + w + 12:.1f} 178 H{x - 12:.1f} L{x - 4:.1f} 165 Z" fill="{c[1]}" stroke="{c[3]}" stroke-width="2.5"/>'
+            f'<text x="100" y="170.5" text-anchor="middle" font-family="Poppins,Segoe UI,Arial,sans-serif" font-weight="800" font-size="14" fill="#fff" letter-spacing="1">{text}</text>')
+
+
+
+# ===================== TEACHER LEGENDS =====================
+# The rarest teacher honours: metal emblems (the old Legendary shapes) with teacher symbols.
+# Each needs several hard things at the same time. Once earned, a Legend is kept for good.
+TEACHER_LEGENDS = [   # key, name, quote, shape, symbol, colours (dark, mid, bright, light)
+    ('unbreakable', 'Unbreakable',        'Never lets a learner down.',              'shield', 'anchor',  ['#0b1a33', '#1e40af', '#60a5fa', '#fde68a']),
+    ('pillar',      'Pillar of Learning', 'A thousand lessons, one at a time.',      'oct',    'cap',     ['#052e2b', '#0f766e', '#34d399', '#fef3c7']),
+    ('luminary',    'The Luminary',       'The brightest teacher on Eschool.',       'star8',  'lantern', ['#0b1437', '#1e3a8a', '#fbbf24', '#fff7d6']),
+    ('polymath',    'The Polymath',       'Masters many subjects, not just one.',    'hex',    'atom',    ['#1e1b4b', '#6d28d9', '#a78bfa', '#67e8f9']),
+    ('apple',       'Golden Apple',       'Loved by every family they teach.',       'spark',  'apple',   ['#422006', '#a16207', '#facc15', '#fffbeb']),
+    ('evergreen',   'Evergreen',          'Three years of teaching, never stopping.', 'clock', 'tree',    ['#06281b', '#166534', '#4ade80', '#e2e8f0']),
+    ('halloffame',  'Hall of Fame',       'Holds every other teacher Legend.',       'star12', 'laurel',  ['#4c0519', '#be123c', '#fb7185', '#fde68a']),
+]
+TEACHER_LEGEND_KEYS = [d[0] for d in TEACHER_LEGENDS]
+# every teacher's first picture, numbered by the order teachers joined (Teacher No. 1, 2, ...)
+TEACHER_STARTER = ('educator', 'Eschool Educator', 'Where every great teacher begins.', 'circle', 'bookpen', ['#1f1606', '#7a5a14', '#d4a937', '#fbeec4'])   # gold
+
+
+def _teacher_number(conn, uid):
+    r = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'teacher' AND id <= ?", (uid,)).fetchone()
+    return (r[0] or 1) if r else 1
+
+
+def _teacher_dp_key(conn, uid):
+    """A teacher's picture: their newest Legend, or the Eschool Educator starter until the first one."""
+    try:
+        _teacher_legends_table(conn)
+        r = conn.execute('SELECT legend FROM teacher_legends WHERE teacher_id = ? ORDER BY earned_at DESC, rowid DESC LIMIT 1', (uid,)).fetchone()
+    except sqlite3.Error:
+        r = None
+    return r[0] if r and r[0] in TEACHER_LEGEND_KEYS else 'educator'
+
+
+@app.route('/teacher-dp/<int:uid>.svg')
+def teacher_dp_image(uid):
+    """A teacher's profile picture: their newest Legend, or the numbered Eschool Educator emblem."""
+    conn = _links_db()
+    try:
+        key = _teacher_dp_key(conn, uid)
+        number = _teacher_number(conn, uid) if key == 'educator' else None
+    finally:
+        conn.close()
+    d = TEACHER_STARTER if key == 'educator' else next(x for x in TEACHER_LEGENDS if x[0] == key)
+    resp = Response(_tl_svg('dp', d[5], d[3], d[4], earned=True, ribbon=f'No. {number:,}' if number else None), mimetype='image/svg+xml')
+    resp.headers['Cache-Control'] = 'no-cache'          # the picture changes when a new Legend is earned
+    return resp
+
+
+def _teacher_legends_table(conn):
+    conn.execute("""CREATE TABLE IF NOT EXISTS teacher_legends (
+        teacher_id INTEGER NOT NULL, legend TEXT NOT NULL, earned_at TEXT NOT NULL, PRIMARY KEY (teacher_id, legend))""")
+
+
+def _legend_metrics(conn, ids):
+    """What the Legends need beyond the cards: lessons and lesson ratings per subject, and the
+    number of different months with a lesson held."""
+    ids = list(ids)
+    out = {i: {'subjects': {}, 'months': 0} for i in ids}
+    if not ids:
+        return out
+    marks = ','.join('?' * len(ids))
+    try:
+        for r in conn.execute(f"""SELECT t.teacher_id, t.subject, SUM(CASE WHEN s.status = 'completed' THEN 1 ELSE 0 END),
+                                         SUM(COALESCE(s.parent_rating, 0)), COUNT(s.parent_rating)
+                                  FROM tutoring_sessions s JOIN tutoring t ON t.id = s.tutoring_id
+                                  WHERE t.teacher_id IN ({marks}) GROUP BY t.teacher_id, t.subject""", ids).fetchall():
+            if r[2]:
+                out[r[0]]['subjects'][r[1] or 'Other'] = {'lessons': r[2], 'avg': round(r[3] / r[4], 2) if r[4] else None}
+        for r in conn.execute(f"""SELECT t.teacher_id, COUNT(DISTINCT substr(s.starts_at, 1, 7)) FROM tutoring_sessions s JOIN tutoring t ON t.id = s.tutoring_id
+                                  WHERE t.teacher_id IN ({marks}) AND s.status = 'completed' GROUP BY t.teacher_id""", ids).fetchall():
+            out[r[0]]['months'] = r[1] or 0
+    except sqlite3.Error:
+        pass
+    return out
+
+
+def _teacher_legends(card, ex, lx, rank, badges, earned_dates):
+    """Each Legend: its requirements (have / need), how far along the teacher is, and whether it is earned."""
+    days = max(0, (_utc_now() - (_parse_any(card.get('joined_at')) or _utc_now())).days)
+    held, booked = card.get('sessions_done', 0), card.get('lessons_booked', 0)
+    held_pct = round(held / booked * 100) if booked else 0
+    n_rt, avg = card.get('rating_count', 0), card.get('rating_avg') or 0
+    subs = lx['subjects']
+    good_subs = sum(1 for v in subs.values() if (v['avg'] or 0) >= 4.5)
+    diamonds = sum(1 for b in badges if b['tier'] >= 5)
+    years = lambda d, n: (round(d / 365, 1), n, 'years')
+    req = {
+        'unbreakable': [('Hold 300 booked lessons', held, 300), ('Keep 98% of booked lessons held', held_pct, 98), ('Teach 40 different learners', card.get('students', 0), 40)],
+        'pillar':      [('Teach 1,000 lessons', held, 1000), ('Teach 100 different learners', card.get('students', 0), 100), ('Be on Eschool for 2 years',) + years(days, 2)[:2]],
+        'luminary':    [('Be #1 in the teacher Rankings', 1 if rank == 1 else 0, 1), ('Reach an Eschool score of 9.0', card.get('score') or 0, 9.0), ('Get 150 ratings', n_rt, 150)],
+        'polymath':    [('Teach 5 different subjects', len(subs), 5), ('Average 4.5 stars in 5 subjects', good_subs, 5), ('Teach 300 lessons', held, 300)],
+        'apple':       [('Get 250 ratings', n_rt, 250), ('Average 4.9 stars', round(avg, 1), 4.9), ('Get 100 written reviews', card.get('review_count', 0), 100), ('50 families hire you again', ex.get('loyal', 0), 50)],
+        'evergreen':   [('Be on Eschool for 3 years',) + years(days, 3)[:2], ('Teach in 30 different months', lx['months'], 30), ('Teach 500 lessons', held, 500)],
+    }
+    out = []
+    for key, name, quote, shape, glyph, col in TEACHER_LEGENDS:
+        if key == 'halloffame':
+            others = sum(1 for o in out if o['earned'])
+            rows = [('Earn the other 6 teacher Legends', others, 6), (f'Earn all {len(TEACHER_BADGES)} badges at Diamond', diamonds, len(TEACHER_BADGES))]
+        else:
+            rows = req[key]
+        reqs = [{'label': l, 'have': h, 'need': n, 'done': h >= n, 'percent': max(0, min(100, round(h / n * 100))) if n else 100} for l, h, n in rows]
+        met = all(r['done'] for r in reqs)
+        when = earned_dates.get(key)
+        out.append({'key': key, 'name': name, 'quote': quote, 'shape': shape, 'color': col[2],
+                    'requirements': reqs, 'percent': round(sum(r['percent'] for r in reqs) / len(reqs)),
+                    'earned': bool(when) or met, 'earned_at': when, 'new_now': met and not when})
+    return out
+
+
+def _save_teacher_legends(conn, tid, legends):
+    """Keeps newly earned Legends for good and tells the teacher."""
+    now = _iso(_utc_now())
+    for lg in legends:
+        if lg.pop('new_now', False):
+            conn.execute('INSERT OR IGNORE INTO teacher_legends (teacher_id, legend, earned_at) VALUES (?, ?, ?)', (tid, lg['key'], now))
+            lg['earned_at'] = now
+            create_notification(conn, tid, f"Teacher Legend: {lg['name']}",
+                                f"You earned the {lg['name']} Legend, one of the rarest honours on Eschool. See it on your Rankings page.",
+                                icon='fa-crown', color='#d97706', category='achievements')
+
+
+@app.route('/teacher-legend/<key>.svg')
+def teacher_legend_image(key):
+    """The drawing of one teacher Legend. ?locked=1 draws it grey (not earned yet)."""
+    d = next((x for x in TEACHER_LEGENDS if x[0] == key), None)
+    if not d:
+        abort(404)
+    locked = request.args.get('locked') == '1'
+    resp = Response(_tl_svg(key, d[5], d[3], d[4], earned=not locked), mimetype='image/svg+xml')
+    resp.headers['Cache-Control'] = 'public, max-age=86400'
+    return resp
 
 
 @app.route('/api/teacher/rankings')
@@ -4000,7 +4204,7 @@ def api_teacher_rankings():
                          'score_parts': c.get('score_parts'), 'score_reasons': c.get('score_reasons'),
                          'learners': c.get('students', 0), 'lessons': c.get('sessions_done', 0),
                          'reviews': c.get('rating_count', 0), 'parent_reviews': ex[c['id']]['parent_reviews'],
-                         'parent_avg': round(ex[c['id']]['parent_avg'] * 2, 1) if ex[c['id']]['parent_avg'] else None,
+                         'parent_avg': round(ex[c['id']]['parent_avg'], 1) if ex[c['id']]['parent_avg'] else None,
                          'live_held': ex[c['id']]['live_held'], 'attendance': c.get('attendance_rate'),
                          'years': c.get('experience_years', 0), 'time_on': c.get('experience_label'),
                          'level': level, 'badges': badges,
@@ -4014,6 +4218,23 @@ def api_teacher_rankings():
     rows.sort(key=lambda r: (-r['score'], -r['lessons'], -r['reviews'], -r['years'], r['name']))
     for i, r in enumerate(rows, 1):
         r['rank'] = i
+    # Teacher Legends (the rarest honours), worked out for everyone so "held by" counts are right
+    conn = _links_db()
+    try:
+        _teacher_legends_table(conn)
+        lx = _legend_metrics(conn, [r['id'] for r in rows])
+        got = {}
+        for x in conn.execute('SELECT teacher_id, legend, earned_at FROM teacher_legends').fetchall():
+            got.setdefault(x[0], {})[x[1]] = _an_iso(x[2])
+        cards_by = {c['id']: c for c in cards}
+        for r in rows:
+            r['legends'] = _teacher_legends(cards_by[r['id']], ex[r['id']], lx[r['id']], r['rank'], r['badges'], got.get(r['id'], {}))
+            _save_teacher_legends(conn, r['id'], r['legends'])
+            r['legend_count'] = sum(1 for g in r['legends'] if g['earned'])
+        conn.commit()
+    finally:
+        conn.close()
+    holders = {k: sum(1 for r in rows for g in r['legends'] if g['key'] == k and g['earned']) for k in TEACHER_LEGEND_KEYS}
     subjects = sorted({s for r in rows for s in r['subjects']})
     shown = [r for r in rows if not subject or subject in r['subjects']]
     mine = next((r for r in rows if r['is_me']), None)
@@ -4022,8 +4243,11 @@ def api_teacher_rankings():
             b['earned_at'] = earned_dates.get((b['key'], b['tier']))
         mine['subject_rank'] = next((i for i, r in enumerate(shown, 1) if r['is_me']), None)
         mine['top_percent'] = max(1, round(mine['rank'] / len(rows) * 100)) if rows else None
+    if mine:
+        for g in mine['legends']:
+            g['holders'] = holders.get(g['key'], 0)
     return jsonify({'success': True, 'total': len(rows), 'subjects': subjects, 'subject': subject,
-                    'teachers': [{k: v for k, v in r.items() if k != 'badges'} | {'top_badges': sorted(
+                    'teachers': [{k: v for k, v in r.items() if k not in ('badges', 'legends')} | {'top_badges': sorted(
                         [{'key': b['key'], 'name': b['name'], 'icon': b['icon'], 'tier': b['tier'], 'label': b['tier_label'], 'color': b['tier_color']}
                          for b in r['badges'] if b['tier']], key=lambda b: -b['tier'])[:4]} for r in shown[:100]],
                     'me': mine, 'tiers': TEACHER_TIERS,
@@ -4062,7 +4286,18 @@ def api_teacher_badges_one(user_id):
         for sub in card.get('subjects') or []:
             same = [c for c in allc if sub in (c.get('subjects') or [])]
             subj_rank[sub] = {'rank': next((i for i, c in enumerate(same, 1) if c['id'] == user_id), None), 'of': len(same)}
-        return jsonify({'success': True, 'own': own, 'badges': badges, 'level': level, 'score': card.get('score') or 0,
+        _teacher_legends_table(conn)
+        got = {x[0]: _an_iso(x[1]) for x in conn.execute('SELECT legend, earned_at FROM teacher_legends WHERE teacher_id = ?', (user_id,)).fetchall()}
+        legends = _teacher_legends(card, ex, _legend_metrics(conn, [user_id])[user_id], rank, badges, got)
+        _save_teacher_legends(conn, user_id, legends)
+        conn.commit()
+        if not own:
+            for g in legends:
+                g['requirements'] = [{k: v for k, v in r.items() if k in ('label', 'need', 'done', 'percent')} for r in g['requirements']]
+        dp_key = _teacher_dp_key(conn, user_id)
+        dp = {'key': dp_key, 'name': TEACHER_STARTER[1] if dp_key == 'educator' else next(x[1] for x in TEACHER_LEGENDS if x[0] == dp_key),
+              'number': _teacher_number(conn, user_id)}
+        return jsonify({'success': True, 'own': own, 'badges': badges, 'level': level, 'score': card.get('score') or 0, 'legends': legends, 'dp': dp,
                         'earned': sum(1 for b in badges if b['tier']), 'tiers': TEACHER_TIERS,
                         'rank': rank, 'of': len(allc), 'top_percent': max(1, round(rank / len(allc) * 100)) if rank and allc else None,
                         'subjects': subj_rank,
@@ -4082,27 +4317,71 @@ SCORE_PRIOR_MEAN, SCORE_PRIOR_WEIGHT = 3.5, 5          # 3.5 stars = 7/10, worth
 SCORE_FULL_YEARS, SCORE_FULL_LESSONS = 3, 50
 
 
-def _teacher_score(review_row, class_row, done_row, years, joined):
-    n = s = 0.0
-    for row in (review_row, class_row):
-        if row and row[1]:
-            n += row[1]; s += row[1] * (row[2] or 0)
-    if done_row and done_row[4]:
-        n += done_row[4]; s += done_row[4] * (done_row[3] or 0)
-    quality = (s + SCORE_PRIOR_MEAN * SCORE_PRIOR_WEIGHT) / (n + SCORE_PRIOR_WEIGHT) * 2          # out of 10
+RATING_SOURCES = {'reviews': 'Profile reviews', 'live': 'Live class ratings', 'lessons': 'Private lesson ratings'}
+
+
+def _rating_summary(conn, ids):
+    """THE teacher rating, the same on every page: every star rating a teacher has had (reviews on
+    their profile, learners rating live classes, parents rating private lessons) averaged together,
+    1-5 stars. A teacher nobody has rated yet has 0 stars and 0 ratings, never a made-up start."""
+    ids = list(ids)
+    out = {i: {'avg': 0, 'count': 0, 'dist': [0, 0, 0, 0, 0],          # 5 stars first
+               'sources': {k: {'label': v, 'count': 0, 'avg': 0} for k, v in RATING_SOURCES.items()}} for i in ids}
+    if not ids:
+        return out
+    marks = ','.join('?' * len(ids))
+    queries = (('reviews', f'SELECT teacher_id, stars, COUNT(*) FROM teacher_ratings WHERE teacher_id IN ({marks}) GROUP BY teacher_id, stars'),
+               ('live', f'SELECT teacher_id, stars, COUNT(*) FROM live_ratings WHERE teacher_id IN ({marks}) GROUP BY teacher_id, stars'),
+               ('lessons', f"""SELECT t.teacher_id, s.parent_rating, COUNT(*) FROM tutoring_sessions s JOIN tutoring t ON t.id = s.tutoring_id
+                               WHERE t.teacher_id IN ({marks}) AND s.parent_rating IS NOT NULL GROUP BY t.teacher_id, s.parent_rating"""))
+    sums = {i: {k: 0 for k in RATING_SOURCES} for i in ids}
+    for src, q in queries:
+        try:
+            rows = conn.execute(q, ids).fetchall()
+        except sqlite3.Error:
+            continue
+        for tid, stars, n in rows:
+            try:
+                stars = int(stars)
+            except (TypeError, ValueError):
+                continue
+            if tid not in out or not 1 <= stars <= 5:
+                continue
+            o = out[tid]
+            o['dist'][5 - stars] += n
+            o['sources'][src]['count'] += n
+            sums[tid][src] += stars * n
+    for tid, o in out.items():
+        total = 0
+        for k, v in o['sources'].items():
+            if v['count']:
+                v['avg'] = round(sums[tid][k] / v['count'], 1)
+            total += sums[tid][k]
+        o['count'] = sum(o['dist'])
+        o['avg'] = round(total / o['count'], 1) if o['count'] else 0
+    return out
+
+
+def _teacher_score(rating, done_row, years, joined):
+    """The Eschool score out of 10. Everything starts at 0 and is earned: a teacher with no
+    ratings and no lessons yet has a score of 0."""
+    n = (rating or {}).get('count', 0)
+    quality = (rating['avg'] * 2) if n else 0.0                                                     # 5 stars = 10
     held, booked = ((done_row[1] or 0), (done_row[2] or 0)) if done_row else (0, 0)
-    reliability = held / booked * 10 if booked else 8.0                                             # new teachers start at 8
+    reliability = held / booked * 10 if booked else 0.0
     days = max(0, (_utc_now() - joined).days)
     lessons = held
     experience = (min(1, days / 365 / SCORE_FULL_YEARS) * 0.5 + min(1, lessons / SCORE_FULL_LESSONS) * 0.5) * 10
     score = round(quality * 0.6 + reliability * 0.2 + experience * 0.2, 1)
     reasons = []
     if n:
-        reasons.append(f"Rated {quality:.1f}/10 from {int(n)} rating{'s' if n != 1 else ''}")
+        reasons.append(f"Rated {rating['avg']:.1f} stars from {int(n)} rating{'s' if n != 1 else ''}")
     else:
         reasons.append('No ratings yet')
     if booked:
         reasons.append(f"{round(held / booked * 100)}% of booked lessons held")
+    else:
+        reasons.append('No booked lessons yet')
     reasons.append(f"{years} year{'s' if years != 1 else ''} on Eschool" if years else 'New on Eschool')
     return {'score': score, 'score_parts': {'quality': round(quality, 1), 'reliability': round(reliability, 1),
                                             'experience': round(experience, 1), 'ratings': int(n)},
@@ -4124,7 +4403,7 @@ def _match(teacher, child_subjects, child_levels):
         score += round(teacher['rating_avg'] / 5 * 30)
         if teacher['rating_avg'] >= 4:
             n = teacher['rating_count']
-            reasons.append(f"Rated {round(teacher['rating_avg'] * 2, 1):g}/10 by {n} {'person' if n == 1 else 'people'}")
+            reasons.append(f"Rated {teacher['rating_avg']:.1f} stars from {n} rating{'' if n == 1 else 's'}")
     if teacher['levels'] and any(l and l.lower() in [x.lower() for x in teacher['levels']] for l in child_levels):
         score += 10; reasons.append('Teaches your child\'s grade level')
     if teacher['sessions_done']:
@@ -4390,7 +4669,14 @@ def tutoring_parent():
         _tutor_tables(conn)
         if request.method == 'GET':
             rows = conn.execute(TUTORING_SELECT + ' WHERE t.parent_id = ? ORDER BY t.id DESC', (pid,)).fetchall()
-            return jsonify({'engagements': [_tutoring_json(conn, r) for r in rows],
+            events = []
+            try:
+                today = _d(_nairobi_today())
+                pairs = {(r['teacher_id'], r['student_id']) for r in rows if r['status'] in ('active', 'accepted', 'ended')}
+                events = _shared_events(conn, sorted(pairs), today - timedelta(days=35), today + timedelta(days=120))
+            except sqlite3.OperationalError:
+                pass
+            return jsonify({'engagements': [_tutoring_json(conn, r) for r in rows], 'events': events,
                             'payment': _payment_options(), 'packs': TUTOR_PACKS})
 
         d = request.get_json(silent=True) or {}
@@ -15190,13 +15476,21 @@ def api_user_ratings(user_id):
         if r['reviewer_id'] == me:
             my_review = {'stars': r['stars'], 'comment': r['comment'] or ''}
 
-    count = summary['n'] or 0
-    average = (summary['avg'] or 0) * 2   # stars are 1-5, shown out of ten
+    conn = _profile_db()
+    try:
+        overall = _rating_summary(conn, [user_id])[user_id]
+    finally:
+        conn.close()
+    # the one rating: reviews, live class ratings and lesson ratings together (1-5 stars)
+    distribution = {str(5 - i): n for i, n in enumerate(overall['dist'])}
 
     return jsonify({
         'success': True,
-        'average_out_of_ten': round(average, 1),
-        'count': count,
+        'average': overall['avg'],
+        'average_out_of_ten': round(overall['avg'] * 2, 1),
+        'count': overall['count'],
+        'review_count': summary['n'] or 0,
+        'sources': overall['sources'],
         'distribution': distribution,
         'reviews': reviews,
         'my_review': my_review,
@@ -18880,6 +19174,137 @@ def _own_events(conn, me, start, end):
     return out
 
 
+def _share_tables(conn):
+    """Events a teacher shares with learners they teach privately (and so with those learners' parents)."""
+    _sched_tables(conn)
+    conn.execute("""CREATE TABLE IF NOT EXISTS teacher_event_shares (
+        event_id INTEGER NOT NULL, student_id INTEGER NOT NULL, PRIMARY KEY (event_id, student_id))""")
+
+
+def _my_share_learners(conn, teacher_id):
+    """Learners a teacher can share events with: the ones they teach privately (accepted or active)."""
+    _tutor_tables(conn)
+    out = {}
+    for r in conn.execute("""SELECT t.student_id, u.firstname, u.lastname FROM tutoring t LEFT JOIN users u ON u.id = t.student_id
+                             WHERE t.teacher_id = ? AND t.status IN ('active', 'accepted') ORDER BY t.id DESC""", (teacher_id,)).fetchall():
+        out.setdefault(r['student_id'], {'id': r['student_id'], 'name': _full_name(r['firstname'], r['lastname'], 'Learner')})
+    return out
+
+
+def _event_shares(conn, event_ids):
+    _share_tables(conn)
+    ids = list(event_ids) or [-1]
+    out = {}
+    for r in conn.execute(f"SELECT event_id, student_id FROM teacher_event_shares WHERE event_id IN ({','.join('?' * len(ids))})", ids):
+        out.setdefault(r[0], []).append(r[1])
+    return out
+
+
+def _event_when(ev, uid, day=None):
+    """'Fri Nov 20, 17:00 EAT' for one day of an event, in this person's own time zone, plus how it repeats."""
+    d0 = _d(day or ev['day'])
+    if not d0:
+        return ''
+    hh, mm = (ev['start_time'] or '08:00').split(':')[:2]
+    start_utc = datetime(d0.year, d0.month, d0.day, int(hh), int(mm), tzinfo=timezone.utc) - timedelta(hours=3)
+    text = _when_for(uid, start_utc)
+    rep = ev['repeat'] or 'none'
+    if not day and rep != 'none':
+        text += {'daily': ', every day', 'weekdays': ', every weekday', 'weekly': ', every week'}.get(rep, '')
+        until = _d(ev['repeat_until'])
+        if until:
+            text += f" until {until.strftime('%b %d')}"
+    return text
+
+
+def _notify_event(conn, ev, student_ids, what, day=None):
+    """Tells learners an event was shared with them, and the parents who hired this teacher for them.
+    what: new | changed | removed | cancelled"""
+    if not student_ids:
+        return
+    t = conn.execute('SELECT firstname, lastname FROM users WHERE id = ?', (ev['teacher_id'],)).fetchone()
+    teacher = _full_name(t['firstname'], t['lastname'], 'Your teacher') if t else 'Your teacher'
+    title = ev['title']
+    for sid in student_ids:
+        kid = conn.execute('SELECT firstname FROM users WHERE id = ?', (sid,)).fetchone()
+        kid_name = (kid['firstname'] if kid and kid['firstname'] else 'your child')
+        parents = [r[0] for r in conn.execute("""SELECT DISTINCT parent_id FROM tutoring WHERE teacher_id = ? AND student_id = ?
+                                                 AND status IN ('active', 'accepted', 'ended')""", (ev['teacher_id'], sid)).fetchall()]
+        for uid in dict.fromkeys([sid] + parents):
+            is_kid = uid == sid
+            whose = 'your' if is_kid else f"{kid_name}'s"
+            where = 'Open your Schedule to see it.' if is_kid else 'See it in the Timetable on your Teachers page.'
+            when = _event_when(ev, uid, day)
+            if what == 'new':
+                head, msg, icon, color = 'New on the schedule', f"{teacher} added “{title}” to {whose} schedule: {when}. {where}", 'fa-calendar-plus', '#4361ee'
+            elif what == 'changed':
+                head, msg, icon, color = 'Schedule changed', f"{teacher} changed “{title}” on {whose} schedule. It is now {when}. {where}", 'fa-calendar-day', '#f59e0b'
+            elif what == 'removed':
+                head, msg, icon, color = 'Removed from the schedule', f"{teacher} removed “{title}” from {whose} schedule.", 'fa-calendar-minus', 'orange'
+            else:
+                head, msg, icon, color = 'Cancelled', (f"{teacher} cancelled “{title}” on {when}. The other days stay on {whose} schedule." if day
+                                                       else f"{teacher} cancelled “{title}”. It is off {whose} schedule."), 'fa-calendar-xmark', 'orange'
+            create_notification(conn, uid, head, msg, icon=icon, color=color, category='tutoring')
+
+
+def _clean_share(conn, teacher_id, raw):
+    """The learner ids a teacher picked, keeping only learners they teach. None if nothing was sent."""
+    if raw is None:
+        return None
+    mine = _my_share_learners(conn, teacher_id)
+    out = []
+    for x in (raw if isinstance(raw, list) else [])[:100]:
+        try:
+            x = int(x)
+        except (TypeError, ValueError):
+            continue
+        if x in mine and x not in out:
+            out.append(x)
+    return out
+
+
+def _save_shares(conn, eid, ids):
+    conn.execute('DELETE FROM teacher_event_shares WHERE event_id = ?', (eid,))
+    conn.executemany('INSERT INTO teacher_event_shares (event_id, student_id) VALUES (?, ?)', [(eid, x) for x in ids])
+
+
+def _shared_events(conn, pairs, start, end):
+    """Events teachers shared, one item per day, for (teacher_id, student_id) pairs, or for
+    pairs = ('student', id) meaning every teacher who shared with that learner."""
+    _share_tables(conn)
+    if pairs and pairs[0] == 'student':
+        rows = conn.execute("""SELECT e.*, s.student_id, u.firstname AS tf, u.lastname AS tl FROM teacher_event_shares s
+                               JOIN teacher_events e ON e.id = s.event_id LEFT JOIN users u ON u.id = e.teacher_id
+                               WHERE s.student_id = ? AND e.day <= ?""", (pairs[1], end.isoformat())).fetchall()
+    else:
+        pairs = list(pairs)
+        if not pairs:
+            return []
+        cond = ' OR '.join(['(e.teacher_id = ? AND s.student_id = ?)'] * len(pairs))
+        rows = conn.execute(f"""SELECT e.*, s.student_id, u.firstname AS tf, u.lastname AS tl FROM teacher_event_shares s
+                                JOIN teacher_events e ON e.id = s.event_id LEFT JOIN users u ON u.id = e.teacher_id
+                                WHERE e.day <= ? AND ({cond})""", [end.isoformat()] + [v for p in pairs for v in p]).fetchall()
+    ids = list({r['id'] for r in rows}) or [-1]
+    skipped = {(x[0], x[1]) for x in conn.execute(
+        f"SELECT event_id, day FROM teacher_event_days WHERE status = 'skipped' AND event_id IN ({','.join('?' * len(ids))})", ids)}
+    out = []
+    for r in rows:
+        for day in _event_days(r, start, end):
+            key = day.isoformat()
+            if (r['id'], key) in skipped:
+                continue
+            hh, mm = (r['start_time'] or '08:00').split(':')[:2]
+            local = datetime(day.year, day.month, day.day, int(hh), int(mm))
+            label, color = SCHED_KINDS.get(r['kind'], SCHED_KINDS['class'])
+            out.append({'type': 'teacher', 'id': r['id'], 'title': r['title'], 'kind': r['kind'], 'kind_label': label, 'color': color,
+                        'teacher': _full_name(r['tf'], r['tl'], 'Teacher'), 'teacher_id': r['teacher_id'], 'student_id': r['student_id'],
+                        'subject': r['subject'] or '', 'grade': r['grade'] or '', 'start': _iso(local - timedelta(hours=3)),
+                        'minutes': r['minutes'] or 60, 'day': key, 'time': f'{int(hh):02d}:{int(mm):02d}',
+                        'location': r['location'] or '', 'link': r['link'] or '', 'notes': r['notes'] or '',
+                        'repeat': r['repeat'] or 'none', 'repeat_until': r['repeat_until'] or '', 'first_day': r['day'], 'status': ''})
+    return out
+
+
 def _marks_between(conn, me, start, end):
     _sched_tables(conn)
     out = []
@@ -19001,11 +19426,16 @@ def api_teacher_schedule():
         except sqlite3.OperationalError:
             pass
         marks = _marks_between(conn, me, start, end)
+        shares = _event_shares(conn, {x['id'] for x in items if x['type'] == 'event'})
+        for x in items:
+            if x['type'] == 'event':
+                x['shared_with'] = shares.get(x['id'], [])
+        learners = list(_my_share_learners(conn, me).values())
     finally:
         conn.close()
     items.sort(key=lambda x: x['start'])
     return jsonify({'success': True, 'today': today.isoformat(), 'from': start.isoformat(), 'to': end.isoformat(),
-                    'items': items, 'marks': marks,
+                    'items': items, 'marks': marks, 'learners': learners,
                     'kinds': {k: {'label': v[0], 'color': v[1]} for k, v in SCHED_KINDS.items()},
                     'subjects': TUTOR_SUBJECTS, 'mark_colors': MARK_COLORS})
 
@@ -19045,6 +19475,10 @@ def _learner_schedule(conn, me, today, start, end, lo, hi):
                           'notes': (f"Topic: {r['topic']}" if r['topic'] else ''), 'homework': j['homework'],
                           'status': r['status'], 'outcome': j['outcome'], 'outcome_text': j['outcome_text'],
                           'evidence': j['evidence'], 'color': '#10b981', 'kind_label': 'Lesson with a teacher'})
+    except sqlite3.OperationalError:
+        pass
+    try:
+        items += _shared_events(conn, ('student', me), start, end)
     except sqlite3.OperationalError:
         pass
     marks = _marks_between(conn, me, start, end)
@@ -19100,8 +19534,14 @@ def api_teacher_event_create():
                            (session['user_id'], v['title'], v['kind'], v['subject'], v['grade'], v['day'], v['start_time'], v['minutes'],
                             v['location'], v['link'], v['notes'], v['repeat'], v['repeat_until'], now, now))
         _set_event_plan(conn, cur.lastrowid, request.get_json(silent=True) or {})
+        shared = []
+        if session.get('role') == 'teacher':
+            _share_tables(conn)
+            shared = _clean_share(conn, session['user_id'], (request.get_json(silent=True) or {}).get('share_with')) or []
+            _save_shares(conn, cur.lastrowid, shared)
+            _notify_event(conn, conn.execute('SELECT * FROM teacher_events WHERE id = ?', (cur.lastrowid,)).fetchone(), shared, 'new')
         conn.commit()
-        return jsonify({'success': True, 'id': cur.lastrowid})
+        return jsonify({'success': True, 'id': cur.lastrowid, 'shared': len(shared)})
     finally:
         conn.close()
 
@@ -19117,16 +19557,26 @@ def api_teacher_event_change(eid):
         row = conn.execute('SELECT * FROM teacher_events WHERE id = ? AND teacher_id = ?', (eid, session['user_id'])).fetchone()
         if not row:
             return jsonify({'success': False, 'message': 'Event not found.'}), 404
+        _share_tables(conn)
+        old_shared = _event_shares(conn, [eid]).get(eid, [])
         if request.method == 'DELETE':
             day = str(request.args.get('day') or '')[:10]
             if request.args.get('scope') == 'one' and (row['repeat'] or 'none') != 'none' and _d(day):
                 conn.execute('INSERT OR REPLACE INTO teacher_event_days (event_id, day, status, at) VALUES (?, ?, ?, ?)',
                              (eid, day, 'skipped', _iso(_utc_now())))
                 msg = 'Removed from that day. The other days stay.'
+                if _d(day) >= _d(_nairobi_today()):
+                    _notify_event(conn, row, old_shared, 'cancelled', day=day)
             else:
                 conn.execute('DELETE FROM teacher_event_days WHERE event_id = ?', (eid,))
+                conn.execute('DELETE FROM teacher_event_shares WHERE event_id = ?', (eid,))
                 conn.execute('DELETE FROM teacher_events WHERE id = ?', (eid,))
                 msg = 'Event deleted.'
+                last = _d(row['repeat_until']) if (row['repeat'] or 'none') != 'none' else _d(row['day'])
+                if last and last >= _d(_nairobi_today()):
+                    _notify_event(conn, row, old_shared, 'cancelled')
+            if old_shared:
+                msg += ' The learners and their parents have been told.'
             conn.commit()
             return jsonify({'success': True, 'message': msg})
         v, err = _clean_event(request.get_json(silent=True) or {}, old=row)
@@ -19137,6 +19587,18 @@ def api_teacher_event_change(eid):
                      (v['title'], v['kind'], v['subject'], v['grade'], v['day'], v['start_time'], v['minutes'], v['location'], v['link'],
                       v['notes'], v['repeat'], v['repeat_until'], _iso(_utc_now()), eid))
         _set_event_plan(conn, eid, request.get_json(silent=True) or {})
+        new = conn.execute('SELECT * FROM teacher_events WHERE id = ?', (eid,)).fetchone()
+        if session.get('role') == 'teacher':
+            picked = _clean_share(conn, session['user_id'], (request.get_json(silent=True) or {}).get('share_with'))
+            shared = old_shared if picked is None else picked
+            # learners who were shared before but no longer teach with this teacher keep seeing it until removed here
+            if picked is not None:
+                _save_shares(conn, eid, shared)
+            moved = any(str(row[k] or '') != str(new[k] or '') for k in ('title', 'day', 'start_time', 'minutes', 'location', 'link', 'repeat', 'repeat_until'))
+            _notify_event(conn, new, [x for x in shared if x not in old_shared], 'new')
+            _notify_event(conn, row, [x for x in old_shared if x not in shared], 'removed')
+            if moved:
+                _notify_event(conn, new, [x for x in shared if x in old_shared], 'changed')
         conn.commit()
         return jsonify({'success': True})
     finally:
@@ -19305,9 +19767,10 @@ def api_teacher_dashboard():
         dist = {s: 0 for s in range(1, 6)}
         for r in rat:
             dist[r['stars']] = dist.get(r['stars'], 0) + 1
+        one_rating = _rating_summary(conn, [me])[me]
         ratings = {
-            'count': len(rat), 'avg': round(sum(r['stars'] for r in rat) / len(rat), 1) if rat else None,
-            'dist': [dist[s] for s in range(5, 0, -1)],            # 5 stars first
+            'count': one_rating['count'], 'avg': one_rating['avg'], 'sources': one_rating['sources'],
+            'dist': one_rating['dist'],                            # 5 stars first, every kind of rating
             'new7': sum(1 for r in rat if (r['at'] or '') >= week0),
             'latest': [{'stars': r['stars'], 'comment': r['comment'] or '', 'at': to_iso_utc(r['at']),
                         'name': _full_name(r['firstname'], r['lastname'], 'Someone'),
@@ -21377,12 +21840,16 @@ def teacher_analytics():
                 return 99
         follower_learners = teacher_learner_count(conn, me)
 
-        # ---- reviews ----
-        dist = {s: 0 for s in range(1, 6)}
-        for r in rev_rows:
-            dist[r['stars']] = dist.get(r['stars'], 0) + 1
+        # ---- reviews and the one rating (all sources) ----
+        one_rating = _rating_summary(conn, [me])[me]
+        dist = {5 - i: n for i, n in enumerate(one_rating['dist'])}
         n_rev = len(rev_rows)
-        avg = round(sum(r['stars'] for r in rev_rows) / n_rev, 2) if n_rev else None
+        avg = one_rating['avg']
+        try:
+            my_card = (_teacher_cards(conn, [me]) or [{}])[0]
+            my_score = {k: my_card.get(k) for k in ('score', 'score_parts', 'score_reasons')}
+        except sqlite3.Error:
+            my_score = None
         rev_period = [r for r in rev_rows if in_cur(_an_local(r['created_at']))]
         rev_prev = [r for r in rev_rows if in_prev(_an_local(r['created_at']))]
         replied = sum(1 for r in rev_rows if r['reply'])
@@ -21463,7 +21930,8 @@ def teacher_analytics():
                          'grades': sorted(({'name': k, 'count': v} for k, v in grades.items()), key=lambda x: gnum(x['name'])),
                          'countries': sorted(({'name': k, 'count': v} for k, v in countries.items()), key=lambda x: -x['count'])[:6]},
             'heatmap': heat,
-            'reviews': {'count': n_rev, 'avg': avg, 'dist': dist, 'period': len(rev_period), 'prev': len(rev_prev),
+            'rating': one_rating, 'score': my_score,
+            'reviews': {'count': n_rev, 'avg': avg, 'ratings': one_rating['count'], 'dist': dist, 'period': len(rev_period), 'prev': len(rev_prev),
                         'period_avg': round(sum(r['stars'] for r in rev_period) / len(rev_period), 2) if rev_period else None,
                         'replied': replied, 'recent': recent_reviews},
             'teaching': teach,
@@ -22063,7 +22531,8 @@ def admin_person_file(uid):
             learn = {'live_classes': len([x for x in lc if x['went_live_at']]),
                      'live_minutes': sum(_span_minutes(x['went_live_at'], x['ended_at']) for x in lc if x['went_live_at'] and x['ended_at']),
                      'live_rating': round(one('SELECT AVG(stars) FROM live_ratings WHERE teacher_id = ?') or 0, 1) or None,
-                     'rating': round(one('SELECT AVG(stars) FROM teacher_ratings WHERE teacher_id = ?') or 0, 1) or None,
+                     'rating': _rating_summary(conn, [uid])[uid]['avg'],
+                     'ratings': _rating_summary(conn, [uid])[uid]['count'],
                      'reviews': one('SELECT COUNT(*) FROM teacher_ratings WHERE teacher_id = ?'),
                      'lessons': len(lessons), 'lessons_taught': sum(1 for x in lessons if x['outcome'] == 'taught'),
                      'lessons_flagged': sum(1 for x in lessons if x['outcome'] in ('review', 'not_taught')),
@@ -22213,7 +22682,7 @@ def admin_person(uid):
             'tickets': one('SELECT COUNT(*) FROM complaints WHERE user_id = ?'),
             'live_classes': one('SELECT COUNT(*) FROM live_classes WHERE teacher_id = ?'),
             'reviews_received': one('SELECT COUNT(*) FROM teacher_ratings WHERE teacher_id = ?'),
-            'rating': round(one('SELECT AVG(stars) FROM teacher_ratings WHERE teacher_id = ?') or 0, 1) or None,
+            'rating': _rating_summary(conn, [uid])[uid]['avg'] or None,
             'paid_plans': one("SELECT COALESCE(SUM(amount), 0) FROM plan_payments WHERE parent_id = ? AND status = 'confirmed'"),
             'paid_teaching': one("SELECT COALESCE(SUM(amount), 0) FROM tutoring_payments WHERE parent_id = ? AND status = 'confirmed'"),
             'earned_teaching': one("SELECT COALESCE(SUM(p.amount), 0) FROM tutoring_payments p JOIN tutoring t ON t.id = p.tutoring_id "

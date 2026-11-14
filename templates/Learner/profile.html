@@ -2767,7 +2767,7 @@
                     <div class="rt-head">
                         <span class="rt-name">${escapeAttr(r.reviewer_name || 'Anonymous')}${r.reviewer_role ? ` <small class="rt-role">${escapeAttr(r.reviewer_role)}</small>` : ''}</span>
                         ${starsHTML(stars, true)}
-                        <span class="rt-score-chip">${stars * 2}/10</span>
+                        <span class="rt-score-chip">${stars} / 5</span>
                         <span class="rt-date">${isNaN(d) ? '' : escapeAttr(fmtReviewDate.format(d))}</span>
                     </div>
                     ${r.comment ? `<div class="rt-comment">${escapeAttr(r.comment)}</div>` : `<div class="rt-comment muted">No written review.</div>`}
@@ -2799,7 +2799,7 @@
                 <label class="pf-sr" for="rtComment">Your review (optional)</label>
                 <textarea id="rtComment" maxlength="500" placeholder="Share your experience with this teacher (optional). Don't include phone numbers or links.">${escapeAttr(mine ? mine.comment : '')}</textarea>
                 <div class="rt-form-footer">
-                    <span class="rt-form-msg" id="rtMsg" role="status">${pickedStars ? `${pickedStars * 2}/10` : 'Pick a star rating'}</span>
+                    <span class="rt-form-msg" id="rtMsg" role="status">${pickedStars ? `${pickedStars} of 5 stars` : 'Pick a star rating'}</span>
                     <button type="button" class="pill-btn primary" id="rtSubmit">${mine ? 'Update review' : 'Submit review'}</button>
                 </div>
             </div>`;
@@ -2810,7 +2810,7 @@
         const typing = document.getElementById('rtComment');
         const draft = typing ? typing.value : null;
         const count = Number(ratingsData.count) || 0;
-        const avgTen = Number(ratingsData.average_out_of_ten) || 0, avgFive = avgTen / 2;
+        const avgFive = Number(ratingsData.average != null ? ratingsData.average : (ratingsData.average_out_of_ten || 0) / 2) || 0;
         const dist = ratingsData.distribution || {};
         if (!count) {
             content.innerHTML = `${renderReviewForm()}<div class="posts-empty"><i class="far fa-star" aria-hidden="true"></i>
@@ -2824,9 +2824,9 @@
             content.innerHTML = `
                 <div class="rt-summary">
                     <div class="rt-score">
-                        <div class="rt-score-number">${avgTen.toFixed(1)}<small>/10</small></div>
+                        <div class="rt-score-number">${avgFive.toFixed(1)}<small> / 5</small></div>
                         ${starsHTML(avgFive, false)}
-                        <div class="rt-score-count">${avgFive.toFixed(1)} of 5 stars · ${count} review${count === 1 ? '' : 's'}</div>
+                        <div class="rt-score-count">${count} rating${count === 1 ? '' : 's'}</div>
                     </div>
                     <div class="rt-bars">${bars}</div>
                 </div>
@@ -2887,7 +2887,7 @@
             if (focus && v === n) b.focus();
         });
         const msg = document.getElementById('rtMsg');
-        if (msg) { msg.classList.remove('error', 'ok'); msg.textContent = `${n * 2}/10`; }
+        if (msg) { msg.classList.remove('error', 'ok'); msg.textContent = `${n} of 5 stars`; }
     }
     const ratingsContentEl = document.getElementById('ratingsContent');
     if (ratingsContentEl) {

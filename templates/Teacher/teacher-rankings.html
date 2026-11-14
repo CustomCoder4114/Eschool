@@ -6,7 +6,7 @@
 /* ======================================================================
    TEACHER RANKINGS AND BADGES
    Everything comes from GET /api/teacher/rankings. Teachers are ranked by
-   the eSchool score; badges have five tiers that get much harder to reach.
+   the Eschool score; badges have five tiers that get much harder to reach.
    Scoped to .tr with its own light/dark colours, like the dashboard.
    ====================================================================== */
 .tr {
@@ -168,6 +168,37 @@ body.dark-mode .tr {
     .tr-tools, .tr-tools input, .tr-tools select { width: 100%; }
     .tr-badges { grid-template-columns: 1fr; }
 }
+/* ---------- Teacher Legends vault ---------- */
+.tl-vault { margin: 0 0 20px; padding: 26px 24px 24px; border-radius: 20px; color: #e5e7eb; border: 1px solid #1f2937;
+    background: radial-gradient(900px 380px at 80% -10%, rgba(251, 191, 36, .13), transparent), #0b1020; }
+.tl-top { display: flex; gap: 20px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; margin-bottom: 20px; }
+.tl-top > div:first-child { flex: 1 1 420px; min-width: 0; }
+.tl-eb { color: #fbbf24; letter-spacing: .3em; font-size: .7rem; font-weight: 700; text-transform: uppercase; }
+.tl-top h2 { margin: 6px 0 6px; font: 700 1.9rem/1.15 'Poppins', sans-serif; background: linear-gradient(90deg, #fde68a, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.tl-top p { margin: 0; color: #9ca3af; line-height: 1.6; font-size: .9rem; max-width: 720px; }
+.tl-count { text-align: right; } .tl-count b { display: block; font: 800 2.4rem/1 'Poppins', sans-serif; color: #fde68a; } .tl-count span { font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; color: #9ca3af; }
+.tl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.tl-card { position: relative; background: linear-gradient(180deg, #121826, #0d121c); border: 1px solid #1f2937; border-radius: 16px; padding: 16px 14px 14px; text-align: center; min-width: 0; }
+.tl-card.on { border-color: color-mix(in srgb, var(--g) 70%, transparent); box-shadow: 0 0 36px -12px var(--g); }
+.tl-em { position: relative; width: 132px; height: 132px; margin: 0 auto 8px; }
+.tl-em img { width: 100%; height: 100%; display: block; }
+.tl-lock { position: absolute; right: 4px; bottom: 6px; width: 32px; height: 32px; border-radius: 50%; background: #0b0f19; border: 2px solid #a16207; color: #fde68a; display: grid; place-items: center; font-size: .75rem; }
+.tl-pill { display: inline-block; font-size: .62rem; letter-spacing: .2em; font-weight: 800; padding: 4px 12px; border-radius: 999px; background: #1f2937; color: #9ca3af; }
+.tl-card.on .tl-pill { background: linear-gradient(90deg, #b45309, #fbbf24); color: #1c1003; }
+.tl-card h3 { margin: 8px 0 2px; font: 700 1.1rem 'Poppins', sans-serif; color: #fff; }
+.tl-q { margin: 0 0 10px; color: #9ca3af; font-style: italic; font-size: .8rem; }
+.tl-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 8px; }
+.tl-chip { font-size: .7rem; padding: 3px 9px; border-radius: 999px; background: #1f2937; color: #d1d5db; }
+.tl-chip.gold { background: transparent; border: 1px solid #a16207; color: #fde68a; }
+.tl-rq { text-align: left; margin-top: 8px; font-size: .76rem; }
+.tl-rq div { display: flex; justify-content: space-between; gap: 8px; color: #d1d5db; }
+.tl-rq b { color: #9ca3af; white-space: nowrap; font-variant-numeric: tabular-nums; } .tl-rq b.ok { color: #34d399; }
+.tl-rq i { display: block; height: 4px; border-radius: 9px; background: #1f2937; margin-top: 5px; overflow: hidden; }
+.tl-rq u { display: block; height: 100%; border-radius: 9px; background: linear-gradient(90deg, var(--g), #fde68a); }
+.tl-when { color: #fbbf24; font-size: .75rem; margin: 10px 0 0; }
+.tr-crowns { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: .7rem; font-weight: 700; color: #b45309; background: #fef3c7; border-radius: 999px; padding: 1px 7px; }
+@media (max-width: 1100px) { .tl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .tl-grid { grid-template-columns: minmax(0, 1fr); } .tl-count { text-align: left; } }
 </style>
 
 <div class="tr" data-no-theme>
@@ -182,7 +213,7 @@ body.dark-mode .tr {
             <div>
                 <div class="tr-eyebrow">Teacher rankings</div>
                 <h1 id="trTitle">Loading your rank…</h1>
-                <p id="trSub">Teachers are ranked by the eSchool score. Badges are earned from real teaching on eSchool and get harder at every tier.</p>
+                <p id="trSub">Teachers are ranked by the Eschool score. Badges are earned from real teaching on Eschool and get harder at every tier.</p>
                 <span class="tr-level-chip"><i class="fas fa-crown"></i><span id="trLevel">–</span></span>
             </div>
             <div class="tr-stats">
@@ -196,7 +227,7 @@ body.dark-mode .tr {
 
     <div class="tr-row">
         <section class="tr-panel" aria-labelledby="trLevelsH">
-            <div class="tr-head"><div><h2 id="trLevelsH">Your level</h2><p id="trNextLevel">Levels need badge points and a minimum eSchool score.</p></div></div>
+            <div class="tr-head"><div><h2 id="trLevelsH">Your level</h2><p id="trNextLevel">Levels need badge points and a minimum Eschool score.</p></div></div>
             <div class="tr-bar" style="margin-bottom:14px"><i id="trLevelBar"></i></div>
             <div class="tr-levels" id="trLevels"><div class="tr-skel"></div><div class="tr-skel"></div><div class="tr-skel"></div></div>
         </section>
@@ -207,9 +238,18 @@ body.dark-mode .tr {
         </section>
     </div>
 
+    <section class="tl-vault" aria-labelledby="tlTitle">
+        <div class="tl-top">
+            <div><div class="tl-eb">The Teacher Legends</div><h2 id="tlTitle">Legendary Badges</h2>
+                <p>The rarest honours for teachers on Eschool. Each one needs several hard things at the same time and takes many months of real teaching. Once earned, a Legend is yours for good.</p></div>
+            <div class="tl-count"><b id="tlCount">–</b><span>Legends earned</span></div>
+        </div>
+        <div class="tl-grid" id="tlGrid"><div class="tr-skel"></div></div>
+    </section>
+
     <section class="tr-panel" aria-labelledby="trBadgesH">
         <div class="tr-head">
-            <div><h2 id="trBadgesH">Your badges</h2><p>Five tiers per badge. Gold and above also need a high eSchool score, so volume alone isn't enough. Once earned, a badge is yours to keep.</p></div>
+            <div><h2 id="trBadgesH">Your badges</h2><p>Five tiers per badge. Gold and above also need a high Eschool score, so volume alone isn't enough. Once earned, a badge is yours to keep.</p></div>
             <div class="tr-tiers-key" id="trTierKey"></div>
         </div>
         <div class="tr-badges" id="trBadges"><div class="tr-skel"></div></div>
@@ -217,7 +257,7 @@ body.dark-mode .tr {
 
     <section class="tr-panel" aria-labelledby="trBoardH">
         <div class="tr-head">
-            <div><h2 id="trBoardH">Leaderboard</h2><p id="trBoardSub">All teachers on eSchool</p></div>
+            <div><h2 id="trBoardH">Leaderboard</h2><p id="trBoardSub">All teachers on Eschool</p></div>
             <div class="tr-tools">
                 <input type="search" id="trSearch" placeholder="Search teachers" aria-label="Search teachers">
                 <select id="trSubject" aria-label="Subject"><option value="">All subjects</option></select>
@@ -226,14 +266,14 @@ body.dark-mode .tr {
                     <option value="learners">Learners</option>
                     <option value="lessons">Lessons taught</option>
                     <option value="parent_reviews">Parent reviews</option>
-                    <option value="years">Time on eSchool</option>
+                    <option value="years">Time on Eschool</option>
                     <option value="badges">Badges</option>
                 </select>
             </div>
         </div>
         <div class="tr-table-wrap">
             <table class="tr-table">
-                <thead><tr><th>#</th><th>Teacher</th><th class="num">Score</th><th>Level</th><th>Top badges</th><th class="num">Learners</th><th class="num">Lessons</th><th class="num">Parent reviews</th><th class="num">On eSchool</th></tr></thead>
+                <thead><tr><th>#</th><th>Teacher</th><th class="num">Score</th><th>Level</th><th>Top badges</th><th class="num">Learners</th><th class="num">Lessons</th><th class="num">Parent reviews</th><th class="num">On Eschool</th></tr></thead>
                 <tbody id="trBoard"><tr><td colspan="9"><div class="tr-skel"></div><div class="tr-skel"></div></td></tr></tbody>
             </table>
         </div>
@@ -242,9 +282,9 @@ body.dark-mode .tr {
     <section class="tr-panel" aria-labelledby="trHowH">
         <div class="tr-head"><div><h2 id="trHowH">How ranking works</h2><p>The same rules for every teacher.</p></div></div>
         <div class="tr-how">
-            <div><b><i class="fas fa-star"></i> Quality (60%)</b><p>Reviews from parents and learners, and live class ratings. A few reviews count less than many, so one 10/10 can't put a new teacher at the top.</p></div>
-            <div><b><i class="fas fa-calendar-check"></i> Reliability (20%)</b><p>How many booked lessons were really held. Missed lessons lower it. New teachers start at 8 until they have lessons.</p></div>
-            <div><b><i class="fas fa-hourglass-half"></i> Experience (20%)</b><p>Time teaching on eSchool (full marks at 3 years) and lessons taught (full marks at 50). Ties are broken by lessons, then reviews.</p></div>
+            <div><b><i class="fas fa-star"></i> Quality (60%)</b><p>The teacher's star rating: profile reviews, live class ratings and private lesson ratings averaged together, 5 stars = 10. Every teacher starts at 0 and earns it.</p></div>
+            <div><b><i class="fas fa-calendar-check"></i> Reliability (20%)</b><p>How many booked lessons were really held, proved by the Eschool call. Missed lessons lower it. It starts at 0 until the first lesson is booked.</p></div>
+            <div><b><i class="fas fa-hourglass-half"></i> Experience (20%)</b><p>Time teaching on Eschool (full marks at 3 years) and lessons taught (full marks at 50). Ties are broken by lessons, then reviews.</p></div>
         </div>
     </section>
 </div>
@@ -264,7 +304,7 @@ body.dark-mode .tr {
         if (!me) { $('trTitle').textContent = 'You are not ranked yet'; return; }
         $('trScore').textContent = me.score.toFixed(1);
         $('trRing').style.strokeDashoffset = 326.7 * (1 - Math.min(10, me.score) / 10);
-        const pos = me.rank === 1 ? 'You are the top teacher on eSchool' : `You are #${me.rank} of ${D.total} teachers`;
+        const pos = me.rank === 1 ? 'You are the top teacher on Eschool' : `You are #${me.rank} of ${D.total} teachers`;
         $('trTitle').textContent = pos;
         $('trSub').textContent = me.top_percent && me.rank > 1 && D.total >= 10 ? `That puts you in the top ${me.top_percent}% of teachers. Teach more lessons, keep them on time and earn good reviews to climb.`
             : me.rank > 1 ? 'Teach more lessons, keep them on time and earn good reviews to climb.' : 'Keep teaching well to stay there. Your badges and level are below.';
@@ -279,17 +319,17 @@ body.dark-mode .tr {
         const L = D.levels, at = me ? me.level.index : 0;
         $('trLevels').innerHTML = L.map((l, i) => `<div class="tr-lv ${i < at ? 'done' : ''} ${i === at ? 'now' : ''}">
             <i class="n">${i < at ? '<i class="fas fa-check"></i>' : i + 1}</i>
-            <div><b>${esc(l.name)}</b><small>${l.points ? `${l.points} badge points` : 'Where everyone starts'}${l.score ? ` · eSchool score ${l.score}+` : ''}</small></div>
+            <div><b>${esc(l.name)}</b><small>${l.points ? `${l.points} badge points` : 'Where everyone starts'}${l.score ? ` · Eschool score ${l.score}+` : ''}</small></div>
             <em>${i === at ? 'You are here' : i < at ? 'Reached' : ''}</em></div>`).join('');
         const nx = me && me.level.next;
         if (nx) {
             const need = [];
             if (me.level.points < nx.points) need.push(`${nx.points - me.level.points} more badge points`);
-            if (me.score < nx.score) need.push(`an eSchool score of ${nx.score}`);
+            if (me.score < nx.score) need.push(`an Eschool score of ${nx.score}`);
             $('trNextLevel').textContent = `Next: ${nx.name}. You need ${need.join(' and ') || 'to keep it up'}.`;
             $('trLevelBar').style.width = nx.percent + '%';
         } else if (me) {
-            $('trNextLevel').textContent = 'You have reached the highest level on eSchool.';
+            $('trNextLevel').textContent = 'You have reached the highest level on Eschool.';
             $('trLevelBar').style.width = '100%';
         }
     }
@@ -324,20 +364,33 @@ body.dark-mode .tr {
         }).join('');
     }
 
+    function legends(me) {
+        const L = (me && me.legends) || [];
+        $('tlCount').textContent = `${L.filter(g => g.earned).length} / ${L.length}`;
+        const fmt = (v, n) => Number.isInteger(n) ? num(v) : Number(v).toFixed(1);
+        const day = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+        $('tlGrid').innerHTML = L.map(g => `<article class="tl-card ${g.earned ? 'on' : ''}" style="--g:${esc(g.color)}">
+            <div class="tl-em"><img src="/teacher-legend/${esc(g.key)}.svg${g.earned ? '' : '?locked=1'}" alt="${esc(g.name)} Legend${g.earned ? '' : ', locked'}" loading="lazy">${g.earned ? '' : '<span class="tl-lock"><i class="fas fa-lock"></i></span>'}</div>
+            <span class="tl-pill">LEGENDARY</span><h3>${esc(g.name)}</h3><p class="tl-q">“${esc(g.quote)}”</p>
+            <div class="tl-chips">${g.earned ? '<span class="tl-chip gold">Yours</span>' : `<span class="tl-chip">${g.holders ? `Held by ${num(g.holders)} teacher${g.holders === 1 ? '' : 's'}` : 'No teacher holds this yet'}</span><span class="tl-chip">${g.percent}% there</span>`}</div>
+            ${g.requirements.map(r => `<div class="tl-rq"><div><span>${esc(r.label)}</span><b class="${r.done ? 'ok' : ''}">${fmt(r.have, r.need)} / ${fmt(r.need, r.need)}</b></div><i><u style="width:${Math.max(2, r.percent)}%"></u></i></div>`).join('')}
+            ${g.earned && g.earned_at ? `<p class="tl-when">Earned ${esc(day(g.earned_at))}</p>` : ''}</article>`).join('');
+    }
+
     function board() {
         const q = $('trSearch').value.trim().toLowerCase(), sort = $('trSort').value;
         let list = rows.filter(t => !q || t.name.toLowerCase().includes(q) || (t.subjects || []).some(s => s.toLowerCase().includes(q)));
         const key = { learners: 'learners', lessons: 'lessons', parent_reviews: 'parent_reviews', years: 'years', badges: 'badge_count' }[sort];
         if (key) list = [...list].sort((a, b) => (b[key] || 0) - (a[key] || 0) || a.rank - b.rank);
-        $('trBoardSub').textContent = `${list.length} teacher${list.length === 1 ? '' : 's'}${D.subject ? ' teaching ' + D.subject : ' on eSchool'}`;
+        $('trBoardSub').textContent = `${list.length} teacher${list.length === 1 ? '' : 's'}${D.subject ? ' teaching ' + D.subject : ' on Eschool'}`;
         $('trBoard').innerHTML = list.length ? list.map(t => `<tr class="${t.is_me ? 'me' : ''}">
             <td><span class="tr-rank ${t.rank <= 3 ? 'r' + t.rank : ''}">${t.rank}</span></td>
-            <td><div class="tr-who">${avatar(t)}<div><b>${esc(t.name)}${t.is_me ? '<span class="tr-you">You</span>' : ''}</b><small>${esc((t.subjects || []).slice(0, 3).join(', ') || t.headline)}</small></div></div></td>
+            <td><div class="tr-who">${avatar(t)}<div><b>${esc(t.name)}${t.is_me ? '<span class="tr-you">You</span>' : ''}${t.legend_count ? `<span class="tr-crowns" title="${t.legend_count} Teacher Legend${t.legend_count === 1 ? '' : 's'}"><i class="fas fa-crown"></i> ${t.legend_count}</span>` : ''}</b><small>${esc((t.subjects || []).slice(0, 3).join(', ') || t.headline)}</small></div></div></td>
             <td class="num"><span class="tr-score">${Number(t.score).toFixed(1)}</span></td>
             <td><span class="tr-lvl">${esc(t.level.name)}</span></td>
             <td><div class="tr-mini">${t.top_badges.length ? t.top_badges.map(b => `<i style="--c:${b.color}" title="${esc(b.name)} · ${esc(b.label)}"><i class="fas ${esc(b.icon)}"></i></i>`).join('') : '<span style="color:var(--tr-text-3)">–</span>'}</div></td>
             <td class="num">${num(t.learners)}</td><td class="num">${num(t.lessons)}</td>
-            <td class="num">${num(t.parent_reviews)}${t.parent_avg ? ` <small style="color:var(--tr-text-3)">(${t.parent_avg}/10)</small>` : ''}</td>
+            <td class="num">${num(t.parent_reviews)}${t.parent_avg ? ` <small style="color:var(--tr-text-3)">(${t.parent_avg} ★)</small>` : ''}</td>
             <td class="num">${esc(t.time_on || '–')}</td></tr>`).join('')
             : '<tr><td colspan="9"><div class="tr-empty">No teachers match.</div></td></tr>';
     }
@@ -352,7 +405,7 @@ body.dark-mode .tr {
             D = j; rows = j.teachers;
             if (first) {
                 $('trSubject').innerHTML = '<option value="">All subjects</option>' + j.subjects.map(s => `<option>${esc(s)}</option>`).join('');
-                hero(j.me); levels(j.me); scoreParts(j.me); badges(j.me);
+                hero(j.me); levels(j.me); scoreParts(j.me); badges(j.me); legends(j.me);
             }
             $('trError').hidden = true;
             board();

@@ -471,7 +471,7 @@ body.tp-lock { overflow: hidden; }
         <div class="tp-filters">
             <div class="tp-search"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="fSearch" class="tp-input" placeholder="Search by name or subject" aria-label="Search teachers"></div>
             <select id="fSubject" class="tp-select" aria-label="Subject"><option value="">All subjects</option></select>
-            <select id="fRating" class="tp-select" aria-label="Rating"><option value="0">Any rating</option><option value="4.5">9/10 and up</option><option value="4">8/10 and up</option><option value="3">6/10 and up</option></select>
+            <select id="fRating" class="tp-select" aria-label="Rating"><option value="0">Any rating</option><option value="4.5">4.5 stars and up</option><option value="4">4 stars and up</option><option value="3">3 stars and up</option></select>
             <select id="fSort" class="tp-select" aria-label="Sort"><option value="match">Best match</option><option value="rating">Highest Eschool score</option><option value="price_low">Price: low to high</option><option value="price_high">Price: high to low</option><option value="experience">Most lessons taught</option></select>
         </div>
         <div class="tp-note" id="findNote" aria-live="polite"></div>
@@ -647,7 +647,7 @@ body.tp-lock { overflow: hidden; }
     function say(el, msg, type) { if (el) { el.className = 'tp-note ' + (type || 'info'); el.textContent = msg || ''; } }
     function money(n) { return '{{ CURRENCY }} ' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
     function avatar(name, url, cls) { return '<div class="tp-avatar ' + (cls || '') + '">' + (url ? '<img src="' + esc(url) + '" alt="">' : esc((name || '?').split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase())) + '</div>'; }
-    function ten(r) { return (Math.round((Number(r) || 0) * 20) / 10).toFixed(1).replace(/\.0$/, '') + '/10'; }   // 1-5 stars -> score out of 10
+    function ten(r) { return (Number(r) || 0).toFixed(1) + ' / 5'; }   // the one Eschool rating: 1-5 stars, the same on every page
     function stars(r) { var h = '', v = Math.round((r || 0) * 2) / 2; for (var i = 1; i <= 5; i++) h += v >= i ? '<i class="fas fa-star"></i>' : v >= i - .5 ? '<i class="fas fa-star-half-stroke"></i>' : '<i class="fas fa-star off"></i>'; return '<span class="tp-stars" aria-label="' + v + ' out of 5">' + h + '</span>'; }
     function dt(iso, opts) { if (!iso) return ''; var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString([], opts || { day: 'numeric', month: 'short', year: 'numeric' }); }
     function ago(iso) { if (!iso) return 'never'; var s = (Date.now() - new Date(iso)) / 1000; if (isNaN(s)) return ''; if (s < 120) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago'; var d = Math.floor(s / 86400); return d === 1 ? 'yesterday' : d + ' days ago'; }
@@ -660,7 +660,7 @@ body.tp-lock { overflow: hidden; }
     }
     function post(url, body) { return api(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }); }
 
-    var TEACHERS = [], CHILDREN = [], SUBJECTS = [], ENG = [], PAYOPT = {}, PACKS = [1, 4, 8, 12];
+    var TEACHERS = [], CHILDREN = [], SUBJECTS = [], ENG = [], EVT = [], PAYOPT = {}, PACKS = [1, 4, 8, 12];
     var childSel = null;
 
     /* ---------- dialogs ---------- */
@@ -772,7 +772,7 @@ body.tp-lock { overflow: hidden; }
                 '<div class="tp-t-top">' + avatar(t.name, t.avatar_url) + '<div style="min-width:0;">' +
                     '<div class="tp-t-name">' + esc(t.name) + (t.has_profile ? ' <i class="fas fa-circle-check" aria-label="Has a full teaching profile"></i>' : '') + '</div>' +
                     '<div class="tp-t-head">' + esc(t.headline) + '</div>' +
-                    '<div class="tp-rating">' + stars(t.rating_avg) + ' <strong>' + (rc ? ten(t.rating_avg) : 'New') + '</strong> (' + rc + ' review' + (rc === 1 ? '' : 's') + ')</div>' +
+                    '<div class="tp-rating">' + stars(t.rating_avg) + ' <strong>' + (rc ? ten(t.rating_avg) : '0.0 / 5') + '</strong> (' + (rc ? rc + ' rating' + (rc === 1 ? '' : 's') : 'no ratings yet') + ')</div>' +
                 '</div></div>' +
                 (CHILDREN.length ? '<div class="tp-match"><div class="tp-match-top"><span>Match for ' + esc(currentChildName()) + '</span><strong>' + m.score + '%</strong></div><div class="tp-bar' + (m.score >= 60 ? ' ok' : '') + '"><i style="width:' + m.score + '%"></i></div>' +
                     (m.reasons.length ? '<ul>' + m.reasons.slice(0, 2).map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul>' : '') + '</div>' : '') +
@@ -823,8 +823,8 @@ body.tp-lock { overflow: hidden; }
         var mine = ENG.filter(function (e) { return e.teacher.id === t.id; });
         var payable = mine.filter(function (e) { return (e.status === 'active' || e.status === 'accepted') && !payChecking(e); })[0];
         $('profTitle').textContent = 'Teacher profile';
-        var dist = rv.distribution || {}, total = rv.count || 0, avg = total ? rv.average_out_of_ten / 2 : 0;
-        var bars = [5, 4, 3, 2, 1].map(function (n) { var c = dist[String(n)] || 0, pct = total ? Math.round(c / total * 100) : 0; return '<div class="tp-dist-row"><span style="width:44px;">' + (n * 2) + '/10</span><div class="tp-bar"><i style="width:' + pct + '%"></i></div><span style="width:26px;text-align:right;">' + c + '</span></div>'; }).join('');
+        var dist = rv.distribution || {}, total = rv.count || 0, avg = total ? (rv.average != null ? rv.average : rv.average_out_of_ten / 2) : 0;
+        var bars = [5, 4, 3, 2, 1].map(function (n) { var c = dist[String(n)] || 0, pct = total ? Math.round(c / total * 100) : 0; return '<div class="tp-dist-row"><span style="width:44px;">' + n + ' ★</span><div class="tp-bar"><i style="width:' + pct + '%"></i></div><span style="width:26px;text-align:right;">' + c + '</span></div>'; }).join('');
         var stat = function (v, l) { return '<div class="tp-fact"><strong>' + esc(v) + '</strong><span>' + esc(l) + '</span></div>'; };
         var fact = function (ic, v) { return v ? '<span><i class="fas ' + ic + '"></i>' + esc(v) + '</span>' : ''; };
         var reply = hoursLabel(t.response_hours);
@@ -834,7 +834,7 @@ body.tp-lock { overflow: hidden; }
             '<h3>' + esc(t.name) + (t.has_profile ? ' <i class="fas fa-circle-check" style="color:var(--tp-info);font-size:1rem;" title="Has a full teaching profile"></i>' : '') + '</h3>' +
             '<div class="tp-sub" style="margin:2px 0 6px;">' + esc(t.headline) + '</div>' +
             (t.score != null ? '<div class="tp-sub" style="margin:0 0 4px;"><strong style="color:var(--tp-accent,#2563EB);">Eschool score ' + t.score + '/10</strong> · ' + esc((t.score_reasons || []).join(' · ')) + '</div>' : '') +
-            '<div class="tp-rating">' + stars(t.rating_avg) + ' <strong>' + (t.rating_count ? ten(t.rating_avg) : 'New') + '</strong> <span class="tp-muted">(' + t.rating_count + ' review' + (t.rating_count === 1 ? '' : 's') + ')</span></div>' +
+            '<div class="tp-rating">' + stars(t.rating_avg) + ' <strong>' + (t.rating_count ? ten(t.rating_avg) : '0.0 / 5') + '</strong> <span class="tp-muted">(' + (t.rating_count ? t.rating_count + ' rating' + (t.rating_count === 1 ? '' : 's') : 'no ratings yet') + ')</span></div>' +
             '<div class="tp-pf-facts">' + fact('fa-briefcase', t.experience_label ? (t.experience_years ? t.experience_label + ' on Eschool' : 'New on Eschool') : '') +
                 fact('fa-reply', reply ? 'Replies ' + reply.toLowerCase() : '') + '</div>' +
             '<div class="tp-tags" style="margin-top:10px;">' + (t.accepting ? '<span class="tp-pill active"><i class="fas fa-circle" style="font-size:.45rem;"></i> Taking new students</span>' : '<span class="tp-pill ended">Not taking new students</span>') +
@@ -843,7 +843,7 @@ body.tp-lock { overflow: hidden; }
 
         /* key numbers */
         h += '<div class="tp-prof-stats">' + stat(t.sessions_done, 'Lessons taught') + stat(t.attendance_rate == null ? '-' : t.attendance_rate + '%', 'Lessons held as booked') +
-             stat(t.students, 'Learners taught') + stat(t.session_rating == null ? '-' : ten(t.session_rating), 'Lesson rating') + '</div>';
+             stat(t.students, 'Learners taught') + stat(t.session_rating == null ? '-' : ten(t.session_rating), 'Private lesson rating') + '</div>';
 
         /* main column */
         var main = '';
@@ -868,9 +868,11 @@ body.tp-lock { overflow: hidden; }
             main += '<div><div class="tp-h">Recent free resources</div>' + (t.recent_resources.length ? t.recent_resources.map(function (r) { return '<div class="tp-sub" style="padding:3px 0;"><i class="fas fa-file-lines"></i> ' + esc(r.title) + '</div>'; }).join('') : '<span class="tp-muted">None yet</span>') + '</div>';
             main += '</div>';
         }
-        main += '<div id="profReviews"><div class="tp-h">Reviews from learners and parents</div><div class="tp-dist"><div class="tp-dist-big"><b>' + (total ? ten(avg) : '-') + '</b>' + stars(avg) + '<div class="tp-sub">' + total + ' review' + (total === 1 ? '' : 's') + '</div></div><div>' + bars + '</div></div>';
+        var srcs = rv.sources || {}, srcLine = Object.keys(srcs).filter(function (k) { return srcs[k].count; }).map(function (k) { return esc(srcs[k].label) + ': ' + srcs[k].avg.toFixed(1) + ' (' + srcs[k].count + ')'; }).join(' · ');
+        main += '<div id="profReviews"><div class="tp-h">Rating and reviews</div><div class="tp-dist"><div class="tp-dist-big"><b>' + ten(avg) + '</b>' + stars(avg) + '<div class="tp-sub">' + (total ? total + ' rating' + (total === 1 ? '' : 's') : 'No ratings yet') + '</div></div><div>' + bars + '</div></div>';
         main += (rv.reviews || []).slice(0, 6).map(function (r) { return '<div class="tp-review"><div class="tp-review-top"><span><strong>' + esc(r.reviewer_name) + '</strong> ' + stars(r.stars) + ' <small class="tp-muted">' + ten(r.stars) + '</small></span><span class="tp-muted">' + esc(dt(r.created_at)) + '</span></div>' + (r.comment ? '<p>' + esc(r.comment) + '</p>' : '') + (r.reply ? '<p style="padding-left:12px;border-left:3px solid var(--tp-border);"><strong>Teacher\'s reply:</strong> ' + esc(r.reply) + '</p>' : '') + '</div>'; }).join('');
-        if (!total) main += '<p class="tp-sub" style="margin-top:8px;">No reviews yet.</p>';
+        if (srcLine) main += '<p class="tp-sub" style="margin:6px 0 0;">From ' + srcLine + '.</p>';
+        if (!(rv.reviews || []).length) main += '<p class="tp-sub" style="margin-top:8px;">No written reviews yet.</p>';
         if (t.hired) {
             var my = rv.my_review || {};
             main += '<div class="tp-pf-box" style="margin-top:12px;"><div class="tp-h">' + (rv.my_review ? 'Update your review' : 'Review this teacher') + '</div>' +
@@ -1048,7 +1050,7 @@ body.tp-lock { overflow: hidden; }
         $('sTeacher').value = cur;
     }
     async function loadMine() {
-        try { var d = await api('/api/tutoring'); ENG = d.engagements || []; PAYOPT = d.payment || {}; PACKS = d.packs || PACKS; renderMine(); renderSessions(); renderManage(); if (TEACHERS.length) renderTeachers(); }
+        try { var d = await api('/api/tutoring'); ENG = d.engagements || []; EVT = d.events || []; PAYOPT = d.payment || {}; PACKS = d.packs || PACKS; renderMine(); renderSessions(); renderManage(); if (TEACHERS.length) renderTeachers(); }
         catch (e) { $('mineList').innerHTML = ''; $('mgList').innerHTML = ''; say($('mineNote'), "Couldn't load your teachers. " + e.message, 'bad'); say($('mgNote'), "Couldn't load your teachers. " + e.message, 'bad'); }
     }
     document.addEventListener('click', function (ev) {
@@ -1341,6 +1343,10 @@ body.tp-lock { overflow: hidden; }
             if (ttKid && String(e.child.id) !== ttKid) return;
             (e.sessions || []).forEach(function (s) { var d = new Date(s.starts_at); if (d >= ws && d < we) items.push({ s: s, e: e, d: d }); });
         });
+        EVT.forEach(function (v) {
+            if (ttKid && String(v.student_id) !== ttKid) return;
+            var d = new Date(v.start); if (d >= ws && d < we) items.push({ v: v, d: d });
+        });
         items.sort(function (a, b) { return a.d - b.d; });
         var today = new Date(), html = '';
         for (var i = 0; i < 7; i++) {
@@ -1348,6 +1354,14 @@ body.tp-lock { overflow: hidden; }
             var mine = items.filter(function (x) { return sameDay(x.d, day); });
             html += '<div class="tp-day' + (sameDay(day, today) ? ' today' : '') + (mine.length ? '' : ' empty') + '"><div class="tp-day-n"><span>' + esc(day.toLocaleDateString([], { weekday: 'short' })) + '</span><span>' + day.getDate() + (sameDay(day, today) ? ' · today' : '') + '</span></div>' +
                 mine.map(function (x) {
+                    if (x.v) {
+                        var v = x.v, end = x.d.getTime() + (v.minutes || 60) * 60000, gone = end < Date.now();
+                        return '<div class="tp-ls' + (gone ? ' past' : '') + '" style="--kc:' + kidColor(v.student_id) + '">' +
+                            '<b>' + esc(timeOf(x.d)) + ' · ' + esc(v.title) + '</b><small>' + esc(v.teacher) + ' · ' + esc(kids[v.student_id] || 'Your child') + ' · ' + (v.minutes || 60) + ' min</small>' +
+                            (v.location ? '<small>Where: ' + esc(v.location) + '</small>' : '') +
+                            (v.notes ? '<small>' + esc(v.notes.length > 90 ? v.notes.slice(0, 90) + '…' : v.notes) + '</small>' : '') +
+                            '<span class="tp-tag gray">' + esc(v.kind_label || 'Event') + (gone ? ' · ended' : '') + '</span></div>';
+                    }
                     var st = lessonState(x.s, x.e), canCancel = x.s.status === 'scheduled' && (x.d - new Date()) > 2 * 3600000;
                     return '<div class="tp-ls' + (x.s.status === 'scheduled' ? '' : ' past') + '" style="--kc:' + kidColor(x.e.child.id) + '">' +
                         '<b>' + esc(timeOf(x.d)) + ' · ' + esc(x.e.subject) + '</b><small>' + esc(x.e.teacher.name) + ' · ' + esc(x.e.child.first_name) + '</small>' +
@@ -1357,9 +1371,9 @@ body.tp-lock { overflow: hidden; }
                 }).join('') + '</div>';
         }
         $('ttWeek').innerHTML = html;
-        var any = ENG.some(function (e) { return (e.sessions || []).length; });
+        var any = EVT.length || ENG.some(function (e) { return (e.sessions || []).length; });
         $('ttLegend').innerHTML = (ids.length ? ids.map(function (id) { return '<span><i class="k" style="background:' + kidColor(Number(id)) + '"></i>' + esc(kids[id]) + '</span>'; }).join('') : '') +
-            '<span>' + (items.length ? 'The teacher sets the times. ' + (ids.length > 1 ? 'Your children see' : esc(kids[ids[0]] || 'Your child') + ' sees') + ' the same lessons on their Schedule.'
+            '<span>' + (items.length ? 'The teacher sets the times, and you are told when something is added or changed. ' + (ids.length > 1 ? 'Your children see' : esc(kids[ids[0]] || 'Your child') + ' sees') + ' the same lessons on their Schedule.'
                 : any ? 'No lessons this week.' + nextHint() : 'Lessons show here once a teacher you hired books them.') + '</span>';
         function nextHint() {
             var up = []; ENG.forEach(function (e) { if (ttKid && String(e.child.id) !== ttKid) return; (e.sessions || []).forEach(function (s) { if (s.status === 'scheduled' && new Date(s.starts_at) > new Date()) up.push(s.starts_at); }); });

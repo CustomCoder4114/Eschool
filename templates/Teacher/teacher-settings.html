@@ -338,7 +338,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                 <span><i class="fas fa-chalkboard-user"></i> Teacher account</span>
                 <span><i class="fas fa-users"></i> {{ stats.followers }} learner{{ '' if stats.followers == 1 else 's' }} following</span>
                 <span><i class="fas fa-folder-open"></i> {{ stats.resources }} resource{{ '' if stats.resources == 1 else 's' }}</span>
-                {% if stats.rating %}<span><i class="fas fa-star"></i> {{ stats.rating }} from {{ stats.reviews }} review{{ '' if stats.reviews == 1 else 's' }}</span>{% endif %}
+                <span><i class="fas fa-star"></i> {{ '%.1f'|format(stats.rating or 0) }} / 5 from {{ stats.ratings or 0 }} rating{{ '' if stats.ratings == 1 else 's' }}</span>
             </div>
         </div>
         <div class="ps-complete" id="psComplete" hidden>
@@ -394,7 +394,7 @@ body.dark-mode .ps-row .ico { color: color-mix(in srgb, var(--c, var(--ps-accent
                 <div class="ps-family-sum">
                     <a class="ps-stat" href="/teacher-profile#overview" style="text-decoration:none;"><i class="fas fa-users"></i><div><b>{{ stats.followers }}</b><span>Learner{{ '' if stats.followers == 1 else 's' }} following you</span></div></a>
                     <a class="ps-stat" href="/teacher-resourses" style="text-decoration:none;"><i class="fas fa-folder-open"></i><div><b>{{ stats.resources }}</b><span>Resource{{ '' if stats.resources == 1 else 's' }} shared</span></div></a>
-                    <a class="ps-stat" href="/teacher-profile#reviews" style="text-decoration:none;"><i class="fas fa-star"></i><div><b>{{ stats.rating if stats.rating else '-' }}</b><span>{% if stats.reviews %}From {{ stats.reviews }} review{{ '' if stats.reviews == 1 else 's' }}{% else %}No reviews yet{% endif %}</span></div></a>
+                    <a class="ps-stat" href="/teacher-profile#reviews" style="text-decoration:none;"><i class="fas fa-star"></i><div><b>{{ '%.1f'|format(stats.rating or 0) }} / 5</b><span>{% if stats.ratings %}From {{ stats.ratings }} rating{{ '' if stats.ratings == 1 else 's' }}{% else %}No ratings yet{% endif %}</span></div></a>
                 </div>
 
                 <div class="ps-card" id="psReqCard">

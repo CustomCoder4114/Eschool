@@ -267,6 +267,14 @@ body.dark-mode .sc {
 .sc-kinds span::before { content: ''; width: 9px; height: 9px; border-radius: 3px; background: var(--d); flex: 0 0 auto; }
 .sc-kinds input:checked + span { border-color: var(--d); background: color-mix(in srgb, var(--d) 13%, transparent); color: var(--sc-text); }
 .sc-kinds input:focus-visible + span { outline: 3px solid var(--sc-accent-line); outline-offset: 2px; }
+.sc-share { display: flex; flex-wrap: wrap; gap: 6px; }
+.sc-share label { position: relative; cursor: pointer; }
+.sc-share input { position: absolute; opacity: 0; pointer-events: none; }
+.sc-share span { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--sc-border); background: var(--sc-surface-2); font-size: .8rem; font-weight: 600; color: var(--sc-text-2); }
+.sc-share span::before { content: '\f00c'; font-family: 'Font Awesome 6 Free', 'Font Awesome 5 Free'; font-weight: 900; font-size: .7rem; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--sc-border); color: transparent; background: var(--sc-surface); }
+.sc-share input:checked + span { border-color: var(--sc-accent); background: var(--sc-accent-soft); color: var(--sc-text); }
+.sc-share input:checked + span::before { background: var(--sc-accent); border-color: var(--sc-accent); color: #fff; }
+.sc-share input:focus-visible + span { outline: 3px solid var(--sc-accent-line); outline-offset: 2px; }
 .sc-durs { display: flex; gap: 6px; flex-wrap: wrap; }
 .sc-durs button { height: 32px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--sc-border); background: var(--sc-surface-2); color: var(--sc-text-2); font-size: .78rem; font-weight: 600; cursor: pointer; }
 .sc-durs button[aria-pressed="true"] { background: var(--sc-accent); border-color: var(--sc-accent); color: #fff; }
@@ -615,6 +623,7 @@ function showDetails(x) {
         x.subject ? ["fa-book", "Subject", x.subject + (x.grade ? " · " + x.grade : "")] : null,
         x.type === "lesson" ? ["fa-user-graduate", "Learner", x.student] : null,
         x.location ? ["fa-location-dot", "Where", x.location] : null,
+        x.type === "event" ? ["fa-users", "Shared with", (x.shared_with || []).length ? x.shared_with.map(learnerName).join(", ") + " and their parents" : "Only you"] : null,
     ].filter(Boolean);
     const acts = [];
     if (link && st !== "done" && st !== "missed" && (st === "now" || x._end > Date.now())) acts.push(x.type === "live"
@@ -669,6 +678,7 @@ function showEditor(x, preset) {
             <div class="sc-f wide"><label for="fLoc">Where</label><input class="sc-in" id="fLoc" maxlength="80" value="${esc(e.location || "")}" placeholder="e.g. Room 12, Lab 2, Staffroom"></div>
             <div class="sc-f wide" data-f="link"><label for="fLink">Online link</label><input class="sc-in" id="fLink" maxlength="300" inputmode="url" value="${esc(e.link || "")}" placeholder="https://meet.google.com/…"><span class="sc-ferr"></span></div>
             <div class="sc-f wide"><label for="fNotes">Notes</label><textarea class="sc-ta" id="fNotes" maxlength="1000" placeholder="What to bring, topics to cover, who is coming…">${esc(e.notes || "")}</textarea></div>
+            ${shareField(e)}
             <div class="sc-conflict" id="fConflict" hidden></div>
         </div></form>
         <div class="sc-pf"><span class="msg" id="drMsg" role="status"></span><button type="button" class="sc-btn" data-close>Cancel</button><button type="button" class="sc-btn primary" id="fSave"><i class="fas fa-check"></i> ${x ? "Save changes" : "Add event"}</button></div>`, "#fTitle");
@@ -677,8 +687,20 @@ function showEditor(x, preset) {
     panel.dataset.confirmed = "";
     updateEnds();
 }
+function shareField(e) {
+    const ls = data.learners || [], on = e.shared_with || [];
+    const extra = on.filter(id => !ls.some(l => l.id === id));     // shared before, no longer teaching them
+    if (!ls.length && !extra.length) return `<div class="sc-f wide"><span class="lbl">Share with learners</span><span class="sc-hint">Once you teach a learner privately, you can put an event on their schedule and their parent’s timetable from here.</span></div>`;
+    return `<div class="sc-f wide"><span class="lbl" id="shareL">Share with learners</span><div class="sc-share" role="group" aria-labelledby="shareL">
+        ${ls.map(l => `<label><input type="checkbox" name="fShare" value="${l.id}" ${on.includes(l.id) ? "checked" : ""}><span>${esc(l.name)}</span></label>`).join("")}
+        ${extra.map(id => `<label><input type="checkbox" name="fShare" value="${id}" checked><span>A former learner</span></label>`).join("")}</div>
+        <span class="sc-hint">The learners you pick and their parents get a notification and see it on their timetable: the title, time, place, link and notes. Leave all unticked to keep it to yourself.</span></div>`;
+}
+const learnerName = id => ((data.learners || []).find(l => l.id === id) || {}).name || "A former learner";
 function formValues() {
+    const share = panel.querySelectorAll('input[name="fShare"]');
     return {
+        share_with: share.length ? Array.from(share).filter(i => i.checked).map(i => Number(i.value)) : undefined,
         title: $("fTitle").value.trim(), kind: (panel.querySelector('input[name="fKind"]:checked') || {}).value || "class",
         day: $("fDay").value, start_time: $("fTime").value, minutes: Number($("fMin").value) || 0,
         subject: $("fSubj").value, grade: $("fGrade").value, repeat: $("fRep").value,
@@ -724,7 +746,8 @@ async function saveEvent() {
         if (editing) await send(`/api/teacher/events/${editing}`, "PATCH", v); else await send("/api/teacher/events", "POST", v);
         sel = v.day; miniMonth = v.day.slice(0, 7);
         closeDrawer(); await load(true);
-        note(editing ? `“${v.title}” was updated.` : `“${v.title}” was added on ${shortDay(v.day)} at ${v.start_time}.`, "ok");
+        const told = (v.share_with || []).length ? " The learners you shared it with and their parents have been told." : "";
+        note((editing ? `“${v.title}” was updated.` : `“${v.title}” was added on ${shortDay(v.day)} at ${v.start_time}.`) + told, "ok");
     } catch (e) { btn.disabled = false; msg.className = "msg bad"; msg.textContent = e.message; showErrors(e.errors || {}); }
 }
 function showErrors(errs) {
@@ -787,7 +810,7 @@ async function exportIcs() {
         const stamp = t => new Date(t).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
         const txt = s => String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
         const fold = l => l.length <= 74 ? l : l.match(/.{1,74}/g).join("\r\n ");
-        const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//eSchool//Teacher schedule//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:eSchool schedule"];
+        const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Eschool//Teacher schedule//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:Eschool schedule"];
         d.items.forEach(x => {
             const s = Date.parse(x.start);
             lines.push("BEGIN:VEVENT", `UID:${x.type}-${x.id}-${x.day}@eschool`, `DTSTAMP:${stamp(Date.now())}`, `DTSTART:${stamp(s)}`, `DTEND:${stamp(s + x.minutes * 60000)}`,
@@ -856,7 +879,8 @@ drawer.addEventListener("click", e => {
     if (t.closest("[data-edit]") && current) return showEditor(current);
     if (t.closest("[data-delask]") && current) {
         const rep = current.repeat && current.repeat !== "none";
-        $("delBox").innerHTML = `<div class="sc-del"><b>${rep ? "This event repeats. Delete which?" : "Delete this event? This can’t be undone."}</b><div class="btns">
+        const sh = (current.shared_with || []).length ? ` ${current.shared_with.map(learnerName).join(", ")} and their parents will be told.` : "";
+        $("delBox").innerHTML = `<div class="sc-del"><b>${rep ? "This event repeats. Delete which?" : "Delete this event? This can’t be undone."}${esc(sh)}</b><div class="btns">
             ${rep ? `<button type="button" class="sc-btn danger" data-del="one">Only ${esc(shortDay(current._day))}</button><button type="button" class="sc-btn sure" data-del="all">Every day</button>` : '<button type="button" class="sc-btn sure" data-del="all">Delete</button>'}
             <button type="button" class="sc-btn ghost" data-delno>Keep it</button></div></div>`;
         $("delBox").scrollIntoView({ block: "nearest" });

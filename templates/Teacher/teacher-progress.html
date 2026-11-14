@@ -494,8 +494,8 @@ body.dark-mode .an {
             '<span class="an-kpi-f"><span>Paid, waiting for Eschool to confirm</span></span></div>');
         tiles.push('<div class="an-kpi static"><span class="an-kpi-l"><i class="fas fa-user-check"></i>Attendance</span><span class="an-kpi-v an-num">' + (tc.attendance != null ? tc.attendance + '<small>%</small>' : '–') + '</span>' +
             '<span class="an-kpi-f"><span>' + (tc.sessions_missed ? tc.sessions_missed + ' missed in ' + RANGE_TEXT[S.range] : 'Learners present at lessons') + '</span></span></div>');
-        tiles.push('<div class="an-kpi static"><span class="an-kpi-l"><i class="fas fa-star"></i>Rating</span><span class="an-kpi-v an-num">' + (rv.avg != null ? rv.avg.toFixed(1) + '<small>/ 5</small>' : '–') + '</span>' +
-            '<span class="an-kpi-f"><span>' + rv.count + ' review' + (rv.count === 1 ? '' : 's') + (rv.period ? ', ' + rv.period + ' new' : '') + (tc.session_rating ? ' · lessons ' + tc.session_rating + '★' : '') + '</span></span></div>');
+        tiles.push('<div class="an-kpi static"><span class="an-kpi-l"><i class="fas fa-star"></i>Rating</span><span class="an-kpi-v an-num">' + Number(rv.avg || 0).toFixed(1) + '<small>/ 5</small></span>' +
+            '<span class="an-kpi-f"><span>' + (rv.ratings ? rv.ratings + ' rating' + (rv.ratings === 1 ? '' : 's') : 'No ratings yet') + (rv.period ? ', ' + rv.period + ' new review' + (rv.period === 1 ? '' : 's') : '') + '</span></span></div>');
         $('anKpis').innerHTML = tiles.join('');
     }
     $('anKpis').addEventListener('click', function (e) {
@@ -716,8 +716,8 @@ body.dark-mode .an {
     /* ---------- reviews & teaching ---------- */
     function renderReviews() {
         var r = S.data.reviews, max = Math.max.apply(null, Object.keys(r.dist).map(function (k) { return r.dist[k]; }).concat([1]));
-        if (!r.count) { $('anReviews').innerHTML = '<div class="an-empty"><i class="fas fa-star"></i>No reviews yet. Parents and learners you teach can review you from your profile.</div>'; return; }
-        $('anReviews').innerHTML = '<div class="an-rev-top"><div class="an-rev-avg"><b class="an-num">' + r.avg.toFixed(1) + '</b><div class="st" aria-label="' + r.avg + ' out of 5">' + stars(r.avg) + '</div><small>' + r.count + ' review' + (r.count === 1 ? '' : 's') + ' · ' + pct(r.replied, r.count) + '% replied</small></div>' +
+        if (!r.ratings) { $('anReviews').innerHTML = '<div class="an-empty"><i class="fas fa-star"></i>No ratings yet: 0.0 out of 5. Parents and learners rate you on your profile, after live classes and after private lessons.</div>'; return; }
+        $('anReviews').innerHTML = '<div class="an-rev-top"><div class="an-rev-avg"><b class="an-num">' + r.avg.toFixed(1) + '</b><div class="st" aria-label="' + r.avg + ' out of 5">' + stars(r.avg) + '</div><small>' + r.ratings + ' rating' + (r.ratings === 1 ? '' : 's') + (r.count ? ' · ' + pct(r.replied, r.count) + '% of reviews replied' : '') + '</small></div>' +
             '<div class="an-rev-dist">' + [5, 4, 3, 2, 1].map(function (s) { var n = r.dist[s] || 0; return '<div class="an-bar-row"><span class="n">' + s + ' <i class="fas fa-star" style="color:#f59e0b;font-size:.7rem"></i></span><div class="an-track"><i style="width:' + (n / max * 100) + '%"></i></div><span class="v an-num">' + n + '</span></div>'; }).join('') + '</div></div>' +
             r.recent.map(function (v) {
                 return '<div class="an-rev"><div class="an-rev-h"><b>' + esc(v.name) + '</b><span class="st">' + stars(v.stars) + '</span><span>' + (v.role === 'parent' ? 'Parent' : 'Learner') + ' · ' + esc(when(v.at)) + '</span>' + (v.replied ? '<span class="an-pill ok">Replied</span>' : '<span class="an-pill warn">No reply</span>') + '</div>' + (v.comment ? '<p>' + esc(v.comment) + '</p>' : '') + '</div>';
@@ -744,7 +744,7 @@ body.dark-mode .an {
         var rows = [['Eschool teaching report', RANGE_TEXT[S.range], d.period.start + ' to ' + d.period.end], [],
             ['Summary', 'This period', 'Period before']];
         TREND_KEYS.forEach(function (k) { rows.push([METRICS[k].label + (METRICS[k].money ? ' ({{ CURRENCY }})' : ''), d.totals[k], d.prev[k]]); });
-        rows.push(['Being checked ({{ CURRENCY }})', d.teaching.pending_amount, ''], ['Earned all time ({{ CURRENCY }})', d.teaching.earned_total, ''], ['Rating (all time)', d.reviews.avg == null ? '' : d.reviews.avg, ''], []);
+        rows.push(['Being checked ({{ CURRENCY }})', d.teaching.pending_amount, ''], ['Earned all time ({{ CURRENCY }})', d.teaching.earned_total, ''], ['Rating out of 5 (all time, all ratings)', d.reviews.avg || 0, ''], []);
         rows.push([d.unit === 'day' ? 'Day' : d.unit === 'week' ? 'Week starting' : 'Month'].concat(TREND_KEYS.map(function (k) { return METRICS[k].label; })));
         d.labels.forEach(function (l, i) { rows.push([l].concat(TREND_KEYS.map(function (k) { return d.series[k][i]; }))); });
         rows.push([], ['Learner', 'Subject', 'Paid by', 'Lessons paid for', 'Taught', 'Booked', 'Left to book', 'Status']);
