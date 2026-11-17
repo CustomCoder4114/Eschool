@@ -17320,26 +17320,104 @@ COURSES_READY = ('KE',)
 # Countries whose courses are being built ("coming soon" on the courses page).
 COURSES_COMING = ('IN', 'PH', 'US', 'GB')
 # Each country's courses live in their own folder: static/courses/<code>/<file>.js
-# (one file per course). List the files here in the order they should show.
-# To add a course: put its file in the folder and add its name to the list.
-# The file name (without .js) must be the course's id, and ids must be different
-# in every country (e.g. India's maths could be 'in-math.js' with id 'in-math'),
-# because the dashboard, progress page and search use the id to know which
-# courses belong to the learner's country.
+# (one file per course). TO ADD A COURSE, JUST PUT ITS FILE IN THE FOLDER: Eschool
+# finds it by itself (no restart needed) and reads its id, name, grade and number
+# of modules from the file. The files listed here show first, in this order; any
+# other file in the folder comes after them, A to Z. Course ids must be different
+# in every country (e.g. India's maths could have id 'in-math').
 COURSE_FILES = {
     'KE': ['math.js', 'csl.js', 'english.js', 'kiswahili.js'],
 }
+_COURSE_LISTED = {k: list(v) for k, v in COURSE_FILES.items()}
+_COURSE_IDS = {}           # country -> [course ids, in order]
+_COURSE_SEEN = {}          # country -> what the folder looked like the last time it was read
+
+
+def _course_file_meta(text):
+    """id, name, grade and number of modules of one course file, read without running it."""
+    meta = {}
+    for k in ('id', 'name', 'level'):
+        m = re.search(r"\b" + k + r"\s*:\s*(['\"])(.*?)\1", text)
+        meta[k] = m.group(2) if m else ''
+    m = re.search(r"\bmodules\s*:\s*\[", text)
+    n = 0
+    if m:
+        i, depth, L = m.end(), 0, len(text)
+        while i < L:
+            ch = text[i]
+            if ch in '\'"`':
+                q = ch; i += 1
+                while i < L and text[i] != q:
+                    i += 2 if text[i] == '\\' else 1
+            elif ch == '/' and text[i + 1:i + 2] == '/':
+                j = text.find('\n', i); i = L if j < 0 else j
+            elif ch == '/' and text[i + 1:i + 2] == '*':
+                j = text.find('*/', i + 2); i = L if j < 0 else j + 1
+            elif ch in '[{(':
+                if depth == 0 and ch == '{':
+                    n += 1
+                depth += 1
+            elif ch in ']})':
+                if depth == 0:
+                    break
+                depth -= 1
+            i += 1
+    meta['modules'] = n
+    return meta
+
+
+def _refresh_courses(code):
+    """Reads one country's course folder again if a file was added, removed or edited, and
+    keeps COURSE_FILES, the course ids, EP_COURSE_MODULES and EP_COURSE_NAMES up to date."""
+    folder = os.path.join(app.static_folder, 'courses', code)
+    try:
+        names = [n for n in os.listdir(folder) if n.endswith('.js')]
+        sig = tuple(sorted((n, int(os.path.getmtime(os.path.join(folder, n)))) for n in names))
+    except OSError:
+        names, sig = [], ()
+    if _COURSE_SEEN.get(code) == sig:
+        return
+    listed = _COURSE_LISTED.get(code, [])
+    files = [n for n in listed if n in names] + sorted(n for n in names if n not in listed)
+    ids, keep = [], []
+    for n in files:
+        try:
+            with open(os.path.join(folder, n), encoding='utf-8') as fh:
+                meta = _course_file_meta(fh.read())
+        except (OSError, UnicodeDecodeError):
+            print(f'Course file could not be read: static/courses/{code}/{n}')
+            continue
+        cid = meta['id'] or os.path.splitext(n)[0]
+        if cid in ids:
+            print(f'Course id "{cid}" is used twice in static/courses/{code}/ ({n} skipped): give it its own id')
+            continue
+        ids.append(cid); keep.append(n)
+        if meta['modules']:
+            EP_COURSE_MODULES[cid] = meta['modules']
+        if meta['name']:
+            EP_COURSE_NAMES[cid] = meta['name']
+    COURSE_FILES[code] = keep
+    _COURSE_IDS[code] = ids
+    _COURSE_SEEN[code] = sig
 
 
 def _course_ids(code):
-    """The ids of one country's courses (file names without .js)."""
-    return [os.path.splitext(n)[0] for n in COURSE_FILES.get(code, [])] if code in COURSES_READY else []
+    """The ids of one country's courses, read from the course files themselves."""
+    if code not in COURSES_READY:
+        return []
+    _refresh_courses(code)
+    return list(_COURSE_IDS.get(code, []))
+
+
+for _code in COURSES_READY:          # read the course folders once when Eschool starts
+    _refresh_courses(_code)
 
 
 def _course_scripts(code):
     """Web addresses of one country's course files. ?v= changes when a file is
     edited, so browsers fetch the new version instead of an old saved copy."""
     folder = os.path.join(app.static_folder, 'courses', code)
+    _refresh_courses(code)
     urls = []
     for name in COURSE_FILES.get(code, []):
         path = os.path.join(folder, name)
